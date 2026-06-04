@@ -1,11 +1,11 @@
 {
   "templatecentral_version": "4.0.0",
   "stack": "nextjs",
-  "adapted": "Next 15 + Supabase (auth/db/realtime) — not better-auth/Drizzle",
+  "adapted": "Next 16 + Supabase (auth/db/realtime) — not better-auth/Drizzle",
   "seeded_at": "2026-06-05",
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "13cf60175c6adaf79a57ec3ec79b53f6655946d868b07387b0485a1ebfa729c7",
+      "origin_hash": "d10ac19c1a813cc53c9d3d69d3845979703349b139609ab2011ceaac66deb74b",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -13,7 +13,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "a4e2aec6ca4dc3b280ad355123805fbf92446a0d19c622f7d6e5a68b18017d1d",
+      "origin_hash": "44169e650c195d406125f401324863858e0882f76f6ec964ba4537fcc74bf8ba",
       "path": ".claude/settings.json"
     },
     ".claude/hooks/verify.sh": {
@@ -25,7 +25,7 @@
       "path": ".claude/skills/next-verify.md"
     },
     ".claude/skills/supabase-migrate.md": {
-      "origin_hash": "becdf85b5b7f3c5ad7cda07150d9910c56dced6809e5da70aba02dc08d6dd742",
+      "origin_hash": "217c7a62bec1d2a0714e1f7029af134d2e3ea9deacf4d69b02f01e15c54730c5",
       "path": ".claude/skills/supabase-migrate.md"
     }
   }

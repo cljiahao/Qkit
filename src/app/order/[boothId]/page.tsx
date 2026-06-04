@@ -1,7 +1,7 @@
-import { notFound } from 'next/navigation';
-import { createServerClient } from '@/lib/supabase/server';
-import { OrderForm } from './order-form';
-import type { MenuItem } from '@/lib/types';
+import { notFound } from "next/navigation";
+import { createServerClient } from "@/lib/supabase/server";
+import { OrderForm } from "./order-form";
+import type { MenuItem } from "@/lib/types";
 
 interface Props {
   params: Promise<{ boothId: string }>;
@@ -12,10 +12,10 @@ export default async function OrderPage({ params }: Props) {
   const supabase = await createServerClient();
 
   const { data: booth } = await supabase
-    .from('booths')
-    .select('id, name, menu_items')
-    .eq('id', boothId)
-    .eq('is_active', true)
+    .from("booths")
+    .select("id, name, menu_items")
+    .eq("id", boothId)
+    .eq("is_active", true)
     .single();
 
   if (!booth) notFound();

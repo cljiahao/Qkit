@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { createServerClient } from '@/lib/supabase/server';
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { createServerClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
   children,
@@ -13,19 +13,19 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect('/login');
+  if (!user) redirect("/login");
 
   const { data: vendor } = await supabase
-    .from('vendors')
-    .select('name')
-    .eq('id', user.id)
+    .from("vendors")
+    .select("name")
+    .eq("id", user.id)
     .single();
 
   async function signOut() {
-    'use server';
+    "use server";
     const supabase = await createServerClient();
     await supabase.auth.signOut();
-    redirect('/login');
+    redirect("/login");
   }
 
   return (

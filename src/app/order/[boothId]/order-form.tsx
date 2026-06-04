@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
-import { Minus, Plus, ShoppingCart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { placeOrderSchema, type PlaceOrderInput } from '@/lib/schemas';
-import { formatPrice } from '@/lib/utils';
-import { placeOrder } from './actions';
-import type { MenuItem, CartItem } from '@/lib/types';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
+import { formatPrice } from "@/lib/utils";
+import { placeOrder } from "./actions";
+import type { MenuItem, CartItem } from "@/lib/types";
 
 interface Props {
   boothId: string;
@@ -63,20 +63,26 @@ export function OrderForm({ boothId, menuItems }: Props) {
   }
 
   const cartItems = Array.from(cart.values());
-  const total = cartItems.reduce((sum, i) => sum + i.price_cents * i.quantity, 0);
+  const total = cartItems.reduce(
+    (sum, i) => sum + i.price_cents * i.quantity,
+    0,
+  );
 
   async function onSubmit(formData: { customerName: string }) {
     if (cartItems.length === 0) {
-      toast.error('Add at least one item to your order');
+      toast.error("Add at least one item to your order");
       return;
     }
     setSubmitting(true);
 
-    const input: PlaceOrderInput = { customerName: formData.customerName, items: cartItems };
+    const input: PlaceOrderInput = {
+      customerName: formData.customerName,
+      items: cartItems,
+    };
     const result = await placeOrder(boothId, input);
 
     if (!result.success) {
-      toast.error(result.error ?? 'Order failed');
+      toast.error(result.error ?? "Order failed");
       setSubmitting(false);
       return;
     }
@@ -158,7 +164,10 @@ export function OrderForm({ boothId, menuItems }: Props) {
           </h2>
           <div className="space-y-1 mb-2">
             {cartItems.map((item) => (
-              <div key={item.menuItemId} className="flex justify-between text-sm">
+              <div
+                key={item.menuItemId}
+                className="flex justify-between text-sm"
+              >
                 <span>
                   {item.quantity}× {item.name}
                 </span>
@@ -181,10 +190,12 @@ export function OrderForm({ boothId, menuItems }: Props) {
           <Input
             id="customerName"
             placeholder="So we can call you when ready"
-            {...register('customerName')}
+            {...register("customerName")}
           />
           {errors.customerName && (
-            <p className="text-sm text-destructive">{errors.customerName.message}</p>
+            <p className="text-sm text-destructive">
+              {errors.customerName.message}
+            </p>
           )}
         </div>
         <Button
@@ -192,7 +203,9 @@ export function OrderForm({ boothId, menuItems }: Props) {
           className="w-full"
           disabled={submitting || cartItems.length === 0}
         >
-          {submitting ? 'Placing order…' : `Place order · ${formatPrice(total)}`}
+          {submitting
+            ? "Placing order…"
+            : `Place order · ${formatPrice(total)}`}
         </Button>
       </section>
     </form>

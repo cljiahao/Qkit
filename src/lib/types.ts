@@ -7,12 +7,12 @@ export type Json =
   | Json[];
 
 export type OrderStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'preparing'
-  | 'ready'
-  | 'completed'
-  | 'cancelled';
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "completed"
+  | "cancelled";
 
 export type MenuItem = {
   id: string;
@@ -72,10 +72,10 @@ export interface Database {
         };
         Relationships: [
           {
-            foreignKeyName: 'booths_vendor_id_fkey';
-            columns: ['vendor_id'];
-            referencedRelation: 'vendors';
-            referencedColumns: ['id'];
+            foreignKeyName: "booths_vendor_id_fkey";
+            columns: ["vendor_id"];
+            referencedRelation: "vendors";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -115,10 +115,10 @@ export interface Database {
         };
         Relationships: [
           {
-            foreignKeyName: 'orders_booth_id_fkey';
-            columns: ['booth_id'];
-            referencedRelation: 'booths';
-            referencedColumns: ['id'];
+            foreignKeyName: "orders_booth_id_fkey";
+            columns: ["booth_id"];
+            referencedRelation: "booths";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -138,6 +138,6 @@ export interface Database {
   };
 }
 
-export type Vendor = Database['public']['Tables']['vendors']['Row'];
-export type Booth = Database['public']['Tables']['booths']['Row'];
-export type Order = Database['public']['Tables']['orders']['Row'];
+export type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
+export type Booth = Database["public"]["Tables"]["booths"]["Row"];
+export type Order = Database["public"]["Tables"]["orders"]["Row"];

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useRealtimeOrders } from '@/hooks/use-realtime-orders';
-import { OrderCard } from '@/components/order-card';
-import type { Order } from '@/lib/types';
+import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
+import { OrderCard } from "@/components/order-card";
+import type { Order } from "@/lib/types";
 
 interface Props {
   booths: { id: string; name: string }[];
@@ -13,7 +13,7 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
   const boothIds = booths.map((b) => b.id);
   const orders = useRealtimeOrders(boothIds, initialOrders);
   const active = orders.filter(
-    (o) => o.status !== 'completed' && o.status !== 'cancelled'
+    (o) => o.status !== "completed" && o.status !== "cancelled",
   );
 
   if (booths.length === 0) {
@@ -31,7 +31,9 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Live Orders</h1>
-        <span className="text-sm text-muted-foreground">{active.length} active</span>
+        <span className="text-sm text-muted-foreground">
+          {active.length} active
+        </span>
       </div>
       {active.length === 0 ? (
         <p className="text-muted-foreground text-center py-16">

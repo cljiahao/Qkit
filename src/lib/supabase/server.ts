@@ -1,6 +1,6 @@
-import { createServerClient as createSSRClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import type { Database } from '@/lib/types';
+import { createServerClient as createSSRClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import type { Database } from "@/lib/types";
 
 export async function createServerClient() {
   const cookieStore = await cookies();
@@ -23,7 +23,7 @@ export async function createServerClient() {
           }
         },
       },
-    }
+    },
   );
 }
 
@@ -53,6 +53,6 @@ export async function createServiceClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
+    },
   );
 }

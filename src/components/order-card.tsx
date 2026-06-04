@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { OrderStatusBadge } from './order-status-badge';
-import { createClient } from '@/lib/supabase/client';
-import { formatPrice } from '@/lib/utils';
-import type { Order, OrderItem, OrderStatus } from '@/lib/types';
+import { useState } from "react";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { OrderStatusBadge } from "./order-status-badge";
+import { createClient } from "@/lib/supabase/client";
+import { formatPrice } from "@/lib/utils";
+import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  pending:   'confirmed',
-  confirmed: 'preparing',
-  preparing: 'ready',
-  ready:     'completed',
+  pending: "confirmed",
+  confirmed: "preparing",
+  preparing: "ready",
+  ready: "completed",
 };
 
 export function OrderCard({ order }: { order: Order }) {
@@ -28,12 +28,12 @@ export function OrderCard({ order }: { order: Order }) {
     if (!nextStatus) return;
     setUpdating(true);
     const { error } = await supabase
-      .from('orders')
+      .from("orders")
       .update({ status: nextStatus })
-      .eq('id', order.id);
+      .eq("id", order.id);
 
     if (error) {
-      toast.error('Failed to update order: ' + error.message);
+      toast.error("Failed to update order: " + error.message);
     } else {
       setStatus(nextStatus);
     }
@@ -43,14 +43,14 @@ export function OrderCard({ order }: { order: Order }) {
   async function cancelOrder() {
     setUpdating(true);
     const { error } = await supabase
-      .from('orders')
-      .update({ status: 'cancelled' })
-      .eq('id', order.id);
+      .from("orders")
+      .update({ status: "cancelled" })
+      .eq("id", order.id);
 
     if (error) {
-      toast.error('Failed to cancel order');
+      toast.error("Failed to cancel order");
     } else {
-      setStatus('cancelled');
+      setStatus("cancelled");
     }
     setUpdating(false);
   }
@@ -61,7 +61,9 @@ export function OrderCard({ order }: { order: Order }) {
         <div className="flex items-center justify-between">
           <div>
             <p className="font-mono font-bold text-lg">#{order.order_number}</p>
-            <p className="text-sm text-muted-foreground">{order.customer_name}</p>
+            <p className="text-sm text-muted-foreground">
+              {order.customer_name}
+            </p>
           </div>
           <OrderStatusBadge status={status} />
         </div>
@@ -84,7 +86,7 @@ export function OrderCard({ order }: { order: Order }) {
           <span>Total</span>
           <span>{formatPrice(order.total_cents)}</span>
         </div>
-        {status !== 'completed' && status !== 'cancelled' && (
+        {status !== "completed" && status !== "cancelled" && (
           <div className="flex gap-2 pt-1">
             {nextStatus && (
               <Button

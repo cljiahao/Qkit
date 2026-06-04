@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -16,9 +16,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/client';
-import { registerSchema, type RegisterInput } from '@/lib/schemas';
+} from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
+import { registerSchema, type RegisterInput } from "@/lib/schemas";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -40,23 +40,25 @@ export default function RegisterPage() {
     });
 
     if (signUpError || !authData.user) {
-      toast.error(signUpError?.message ?? 'Sign up failed');
+      toast.error(signUpError?.message ?? "Sign up failed");
       setLoading(false);
       return;
     }
 
     const { error: vendorError } = await supabase
-      .from('vendors')
+      .from("vendors")
       .insert({ id: authData.user.id, name: data.vendorName });
 
     if (vendorError) {
-      toast.error('Account created but vendor setup failed: ' + vendorError.message);
+      toast.error(
+        "Account created but vendor setup failed: " + vendorError.message,
+      );
       setLoading(false);
       return;
     }
 
-    toast.success('Account created!');
-    router.push('/dashboard');
+    toast.success("Account created!");
+    router.push("/dashboard");
     router.refresh();
   }
 
@@ -74,10 +76,12 @@ export default function RegisterPage() {
               <Input
                 id="vendorName"
                 placeholder="Mama's Kitchen"
-                {...register('vendorName')}
+                {...register("vendorName")}
               />
               {errors.vendorName && (
-                <p className="text-sm text-destructive">{errors.vendorName.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.vendorName.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">
@@ -86,10 +90,12 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 placeholder="you@example.com"
-                {...register('email')}
+                {...register("email")}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.email.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">
@@ -98,19 +104,21 @@ export default function RegisterPage() {
                 id="password"
                 type="password"
                 placeholder="Min. 8 characters"
-                {...register('password')}
+                {...register("password")}
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.password.message}
+                </p>
               )}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account…' : 'Create account'}
+              {loading ? "Creating account…" : "Create account"}
             </Button>
             <p className="text-sm text-muted-foreground text-center">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link href="/login" className="underline underline-offset-4">
                 Sign in
               </Link>

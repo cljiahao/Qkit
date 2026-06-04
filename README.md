@@ -6,18 +6,18 @@ their order status in realtime.
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · Tailwind v4 · shadcn/ui (new-york) ·
+Next.js 16 (App Router, Turbopack) · TypeScript · Tailwind v4 · shadcn/ui (new-york) ·
 Supabase (`@supabase/ssr` — auth, Postgres, realtime) · TanStack Query ·
 React Hook Form · Zod · Vitest · pnpm.
 
 ## Routes
 
-| Route | Who | Purpose |
-|-------|-----|---------|
-| `/login`, `/register` | vendor | Supabase email/password auth |
-| `/dashboard` | vendor (auth) | realtime order board; tap a card to advance status |
-| `/order/[boothId]` | customer | menu + cart + checkout |
-| `/order/[boothId]/[orderNumber]` | customer | live order status |
+| Route                            | Who           | Purpose                                            |
+| -------------------------------- | ------------- | -------------------------------------------------- |
+| `/login`, `/register`            | vendor        | Supabase email/password auth                       |
+| `/dashboard`                     | vendor (auth) | realtime order board; tap a card to advance status |
+| `/order/[boothId]`               | customer      | menu + cart + checkout                             |
+| `/order/[boothId]/[orderNumber]` | customer      | live order status                                  |
 
 ## Getting started
 
@@ -32,12 +32,12 @@ pnpm dev                     # http://localhost:3000
 Set these in `.env.local` (find them in Supabase → Project Settings → API).
 `NEXT_PUBLIC_*` values are inlined at build time — **rebuild after changing them**.
 
-| Var | Notes |
-|-----|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | server-only; used by the order-status page (bypasses RLS) |
-| `NEXT_PUBLIC_BASE_URL` | e.g. `http://localhost:3000` |
+| Var                             | Notes                                                     |
+| ------------------------------- | --------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | project URL                                               |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon/public key                                           |
+| `SUPABASE_SERVICE_ROLE_KEY`     | server-only; used by the order-status page (bypasses RLS) |
+| `NEXT_PUBLIC_BASE_URL`          | e.g. `http://localhost:3000`                              |
 
 ### Database
 
@@ -53,8 +53,20 @@ Seed a test booth (Supabase → Table Editor → `booths.menu_items`):
 
 ```json
 [
-  {"id":"item-1","name":"Nasi Lemak","description":"With sambal and egg","price_cents":800,"available":true},
-  {"id":"item-2","name":"Teh Tarik","description":"Pulled milk tea","price_cents":350,"available":true}
+  {
+    "id": "item-1",
+    "name": "Nasi Lemak",
+    "description": "With sambal and egg",
+    "price_cents": 800,
+    "available": true
+  },
+  {
+    "id": "item-2",
+    "name": "Teh Tarik",
+    "description": "Pulled milk tea",
+    "price_cents": 350,
+    "available": true
+  }
 ]
 ```
 
@@ -64,14 +76,14 @@ Seed a test booth (Supabase → Table Editor → `booths.menu_items`):
 pnpm dev      # dev server
 pnpm build    # production build
 pnpm test     # vitest
-pnpm check    # prettier --check + next lint + tsc --noEmit
+pnpm check    # prettier --check + eslint + tsc --noEmit
 pnpm format   # prettier --write
 ```
 
 ## Deployment
 
-Deploys to Vercel. Set the four env vars above in the Vercel project (Production
-+ Preview). Supabase realtime requires the `orders` table in the
+Deploys to Vercel. Set the four env vars above in the Vercel project for both
+Production and Preview. Supabase realtime requires the `orders` table in the
 `supabase_realtime` publication — included in the migration.
 
 ## Data model

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { OrderStatusBadge } from '@/components/order-status-badge';
-import type { OrderStatus } from '@/lib/types';
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { OrderStatusBadge } from "@/components/order-status-badge";
+import type { OrderStatus } from "@/lib/types";
 
 interface Props {
   boothId: string;
@@ -12,15 +12,19 @@ interface Props {
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, string> = {
-  pending:   'Your order is being reviewed',
-  confirmed: 'Your order has been confirmed',
-  preparing: 'Your order is being prepared',
-  ready:     'Your order is ready for pickup!',
-  completed: 'Order complete — enjoy!',
-  cancelled: 'Your order was cancelled',
+  pending: "Your order is being reviewed",
+  confirmed: "Your order has been confirmed",
+  preparing: "Your order is being prepared",
+  ready: "Your order is ready for pickup!",
+  completed: "Order complete — enjoy!",
+  cancelled: "Your order was cancelled",
 };
 
-export function OrderStatusPoller({ boothId, orderNumber, initialStatus }: Props) {
+export function OrderStatusPoller({
+  boothId,
+  orderNumber,
+  initialStatus,
+}: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   const supabase = createClient();
 
@@ -28,19 +32,22 @@ export function OrderStatusPoller({ boothId, orderNumber, initialStatus }: Props
     const channel = supabase
       .channel(`order-${boothId}-${orderNumber}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
           filter: `booth_id=eq.${boothId}`,
         },
         (payload) => {
-          const updated = payload.new as { order_number: string; status: OrderStatus };
+          const updated = payload.new as {
+            order_number: string;
+            status: OrderStatus;
+          };
           if (updated.order_number === orderNumber) {
             setStatus(updated.status);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -54,7 +61,7 @@ export function OrderStatusPoller({ boothId, orderNumber, initialStatus }: Props
     <div className="text-center space-y-3">
       <OrderStatusBadge status={status} />
       <p className="text-sm text-muted-foreground">{STATUS_MESSAGE[status]}</p>
-      {status === 'ready' && (
+      {status === "ready" && (
         <p className="font-semibold text-green-600 animate-pulse">
           Please collect your order now
         </p>

@@ -9,17 +9,20 @@ QKit uses Supabase (Postgres + RLS + realtime), not Drizzle. Migrations live in
 ## Apply schema
 
 **With the Supabase CLI (preferred):**
+
 - `supabase db push` — applies pending migrations to the linked project.
 - After any schema change, regenerate types:
   `supabase gen types typescript --linked > src/lib/types.ts`.
 
 **Without the CLI:**
+
 - Paste the migration SQL into Supabase → SQL Editor → Run.
 - Manually update `src/lib/types.ts` to match (keep `Relationships` on each table
   and the `Views`/`Functions`/`CompositeTypes` keys, or supabase-js types resolve
   to `never`).
 
 ## Safety gate (before running against a non-local project)
+
 - Confirm the linked project ref is correct: `supabase projects list`.
 - RLS must stay enabled on `vendors`, `booths`, `orders` — never disable it to
   make a query work; fix the policy or the query instead.
