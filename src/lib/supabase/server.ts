@@ -7,7 +7,7 @@ export async function createServerClient() {
 
   return createSSRClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -27,13 +27,13 @@ export async function createServerClient() {
   );
 }
 
-// Uses the service role key — bypasses RLS. Only use in Server Actions/Route Handlers.
+// Uses the secret key — bypasses RLS. Only use in Server Actions/Route Handlers.
 export async function createServiceClient() {
   const cookieStore = await cookies();
 
   return createSSRClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SECRET_KEY!,
     {
       cookies: {
         getAll() {
@@ -45,7 +45,7 @@ export async function createServiceClient() {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // ignore
+            // Read-only context (Server Component) — session refresh handled by middleware
           }
         },
       },

@@ -32,12 +32,12 @@ pnpm dev                     # http://localhost:3000
 Set these in `.env.local` (find them in Supabase → Project Settings → API).
 `NEXT_PUBLIC_*` values are inlined at build time — **rebuild after changing them**.
 
-| Var                             | Notes                                                     |
-| ------------------------------- | --------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | project URL                                               |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon/public key                                           |
-| `SUPABASE_SERVICE_ROLE_KEY`     | server-only; used by the order-status page (bypasses RLS) |
-| `NEXT_PUBLIC_BASE_URL`          | e.g. `http://localhost:3000`                              |
+| Var                                    | Notes                                                     |
+| -------------------------------------- | --------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | project URL                                               |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | publishable key (client-safe, respects RLS)               |
+| `SUPABASE_SECRET_KEY`                  | server-only; used by the order-status page (bypasses RLS) |
+| `NEXT_PUBLIC_BASE_URL`                 | e.g. `http://localhost:3000`                              |
 
 ### Database
 
