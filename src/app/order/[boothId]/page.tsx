@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { parseMenuItems } from "@/lib/schemas";
 import { OrderForm } from "./order-form";
-import type { MenuItem } from "@/lib/types";
 
 interface Props {
   params: Promise<{ boothId: string }>;
@@ -20,8 +20,7 @@ export default async function OrderPage({ params }: Props) {
 
   if (!booth) notFound();
 
-  const menuItems = (booth.menu_items ?? []) as MenuItem[];
-  const available = menuItems.filter((m) => m.available);
+  const available = parseMenuItems(booth.menu_items).filter((m) => m.available);
 
   return (
     <div className="min-h-screen max-w-lg mx-auto p-4">

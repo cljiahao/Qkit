@@ -3,8 +3,8 @@ import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatPrice } from "@/lib/utils";
+import { parseOrderItems } from "@/lib/schemas";
 import { OrderStatusPoller } from "./order-status-poller";
-import type { OrderItem } from "@/lib/types";
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;
@@ -33,7 +33,7 @@ export default async function OrderStatusPage({ params }: Props) {
     .eq("id", boothId)
     .single();
 
-  const items = (order.items ?? []) as OrderItem[];
+  const items = parseOrderItems(order.items);
 
   return (
     <div className="min-h-screen max-w-sm mx-auto p-4 flex flex-col">

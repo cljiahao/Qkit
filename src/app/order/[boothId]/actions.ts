@@ -1,17 +1,31 @@
 "use server";
 
+import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
-import type { PlaceOrderInput } from "@/lib/schemas";
+import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
+import { genOrderNumber } from "@/lib/utils";
 
 type PlaceOrderResult =
   | { success: true; orderNumber: string }
   | { success: false; error: string };
+
+const boothIdSchema = z.string().uuid();
 
 export async function placeOrder(
   boothId: string,
   input: PlaceOrderInput,
   attempt = 0,
 ): Promise<PlaceOrderResult> {
+  // Server-side validation — the client form only validates customerName,
+  // so items arrive here untrusted. Never trust client validation.
+  if (!boothIdSchema.safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+
+  const parsed = placeOrderSchema.safeParse(input);
+  if (!parsed.success)
+    return { success: false, error: "Invalid order details" };
+  const order = parsed.data;
+
   if (attempt > 5)
     return {
       success: false,
@@ -28,8 +42,8 @@ export async function placeOrder(
   if (countError)
     return { success: false, error: "Failed to generate order number" };
 
-  const orderNumber = String((count ?? 0) + 1 + attempt).padStart(4, "0");
-  const totalCents = input.items.reduce(
+  const orderNumber = genOrderNumber((count ?? 0) + attempt);
+  const totalCents = order.items.reduce(
     (sum, item) => sum + item.price_cents * item.quantity,
     0,
   );
@@ -37,8 +51,8 @@ export async function placeOrder(
   const { error } = await supabase.from("orders").insert({
     booth_id: boothId,
     order_number: orderNumber,
-    customer_name: input.customerName,
-    items: input.items,
+    customer_name: order.customerName,
+    items: order.items,
     total_cents: totalCents,
     status: "pending",
   });

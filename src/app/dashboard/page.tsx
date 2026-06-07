@@ -20,19 +20,16 @@ export default async function DashboardPage() {
 
   const boothIds = (booths ?? []).map((b) => b.id);
 
-  const { data: orders } = boothIds.length
-    ? await supabase
-        .from("orders")
-        .select("*")
-        .in("booth_id", boothIds)
-        .not("status", "in", "(completed,cancelled)")
-        .order("created_at", { ascending: false })
-    : { data: [] };
+  let orders: Order[] = [];
+  if (boothIds.length) {
+    const { data } = await supabase
+      .from("orders")
+      .select("*")
+      .in("booth_id", boothIds)
+      .not("status", "in", "(completed,cancelled)")
+      .order("created_at", { ascending: false });
+    orders = data ?? [];
+  }
 
-  return (
-    <RealtimeOrderBoard
-      booths={booths ?? []}
-      initialOrders={(orders ?? []) as Order[]}
-    />
-  );
+  return <RealtimeOrderBoard booths={booths ?? []} initialOrders={orders} />;
 }

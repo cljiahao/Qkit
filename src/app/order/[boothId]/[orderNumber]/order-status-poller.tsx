@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { orderRowSchema } from "@/lib/schemas";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import type { OrderStatus } from "@/lib/types";
+
+const statusUpdateSchema = orderRowSchema.pick({
+  order_number: true,
+  status: true,
+});
 
 interface Props {
   boothId: string;
@@ -40,12 +46,10 @@ export function OrderStatusPoller({
           filter: `booth_id=eq.${boothId}`,
         },
         (payload) => {
-          const updated = payload.new as {
-            order_number: string;
-            status: OrderStatus;
-          };
-          if (updated.order_number === orderNumber) {
-            setStatus(updated.status);
+          // Realtime payloads are untrusted — validate before use.
+          const parsed = statusUpdateSchema.safeParse(payload.new);
+          if (parsed.success && parsed.data.order_number === orderNumber) {
+            setStatus(parsed.data.status);
           }
         },
       )
@@ -54,6 +58,8 @@ export function OrderStatusPoller({
     return () => {
       supabase.removeChannel(channel);
     };
+    // supabase client and setStatus are stable; only re-subscribe when the
+    // booth/order identifiers change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boothId, orderNumber]);
 

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "./order-status-badge";
 import { createClient } from "@/lib/supabase/client";
+import { parseOrderItems } from "@/lib/schemas";
 import { formatPrice } from "@/lib/utils";
-import type { Order, OrderItem, OrderStatus } from "@/lib/types";
+import type { Order, OrderStatus } from "@/lib/types";
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   pending: "confirmed",
@@ -21,7 +22,7 @@ export function OrderCard({ order }: { order: Order }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [updating, setUpdating] = useState(false);
   const supabase = createClient();
-  const items = order.items as OrderItem[];
+  const items = parseOrderItems(order.items);
   const nextStatus = NEXT_STATUS[status];
 
   async function advanceStatus() {
@@ -33,7 +34,7 @@ export function OrderCard({ order }: { order: Order }) {
       .eq("id", order.id);
 
     if (error) {
-      toast.error("Failed to update order: " + error.message);
+      toast.error("Failed to update order");
     } else {
       setStatus(nextStatus);
     }
