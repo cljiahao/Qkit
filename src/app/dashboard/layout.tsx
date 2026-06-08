@@ -45,16 +45,24 @@ export default async function DashboardLayout({
               </span>
             )}
           </div>
-          <form action={signOut}>
-            <Button
-              variant="outline"
-              size="sm"
-              type="submit"
-              className="rounded-lg"
-            >
-              Sign out
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm" className="rounded-lg">
+              <Link href="/dashboard">Orders</Link>
             </Button>
-          </form>
+            <Button asChild variant="ghost" size="sm" className="rounded-lg">
+              <Link href="/dashboard/booths">Booths</Link>
+            </Button>
+            <form action={signOut}>
+              <Button
+                variant="outline"
+                size="sm"
+                type="submit"
+                className="rounded-lg"
+              >
+                Sign out
+              </Button>
+            </form>
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
