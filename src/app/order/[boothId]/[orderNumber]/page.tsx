@@ -83,7 +83,9 @@ export default async function OrderStatusPage({ params }: Props) {
           {priced && (
             <div className="mt-1 flex justify-between border-t border-border/60 pt-3 font-semibold">
               <span>Total</span>
-              <span className="font-mono">{formatPrice(order.total_cents)}</span>
+              <span className="font-mono">
+                {formatPrice(order.total_cents)}
+              </span>
             </div>
           )}
         </section>

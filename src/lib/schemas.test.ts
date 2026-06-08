@@ -55,7 +55,9 @@ describe("boothFormSchema", () => {
   });
 
   it("rejects an empty name", () => {
-    expect(boothFormSchema.safeParse({ ...base, name: "" }).success).toBe(false);
+    expect(boothFormSchema.safeParse({ ...base, name: "" }).success).toBe(
+      false,
+    );
   });
 
   it("accepts a uuid boothId (update)", () => {
