@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(cents: number): string {
-  return new Intl.NumberFormat("en-MY", {
+  return new Intl.NumberFormat("en-SG", {
     style: "currency",
-    currency: "MYR",
+    currency: "SGD",
   }).format(cents / 100);
 }
 

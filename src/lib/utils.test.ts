@@ -16,13 +16,13 @@ describe("cn", () => {
 });
 
 describe("formatPrice", () => {
-  it("formats 1000 cents as MYR 10", () => {
+  it("formats 1000 cents as SGD 10", () => {
     const result = formatPrice(1000);
     expect(result).toContain("10");
-    expect(result).toContain("RM");
+    expect(result).toContain("$");
   });
 
-  it("formats 0 as RM 0", () => {
+  it("formats 0 as $0", () => {
     expect(formatPrice(0)).toContain("0");
   });
 });
