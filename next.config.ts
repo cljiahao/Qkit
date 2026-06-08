@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
 
+  images: {
+    remotePatterns: [
+      { protocol: "http", hostname: "127.0.0.1", port: "54321" },
+      { protocol: "https", hostname: "*.supabase.co" },
+    ],
+  },
+
   async redirects() {
     return [{ source: "/register", destination: "/login", permanent: false }];
   },
