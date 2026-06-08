@@ -13,7 +13,7 @@ export const placeOrderSchema = z.object({
       z.object({
         menuItemId: z.string().min(1),
         name: z.string(),
-        price_cents: z.number().int().positive(),
+        price_cents: z.number().int().positive().optional(),
         quantity: z.number().int().min(1).max(20),
       }),
     )
@@ -24,9 +24,27 @@ export const vendorSchema = z.object({
   name: z.string().min(1, "Stall name is required").max(100),
 });
 
+export const menuItemFormSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1, "Item name is required").max(100),
+  description: z.string().max(500).default(""),
+  price_cents: z.number().int().nonnegative().optional(),
+  available: z.boolean(),
+});
+
+export const boothFormSchema = z.object({
+  boothId: z.string().uuid().optional(),
+  name: z.string().min(1, "Booth name is required").max(100),
+  image_url: z.string().url().nullable(),
+  is_active: z.boolean(),
+  menu_items: z.array(menuItemFormSchema),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 export type VendorInput = z.infer<typeof vendorSchema>;
+export type MenuItemFormInput = z.infer<typeof menuItemFormSchema>;
+export type BoothFormInput = z.infer<typeof boothFormSchema>;
 
 // ── Stored-JSONB read schemas ────────────────────────────────────────────────
 // `booths.menu_items` and `orders.items` are JSONB (typed `Json`). Parse them at
@@ -37,14 +55,14 @@ export const menuItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().default(""),
-  price_cents: z.number().int().nonnegative(),
+  price_cents: z.number().int().nonnegative().optional(),
   available: z.boolean(),
 });
 
 export const orderItemSchema = z.object({
   menuItemId: z.string(),
   name: z.string(),
-  price_cents: z.number().int().nonnegative(),
+  price_cents: z.number().int().nonnegative().optional(),
   quantity: z.number().int().min(1),
 });
 
