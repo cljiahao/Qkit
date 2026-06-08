@@ -6,12 +6,6 @@ export const loginSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export const registerSchema = z.object({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  vendorName: z.string().min(1, "Vendor name is required").max(100),
-});
-
 export const placeOrderSchema = z.object({
   customerName: z.string().min(1, "Your name is required").max(100),
   items: z
@@ -26,9 +20,13 @@ export const placeOrderSchema = z.object({
     .min(1, "Add at least one item"),
 });
 
+export const vendorSchema = z.object({
+  name: z.string().min(1, "Stall name is required").max(100),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
+export type VendorInput = z.infer<typeof vendorSchema>;
 
 // ── Stored-JSONB read schemas ────────────────────────────────────────────────
 // `booths.menu_items` and `orders.items` are JSONB (typed `Json`). Parse them at
