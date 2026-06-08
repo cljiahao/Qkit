@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "./order-status-badge";
 import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, orderHasPricing } from "@/lib/utils";
 import type { Order, OrderStatus } from "@/lib/types";
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -21,6 +21,7 @@ export function OrderCard({ order }: { order: Order }) {
   const [updating, setUpdating] = useState(false);
   const supabase = createClient();
   const items = parseOrderItems(order.items);
+  const priced = orderHasPricing(items);
   const nextStatus = NEXT_STATUS[status];
 
   async function advanceStatus() {
@@ -81,23 +82,29 @@ export function OrderCard({ order }: { order: Order }) {
               </span>{" "}
               {item.name}
             </span>
-            <span className="shrink-0 font-mono text-muted-foreground">
-              {formatPrice(item.price_cents * item.quantity)}
-            </span>
+            {priced && (
+              <span className="shrink-0 font-mono text-muted-foreground">
+                {formatPrice((item.price_cents ?? 0) * item.quantity)}
+              </span>
+            )}
           </div>
         ))}
       </div>
 
       <div className="mt-auto">
-        <div className="perforation mx-4" />
-        <div className="flex items-baseline justify-between px-4 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Total
-          </span>
-          <span className="font-mono text-lg font-bold">
-            {formatPrice(order.total_cents)}
-          </span>
-        </div>
+        {priced && (
+          <>
+            <div className="perforation mx-4" />
+            <div className="flex items-baseline justify-between px-4 py-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Total
+              </span>
+              <span className="font-mono text-lg font-bold">
+                {formatPrice(order.total_cents)}
+              </span>
+            </div>
+          </>
+        )}
 
         {!closed && (
           <div className="flex gap-2 px-4 pb-4">

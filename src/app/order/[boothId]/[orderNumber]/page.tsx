@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, orderHasPricing } from "@/lib/utils";
 import { parseOrderItems } from "@/lib/schemas";
 import { OrderStatusPoller } from "./order-status-poller";
 
@@ -34,6 +34,7 @@ export default async function OrderStatusPage({ params }: Props) {
     .single();
 
   const items = parseOrderItems(order.items);
+  const priced = orderHasPricing(items);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
@@ -72,15 +73,19 @@ export default async function OrderStatusPage({ params }: Props) {
                 </span>{" "}
                 {item.name}
               </span>
-              <span className="shrink-0 font-mono text-muted-foreground">
-                {formatPrice(item.price_cents * item.quantity)}
-              </span>
+              {priced && (
+                <span className="shrink-0 font-mono text-muted-foreground">
+                  {formatPrice((item.price_cents ?? 0) * item.quantity)}
+                </span>
+              )}
             </div>
           ))}
-          <div className="mt-1 flex justify-between border-t border-border/60 pt-3 font-semibold">
-            <span>Total</span>
-            <span className="font-mono">{formatPrice(order.total_cents)}</span>
-          </div>
+          {priced && (
+            <div className="mt-1 flex justify-between border-t border-border/60 pt-3 font-semibold">
+              <span>Total</span>
+              <span className="font-mono">{formatPrice(order.total_cents)}</span>
+            </div>
+          )}
         </section>
       </div>
 

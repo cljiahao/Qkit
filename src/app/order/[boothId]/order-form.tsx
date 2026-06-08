@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, orderHasPricing } from "@/lib/utils";
 import { placeOrder } from "./actions";
 import type { MenuItem, CartItem } from "@/lib/types";
 
@@ -62,7 +62,7 @@ export function OrderForm({ boothId, menuItems }: Props) {
 
   const cartItems = Array.from(cart.values());
   const total = cartItems.reduce(
-    (sum, i) => sum + i.price_cents * i.quantity,
+    (sum, i) => sum + (i.price_cents ?? 0) * i.quantity,
     0,
   );
 
@@ -89,6 +89,7 @@ export function OrderForm({ boothId, menuItems }: Props) {
   }
 
   const hasItems = cartItems.length > 0;
+  const cartPriced = orderHasPricing(cartItems);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -116,9 +117,11 @@ export function OrderForm({ boothId, menuItems }: Props) {
                       {item.description}
                     </p>
                   )}
-                  <p className="mt-1 font-mono text-sm font-semibold text-primary">
-                    {formatPrice(item.price_cents)}
-                  </p>
+                  {item.price_cents != null && (
+                    <p className="mt-1 font-mono text-sm font-semibold text-primary">
+                      {formatPrice(item.price_cents)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {inCart ? (
@@ -182,21 +185,27 @@ export function OrderForm({ boothId, menuItems }: Props) {
                   </span>{" "}
                   {item.name}
                 </span>
-                <span className="shrink-0 font-mono text-muted-foreground">
-                  {formatPrice(item.price_cents * item.quantity)}
-                </span>
+                {item.price_cents != null && (
+                  <span className="shrink-0 font-mono text-muted-foreground">
+                    {formatPrice(item.price_cents * item.quantity)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
-          <div className="perforation mx-4" />
-          <div className="flex items-baseline justify-between px-4 py-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total
-            </span>
-            <span className="font-mono text-lg font-bold">
-              {formatPrice(total)}
-            </span>
-          </div>
+          {cartPriced && (
+            <>
+              <div className="perforation mx-4" />
+              <div className="flex items-baseline justify-between px-4 py-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Total
+                </span>
+                <span className="font-mono text-lg font-bold">
+                  {formatPrice(total)}
+                </span>
+              </div>
+            </>
+          )}
         </section>
       )}
 
@@ -233,7 +242,9 @@ export function OrderForm({ boothId, menuItems }: Props) {
             {submitting
               ? "Placing order…"
               : hasItems
-                ? `Place order · ${formatPrice(total)}`
+                ? cartPriced
+                  ? `Place order · ${formatPrice(total)}`
+                  : "Place order"
                 : "Add items to order"}
           </Button>
         </div>
