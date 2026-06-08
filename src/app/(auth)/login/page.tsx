@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardContent,
@@ -20,10 +20,13 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 
+type Mode = "signin" | "signup";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const supabase = createClient();
+  const [mode, setMode] = useState<Mode>("signin");
+  const [loading, setLoading] = useState(false);
 
   const {
     register,
@@ -31,12 +34,25 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
+  async function signInWithGoogle() {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+    }
+    // On success the browser navigates to Google; no further action here.
+  }
+
   async function onSubmit(data: LoginInput) {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
+    const { error } =
+      mode === "signin"
+        ? await supabase.auth.signInWithPassword(data)
+        : await supabase.auth.signUp(data);
 
     if (error) {
       toast.error(error.message);
@@ -52,11 +68,29 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Sign in</CardTitle>
-          <CardDescription>Access your vendor dashboard</CardDescription>
+          <CardTitle className="text-2xl">
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </CardTitle>
+          <CardDescription>Access your QKit vendor dashboard</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
+        <CardContent className="space-y-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={signInWithGoogle}
+            disabled={loading}
+          >
+            Continue with Google
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <Separator className="flex-1" />
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -80,19 +114,29 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
+              {loading
+                ? "Please wait…"
+                : mode === "signin"
+                  ? "Sign in"
+                  : "Create account"}
             </Button>
-            <p className="text-sm text-muted-foreground text-center">
-              No account?{" "}
-              <Link href="/register" className="underline underline-offset-4">
-                Register as vendor
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
+          </form>
+        </CardContent>
+        <CardFooter>
+          <p className="text-sm text-muted-foreground text-center w-full">
+            {mode === "signin" ? "No account? " : "Already have an account? "}
+            <button
+              type="button"
+              className="underline underline-offset-4"
+              onClick={() =>
+                setMode((m) => (m === "signin" ? "signup" : "signin"))
+              }
+            >
+              {mode === "signin" ? "Create account" : "Sign in"}
+            </button>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   );
