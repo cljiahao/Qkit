@@ -1,21 +1,22 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
+import { getVendor } from "@/lib/supabase/get-vendor";
 import { RealtimeOrderBoard } from "./realtime-order-board";
 import type { Order } from "@/lib/types";
 
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, vendor } = await getVendor();
   if (!user) redirect("/login");
+  if (!vendor) redirect("/onboarding");
+
+  const supabase = await createServerClient();
 
   const { data: booths } = await supabase
     .from("booths")
     .select("id, name")
-    .eq("vendor_id", user.id)
+    .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: true });
 
   const boothIds = (booths ?? []).map((b) => b.id);
