@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
 
+  async redirects() {
+    return [{ source: "/register", destination: "/login", permanent: false }];
+  },
+
   async headers() {
     return [
       {
