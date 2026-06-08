@@ -29,16 +29,16 @@ Customers are unaffected (they order via QR, never authenticate).
 
 ### Components
 
-| Unit | Type | Responsibility |
-|------|------|----------------|
-| `src/app/(auth)/login/page.tsx` | client page | Google button + email/password form (sign-in / create-account toggle). Only authenticates. |
-| `src/app/(auth)/register/page.tsx` | — | Removed. `/register` → `/login` via a `next.config.ts` redirect (`permanent: false`). |
-| `src/app/auth/callback/route.ts` | route handler | OAuth return: `exchangeCodeForSession(code)` → redirect to `/dashboard`. |
-| `src/app/onboarding/page.tsx` | server page | Gated. No vendor → render stall-name form; has vendor → redirect `/dashboard`. |
-| `src/app/onboarding/actions.ts` | server action | `createVendor(input)` — Zod-validated, inserts the `vendors` row (RLS `vendors_self_insert`). The ONLY writer of `vendors` on signup. |
-| `src/lib/supabase/get-vendor.ts` | server helper | `getVendor()` → the caller's `vendors` row or `null`. Single source of truth for the gate. |
-| `src/lib/schemas.ts` | schemas | Remove `registerSchema` entirely (email+password sign-up reuses `loginSchema`); add `vendorSchema { name }`. |
-| `supabase/config.toml` | config | Enable `[auth.external.google]` (local). Hosted project enables Google in dashboard. |
+| Unit                               | Type          | Responsibility                                                                                                                        |
+| ---------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/(auth)/login/page.tsx`    | client page   | Google button + email/password form (sign-in / create-account toggle). Only authenticates.                                            |
+| `src/app/(auth)/register/page.tsx` | —             | Removed. `/register` → `/login` via a `next.config.ts` redirect (`permanent: false`).                                                 |
+| `src/app/auth/callback/route.ts`   | route handler | OAuth return: `exchangeCodeForSession(code)` → redirect to `/dashboard`.                                                              |
+| `src/app/onboarding/page.tsx`      | server page   | Gated. No vendor → render stall-name form; has vendor → redirect `/dashboard`.                                                        |
+| `src/app/onboarding/actions.ts`    | server action | `createVendor(input)` — Zod-validated, inserts the `vendors` row (RLS `vendors_self_insert`). The ONLY writer of `vendors` on signup. |
+| `src/lib/supabase/get-vendor.ts`   | server helper | `getVendor()` → the caller's `vendors` row or `null`. Single source of truth for the gate.                                            |
+| `src/lib/schemas.ts`               | schemas       | Remove `registerSchema` entirely (email+password sign-up reuses `loginSchema`); add `vendorSchema { name }`.                          |
+| `supabase/config.toml`             | config        | Enable `[auth.external.google]` (local). Hosted project enables Google in dashboard.                                                  |
 
 ### Data flow
 
@@ -61,6 +61,7 @@ Email  ─signInWithPassword / signUp──────────────�
 ### The gate (DRY)
 
 `getVendor()` is called by both:
+
 - `/dashboard` — no user → `/login`; no vendor → `/onboarding`.
 - `/onboarding` — no user → `/login`; vendor exists → `/dashboard`.
 
@@ -70,6 +71,7 @@ client-side insert currently in the register form is removed.
 ### Auth secondary path (email/password)
 
 One form, a `mode` toggle (`signin` | `signup`):
+
 - `signin` → `signInWithPassword` → on success router push `/dashboard` (gate routes onward).
 - `signup` → `signUp` (email + password only) → on success same redirect.
   With email confirmation OFF (local) a session exists immediately. With it ON

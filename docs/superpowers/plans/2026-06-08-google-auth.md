@@ -34,6 +34,7 @@
 ### Task 1: Schema changes (remove registerSchema, add vendorSchema)
 
 **Files:**
+
 - Modify: `src/lib/schemas.ts`
 - Test: `src/lib/schemas.test.ts` (create)
 
@@ -57,9 +58,9 @@ describe("vendorSchema", () => {
   });
 
   it("rejects a name over 100 chars", () => {
-    expect(
-      vendorSchema.safeParse({ name: "x".repeat(101) }).success,
-    ).toBe(false);
+    expect(vendorSchema.safeParse({ name: "x".repeat(101) }).success).toBe(
+      false,
+    );
   });
 });
 ```
@@ -115,6 +116,7 @@ git commit -m "feat(auth): replace registerSchema with vendorSchema"
 ### Task 2: `getVendor()` gate helper
 
 **Files:**
+
 - Create: `src/lib/supabase/get-vendor.ts`
 
 No unit test (Supabase-touching; verified by build + Task 7/10). Type-checked.
@@ -169,6 +171,7 @@ git commit -m "feat(auth): add getVendor gate helper"
 ### Task 3: `createVendor` server action + onboarding page
 
 **Files:**
+
 - Create: `src/app/onboarding/actions.ts`
 - Create: `src/app/onboarding/onboarding-form.tsx`
 - Create: `src/app/onboarding/page.tsx`
@@ -323,6 +326,7 @@ git commit -m "feat(auth): add onboarding page and createVendor action"
 ### Task 4: OAuth callback route
 
 **Files:**
+
 - Create: `src/app/auth/callback/route.ts`
 
 - [ ] **Step 1: Create `src/app/auth/callback/route.ts`**
@@ -362,6 +366,7 @@ git commit -m "feat(auth): add Google OAuth callback route"
 ### Task 5: Rewrite `/login` (Google + email/password, signin/signup toggle)
 
 **Files:**
+
 - Modify: `src/app/(auth)/login/page.tsx` (full replace)
 
 - [ ] **Step 1: Replace `src/app/(auth)/login/page.tsx` entirely**
@@ -440,9 +445,7 @@ export default function LoginPage() {
           <CardTitle className="text-2xl">
             {mode === "signin" ? "Sign in" : "Create account"}
           </CardTitle>
-          <CardDescription>
-            Access your QKit vendor dashboard
-          </CardDescription>
+          <CardDescription>Access your QKit vendor dashboard</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
@@ -531,6 +534,7 @@ git commit -m "feat(auth): unify login screen with Google + email/password"
 ### Task 6: Remove `/register`, redirect to `/login`
 
 **Files:**
+
 - Delete: `src/app/(auth)/register/page.tsx`
 - Modify: `next.config.ts`
 
@@ -567,6 +571,7 @@ git commit -m "feat(auth): redirect /register to unified /login"
 ### Task 7: Dashboard gate + middleware guard for /onboarding
 
 **Files:**
+
 - Modify: `src/app/dashboard/page.tsx`
 - Modify: `src/lib/supabase/middleware.ts:33`
 
@@ -645,6 +650,7 @@ git commit -m "feat(auth): gate dashboard on vendor row, guard onboarding"
 ### Task 8: Enable Google provider in Supabase + document env
 
 **Files:**
+
 - Modify: `supabase/config.toml` (after the `[auth.external.apple]` block, ~line 335)
 - Modify: `.env.example`
 
@@ -726,6 +732,7 @@ Expected: compiles; routes include `/login`, `/onboarding`, `/auth/callback`; no
 - [ ] **Step 4: Manual flow (dev server on http://localhost:3000)**
 
 Verify each:
+
 1. Google sign-in (new user) → `/onboarding` → enter stall name → `/dashboard`.
 2. Google sign-in (returning) → straight to `/dashboard`.
 3. Email "Create account" → `/onboarding` → `/dashboard`.
