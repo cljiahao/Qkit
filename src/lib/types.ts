@@ -18,21 +18,21 @@ export type MenuItem = {
   id: string;
   name: string;
   description: string;
-  price_cents: number;
+  price_cents?: number;
   available: boolean;
 };
 
 export type CartItem = {
   menuItemId: string;
   name: string;
-  price_cents: number;
+  price_cents?: number;
   quantity: number;
 };
 
 export type OrderItem = {
   menuItemId: string;
   name: string;
-  price_cents: number;
+  price_cents?: number;
   quantity: number;
 };
 
@@ -52,6 +52,7 @@ export interface Database {
           name: string;
           menu_items: Json;
           is_active: boolean;
+          image_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -60,6 +61,7 @@ export interface Database {
           name: string;
           menu_items?: Json;
           is_active?: boolean;
+          image_url?: string | null;
           created_at?: string;
         };
         Update: {
@@ -68,6 +70,7 @@ export interface Database {
           name?: string;
           menu_items?: Json;
           is_active?: boolean;
+          image_url?: string | null;
           created_at?: string;
         };
         Relationships: [
