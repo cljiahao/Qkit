@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cn, formatPrice, genOrderNumber } from "./utils";
+import { cn, formatPrice, genOrderNumber, orderHasPricing } from "./utils";
 
 describe("cn", () => {
   it("merges class names", () => {
@@ -38,5 +38,25 @@ describe("genOrderNumber", () => {
 
   it("does not pad 4-digit count", () => {
     expect(genOrderNumber(9999)).toBe("10000");
+  });
+});
+
+describe("orderHasPricing", () => {
+  it("is true when any item has a price", () => {
+    expect(
+      orderHasPricing([{ price_cents: undefined }, { price_cents: 500 }]),
+    ).toBe(true);
+  });
+
+  it("is false when no item has a price", () => {
+    expect(orderHasPricing([{ price_cents: undefined }, {}])).toBe(false);
+  });
+
+  it("is false for an empty list", () => {
+    expect(orderHasPricing([])).toBe(false);
+  });
+
+  it("treats price_cents 0 as priced", () => {
+    expect(orderHasPricing([{ price_cents: 0 }])).toBe(true);
   });
 });

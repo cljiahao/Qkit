@@ -15,3 +15,10 @@ export function formatPrice(cents: number): string {
 export function genOrderNumber(existingCount: number): string {
   return String(existingCount + 1).padStart(4, "0");
 }
+
+/** True when at least one item carries a price (drives whether money is shown). */
+export function orderHasPricing(
+  items: { price_cents?: number | null }[],
+): boolean {
+  return items.some((i) => i.price_cents != null);
+}
