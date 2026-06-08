@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { vendorSchema, menuItemSchema, boothFormSchema } from "./schemas";
+import {
+  vendorSchema,
+  menuItemSchema,
+  boothFormSchema,
+  placeOrderSchema,
+} from "./schemas";
 
 describe("vendorSchema", () => {
   it("accepts a valid stall name", () => {
@@ -77,6 +82,28 @@ describe("boothFormSchema", () => {
           { id: "1", name: "Paid", price_cents: 500, available: true },
           { id: "2", name: "Free", available: false },
         ],
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe("placeOrderSchema", () => {
+  it("accepts an order containing a $0 (queue) item", () => {
+    expect(
+      placeOrderSchema.safeParse({
+        customerName: "Sam",
+        items: [
+          { menuItemId: "1", name: "Free water", price_cents: 0, quantity: 1 },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts an order with an unpriced item", () => {
+    expect(
+      placeOrderSchema.safeParse({
+        customerName: "Sam",
+        items: [{ menuItemId: "1", name: "Queue item", quantity: 2 }],
       }).success,
     ).toBe(true);
   });

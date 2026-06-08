@@ -13,7 +13,7 @@ export const placeOrderSchema = z.object({
       z.object({
         menuItemId: z.string().min(1),
         name: z.string(),
-        price_cents: z.number().int().positive().optional(),
+        price_cents: z.number().int().nonnegative().optional(),
         quantity: z.number().int().min(1).max(20),
       }),
     )
