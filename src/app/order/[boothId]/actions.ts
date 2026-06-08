@@ -44,7 +44,7 @@ export async function placeOrder(
 
   const orderNumber = genOrderNumber((count ?? 0) + attempt);
   const totalCents = order.items.reduce(
-    (sum, item) => sum + item.price_cents * item.quantity,
+    (sum, item) => sum + (item.price_cents ?? 0) * item.quantity,
     0,
   );
 
