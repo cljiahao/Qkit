@@ -23,10 +23,14 @@ export default async function OrderPage({ params }: Props) {
   const available = parseMenuItems(booth.menu_items).filter((m) => m.available);
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto p-4">
-      <header className="mb-6">
-        <p className="text-sm text-muted-foreground">Order from</p>
-        <h1 className="text-3xl font-bold">{booth.name}</h1>
+    <div className="mx-auto min-h-screen max-w-lg px-5 pb-28 pt-8">
+      <header className="mb-7">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          Order from
+        </p>
+        <h1 className="font-display mt-1 text-4xl font-semibold leading-[1.05]">
+          {booth.name}
+        </h1>
       </header>
       <OrderForm boothId={booth.id} menuItems={available} />
     </div>

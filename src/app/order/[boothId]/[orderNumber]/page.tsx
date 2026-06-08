@@ -36,48 +36,58 @@ export default async function OrderStatusPage({ params }: Props) {
   const items = parseOrderItems(order.items);
 
   return (
-    <div className="min-h-screen max-w-sm mx-auto p-4 flex flex-col">
-      <header className="mb-8 text-center">
-        <p className="text-sm text-muted-foreground">{booth?.name}</p>
-        <h1 className="text-5xl font-bold font-mono mt-1">
-          #{order.order_number}
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Order for {order.customer_name}
-        </p>
-      </header>
+    <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
+      <div className="ticket overflow-hidden rounded-2xl border border-border shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]">
+        <header className="px-6 pt-9 pb-6 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {booth?.name}
+          </p>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Order
+          </p>
+          <h1 className="font-mono text-6xl font-bold leading-none tracking-tight">
+            #{order.order_number}
+          </h1>
+          <p className="mt-3 text-muted-foreground">
+            for {order.customer_name}
+          </p>
+        </header>
 
-      <div className="flex justify-center mb-8">
-        <OrderStatusBadge status={order.status} />
-      </div>
+        <div className="perforation" />
 
-      <section className="space-y-2 mb-8">
-        {items.map((item, i) => (
-          <div key={i} className="flex justify-between text-sm">
-            <span>
-              {item.quantity}× {item.name}
-            </span>
-            <span className="text-muted-foreground">
-              {formatPrice(item.price_cents * item.quantity)}
-            </span>
+        <OrderStatusPoller
+          boothId={boothId}
+          orderNumber={orderNumber}
+          initialStatus={order.status}
+        />
+
+        <div className="perforation" />
+
+        <section className="space-y-1.5 px-6 py-5">
+          {items.map((item, i) => (
+            <div key={i} className="flex justify-between gap-2 text-sm">
+              <span className="truncate">
+                <span className="font-mono text-muted-foreground">
+                  {item.quantity}×
+                </span>{" "}
+                {item.name}
+              </span>
+              <span className="shrink-0 font-mono text-muted-foreground">
+                {formatPrice(item.price_cents * item.quantity)}
+              </span>
+            </div>
+          ))}
+          <div className="mt-1 flex justify-between border-t border-border/60 pt-3 font-semibold">
+            <span>Total</span>
+            <span className="font-mono">{formatPrice(order.total_cents)}</span>
           </div>
-        ))}
-        <div className="flex justify-between font-semibold pt-2 border-t">
-          <span>Total</span>
-          <span>{formatPrice(order.total_cents)}</span>
-        </div>
-      </section>
-
-      <OrderStatusPoller
-        boothId={boothId}
-        orderNumber={orderNumber}
-        initialStatus={order.status}
-      />
+        </section>
+      </div>
 
       <div className="mt-auto pt-8 text-center">
         <Link
           href={`/order/${boothId}`}
-          className="text-sm text-muted-foreground underline underline-offset-4"
+          className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
         >
           Order again
         </Link>

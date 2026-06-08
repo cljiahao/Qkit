@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "./order-status-badge";
 import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
@@ -56,43 +54,57 @@ export function OrderCard({ order }: { order: Order }) {
     setUpdating(false);
   }
 
+  const closed = status === "completed" || status === "cancelled";
+
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-mono font-bold text-lg">#{order.order_number}</p>
-            <p className="text-sm text-muted-foreground">
-              {order.customer_name}
-            </p>
+    <div className="ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]">
+      <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
+        <div className="min-w-0">
+          <p className="font-mono text-xl font-bold tracking-tight">
+            #{order.order_number}
+          </p>
+          <p className="truncate text-sm text-muted-foreground">
+            {order.customer_name}
+          </p>
+        </div>
+        <OrderStatusBadge status={status} />
+      </div>
+
+      <div className="perforation mx-4" />
+
+      <div className="space-y-1.5 px-4 py-3">
+        {items.map((item, i) => (
+          <div key={i} className="flex justify-between gap-2 text-sm">
+            <span className="truncate">
+              <span className="font-mono text-muted-foreground">
+                {item.quantity}×
+              </span>{" "}
+              {item.name}
+            </span>
+            <span className="shrink-0 font-mono text-muted-foreground">
+              {formatPrice(item.price_cents * item.quantity)}
+            </span>
           </div>
-          <OrderStatusBadge status={status} />
+        ))}
+      </div>
+
+      <div className="mt-auto">
+        <div className="perforation mx-4" />
+        <div className="flex items-baseline justify-between px-4 py-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Total
+          </span>
+          <span className="font-mono text-lg font-bold">
+            {formatPrice(order.total_cents)}
+          </span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-1">
-          {items.map((item, i) => (
-            <div key={i} className="flex justify-between text-sm">
-              <span>
-                {item.quantity}× {item.name}
-              </span>
-              <span className="text-muted-foreground">
-                {formatPrice(item.price_cents * item.quantity)}
-              </span>
-            </div>
-          ))}
-        </div>
-        <Separator />
-        <div className="flex justify-between font-medium">
-          <span>Total</span>
-          <span>{formatPrice(order.total_cents)}</span>
-        </div>
-        {status !== "completed" && status !== "cancelled" && (
-          <div className="flex gap-2 pt-1">
+
+        {!closed && (
+          <div className="flex gap-2 px-4 pb-4">
             {nextStatus && (
               <Button
                 size="sm"
-                className="flex-1"
+                className="h-9 flex-1 rounded-lg font-semibold"
                 onClick={advanceStatus}
                 disabled={updating}
               >
@@ -101,7 +113,8 @@ export function OrderCard({ order }: { order: Order }) {
             )}
             <Button
               size="sm"
-              variant="destructive"
+              variant="outline"
+              className="h-9 rounded-lg text-muted-foreground hover:text-destructive"
               onClick={cancelOrder}
               disabled={updating}
             >
@@ -109,10 +122,11 @@ export function OrderCard({ order }: { order: Order }) {
             </Button>
           </div>
         )}
-        <p className="text-xs text-muted-foreground">
+
+        <p className="border-t border-border/60 px-4 py-2 text-right font-mono text-[0.7rem] text-muted-foreground">
           {new Date(order.created_at).toLocaleTimeString()}
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

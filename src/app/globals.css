@@ -3,47 +3,66 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── "Kraft & Ember" — warm night-market food-stall theme ──────────────────── */
+
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  /* warm oat paper canvas, espresso ink, ember/chili accent */
+  --background: oklch(0.965 0.013 78);
+  --foreground: oklch(0.24 0.024 48);
+  --card: oklch(0.992 0.007 86);
+  --card-foreground: oklch(0.24 0.024 48);
+  --popover: oklch(0.992 0.007 86);
+  --popover-foreground: oklch(0.24 0.024 48);
+  --primary: oklch(0.595 0.18 36);
+  --primary-foreground: oklch(0.98 0.015 86);
+  --secondary: oklch(0.91 0.022 72);
+  --secondary-foreground: oklch(0.3 0.03 50);
+  --muted: oklch(0.93 0.014 76);
+  --muted-foreground: oklch(0.5 0.022 55);
+  --accent: oklch(0.9 0.038 70);
+  --accent-foreground: oklch(0.3 0.03 50);
+  --destructive: oklch(0.55 0.2 27);
+  --border: oklch(0.87 0.02 70);
+  --input: oklch(0.89 0.018 72);
+  --ring: oklch(0.595 0.18 36);
+  --radius: 0.5rem;
+
+  /* kitchen-ticket status stamps */
+  --status-pending: oklch(0.72 0.15 75);
+  --status-confirmed: oklch(0.6 0.13 245);
+  --status-preparing: oklch(0.62 0.18 40);
+  --status-ready: oklch(0.6 0.16 150);
+  --status-completed: oklch(0.55 0.01 60);
+  --status-cancelled: oklch(0.58 0.2 27);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* dusk night-market: espresso canvas, warm cream ink, ember stays hot */
+  --background: oklch(0.2 0.018 50);
+  --foreground: oklch(0.94 0.012 80);
+  --card: oklch(0.25 0.02 50);
+  --card-foreground: oklch(0.94 0.012 80);
+  --popover: oklch(0.25 0.02 50);
+  --popover-foreground: oklch(0.94 0.012 80);
+  --primary: oklch(0.68 0.18 40);
+  --primary-foreground: oklch(0.2 0.02 45);
+  --secondary: oklch(0.32 0.022 55);
+  --secondary-foreground: oklch(0.94 0.012 80);
+  --muted: oklch(0.3 0.018 52);
+  --muted-foreground: oklch(0.72 0.02 70);
+  --accent: oklch(0.36 0.03 58);
+  --accent-foreground: oklch(0.94 0.012 80);
+  --destructive: oklch(0.62 0.2 27);
+  --border: oklch(0.36 0.02 55);
+  --input: oklch(0.38 0.02 55);
+  --ring: oklch(0.68 0.18 40);
+
+  --status-pending: oklch(0.78 0.15 80);
+  --status-confirmed: oklch(0.7 0.13 245);
+  --status-preparing: oklch(0.72 0.18 45);
+  --status-ready: oklch(0.72 0.16 150);
+  --status-completed: oklch(0.7 0.01 60);
+  --status-cancelled: oklch(0.68 0.2 27);
 }
 
 @theme inline {
@@ -65,10 +84,22 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-status-pending: var(--status-pending);
+  --color-status-confirmed: var(--status-confirmed);
+  --color-status-preparing: var(--status-preparing);
+  --color-status-ready: var(--status-ready);
+  --color-status-completed: var(--status-completed);
+  --color-status-cancelled: var(--status-cancelled);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-mono: var(--font-space-mono), ui-monospace, monospace;
 }
 
 * {
@@ -79,8 +110,52 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-sans);
+  /* warm paper grain: layered radial glow + faint fibre noise */
+  background-image:
+    radial-gradient(
+      ellipse 80% 50% at 50% -10%,
+      oklch(0.6 0.16 45 / 0.06),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 100% 0%,
+      oklch(0.72 0.12 80 / 0.05),
+      transparent 55%
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+
+/* Display headings tuned for Fraunces optical sizing */
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+}
+
+/* Kitchen-ticket card: paper with a perforated, scalloped top edge */
+.ticket {
+  position: relative;
+  background: var(--color-card);
+}
+.ticket::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: -1px;
+  height: 6px;
+  background-image: radial-gradient(
+    circle at 6px 0,
+    var(--color-background) 0 4px,
+    transparent 4px
+  );
+  background-size: 12px 6px;
+  background-repeat: repeat-x;
+}
+
+/* dashed perforation divider */
+.perforation {
+  border: 0;
+  border-top: 1.5px dashed var(--color-border);
 }

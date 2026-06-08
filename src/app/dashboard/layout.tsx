@@ -30,22 +30,36 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="font-bold text-lg tracking-tight">
-            QKit
-          </Link>
-          {vendor && (
-            <span className="text-sm text-muted-foreground">{vendor.name}</span>
-          )}
+      <header className="sticky top-0 z-10 border-b border-border bg-background/85 px-5 py-3.5 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <div className="flex items-baseline gap-3">
+            <Link
+              href="/dashboard"
+              className="font-display text-2xl font-semibold tracking-tight"
+            >
+              <span className="text-primary">Q</span>Kit
+            </Link>
+            {vendor && (
+              <span className="hidden text-sm text-muted-foreground sm:inline">
+                {vendor.name}
+              </span>
+            )}
+          </div>
+          <form action={signOut}>
+            <Button
+              variant="outline"
+              size="sm"
+              type="submit"
+              className="rounded-lg"
+            >
+              Sign out
+            </Button>
+          </form>
         </div>
-        <form action={signOut}>
-          <Button variant="outline" size="sm" type="submit">
-            Sign out
-          </Button>
-        </form>
       </header>
-      <main className="flex-1 p-4">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
+        {children}
+      </main>
     </div>
   );
 }

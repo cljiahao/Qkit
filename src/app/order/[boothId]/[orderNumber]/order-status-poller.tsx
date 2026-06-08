@@ -26,6 +26,8 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
   cancelled: "Your order was cancelled",
 };
 
+const STEPS: OrderStatus[] = ["pending", "confirmed", "preparing", "ready"];
+
 export function OrderStatusPoller({
   boothId,
   orderNumber,
@@ -63,12 +65,40 @@ export function OrderStatusPoller({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boothId, orderNumber]);
 
+  const completed = status === "completed";
+  const cancelled = status === "cancelled";
+  // completed sits past the last step; cancelled has no progress.
+  const activeIndex = completed ? STEPS.length - 1 : STEPS.indexOf(status);
+
   return (
-    <div className="text-center space-y-3">
-      <OrderStatusBadge status={status} />
-      <p className="text-sm text-muted-foreground">{STATUS_MESSAGE[status]}</p>
+    <div className="space-y-5 px-6 py-6 text-center">
+      <div className="flex justify-center">
+        <OrderStatusBadge status={status} />
+      </div>
+
+      {!cancelled && (
+        <div className="flex items-center gap-1.5">
+          {STEPS.map((step, i) => (
+            <div
+              key={step}
+              className={`h-1.5 flex-1 rounded-full transition-colors ${
+                i <= activeIndex ? "bg-primary" : "bg-border"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      <p
+        className={`font-display text-xl font-semibold ${
+          status === "ready" ? "text-status-ready" : ""
+        }`}
+      >
+        {STATUS_MESSAGE[status]}
+      </p>
+
       {status === "ready" && (
-        <p className="font-semibold text-green-600 animate-pulse">
+        <p className="animate-pulse text-sm font-medium text-status-ready">
           Please collect your order now
         </p>
       )}
