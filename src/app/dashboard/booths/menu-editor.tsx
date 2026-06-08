@@ -1,0 +1,133 @@
+"use client";
+
+import { Trash2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { MenuItemFormInput } from "@/lib/schemas";
+
+interface Props {
+  items: MenuItemFormInput[];
+  onChange: (items: MenuItemFormInput[]) => void;
+}
+
+function centsToDollars(cents?: number): string {
+  return cents == null ? "" : (cents / 100).toFixed(2);
+}
+
+export function MenuEditor({ items, onChange }: Props) {
+  function update(index: number, patch: Partial<MenuItemFormInput>) {
+    onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  }
+
+  function setPrice(index: number, dollars: string) {
+    const trimmed = dollars.trim();
+    if (trimmed === "") {
+      update(index, { price_cents: undefined });
+      return;
+    }
+    const value = Number(trimmed);
+    if (Number.isNaN(value) || value < 0) return;
+    update(index, { price_cents: Math.round(value * 100) });
+  }
+
+  function addItem() {
+    onChange([
+      ...items,
+      {
+        id: crypto.randomUUID(),
+        name: "",
+        description: "",
+        price_cents: undefined,
+        available: true,
+      },
+    ]);
+  }
+
+  function removeItem(index: number) {
+    onChange(items.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Menu items
+        </Label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-lg"
+          onClick={addItem}
+        >
+          <Plus className="size-3.5" /> Add item
+        </Button>
+      </div>
+
+      {items.length === 0 && (
+        <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          No items yet. Add one — price is optional (leave blank for a
+          queue-only booth).
+        </p>
+      )}
+
+      <div className="space-y-3">
+        {items.map((item, i) => (
+          <div
+            key={item.id}
+            className="space-y-3 rounded-xl border border-border bg-card p-3.5"
+          >
+            <div className="flex gap-2">
+              <Input
+                placeholder="Item name"
+                value={item.name}
+                onChange={(e) => update(i, { name: e.target.value })}
+                className="rounded-lg"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
+                onClick={() => removeItem(i)}
+                aria-label="Remove item"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+            <Input
+              placeholder="Description (optional)"
+              value={item.description}
+              onChange={(e) => update(i, { description: e.target.value })}
+              className="rounded-lg"
+            />
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  inputMode="decimal"
+                  placeholder="Price (optional)"
+                  value={centsToDollars(item.price_cents)}
+                  onChange={(e) => setPrice(i, e.target.value)}
+                  className="rounded-lg pl-7"
+                />
+              </div>
+              <label className="flex shrink-0 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={item.available}
+                  onChange={(e) => update(i, { available: e.target.checked })}
+                  className="size-4 accent-[var(--color-primary)]"
+                />
+                Available
+              </label>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
