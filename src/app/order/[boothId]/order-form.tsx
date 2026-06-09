@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { formatPrice, orderHasPricing } from "@/lib/utils";
 import { placeOrder } from "./actions";
+import { MediaImage } from "@/components/media-image";
 import type { MenuItem, CartItem } from "@/lib/types";
 
 interface Props {
@@ -110,18 +111,31 @@ export function OrderForm({ boothId, menuItems }: Props) {
                     : "border-border"
                 }`}
               >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{item.name}</p>
-                  {item.description && (
-                    <p className="truncate text-sm text-muted-foreground">
-                      {item.description}
-                    </p>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  {item.image_url && (
+                    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border">
+                      <MediaImage
+                        src={item.image_url}
+                        alt=""
+                        fill
+                        sizes="3.5rem"
+                        className="object-cover"
+                      />
+                    </div>
                   )}
-                  {item.price_cents != null && (
-                    <p className="mt-1 font-mono text-sm font-semibold text-primary">
-                      {formatPrice(item.price_cents)}
-                    </p>
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{item.name}</p>
+                    {item.description && (
+                      <p className="truncate text-sm text-muted-foreground">
+                        {item.description}
+                      </p>
+                    )}
+                    {item.price_cents != null && (
+                      <p className="mt-1 font-mono text-sm font-semibold text-primary">
+                        {formatPrice(item.price_cents)}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {inCart ? (
