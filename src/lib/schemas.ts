@@ -24,16 +24,16 @@ export const vendorSchema = z.object({
   name: z.string().min(1, "Stall name is required").max(100),
 });
 
-// Menu-item images come from two sources: the uploader (absolute Supabase URL)
-// and seeded art (relative `/seed/...` path). z.string().url() rejects the
-// latter, so accept either an http(s) URL or a leading-slash local path.
-const menuImageUrl = z
+// Images come from two sources: the uploader (absolute Supabase URL) and seeded
+// art (relative `/seed/...` path). z.string().url() rejects the latter, so accept
+// either an http(s) URL or a leading-slash local path. Shared by booth banners
+// (nullable, required key) and menu-item photos (also optional).
+const imageUrlString = z
   .string()
   .refine((s) => /^https?:\/\//.test(s) || s.startsWith("/"), {
     message: "Must be a URL or a local path",
-  })
-  .nullable()
-  .optional();
+  });
+const menuImageUrl = imageUrlString.nullable().optional();
 
 export const menuItemFormSchema = z.object({
   id: z.string().min(1),
@@ -47,7 +47,7 @@ export const menuItemFormSchema = z.object({
 export const boothFormSchema = z.object({
   boothId: z.string().uuid().optional(),
   name: z.string().min(1, "Booth name is required").max(100),
-  image_url: z.string().url().nullable(),
+  image_url: imageUrlString.nullable(),
   is_active: z.boolean(),
   menu_items: z.array(menuItemFormSchema),
 });

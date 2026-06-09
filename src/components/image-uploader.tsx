@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { MediaImage } from "@/components/media-image";
 
+// SVG is intentionally excluded — seed art is referenced by path, not uploaded.
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
