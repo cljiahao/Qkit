@@ -91,22 +91,22 @@ breakpoints layer on. Surfaces:
 ### Booth ownership
 
 - Attach the new booth to the **existing "Test" vendor**
-  (id `6df824a1-9da2-4608-ad13-2400a9114ec0`) as a *second* booth. Avoids faking
+  (id `6df824a1-9da2-4608-ad13-2400a9114ec0`) as a _second_ booth. Avoids faking
   an `auth.users` row (`vendors.id` is FK to `auth.users.id`).
 - Booth: "Kopitiam Cart", `is_active = true`, priced (payment booth — exercises
   SGD price rendering).
 
 ### Menu (~7 items, realistic kopitiam prices, SGD)
 
-| Item    | Ingredients (shown in art)                    | Price  |
-| ------- | --------------------------------------------- | ------ |
-| Kopi O  | Coffee + sugar                                | $1.40  |
-| Kopi    | Coffee + condensed milk                       | $1.60  |
-| Kopi C  | Coffee + evaporated milk + sugar              | $1.70  |
-| Teh     | Tea + condensed milk                          | $1.60  |
-| Teh O   | Tea + sugar                                   | $1.40  |
-| Teh C   | Tea + evaporated milk + sugar                 | $1.70  |
-| Milo    | Malt + condensed milk                         | $2.00  |
+| Item   | Ingredients (shown in art)       | Price |
+| ------ | -------------------------------- | ----- |
+| Kopi O | Coffee + sugar                   | $1.40 |
+| Kopi   | Coffee + condensed milk          | $1.60 |
+| Kopi C | Coffee + evaporated milk + sugar | $1.70 |
+| Teh    | Tea + condensed milk             | $1.60 |
+| Teh O  | Tea + sugar                      | $1.40 |
+| Teh C  | Tea + evaporated milk + sugar    | $1.70 |
+| Milo   | Malt + condensed milk            | $2.00 |
 
 (Final prices may be tuned; intent is realistic.)
 

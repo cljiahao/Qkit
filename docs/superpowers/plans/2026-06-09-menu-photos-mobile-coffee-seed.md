@@ -9,6 +9,7 @@
 **Tech Stack:** Next.js 16 (App Router), TypeScript strict, Zod, Tailwind v4, Supabase (`@supabase/ssr`), Vitest.
 
 **Key IDs (local dev):**
+
 - Test vendor id: `6df824a1-9da2-4608-ad13-2400a9114ec0`
 - Coffee booth fixed id (this plan): `c0ffee01-0000-4000-8000-000000000001`
 
@@ -37,6 +38,7 @@
 ### Task 1: Add `image_url` to menu item types + schemas
 
 **Files:**
+
 - Modify: `src/lib/types.ts:17-23`
 - Modify: `src/lib/schemas.ts`
 - Test: `src/lib/schemas.test.ts`
@@ -179,6 +181,7 @@ git commit -m "feat(menu): optional image_url on menu items (types + schema)"
 `next/image` refuses SVG unless `unoptimized` is set. The coffee booth banner and per-item art are SVG, so every place that renders a stored image URL must use this wrapper.
 
 **Files:**
+
 - Create: `src/components/media-image.tsx`
 - Modify: `src/app/order/[boothId]/page.tsx:28-38`
 - Modify: `src/app/dashboard/booths/booth-list.tsx:31-41`
@@ -260,6 +263,7 @@ git commit -m "feat(images): svg-aware MediaImage wrapper for stored banners"
 ### Task 3: `variant` prop on `ImageUploader`
 
 **Files:**
+
 - Modify: `src/components/image-uploader.tsx`
 
 - [ ] **Step 1: Add the variant prop and svg-aware preview**
@@ -295,10 +299,7 @@ export function ImageUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
-  const box =
-    variant === "thumb"
-      ? "size-20 shrink-0"
-      : "h-40 w-full";
+  const box = variant === "thumb" ? "size-20 shrink-0" : "h-40 w-full";
 
   async function handleFile(file: File) {
     if (!ACCEPTED.includes(file.type)) {
@@ -339,7 +340,9 @@ export function ImageUploader({
           src={value}
           alt=""
           fill
-          sizes={variant === "thumb" ? "5rem" : "(max-width: 640px) 100vw, 28rem"}
+          sizes={
+            variant === "thumb" ? "5rem" : "(max-width: 640px) 100vw, 28rem"
+          }
           className="object-cover"
         />
         <button
@@ -362,7 +365,11 @@ export function ImageUploader({
       className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border bg-muted/40 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-60 ${box}`}
     >
       {uploading ? (
-        <Loader2 className={variant === "thumb" ? "size-4 animate-spin" : "size-6 animate-spin"} />
+        <Loader2
+          className={
+            variant === "thumb" ? "size-4 animate-spin" : "size-6 animate-spin"
+          }
+        />
       ) : (
         <ImagePlus className={variant === "thumb" ? "size-4" : "size-6"} />
       )}
@@ -412,6 +419,7 @@ git commit -m "feat(images): thumb variant for ImageUploader"
 ### Task 4: Per-row photo in the menu editor
 
 **Files:**
+
 - Modify: `src/app/dashboard/booths/menu-editor.tsx`
 - Modify: `src/app/dashboard/booths/booth-form.tsx:108`
 - Modify: `src/app/dashboard/booths/[boothId]/page.tsx:29-35`
@@ -441,56 +449,56 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
 Update `addItem` to default `image_url`:
 
 ```tsx
-  function addItem() {
-    onChange([
-      ...items,
-      {
-        id: crypto.randomUUID(),
-        name: "",
-        description: "",
-        price_cents: undefined,
-        image_url: null,
-        available: true,
-      },
-    ]);
-  }
+function addItem() {
+  onChange([
+    ...items,
+    {
+      id: crypto.randomUUID(),
+      name: "",
+      description: "",
+      price_cents: undefined,
+      image_url: null,
+      available: true,
+    },
+  ]);
+}
 ```
 
 Replace the row's top `<div className="flex gap-2">` block (name input + delete button) with a version that places a thumbnail uploader on the left:
 
 ```tsx
-            <div className="flex gap-2">
-              <ImageUploader
-                vendorId={vendorId}
-                value={item.image_url ?? null}
-                onChange={(url) => update(i, { image_url: url })}
-                variant="thumb"
-              />
-              <div className="flex flex-1 flex-col gap-2">
-                <Input
-                  placeholder="Item name"
-                  value={item.name}
-                  onChange={(e) => update(i, { name: e.target.value })}
-                  className="rounded-lg"
-                />
-                <Input
-                  placeholder="Description (optional)"
-                  value={item.description}
-                  onChange={(e) => update(i, { description: e.target.value })}
-                  className="rounded-lg"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
-                onClick={() => removeItem(i)}
-                aria-label="Remove item"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
+<div className="flex gap-2">
+  <ImageUploader
+    vendorId={vendorId}
+    value={item.image_url ?? null}
+    onChange={(url) => update(i, { image_url: url })}
+    variant="thumb"
+  />
+  <div className="flex flex-1 flex-col gap-2">
+    <Input
+      placeholder="Item name"
+      value={item.name}
+      onChange={(e) => update(i, { name: e.target.value })}
+      className="rounded-lg"
+    />
+    <Input
+      placeholder="Description (optional)"
+      value={item.description}
+      onChange={(e) => update(i, { description: e.target.value })}
+      className="rounded-lg"
+    />
+  </div>
+  <Button
+    type="button"
+    variant="outline"
+    size="icon"
+    className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
+    onClick={() => removeItem(i)}
+    aria-label="Remove item"
+  >
+    <Trash2 className="size-4" />
+  </Button>
+</div>
 ```
 
 Then DELETE the now-duplicated standalone description `<Input>` that previously sat between the name row and the price row (the one with `placeholder="Description (optional)"` outside the flex block) — description now lives inside the new block above.
@@ -508,14 +516,14 @@ In `src/app/dashboard/booths/booth-form.tsx`, update the `MenuEditor` usage:
 In `src/app/dashboard/booths/[boothId]/page.tsx`, update the `menuItems` map to include `image_url`:
 
 ```tsx
-  const menuItems = parseMenuItems(booth.menu_items).map((m) => ({
-    id: m.id,
-    name: m.name,
-    description: m.description,
-    price_cents: m.price_cents,
-    image_url: m.image_url ?? null,
-    available: m.available,
-  }));
+const menuItems = parseMenuItems(booth.menu_items).map((m) => ({
+  id: m.id,
+  name: m.name,
+  description: m.description,
+  price_cents: m.price_cents,
+  image_url: m.image_url ?? null,
+  available: m.available,
+}));
 ```
 
 - [ ] **Step 4: Verify typecheck**
@@ -535,6 +543,7 @@ git commit -m "feat(menu): per-item photo upload in menu editor"
 ### Task 5: Leading thumbnail on the customer menu
 
 **Files:**
+
 - Modify: `src/app/order/[boothId]/order-form.tsx:102-125`
 
 - [ ] **Step 1: Render a thumbnail before each menu item's text**
@@ -548,32 +557,32 @@ import { MediaImage } from "@/components/media-image";
 Replace the menu row's inner `<div className="min-w-0 flex-1">…</div>` (the item name/description/price block) so it is preceded by a thumbnail and wrapped together:
 
 ```tsx
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  {item.image_url && (
-                    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border">
-                      <MediaImage
-                        src={item.image_url}
-                        alt=""
-                        fill
-                        sizes="3.5rem"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{item.name}</p>
-                    {item.description && (
-                      <p className="truncate text-sm text-muted-foreground">
-                        {item.description}
-                      </p>
-                    )}
-                    {item.price_cents != null && (
-                      <p className="mt-1 font-mono text-sm font-semibold text-primary">
-                        {formatPrice(item.price_cents)}
-                      </p>
-                    )}
-                  </div>
-                </div>
+<div className="flex min-w-0 flex-1 items-center gap-3">
+  {item.image_url && (
+    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border">
+      <MediaImage
+        src={item.image_url}
+        alt=""
+        fill
+        sizes="3.5rem"
+        className="object-cover"
+      />
+    </div>
+  )}
+  <div className="min-w-0 flex-1">
+    <p className="truncate font-medium">{item.name}</p>
+    {item.description && (
+      <p className="truncate text-sm text-muted-foreground">
+        {item.description}
+      </p>
+    )}
+    {item.price_cents != null && (
+      <p className="mt-1 font-mono text-sm font-semibold text-primary">
+        {formatPrice(item.price_cents)}
+      </p>
+    )}
+  </div>
+</div>
 ```
 
 - [ ] **Step 2: Verify typecheck**
@@ -597,6 +606,7 @@ git commit -m "feat(order): show per-item photo thumbnails on customer menu"
 Each cup uses one 160×200 template: a glass outline, a liquid fill, an optional bottom milk band, optional sugar-cube squares near the rim, and a label. Colors are fixed below; produce one file per drink by swapping base color, milk band, and sugar flag. Plus one wide chart banner.
 
 **Files:**
+
 - Create: `public/seed/kopi-o.svg`
 - Create: `public/seed/kopi.svg`
 - Create: `public/seed/kopi-c.svg`
@@ -608,15 +618,15 @@ Each cup uses one 160×200 template: a glass outline, a liquid fill, an optional
 
 **Recipe table (base = liquid fill, milk band = bottom layer, sugar = two cube squares near rim):**
 
-| File              | base color (liquid) | milk band                 | sugar | label      |
-| ----------------- | ------------------- | ------------------------- | ----- | ---------- |
-| `kopi-o.svg`      | `#2a1a10` coffee    | none                      | yes   | KOPI O     |
-| `kopi.svg`        | `#3a2419` coffee    | `#f2e2bd` condensed       | no    | KOPI       |
-| `kopi-c.svg`      | `#3a2419` coffee    | `#ece0c4` evaporated      | yes   | KOPI C     |
-| `teh.svg`         | `#c06a1f` tea       | `#f2e2bd` condensed       | no    | TEH        |
-| `teh-o.svg`       | `#c8771f` tea       | none                      | yes   | TEH O      |
-| `teh-c.svg`       | `#c06a1f` tea       | `#ece0c4` evaporated      | yes   | TEH C      |
-| `milo.svg`        | `#5a3a1a` malt      | `#f2e2bd` condensed       | no    | MILO       |
+| File         | base color (liquid) | milk band            | sugar | label  |
+| ------------ | ------------------- | -------------------- | ----- | ------ |
+| `kopi-o.svg` | `#2a1a10` coffee    | none                 | yes   | KOPI O |
+| `kopi.svg`   | `#3a2419` coffee    | `#f2e2bd` condensed  | no    | KOPI   |
+| `kopi-c.svg` | `#3a2419` coffee    | `#ece0c4` evaporated | yes   | KOPI C |
+| `teh.svg`    | `#c06a1f` tea       | `#f2e2bd` condensed  | no    | TEH    |
+| `teh-o.svg`  | `#c8771f` tea       | none                 | yes   | TEH O  |
+| `teh-c.svg`  | `#c06a1f` tea       | `#ece0c4` evaporated | yes   | TEH C  |
+| `milo.svg`   | `#5a3a1a` malt      | `#f2e2bd` condensed  | no    | MILO   |
 
 - [ ] **Step 1: Write the reference cup (Kopi O)**
 
@@ -644,6 +654,7 @@ Each cup uses one 160×200 template: a glass outline, a liquid fill, an optional
 - [ ] **Step 2: Produce the other six cups from the template**
 
 Create each remaining file by copying `kopi-o.svg` and applying its row from the recipe table:
+
 - Change the liquid `<path … fill="…">` to the base color.
 - If the row has a milk band, uncomment/add the milk-band `<path>` (the commented one above) with the band color. If "none", omit it.
 - If sugar = no, delete the two sugar `<rect>` squares. If yes, keep them.
@@ -688,6 +699,7 @@ git commit -m "feat(seed): kopitiam ingredient-style SVG art"
 ### Task 7: Coffee-cart seed SQL
 
 **Files:**
+
 - Create: `supabase/seed/coffee-cart.sql`
 
 - [ ] **Step 1: Write the seed**
@@ -755,6 +767,7 @@ git commit -m "feat(seed): kopitiam cart booth seed"
 Most grids already collapse to one column on phones (`grid-cols-1 sm:…`). This task makes the one known desktop-first fix and verifies every surface at 375px width.
 
 **Files:**
+
 - Modify: `src/app/dashboard/layout.tsx:34`
 
 - [ ] **Step 1: Let the dashboard header wrap on narrow screens**
@@ -821,4 +834,7 @@ git commit -m "chore: format + verification fixes for round-2 features"
 - **Banner-SVG correctness:** the coffee booth banner is SVG, so MediaImage (Task 2) covers booth-list + order page + uploader preview (Task 3). ✓
 - **Type consistency:** `image_url?: string | null` on `MenuItem`; `menuImageUrl` (`nullable().optional()`) on both schemas; `MenuItemFormInput` inferred — `image_url` flows through booth-form initial, edit-page map (Task 4 Step 3), and `addItem` default. ✓
 - **No placeholders:** SVG cups are a parameterized template + explicit recipe table (deterministic), not "TBD". Mobile audit lists exact viewports + the one known code fix. ✓
+
+```
+
 ```
