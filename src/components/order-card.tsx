@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "./order-status-badge";
 import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
-import { formatPrice, orderHasPricing } from "@/lib/utils";
+import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import type { Order, OrderStatus } from "@/lib/types";
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -89,9 +89,9 @@ export function OrderCard({ order }: { order: Order }) {
                 </span>
               )}
             </div>
-            {item.options && item.options.length > 0 && (
+            {formatOptions(item.options) && (
               <p className="pl-5 text-xs text-muted-foreground">
-                {item.options.map((o) => o.choice).join(" · ")}
+                {formatOptions(item.options)}
               </p>
             )}
           </div>

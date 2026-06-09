@@ -29,7 +29,9 @@ export const optionChoiceSchema = z.object({
 export const optionGroupSchema = z.object({
   id: z.string(),
   label: z.string(),
-  choices: z.array(optionChoiceSchema),
+  // A group with no choices can't be satisfied; drop it on read so it never
+  // reaches the customizer (which would crash trying to resolve a default).
+  choices: z.array(optionChoiceSchema).min(1),
 });
 
 export const selectedOptionSchema = z.object({
@@ -58,6 +60,9 @@ export const menuItemFormSchema = z.object({
   description: z.string().max(500).default(""),
   price_cents: z.number().int().nonnegative().optional(),
   image_url: menuImageUrl,
+  // Pass-through: the booth editor doesn't edit option groups, but it must not
+  // strip them from seeded items when a vendor saves the booth.
+  option_groups: z.array(optionGroupSchema).optional(),
   available: z.boolean(),
 });
 

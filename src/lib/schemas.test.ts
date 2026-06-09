@@ -124,7 +124,7 @@ describe("menuItemFormSchema image_url", () => {
 
   it("accepts a relative /seed path", () => {
     expect(
-      menuItemFormSchema.safeParse({ ...base, image_url: "/seed/kopi-o.svg" })
+      menuItemFormSchema.safeParse({ ...base, image_url: "/seed/kopi.svg" })
         .success,
     ).toBe(true);
   });

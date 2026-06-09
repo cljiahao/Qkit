@@ -22,3 +22,10 @@ export function orderHasPricing(
 ): boolean {
   return items.some((i) => i.price_cents != null);
 }
+
+/** Render selected options as a single muted line, e.g. "Iced · Less". Empty when none. */
+export function formatOptions(options?: { choice: string }[] | null): string {
+  return options && options.length
+    ? options.map((o) => o.choice).join(" · ")
+    : "";
+}

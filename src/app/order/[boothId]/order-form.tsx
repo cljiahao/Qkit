@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { MediaImage } from "@/components/media-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
-import { formatPrice, orderHasPricing } from "@/lib/utils";
+import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { cartKey } from "@/lib/cart";
 import { placeOrder } from "./actions";
 import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
@@ -20,12 +20,6 @@ import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
 interface Props {
   boothId: string;
   menuItems: MenuItem[];
-}
-
-function optionsLabel(options?: SelectedOption[]): string {
-  return options && options.length
-    ? options.map((o) => o.choice).join(" · ")
-    : "";
 }
 
 export function OrderForm({ boothId, menuItems }: Props) {
@@ -219,47 +213,53 @@ export function OrderForm({ boothId, menuItems }: Props) {
           </h2>
           <div className="perforation mx-4" />
           <div className="space-y-3 px-4 py-3">
-            {cartEntries.map(([key, item]) => (
-              <div key={key} className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{item.name}</p>
-                  {optionsLabel(item.options) && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {optionsLabel(item.options)}
-                    </p>
-                  )}
-                  {item.price_cents != null && (
-                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                      {formatPrice(item.price_cents * item.quantity)}
-                    </p>
-                  )}
+            {cartEntries.map(([key, item]) => {
+              const options = formatOptions(item.options);
+              return (
+                <div
+                  key={key}
+                  className="flex items-start justify-between gap-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    {options && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {options}
+                      </p>
+                    )}
+                    {item.price_cents != null && (
+                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                        {formatPrice(item.price_cents * item.quantity)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-7 rounded-lg"
+                      onClick={() => decrement(key)}
+                      aria-label="Remove one"
+                    >
+                      <Minus className="size-3" />
+                    </Button>
+                    <span className="w-4 text-center font-mono text-sm font-bold">
+                      {item.quantity}
+                    </span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      className="size-7 rounded-lg"
+                      onClick={() => increment(key)}
+                      aria-label="Add one"
+                    >
+                      <Plus className="size-3" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-7 rounded-lg"
-                    onClick={() => decrement(key)}
-                    aria-label="Remove one"
-                  >
-                    <Minus className="size-3" />
-                  </Button>
-                  <span className="w-4 text-center font-mono text-sm font-bold">
-                    {item.quantity}
-                  </span>
-                  <Button
-                    type="button"
-                    size="icon"
-                    className="size-7 rounded-lg"
-                    onClick={() => increment(key)}
-                    aria-label="Add one"
-                  >
-                    <Plus className="size-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {cartPriced && (
             <>

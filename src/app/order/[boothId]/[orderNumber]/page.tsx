@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
-import { formatPrice, orderHasPricing } from "@/lib/utils";
+import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { parseOrderItems } from "@/lib/schemas";
 import { OrderStatusPoller } from "./order-status-poller";
 
@@ -80,9 +80,9 @@ export default async function OrderStatusPage({ params }: Props) {
                   </span>
                 )}
               </div>
-              {item.options && item.options.length > 0 && (
+              {formatOptions(item.options) && (
                 <p className="pl-5 text-xs text-muted-foreground">
-                  {item.options.map((o) => o.choice).join(" · ")}
+                  {formatOptions(item.options)}
                 </p>
               )}
             </div>
