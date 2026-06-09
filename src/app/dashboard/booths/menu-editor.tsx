@@ -4,9 +4,11 @@ import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImageUploader } from "@/components/image-uploader";
 import type { MenuItemFormInput } from "@/lib/schemas";
 
 interface Props {
+  vendorId: string;
   items: MenuItemFormInput[];
   onChange: (items: MenuItemFormInput[]) => void;
 }
@@ -15,7 +17,7 @@ function centsToDollars(cents?: number): string {
   return cents == null ? "" : (cents / 100).toFixed(2);
 }
 
-export function MenuEditor({ items, onChange }: Props) {
+export function MenuEditor({ vendorId, items, onChange }: Props) {
   function update(index: number, patch: Partial<MenuItemFormInput>) {
     onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
@@ -39,6 +41,7 @@ export function MenuEditor({ items, onChange }: Props) {
         name: "",
         description: "",
         price_cents: undefined,
+        image_url: null,
         available: true,
       },
     ]);
@@ -79,12 +82,26 @@ export function MenuEditor({ items, onChange }: Props) {
             className="space-y-3 rounded-xl border border-border bg-card p-3.5"
           >
             <div className="flex gap-2">
-              <Input
-                placeholder="Item name"
-                value={item.name}
-                onChange={(e) => update(i, { name: e.target.value })}
-                className="rounded-lg"
+              <ImageUploader
+                vendorId={vendorId}
+                value={item.image_url ?? null}
+                onChange={(url) => update(i, { image_url: url })}
+                variant="thumb"
               />
+              <div className="flex flex-1 flex-col gap-2">
+                <Input
+                  placeholder="Item name"
+                  value={item.name}
+                  onChange={(e) => update(i, { name: e.target.value })}
+                  className="rounded-lg"
+                />
+                <Input
+                  placeholder="Description (optional)"
+                  value={item.description}
+                  onChange={(e) => update(i, { description: e.target.value })}
+                  className="rounded-lg"
+                />
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -96,12 +113,6 @@ export function MenuEditor({ items, onChange }: Props) {
                 <Trash2 className="size-4" />
               </Button>
             </div>
-            <Input
-              placeholder="Description (optional)"
-              value={item.description}
-              onChange={(e) => update(i, { description: e.target.value })}
-              className="rounded-lg"
-            />
             <div className="flex items-center gap-4">
               <div className="relative flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">

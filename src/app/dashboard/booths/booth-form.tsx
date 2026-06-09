@@ -105,7 +105,7 @@ export function BoothForm({ vendorId, initial }: Props) {
         </span>
       </label>
 
-      <MenuEditor items={items} onChange={setItems} />
+      <MenuEditor vendorId={vendorId} items={items} onChange={setItems} />
 
       <div className="flex gap-3">
         <Button
