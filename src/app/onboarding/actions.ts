@@ -22,8 +22,18 @@ export async function createVendor(
     .insert({ id: user.id, name: parsed.data.name });
 
   // 23505 = unique violation: the row already exists, treat as success.
-  if (error && error.code !== "23505")
-    return { success: false, error: "Could not create vendor" };
+  if (error && error.code !== "23505") {
+    console.error("createVendor failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return {
+      success: false,
+      error: `Could not create vendor [${error.code}: ${error.message}]`,
+    };
+  }
 
   return { success: true };
 }

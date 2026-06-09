@@ -46,7 +46,17 @@ export async function saveBooth(
     .insert({ ...row, vendor_id: user.id })
     .select("id")
     .single();
-  if (error || !inserted)
-    return { success: false, error: "Could not create booth" };
+  if (error || !inserted) {
+    console.error("createBooth failed", {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    });
+    return {
+      success: false,
+      error: `Could not create booth [${error?.code}: ${error?.message}]`,
+    };
+  }
   return { success: true, boothId: inserted.id };
 }
