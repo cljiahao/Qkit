@@ -1,6 +1,6 @@
--- Kopitiam Cart: a second booth under the existing "Test" vendor.
--- vendors.id is FK to auth.users.id, so we reuse the real Test vendor instead
--- of fabricating an auth user. Run manually (see the plan); never via `db reset`.
+-- Kopitiam Cart: 3 base drinks under the existing "Test" vendor, each with
+-- single-choice option groups. vendors.id is FK to auth.users.id, so we reuse
+-- the real Test vendor. Run manually (Step 2); never via `db reset`.
 insert into public.booths (id, vendor_id, name, is_active, image_url, menu_items)
 values (
   'c0ffee01-0000-4000-8000-000000000001',
@@ -9,13 +9,61 @@ values (
   true,
   '/seed/kopitiam-chart.svg',
   '[
-    {"id":"k-kopi-o","name":"Kopi O","description":"Black coffee, sugar","price_cents":140,"image_url":"/seed/kopi-o.svg","available":true},
-    {"id":"k-kopi","name":"Kopi","description":"Coffee with condensed milk","price_cents":160,"image_url":"/seed/kopi.svg","available":true},
-    {"id":"k-kopi-c","name":"Kopi C","description":"Coffee, evaporated milk, sugar","price_cents":170,"image_url":"/seed/kopi-c.svg","available":true},
-    {"id":"k-teh","name":"Teh","description":"Tea with condensed milk","price_cents":160,"image_url":"/seed/teh.svg","available":true},
-    {"id":"k-teh-o","name":"Teh O","description":"Tea, sugar","price_cents":140,"image_url":"/seed/teh-o.svg","available":true},
-    {"id":"k-teh-c","name":"Teh C","description":"Tea, evaporated milk, sugar","price_cents":170,"image_url":"/seed/teh-c.svg","available":true},
-    {"id":"k-milo","name":"Milo","description":"Malt, condensed milk","price_cents":200,"image_url":"/seed/milo.svg","available":true}
+    {
+      "id":"kopi","name":"Kopi","description":"Local coffee","price_cents":140,
+      "image_url":"/seed/kopi.svg","available":true,
+      "option_groups":[
+        {"id":"style","label":"Style","choices":[
+          {"id":"o","label":"O (black)"},
+          {"id":"c","label":"C (evaporated milk)"},
+          {"id":"normal","label":"Normal (condensed milk)"}
+        ]},
+        {"id":"temp","label":"Temperature","choices":[
+          {"id":"hot","label":"Hot"},
+          {"id":"iced","label":"Iced"}
+        ]},
+        {"id":"sugar","label":"Sugar","choices":[
+          {"id":"normal","label":"Normal"},
+          {"id":"less","label":"Less"},
+          {"id":"none","label":"None"}
+        ]}
+      ]
+    },
+    {
+      "id":"teh","name":"Teh","description":"Local tea","price_cents":140,
+      "image_url":"/seed/teh.svg","available":true,
+      "option_groups":[
+        {"id":"style","label":"Style","choices":[
+          {"id":"o","label":"O (no milk)"},
+          {"id":"c","label":"C (evaporated milk)"},
+          {"id":"normal","label":"Normal (condensed milk)"}
+        ]},
+        {"id":"temp","label":"Temperature","choices":[
+          {"id":"hot","label":"Hot"},
+          {"id":"iced","label":"Iced"}
+        ]},
+        {"id":"sugar","label":"Sugar","choices":[
+          {"id":"normal","label":"Normal"},
+          {"id":"less","label":"Less"},
+          {"id":"none","label":"None"}
+        ]}
+      ]
+    },
+    {
+      "id":"milo","name":"Milo","description":"Malt chocolate","price_cents":200,
+      "image_url":"/seed/milo.svg","available":true,
+      "option_groups":[
+        {"id":"temp","label":"Temperature","choices":[
+          {"id":"hot","label":"Hot"},
+          {"id":"iced","label":"Iced"}
+        ]},
+        {"id":"sugar","label":"Sugar","choices":[
+          {"id":"normal","label":"Normal"},
+          {"id":"less","label":"Less"},
+          {"id":"none","label":"None"}
+        ]}
+      ]
+    }
   ]'::jsonb
 )
 on conflict (id) do update
