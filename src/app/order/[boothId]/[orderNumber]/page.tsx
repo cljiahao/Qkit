@@ -66,17 +66,24 @@ export default async function OrderStatusPage({ params }: Props) {
 
         <section className="space-y-1.5 px-6 py-5">
           {items.map((item, i) => (
-            <div key={i} className="flex justify-between gap-2 text-sm">
-              <span className="truncate">
-                <span className="font-mono text-muted-foreground">
-                  {item.quantity}×
-                </span>{" "}
-                {item.name}
-              </span>
-              {priced && (
-                <span className="shrink-0 font-mono text-muted-foreground">
-                  {formatPrice((item.price_cents ?? 0) * item.quantity)}
+            <div key={i} className="text-sm">
+              <div className="flex justify-between gap-2">
+                <span className="truncate">
+                  <span className="font-mono text-muted-foreground">
+                    {item.quantity}×
+                  </span>{" "}
+                  {item.name}
                 </span>
+                {priced && (
+                  <span className="shrink-0 font-mono text-muted-foreground">
+                    {formatPrice((item.price_cents ?? 0) * item.quantity)}
+                  </span>
+                )}
+              </div>
+              {item.options && item.options.length > 0 && (
+                <p className="pl-5 text-xs text-muted-foreground">
+                  {item.options.map((o) => o.choice).join(" · ")}
+                </p>
               )}
             </div>
           ))}
