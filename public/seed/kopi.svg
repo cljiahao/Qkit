@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 200" role="img" aria-label="Kopi">
+  <rect width="160" height="200" fill="#faf3e6"/>
+  <ellipse cx="80" cy="170" rx="54" ry="9" fill="#e3d4b8"/>
+  <path d="M44 70 h72 l-7 86 a9 9 0 0 1 -9 8 H60 a9 9 0 0 1 -9 -8 Z" fill="#ffffff" stroke="#8a6d4f" stroke-width="3"/>
+  <path d="M49 96 h62 l-5 60 a9 9 0 0 1 -9 8 H63 a9 9 0 0 1 -9 -8 Z" fill="#3a2419"/>
+  <path d="M52 138 h56 l-3 18 a9 9 0 0 1 -9 8 H64 a9 9 0 0 1 -9 -8 Z" fill="#f2e2bd"/>
+  <text x="80" y="190" text-anchor="middle" font-family="monospace" font-size="15" font-weight="700" fill="#3a2419">KOPI</text>
+</svg>

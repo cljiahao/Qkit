@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" role="img" aria-label="Kopitiam drinks chart">
+  <rect width="800" height="240" fill="#3a2419"/>
+  <text x="400" y="52" text-anchor="middle" font-family="monospace" font-size="34" font-weight="800" fill="#faf3e6" letter-spacing="3">KOPITIAM CART</text>
+  <text x="400" y="80" text-anchor="middle" font-family="monospace" font-size="14" fill="#caa96f">kopi o · kopi · kopi c · teh · teh o · teh c · milo</text>
+  <g font-family="monospace" font-size="13" font-weight="700" fill="#faf3e6" text-anchor="middle">
+    <g transform="translate(80,150)"><circle r="34" fill="#2a1a10" stroke="#caa96f" stroke-width="3"/><text y="64">KOPI O</text></g>
+    <g transform="translate(180,150)"><circle r="34" fill="#3a2419" stroke="#caa96f" stroke-width="3"/><circle cy="20" r="10" fill="#f2e2bd"/><text y="64">KOPI</text></g>
+    <g transform="translate(280,150)"><circle r="34" fill="#3a2419" stroke="#caa96f" stroke-width="3"/><circle cy="20" r="10" fill="#ece0c4"/><text y="64">KOPI C</text></g>
+    <g transform="translate(400,150)"><circle r="34" fill="#c06a1f" stroke="#caa96f" stroke-width="3"/><circle cy="20" r="10" fill="#f2e2bd"/><text y="64">TEH</text></g>
+    <g transform="translate(520,150)"><circle r="34" fill="#c8771f" stroke="#caa96f" stroke-width="3"/><text y="64">TEH O</text></g>
+    <g transform="translate(620,150)"><circle r="34" fill="#c06a1f" stroke="#caa96f" stroke-width="3"/><circle cy="20" r="10" fill="#ece0c4"/><text y="64">TEH C</text></g>
+    <g transform="translate(720,150)"><circle r="34" fill="#5a3a1a" stroke="#caa96f" stroke-width="3"/><circle cy="20" r="10" fill="#f2e2bd"/><text y="64">MILO</text></g>
+  </g>
+</svg>
