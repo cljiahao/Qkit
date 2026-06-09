@@ -145,3 +145,69 @@ describe("menuItemFormSchema image_url", () => {
     ).toBe(false);
   });
 });
+
+describe("menuItemSchema option_groups", () => {
+  it("parses an item with option groups", () => {
+    const parsed = menuItemSchema.safeParse({
+      id: "kopi",
+      name: "Kopi",
+      available: true,
+      option_groups: [
+        {
+          id: "temp",
+          label: "Temperature",
+          choices: [
+            { id: "hot", label: "Hot" },
+            { id: "iced", label: "Iced" },
+          ],
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts an item with no option groups", () => {
+    expect(
+      menuItemSchema.safeParse({ id: "x", name: "Water", available: true })
+        .success,
+    ).toBe(true);
+  });
+});
+
+describe("placeOrderSchema options", () => {
+  it("accepts an order item carrying selected options", () => {
+    expect(
+      placeOrderSchema.safeParse({
+        customerName: "Sam",
+        items: [
+          {
+            menuItemId: "kopi",
+            name: "Kopi",
+            price_cents: 140,
+            quantity: 1,
+            options: [
+              { group: "Temperature", choice: "Iced" },
+              { group: "Sugar", choice: "Less" },
+            ],
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a malformed option (empty choice)", () => {
+    expect(
+      placeOrderSchema.safeParse({
+        customerName: "Sam",
+        items: [
+          {
+            menuItemId: "kopi",
+            name: "Kopi",
+            quantity: 1,
+            options: [{ group: "Temperature", choice: "" }],
+          },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+});

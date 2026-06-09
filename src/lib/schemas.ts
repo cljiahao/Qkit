@@ -6,20 +6,6 @@ export const loginSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export const placeOrderSchema = z.object({
-  customerName: z.string().min(1, "Your name is required").max(100),
-  items: z
-    .array(
-      z.object({
-        menuItemId: z.string().min(1),
-        name: z.string(),
-        price_cents: z.number().int().nonnegative().optional(),
-        quantity: z.number().int().min(1).max(20),
-      }),
-    )
-    .min(1, "Add at least one item"),
-});
-
 export const vendorSchema = z.object({
   name: z.string().min(1, "Stall name is required").max(100),
 });
@@ -34,6 +20,37 @@ const imageUrlString = z
     message: "Must be a URL or a local path",
   });
 const menuImageUrl = imageUrlString.nullable().optional();
+
+export const optionChoiceSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+});
+
+export const optionGroupSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  choices: z.array(optionChoiceSchema),
+});
+
+export const selectedOptionSchema = z.object({
+  group: z.string().min(1).max(100),
+  choice: z.string().min(1).max(100),
+});
+
+export const placeOrderSchema = z.object({
+  customerName: z.string().min(1, "Your name is required").max(100),
+  items: z
+    .array(
+      z.object({
+        menuItemId: z.string().min(1),
+        name: z.string(),
+        price_cents: z.number().int().nonnegative().optional(),
+        quantity: z.number().int().min(1).max(20),
+        options: z.array(selectedOptionSchema).max(20).optional(),
+      }),
+    )
+    .min(1, "Add at least one item"),
+});
 
 export const menuItemFormSchema = z.object({
   id: z.string().min(1),
@@ -70,6 +87,7 @@ export const menuItemSchema = z.object({
   price_cents: z.number().int().nonnegative().optional(),
   image_url: menuImageUrl,
   available: z.boolean(),
+  option_groups: z.array(optionGroupSchema).optional(),
 });
 
 export const orderItemSchema = z.object({
@@ -77,6 +95,7 @@ export const orderItemSchema = z.object({
   name: z.string(),
   price_cents: z.number().int().nonnegative().optional(),
   quantity: z.number().int().min(1),
+  options: z.array(selectedOptionSchema).optional(),
 });
 
 export const orderStatusSchema = z.enum([

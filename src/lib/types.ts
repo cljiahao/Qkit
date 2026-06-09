@@ -14,6 +14,10 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
+export type OptionChoice = { id: string; label: string };
+export type OptionGroup = { id: string; label: string; choices: OptionChoice[] };
+export type SelectedOption = { group: string; choice: string };
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -21,6 +25,7 @@ export type MenuItem = {
   price_cents?: number;
   image_url?: string | null;
   available: boolean;
+  option_groups?: OptionGroup[];
 };
 
 export type CartItem = {
@@ -28,6 +33,7 @@ export type CartItem = {
   name: string;
   price_cents?: number;
   quantity: number;
+  options?: SelectedOption[];
 };
 
 export type OrderItem = {
@@ -35,6 +41,7 @@ export type OrderItem = {
   name: string;
   price_cents?: number;
   quantity: number;
+  options?: SelectedOption[];
 };
 
 export interface Database {
