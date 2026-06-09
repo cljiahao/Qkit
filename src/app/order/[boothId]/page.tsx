@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
+import { MediaImage } from "@/components/media-image";
 import { createServerClient } from "@/lib/supabase/server";
 import { parseMenuItems } from "@/lib/schemas";
 import { OrderForm } from "./order-form";
@@ -27,7 +27,7 @@ export default async function OrderPage({ params }: Props) {
     <div className="mx-auto min-h-screen max-w-lg px-5 pb-28 pt-8">
       {booth.image_url && (
         <div className="relative mb-5 h-40 w-full overflow-hidden rounded-2xl border border-border">
-          <Image
+          <MediaImage
             src={booth.image_url}
             alt=""
             fill

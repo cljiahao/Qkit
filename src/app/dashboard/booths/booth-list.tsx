@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+import { MediaImage } from "@/components/media-image";
 import { toast } from "sonner";
 import { Copy, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
         >
           <div className="relative h-28 w-full bg-muted">
             {booth.image_url && (
-              <Image
+              <MediaImage
                 src={booth.image_url}
                 alt=""
                 fill
