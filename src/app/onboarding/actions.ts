@@ -29,10 +29,7 @@ export async function createVendor(
       details: error.details,
       hint: error.hint,
     });
-    return {
-      success: false,
-      error: `Could not create vendor [${error.code}: ${error.message}]`,
-    };
+    return { success: false, error: "Could not create vendor" };
   }
 
   return { success: true };

@@ -53,10 +53,7 @@ export async function saveBooth(
       details: error?.details,
       hint: error?.hint,
     });
-    return {
-      success: false,
-      error: `Could not create booth [${error?.code}: ${error?.message}]`,
-    };
+    return { success: false, error: "Could not create booth" };
   }
   return { success: true, boothId: inserted.id };
 }
