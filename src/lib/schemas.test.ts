@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   vendorSchema,
   menuItemSchema,
+  menuItemFormSchema,
   boothFormSchema,
   placeOrderSchema,
 } from "./schemas";
@@ -106,5 +107,41 @@ describe("placeOrderSchema", () => {
         items: [{ menuItemId: "1", name: "Queue item", quantity: 2 }],
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("menuItemFormSchema image_url", () => {
+  const base = { id: "1", name: "Kopi O", description: "", available: true };
+
+  it("accepts a bucket URL", () => {
+    expect(
+      menuItemFormSchema.safeParse({
+        ...base,
+        image_url: "https://abc.supabase.co/storage/v1/object/public/x.png",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepts a relative /seed path", () => {
+    expect(
+      menuItemFormSchema.safeParse({ ...base, image_url: "/seed/kopi-o.svg" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("accepts null", () => {
+    expect(
+      menuItemFormSchema.safeParse({ ...base, image_url: null }).success,
+    ).toBe(true);
+  });
+
+  it("accepts a missing image_url", () => {
+    expect(menuItemFormSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("rejects a bare non-url, non-path string", () => {
+    expect(
+      menuItemFormSchema.safeParse({ ...base, image_url: "kopi" }).success,
+    ).toBe(false);
   });
 });

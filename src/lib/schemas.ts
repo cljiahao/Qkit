@@ -24,11 +24,23 @@ export const vendorSchema = z.object({
   name: z.string().min(1, "Stall name is required").max(100),
 });
 
+// Menu-item images come from two sources: the uploader (absolute Supabase URL)
+// and seeded art (relative `/seed/...` path). z.string().url() rejects the
+// latter, so accept either an http(s) URL or a leading-slash local path.
+const menuImageUrl = z
+  .string()
+  .refine((s) => /^https?:\/\//.test(s) || s.startsWith("/"), {
+    message: "Must be a URL or a local path",
+  })
+  .nullable()
+  .optional();
+
 export const menuItemFormSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1, "Item name is required").max(100),
   description: z.string().max(500).default(""),
   price_cents: z.number().int().nonnegative().optional(),
+  image_url: menuImageUrl,
   available: z.boolean(),
 });
 
@@ -56,6 +68,7 @@ export const menuItemSchema = z.object({
   name: z.string(),
   description: z.string().default(""),
   price_cents: z.number().int().nonnegative().optional(),
+  image_url: menuImageUrl,
   available: z.boolean(),
 });
 

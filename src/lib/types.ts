@@ -19,6 +19,7 @@ export type MenuItem = {
   name: string;
   description: string;
   price_cents?: number;
+  image_url?: string | null;
   available: boolean;
 };
 
