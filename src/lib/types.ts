@@ -15,7 +15,11 @@ export type OrderStatus =
   | "cancelled";
 
 export type OptionChoice = { id: string; label: string };
-export type OptionGroup = { id: string; label: string; choices: OptionChoice[] };
+export type OptionGroup = {
+  id: string;
+  label: string;
+  choices: OptionChoice[];
+};
 export type SelectedOption = { group: string; choice: string };
 
 export type MenuItem = {

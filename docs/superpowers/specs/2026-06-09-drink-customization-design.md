@@ -14,7 +14,7 @@ is **out of scope** for this round — groups are defined in the seed only.
 ## Non-goals
 
 - No vendor option-group editor UI (seed-only this round).
-- No price deltas — options change *what is made*, not the price.
+- No price deltas — options change _what is made_, not the price.
 - No multi-choice add-ons, no free-text notes (single-choice groups only).
 - Centered modal — we use a bottom `Sheet` (already installed, better on phone).
 
@@ -22,7 +22,11 @@ is **out of scope** for this round — groups are defined in the seed only.
 
 ```ts
 export type OptionChoice = { id: string; label: string };
-export type OptionGroup = { id: string; label: string; choices: OptionChoice[] };
+export type OptionGroup = {
+  id: string;
+  label: string;
+  choices: OptionChoice[];
+};
 
 // MenuItem gains:
 //   option_groups?: OptionGroup[];
@@ -94,7 +98,7 @@ Render selected options as a muted sub-line under each item line:
   the vendor knows what to make.
 - **Receipt** (`src/app/order/[boothId]/[orderNumber]/page.tsx`): under each line.
 
-Format: option choices joined with ` · `, e.g. `Iced · Kosong · Less sugar`.
+Format: option choices joined with `·`, e.g. `Iced · Kosong · Less sugar`.
 Rendered only when the item has options.
 
 ## F. Seed rewrite (`supabase/seed/coffee-cart.sql`)

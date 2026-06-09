@@ -160,7 +160,11 @@ Add the option types above `MenuItem`:
 
 ```ts
 export type OptionChoice = { id: string; label: string };
-export type OptionGroup = { id: string; label: string; choices: OptionChoice[] };
+export type OptionGroup = {
+  id: string;
+  label: string;
+  choices: OptionChoice[];
+};
 export type SelectedOption = { group: string; choice: string };
 ```
 
@@ -796,48 +800,52 @@ git commit -m "feat(order): customize drinks via sheet; option-aware cart lines"
 In `src/components/order-card.tsx`, replace the items map block:
 
 ```tsx
-        {items.map((item, i) => (
-          <div key={i} className="flex justify-between gap-2 text-sm">
-            <span className="truncate">
-              <span className="font-mono text-muted-foreground">
-                {item.quantity}×
-              </span>{" "}
-              {item.name}
-            </span>
-            {priced && (
-              <span className="shrink-0 font-mono text-muted-foreground">
-                {formatPrice((item.price_cents ?? 0) * item.quantity)}
-              </span>
-            )}
-          </div>
-        ))}
+{
+  items.map((item, i) => (
+    <div key={i} className="flex justify-between gap-2 text-sm">
+      <span className="truncate">
+        <span className="font-mono text-muted-foreground">
+          {item.quantity}×
+        </span>{" "}
+        {item.name}
+      </span>
+      {priced && (
+        <span className="shrink-0 font-mono text-muted-foreground">
+          {formatPrice((item.price_cents ?? 0) * item.quantity)}
+        </span>
+      )}
+    </div>
+  ));
+}
 ```
 
 with:
 
 ```tsx
-        {items.map((item, i) => (
-          <div key={i} className="text-sm">
-            <div className="flex justify-between gap-2">
-              <span className="truncate">
-                <span className="font-mono text-muted-foreground">
-                  {item.quantity}×
-                </span>{" "}
-                {item.name}
-              </span>
-              {priced && (
-                <span className="shrink-0 font-mono text-muted-foreground">
-                  {formatPrice((item.price_cents ?? 0) * item.quantity)}
-                </span>
-              )}
-            </div>
-            {item.options && item.options.length > 0 && (
-              <p className="pl-5 text-xs text-muted-foreground">
-                {item.options.map((o) => o.choice).join(" · ")}
-              </p>
-            )}
-          </div>
-        ))}
+{
+  items.map((item, i) => (
+    <div key={i} className="text-sm">
+      <div className="flex justify-between gap-2">
+        <span className="truncate">
+          <span className="font-mono text-muted-foreground">
+            {item.quantity}×
+          </span>{" "}
+          {item.name}
+        </span>
+        {priced && (
+          <span className="shrink-0 font-mono text-muted-foreground">
+            {formatPrice((item.price_cents ?? 0) * item.quantity)}
+          </span>
+        )}
+      </div>
+      {item.options && item.options.length > 0 && (
+        <p className="pl-5 text-xs text-muted-foreground">
+          {item.options.map((o) => o.choice).join(" · ")}
+        </p>
+      )}
+    </div>
+  ));
+}
 ```
 
 - [ ] **Step 2: Receipt — sub-line under each item**
@@ -845,48 +853,52 @@ with:
 In `src/app/order/[boothId]/[orderNumber]/page.tsx`, replace the items map block:
 
 ```tsx
-          {items.map((item, i) => (
-            <div key={i} className="flex justify-between gap-2 text-sm">
-              <span className="truncate">
-                <span className="font-mono text-muted-foreground">
-                  {item.quantity}×
-                </span>{" "}
-                {item.name}
-              </span>
-              {priced && (
-                <span className="shrink-0 font-mono text-muted-foreground">
-                  {formatPrice((item.price_cents ?? 0) * item.quantity)}
-                </span>
-              )}
-            </div>
-          ))}
+{
+  items.map((item, i) => (
+    <div key={i} className="flex justify-between gap-2 text-sm">
+      <span className="truncate">
+        <span className="font-mono text-muted-foreground">
+          {item.quantity}×
+        </span>{" "}
+        {item.name}
+      </span>
+      {priced && (
+        <span className="shrink-0 font-mono text-muted-foreground">
+          {formatPrice((item.price_cents ?? 0) * item.quantity)}
+        </span>
+      )}
+    </div>
+  ));
+}
 ```
 
 with:
 
 ```tsx
-          {items.map((item, i) => (
-            <div key={i} className="text-sm">
-              <div className="flex justify-between gap-2">
-                <span className="truncate">
-                  <span className="font-mono text-muted-foreground">
-                    {item.quantity}×
-                  </span>{" "}
-                  {item.name}
-                </span>
-                {priced && (
-                  <span className="shrink-0 font-mono text-muted-foreground">
-                    {formatPrice((item.price_cents ?? 0) * item.quantity)}
-                  </span>
-                )}
-              </div>
-              {item.options && item.options.length > 0 && (
-                <p className="pl-5 text-xs text-muted-foreground">
-                  {item.options.map((o) => o.choice).join(" · ")}
-                </p>
-              )}
-            </div>
-          ))}
+{
+  items.map((item, i) => (
+    <div key={i} className="text-sm">
+      <div className="flex justify-between gap-2">
+        <span className="truncate">
+          <span className="font-mono text-muted-foreground">
+            {item.quantity}×
+          </span>{" "}
+          {item.name}
+        </span>
+        {priced && (
+          <span className="shrink-0 font-mono text-muted-foreground">
+            {formatPrice((item.price_cents ?? 0) * item.quantity)}
+          </span>
+        )}
+      </div>
+      {item.options && item.options.length > 0 && (
+        <p className="pl-5 text-xs text-muted-foreground">
+          {item.options.map((o) => o.choice).join(" · ")}
+        </p>
+      )}
+    </div>
+  ));
+}
 ```
 
 - [ ] **Step 3: Typecheck**
