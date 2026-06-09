@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import type { Order } from "@/lib/types";
@@ -24,6 +27,11 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
           Set up a booth to start receiving orders. Once it&apos;s live, every
           order lands here in real time.
         </p>
+        <Button asChild className="mt-6 rounded-lg">
+          <Link href="/dashboard/booths/new">
+            <Plus className="size-4" /> Add your first booth
+          </Link>
+        </Button>
       </div>
     );
   }
