@@ -57,20 +57,59 @@ export interface Database {
   public: {
     Tables: {
       vendors: {
-        Row: { id: string; name: string; plan: Plan; created_at: string };
+        Row: {
+          id: string;
+          name: string;
+          plan: Plan;
+          is_admin: boolean;
+          created_at: string;
+        };
         Insert: {
           id: string;
           name: string;
           plan?: Plan;
+          is_admin?: boolean;
           created_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
           plan?: Plan;
+          is_admin?: boolean;
           created_at?: string;
         };
         Relationships: [];
+      };
+      events: {
+        Row: {
+          id: string;
+          vendor_id: string | null;
+          type: string;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id?: string | null;
+          type: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          vendor_id?: string | null;
+          type?: string;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "events_vendor_id_fkey";
+            columns: ["vendor_id"];
+            referencedRelation: "vendors";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       booths: {
         Row: {

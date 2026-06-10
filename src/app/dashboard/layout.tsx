@@ -17,7 +17,7 @@ export default async function DashboardLayout({
 
   const { data: vendor } = await supabase
     .from("vendors")
-    .select("name")
+    .select("name, is_admin")
     .eq("id", user.id)
     .single();
 
@@ -58,6 +58,11 @@ export default async function DashboardLayout({
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
               <Link href="/dashboard/plan">Plan</Link>
             </Button>
+            {vendor?.is_admin && (
+              <Button asChild variant="ghost" size="sm" className="rounded-lg">
+                <Link href="/admin">Admin</Link>
+              </Button>
+            )}
             <form action={signOut}>
               <Button
                 variant="outline"

@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { Check, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { getVendor } from "@/lib/supabase/get-vendor";
 import { normalizePlan } from "@/lib/plan";
+import { UpgradeCta } from "./upgrade-cta";
 
 export const revalidate = 0;
 
@@ -89,15 +89,7 @@ export default async function PlanPage() {
             QKit Pro is rolling out. Tell us you&apos;re interested and
             we&apos;ll set you up.
           </p>
-          <Button
-            asChild
-            size="lg"
-            className="mt-5 h-12 rounded-xl text-base font-semibold"
-          >
-            <a href="mailto:cljiahao27@gmail.com?subject=QKit%20Pro%20upgrade">
-              <Sparkles className="size-4" /> Contact us to upgrade
-            </a>
-          </Button>
+          <UpgradeCta />
         </div>
       )}
     </div>
