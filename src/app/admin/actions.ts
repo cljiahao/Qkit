@@ -20,7 +20,7 @@ type Result = { success: true } | { success: false; error: string };
 export async function setVendorPlan(
   input: z.infer<typeof setPlanSchema>,
 ): Promise<Result> {
-  await requireAdmin();
+  const { user } = await requireAdmin();
 
   const parsed = setPlanSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Invalid input" };
@@ -35,6 +35,15 @@ export async function setVendorPlan(
     console.error("setVendorPlan failed", error.message);
     return { success: false, error: "Could not update plan" };
   }
+
+  // Audit trail of who changed what. Best-effort — don't fail the action if the
+  // audit insert hiccups.
+  await supabase.from("admin_audit").insert({
+    admin_id: user.id,
+    action: "set_plan",
+    target_id: parsed.data.vendorId,
+    detail: { to: parsed.data.plan },
+  });
 
   revalidatePath("/admin");
   return { success: true };

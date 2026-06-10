@@ -57,25 +57,50 @@ export interface Database {
   public: {
     Tables: {
       vendors: {
-        Row: {
-          id: string;
-          name: string;
-          plan: Plan;
-          is_admin: boolean;
-          created_at: string;
-        };
+        Row: { id: string; name: string; plan: Plan; created_at: string };
         Insert: {
           id: string;
           name: string;
           plan?: Plan;
-          is_admin?: boolean;
           created_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
           plan?: Plan;
-          is_admin?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      admins: {
+        Row: { user_id: string; created_at: string };
+        Insert: { user_id: string; created_at?: string };
+        Update: { user_id?: string; created_at?: string };
+        Relationships: [];
+      };
+      admin_audit: {
+        Row: {
+          id: string;
+          admin_id: string;
+          action: string;
+          target_id: string | null;
+          detail: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          admin_id: string;
+          action: string;
+          target_id?: string | null;
+          detail?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          admin_id?: string;
+          action?: string;
+          target_id?: string | null;
+          detail?: Json;
           created_at?: string;
         };
         Relationships: [];
@@ -210,3 +235,5 @@ export interface Database {
 export type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
 export type Booth = Database["public"]["Tables"]["booths"]["Row"];
 export type Order = Database["public"]["Tables"]["orders"]["Row"];
+export type Admin = Database["public"]["Tables"]["admins"]["Row"];
+export type AdminAudit = Database["public"]["Tables"]["admin_audit"]["Row"];

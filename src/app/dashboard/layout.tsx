@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { createServerClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/admin";
 
 export default async function DashboardLayout({
   children,
@@ -15,9 +16,12 @@ export default async function DashboardLayout({
 
   if (!user) redirect("/login");
 
+  // Admins have no vendor row and don't use the vendor dashboard.
+  if (await isAdmin(user.id)) redirect("/admin");
+
   const { data: vendor } = await supabase
     .from("vendors")
-    .select("name, is_admin")
+    .select("name")
     .eq("id", user.id)
     .single();
 
@@ -58,11 +62,6 @@ export default async function DashboardLayout({
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
               <Link href="/dashboard/plan">Plan</Link>
             </Button>
-            {vendor?.is_admin && (
-              <Button asChild variant="ghost" size="sm" className="rounded-lg">
-                <Link href="/admin">Admin</Link>
-              </Button>
-            )}
             <form action={signOut}>
               <Button
                 variant="outline"

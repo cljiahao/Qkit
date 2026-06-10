@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { summarizeEvents, summarizeVendors } from "@/lib/admin-stats";
@@ -28,55 +26,39 @@ export default async function AdminPage() {
   const now = Date.now();
   const cutoff7d = new Date(now - 7 * 86_400_000).toISOString();
 
-  const [{ data: vendorRows }, { data: eventRows }, { data: boothRows }] =
-    await Promise.all([
-      supabase
-        .from("vendors")
-        .select("id, name, plan, is_admin, created_at")
-        .order("created_at", { ascending: false }),
-      supabase.from("events").select("type, created_at"),
-      supabase.from("booths").select("id, vendor_id, is_active"),
-    ]);
-
-  const vendors = (vendorRows ?? []) as AdminVendorRow[];
-
-  // Exclude internal (admin) accounts from the numbers so test booths/orders
-  // don't skew the metrics. The vendor table below still lists everyone.
-  const adminVendorIds = new Set(
-    vendors.filter((v) => v.is_admin).map((v) => v.id),
-  );
-  const realBooths = (boothRows ?? []).filter(
-    (b) => !adminVendorIds.has(b.vendor_id),
-  );
-  const adminBoothIds = (boothRows ?? [])
-    .filter((b) => adminVendorIds.has(b.vendor_id))
-    .map((b) => b.id);
-
-  const boothTotal = realBooths.length;
-  const boothActive = realBooths.filter((b) => b.is_active).length;
-
-  // Orders can grow large — count in the DB, excluding admin-owned booths.
-  let orderTotalQuery = supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true });
-  let order7dQuery = supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", cutoff7d);
-  if (adminBoothIds.length) {
-    const exclude = `(${adminBoothIds.join(",")})`;
-    orderTotalQuery = orderTotalQuery.not("booth_id", "in", exclude);
-    order7dQuery = order7dQuery.not("booth_id", "in", exclude);
-  }
-  const [{ count: orderTotal }, { count: order7d }] = await Promise.all([
-    orderTotalQuery,
-    order7dQuery,
+  const [
+    { data: vendorRows },
+    { data: eventRows },
+    { data: auditRows },
+    { count: boothTotal },
+    { count: boothActive },
+    { count: orderTotal },
+    { count: order7d },
+  ] = await Promise.all([
+    supabase
+      .from("vendors")
+      .select("id, name, plan, created_at")
+      .order("created_at", { ascending: false }),
+    supabase.from("events").select("type, created_at"),
+    supabase
+      .from("admin_audit")
+      .select("id, action, target_id, detail, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase.from("booths").select("id", { count: "exact", head: true }),
+    supabase
+      .from("booths")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true),
+    supabase.from("orders").select("id", { count: "exact", head: true }),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", cutoff7d),
   ]);
 
-  const vstat = summarizeVendors(
-    vendors.filter((v) => !v.is_admin),
-    now,
-  );
+  const vendors = (vendorRows ?? []) as AdminVendorRow[];
+  const vstat = summarizeVendors(vendors, now);
   const estat = summarizeEvents(eventRows ?? [], now);
 
   const upgradeClicks = estat.byType["upgrade_cta"] ?? 0;
@@ -84,23 +66,13 @@ export default async function AdminPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-5 py-7">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Internal
-          </p>
-          <h1 className="font-display text-4xl font-semibold leading-none">
-            Admin
-          </h1>
-        </div>
-        <Link
-          href="/dashboard"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          <span className="inline-flex items-center gap-1">
-            <ArrowLeft className="size-4" /> Dashboard
-          </span>
-        </Link>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Internal
+        </p>
+        <h1 className="font-display text-4xl font-semibold leading-none">
+          Overview
+        </h1>
       </div>
 
       <section className="space-y-3">
@@ -151,6 +123,32 @@ export default async function AdminPage() {
           Vendors
         </h2>
         <VendorTable vendors={vendors} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Recent admin activity
+        </h2>
+        {(auditRows ?? []).length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            No admin actions yet.
+          </p>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border">
+            {(auditRows ?? []).map((row) => (
+              <div
+                key={row.id}
+                className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5 text-sm last:border-b-0"
+              >
+                <span className="font-medium">{row.action}</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {JSON.stringify(row.detail)} ·{" "}
+                  {row.created_at.slice(0, 16).replace("T", " ")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

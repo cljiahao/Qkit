@@ -11,7 +11,6 @@ export type AdminVendorRow = {
   id: string;
   name: string;
   plan: Plan;
-  is_admin: boolean;
   created_at: string;
 };
 
@@ -53,14 +52,7 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
           className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-t border-border px-4 py-3 text-sm"
         >
           <div className="min-w-0">
-            <p className="truncate font-medium">
-              {v.name}
-              {v.is_admin && (
-                <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[0.7rem] text-muted-foreground">
-                  admin
-                </span>
-              )}
-            </p>
+            <p className="truncate font-medium">{v.name}</p>
             <p className="truncate font-mono text-xs text-muted-foreground">
               {v.created_at.slice(0, 10)}
             </p>
