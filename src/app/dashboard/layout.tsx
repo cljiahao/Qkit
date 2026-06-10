@@ -30,7 +30,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/85 px-5 py-3.5 backdrop-blur-md">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/85 px-5 py-3.5 backdrop-blur-md print:hidden">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-y-2">
           <div className="flex items-baseline gap-3">
             <Link

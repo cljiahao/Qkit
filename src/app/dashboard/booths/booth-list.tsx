@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { MediaImage } from "@/components/media-image";
 import { toast } from "sonner";
-import { Copy, Pencil } from "lucide-react";
+import { Copy, Pencil, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BoothRow {
@@ -67,6 +67,17 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
               >
                 <Link href={`/dashboard/booths/${booth.id}`}>
                   <Pencil className="size-3.5" /> Edit
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="rounded-lg"
+                aria-label="Booth QR code"
+              >
+                <Link href={`/dashboard/booths/${booth.id}/qr`}>
+                  <QrCode className="size-3.5" />
                 </Link>
               </Button>
               <Button
