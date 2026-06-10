@@ -18,6 +18,9 @@ export type OptionChoice = { id: string; label: string };
 export type OptionGroup = {
   id: string;
   label: string;
+  // false/undefined = single-select (radio, exactly one); true = multi-select
+  // (checkbox, zero or more). A multi group emits several SelectedOption rows.
+  multiple?: boolean;
   choices: OptionChoice[];
 };
 export type SelectedOption = { group: string; choice: string };

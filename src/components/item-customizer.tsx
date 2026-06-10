@@ -51,21 +51,37 @@ function CustomizerBody({
 }) {
   const groups = item.option_groups ?? [];
 
-  // selected: group id -> choice id; defaults to the first choice per group.
-  const [selected, setSelected] = useState<Record<string, string>>(() => {
-    const defaults: Record<string, string> = {};
+  // selected: group id -> array of chosen choice ids. Single-select groups
+  // default to the first choice; multi-select groups default to none.
+  const [selected, setSelected] = useState<Record<string, string[]>>(() => {
+    const defaults: Record<string, string[]> = {};
     for (const g of groups) {
-      if (g.choices[0]) defaults[g.id] = g.choices[0].id;
+      defaults[g.id] = g.multiple ? [] : g.choices[0] ? [g.choices[0].id] : [];
     }
     return defaults;
   });
 
-  function confirm() {
-    const options: SelectedOption[] = groups.map((g) => {
-      const choice =
-        g.choices.find((c) => c.id === selected[g.id]) ?? g.choices[0];
-      return { group: g.label, choice: choice.label };
+  function toggle(group: (typeof groups)[number], choiceId: string) {
+    setSelected((s) => {
+      const current = s[group.id] ?? [];
+      if (group.multiple) {
+        const next = current.includes(choiceId)
+          ? current.filter((id) => id !== choiceId)
+          : [...current, choiceId];
+        return { ...s, [group.id]: next };
+      }
+      // single-select: replace with exactly this choice
+      return { ...s, [group.id]: [choiceId] };
     });
+  }
+
+  function confirm() {
+    const options: SelectedOption[] = groups.flatMap((g) =>
+      (selected[g.id] ?? [])
+        .map((id) => g.choices.find((c) => c.id === id))
+        .filter((c): c is (typeof g.choices)[number] => !!c)
+        .map((c) => ({ group: g.label, choice: c.label })),
+    );
     onConfirm(options);
   }
 
@@ -83,15 +99,20 @@ function CustomizerBody({
           <div key={g.id} className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {g.label}
+              {g.multiple && (
+                <span className="ml-2 normal-case tracking-normal text-muted-foreground/70">
+                  choose any
+                </span>
+              )}
             </p>
             <div className="flex flex-wrap gap-2">
               {g.choices.map((c) => {
-                const active = selected[g.id] === c.id;
+                const active = (selected[g.id] ?? []).includes(c.id);
                 return (
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => setSelected((s) => ({ ...s, [g.id]: c.id }))}
+                    onClick={() => toggle(g, c.id)}
                     className={`rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
                       active
                         ? "border-primary bg-primary/10 text-primary"

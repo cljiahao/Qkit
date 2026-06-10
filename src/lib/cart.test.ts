@@ -28,4 +28,25 @@ describe("cartKey", () => {
   it("differs by base id", () => {
     expect(cartKey("kopi")).not.toBe(cartKey("teh"));
   });
+
+  it("is stable for multi-select picks within one group, any order", () => {
+    const a = cartKey("burger", [
+      { group: "Add-ons", choice: "Egg" },
+      { group: "Add-ons", choice: "Cheese" },
+    ]);
+    const b = cartKey("burger", [
+      { group: "Add-ons", choice: "Cheese" },
+      { group: "Add-ons", choice: "Egg" },
+    ]);
+    expect(a).toBe(b);
+  });
+
+  it("differs when the multi-select set differs", () => {
+    const both = cartKey("burger", [
+      { group: "Add-ons", choice: "Egg" },
+      { group: "Add-ons", choice: "Cheese" },
+    ]);
+    const one = cartKey("burger", [{ group: "Add-ons", choice: "Egg" }]);
+    expect(both).not.toBe(one);
+  });
 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { MenuItem, OrderItem } from "@/lib/types";
+import type { MenuItem, OptionGroup, OrderItem } from "@/lib/types";
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -29,10 +29,33 @@ export const optionChoiceSchema = z.object({
 export const optionGroupSchema = z.object({
   id: z.string(),
   label: z.string(),
+  // false/undefined = single-select; true = multi-select (checkbox).
+  multiple: z.boolean().optional(),
   // A group with no choices can't be satisfied; drop it on read so it never
   // reaches the customizer (which would crash trying to resolve a default).
   choices: z.array(optionChoiceSchema).min(1),
 });
+
+/**
+ * Drop half-filled option groups before validation/save: trim labels, remove
+ * blank-label choices, then remove groups left with a blank label or no choices.
+ * Returns undefined when nothing survives, so plain items carry no empty array.
+ */
+export function sanitizeOptionGroups(
+  groups: OptionGroup[] | undefined,
+): OptionGroup[] | undefined {
+  if (!groups || groups.length === 0) return undefined;
+  const cleaned = groups
+    .map((g) => ({
+      ...g,
+      label: g.label.trim(),
+      choices: g.choices
+        .map((c) => ({ ...c, label: c.label.trim() }))
+        .filter((c) => c.label.length > 0),
+    }))
+    .filter((g) => g.label.length > 0 && g.choices.length > 0);
+  return cleaned.length ? cleaned : undefined;
+}
 
 export const selectedOptionSchema = z.object({
   group: z.string().min(1).max(100),
@@ -60,8 +83,8 @@ export const menuItemFormSchema = z.object({
   description: z.string().max(500).default(""),
   price_cents: z.number().int().nonnegative().optional(),
   image_url: menuImageUrl,
-  // Pass-through: the booth editor doesn't edit option groups, but it must not
-  // strip them from seeded items when a vendor saves the booth.
+  // The menu editor builds these; sanitizeOptionGroups runs before save so a
+  // half-filled group never reaches optionGroupSchema (choices.min(1)).
   option_groups: z.array(optionGroupSchema).optional(),
   available: z.boolean(),
 });

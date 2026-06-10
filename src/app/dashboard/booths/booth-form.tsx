@@ -9,7 +9,11 @@ import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/image-uploader";
 import { MenuEditor } from "./menu-editor";
 import { saveBooth } from "./actions";
-import { boothFormSchema, type MenuItemFormInput } from "@/lib/schemas";
+import {
+  boothFormSchema,
+  sanitizeOptionGroups,
+  type MenuItemFormInput,
+} from "@/lib/schemas";
 
 interface Props {
   vendorId: string;
@@ -41,7 +45,12 @@ export function BoothForm({ vendorId, initial }: Props) {
       name,
       image_url: imageUrl,
       is_active: isActive,
-      menu_items: items,
+      // Strip half-filled option groups so a blank group/choice never fails
+      // optionGroupSchema (choices.min(1)) and blocks the whole save.
+      menu_items: items.map((it) => ({
+        ...it,
+        option_groups: sanitizeOptionGroups(it.option_groups),
+      })),
     };
     const parsed = boothFormSchema.safeParse(candidate);
     if (!parsed.success) {

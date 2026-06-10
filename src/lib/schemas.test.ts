@@ -5,6 +5,7 @@ import {
   menuItemFormSchema,
   boothFormSchema,
   placeOrderSchema,
+  sanitizeOptionGroups,
 } from "./schemas";
 
 describe("vendorSchema", () => {
@@ -171,6 +172,71 @@ describe("menuItemSchema option_groups", () => {
       menuItemSchema.safeParse({ id: "x", name: "Water", available: true })
         .success,
     ).toBe(true);
+  });
+
+  it("accepts a multi-select group", () => {
+    const parsed = menuItemSchema.safeParse({
+      id: "burger",
+      name: "Burger",
+      available: true,
+      option_groups: [
+        {
+          id: "addons",
+          label: "Add-ons",
+          multiple: true,
+          choices: [
+            { id: "egg", label: "Egg" },
+            { id: "cheese", label: "Cheese" },
+          ],
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
+});
+
+describe("sanitizeOptionGroups", () => {
+  it("returns undefined for empty/undefined input", () => {
+    expect(sanitizeOptionGroups(undefined)).toBeUndefined();
+    expect(sanitizeOptionGroups([])).toBeUndefined();
+  });
+
+  it("drops a group with a blank label", () => {
+    expect(
+      sanitizeOptionGroups([
+        { id: "g", label: "   ", choices: [{ id: "c", label: "X" }] },
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("drops a group left with no non-blank choices", () => {
+    expect(
+      sanitizeOptionGroups([
+        { id: "g", label: "Size", choices: [{ id: "c", label: "  " }] },
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("trims labels and keeps valid groups, preserving multiple", () => {
+    const result = sanitizeOptionGroups([
+      {
+        id: "g",
+        label: "  Add-ons ",
+        multiple: true,
+        choices: [
+          { id: "a", label: " Egg " },
+          { id: "b", label: "" },
+        ],
+      },
+    ]);
+    expect(result).toEqual([
+      {
+        id: "g",
+        label: "Add-ons",
+        multiple: true,
+        choices: [{ id: "a", label: "Egg" }],
+      },
+    ]);
   });
 });
 

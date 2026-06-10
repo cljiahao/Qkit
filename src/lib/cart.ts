@@ -15,7 +15,12 @@ export function cartKey(
 ): string {
   if (!options || options.length === 0) return menuItemId;
   const parts = [...options]
-    .sort((a, b) => a.group.localeCompare(b.group))
+    // Sort by group, then choice: multi-select emits several rows per group, so
+    // the secondary key keeps identical selections keying identically.
+    .sort(
+      (a, b) =>
+        a.group.localeCompare(b.group) || a.choice.localeCompare(b.choice),
+    )
     .map((o) => `${o.group}${US}${o.choice}`);
   return [menuItemId, ...parts].join(US);
 }

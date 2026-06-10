@@ -1,11 +1,14 @@
 "use client";
 
-import { Trash2, Plus } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/image-uploader";
+import { OptionGroupsEditor } from "./option-groups-editor";
 import type { MenuItemFormInput } from "@/lib/schemas";
+import type { OptionGroup } from "@/lib/types";
 
 interface Props {
   vendorId: string;
@@ -18,6 +21,17 @@ function centsToDollars(cents?: number): string {
 }
 
 export function MenuEditor({ vendorId, items, onChange }: Props) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   function update(index: number, patch: Partial<MenuItemFormInput>) {
     onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
@@ -136,6 +150,41 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
                 Available
               </label>
             </div>
+
+            {/* Customization — collapsed by default; most items have none. */}
+            {(() => {
+              const groups: OptionGroup[] = item.option_groups ?? [];
+              const isOpen = expanded.has(item.id);
+              return (
+                <div className="border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(item.id)}
+                    className="flex w-full items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                  >
+                    {isOpen ? (
+                      <ChevronDown className="size-3.5" />
+                    ) : (
+                      <ChevronRight className="size-3.5" />
+                    )}
+                    Customization
+                    {groups.length > 0 && (
+                      <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[0.7rem] text-primary">
+                        {groups.length}
+                      </span>
+                    )}
+                  </button>
+                  {isOpen && (
+                    <div className="mt-3">
+                      <OptionGroupsEditor
+                        groups={groups}
+                        onChange={(g) => update(i, { option_groups: g })}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>
