@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Lock } from "lucide-react";
 
 const RANGES: { value: string; label: string }[] = [
   { value: "24h", label: "24h" },
@@ -12,9 +14,10 @@ interface Props {
   range: string;
   booth: string;
   booths: { id: string; name: string }[];
+  allowedRanges: readonly string[];
 }
 
-export function StatsControls({ range, booth, booths }: Props) {
+export function StatsControls({ range, booth, booths, allowedRanges }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -27,20 +30,37 @@ export function StatsControls({ range, booth, booths }: Props) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
-        {RANGES.map((r) => (
-          <button
-            key={r.value}
-            type="button"
-            onClick={() => setParam("range", r.value)}
-            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              range === r.value
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
+        {RANGES.map((r) => {
+          const locked = !allowedRanges.includes(r.value);
+          if (locked) {
+            // Out-of-plan range: link to the upgrade page instead of switching.
+            return (
+              <Link
+                key={r.value}
+                href="/dashboard/plan"
+                className="flex items-center gap-1 rounded-md px-3 py-1.5 font-medium text-muted-foreground/60 hover:text-foreground"
+                title="Upgrade to unlock longer ranges"
+              >
+                <Lock className="size-3" />
+                {r.label}
+              </Link>
+            );
+          }
+          return (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => setParam("range", r.value)}
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                range === r.value
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {r.label}
+            </button>
+          );
+        })}
       </div>
 
       {booths.length > 1 && (

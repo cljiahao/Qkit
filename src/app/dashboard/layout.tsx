@@ -55,6 +55,9 @@ export default async function DashboardLayout({
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
               <Link href="/dashboard/stats">Stats</Link>
             </Button>
+            <Button asChild variant="ghost" size="sm" className="rounded-lg">
+              <Link href="/dashboard/plan">Plan</Link>
+            </Button>
             <form action={signOut}>
               <Button
                 variant="outline"

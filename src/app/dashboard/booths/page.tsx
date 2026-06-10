@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
 import { parseMenuItems } from "@/lib/schemas";
+import { canAddBooth, normalizePlan } from "@/lib/plan";
 import { BoothList } from "./booth-list";
 
 export const revalidate = 0;
@@ -29,6 +30,8 @@ export default async function BoothsPage() {
     itemCount: parseMenuItems(b.menu_items).length,
   }));
 
+  const canCreate = canAddBooth(normalizePlan(vendor.plan), rows.length);
+
   return (
     <div>
       <div className="mb-7 flex items-end justify-between">
@@ -40,11 +43,19 @@ export default async function BoothsPage() {
             Booths
           </h1>
         </div>
-        <Button asChild className="rounded-lg">
-          <Link href="/dashboard/booths/new">
-            <Plus className="size-4" /> New booth
-          </Link>
-        </Button>
+        {canCreate ? (
+          <Button asChild className="rounded-lg">
+            <Link href="/dashboard/booths/new">
+              <Plus className="size-4" /> New booth
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild variant="outline" className="rounded-lg">
+            <Link href="/dashboard/plan">
+              <Sparkles className="size-4" /> Upgrade to add booths
+            </Link>
+          </Button>
+        )}
       </div>
 
       {rows.length === 0 ? (

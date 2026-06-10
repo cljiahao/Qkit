@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getVendor } from "@/lib/supabase/get-vendor";
+import { createServerClient } from "@/lib/supabase/server";
+import { canAddBooth, normalizePlan } from "@/lib/plan";
 import { BoothForm } from "../booth-form";
 
 export const revalidate = 0;
@@ -8,6 +10,17 @@ export default async function NewBoothPage() {
   const { user, vendor } = await getVendor();
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
+
+  // Plan gate: free vendors get one booth. RLS is the real backstop; this just
+  // sends them to the upgrade page instead of a failed save.
+  const supabase = await createServerClient();
+  const { count } = await supabase
+    .from("booths")
+    .select("id", { count: "exact", head: true })
+    .eq("vendor_id", vendor.id);
+  if (!canAddBooth(normalizePlan(vendor.plan), count ?? 0)) {
+    redirect("/dashboard/plan");
+  }
 
   return (
     <div>

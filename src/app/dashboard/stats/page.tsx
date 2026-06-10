@@ -3,6 +3,7 @@ import { getVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
 import { parseOrderItems } from "@/lib/schemas";
 import { computeStats, type StatsOrder } from "@/lib/stats";
+import { allowedStatsRanges, normalizePlan } from "@/lib/plan";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
 
@@ -20,7 +21,14 @@ export default async function StatsPage({ searchParams }: Props) {
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
 
-  const range = rangeParam && rangeParam in RANGE_DAYS ? rangeParam : "7d";
+  // Plan gate: free vendors see today only. Clamp an out-of-plan (or unknown)
+  // range to the widest the plan allows.
+  const plan = normalizePlan(vendor.plan);
+  const allowedRanges = allowedStatsRanges(plan);
+  const requested = rangeParam && rangeParam in RANGE_DAYS ? rangeParam : "7d";
+  const range = allowedRanges.includes(requested)
+    ? requested
+    : (allowedRanges.at(-1) ?? "24h");
   const days = RANGE_DAYS[range];
   // Async server component renders once per request; reading the wall clock here
   // is intentional (the rolling-window cutoff). The purity rule targets client
@@ -72,7 +80,12 @@ export default async function StatsPage({ searchParams }: Props) {
         </h1>
       </div>
 
-      <StatsControls range={range} booth={selectedBooth} booths={boothList} />
+      <StatsControls
+        range={range}
+        booth={selectedBooth}
+        booths={boothList}
+        allowedRanges={allowedRanges}
+      />
 
       <StatsView summary={summary} />
     </div>

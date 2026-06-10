@@ -14,6 +14,8 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
+export type Plan = "free" | "pro";
+
 export type OptionChoice = { id: string; label: string };
 export type OptionGroup = {
   id: string;
@@ -55,9 +57,19 @@ export interface Database {
   public: {
     Tables: {
       vendors: {
-        Row: { id: string; name: string; created_at: string };
-        Insert: { id: string; name: string; created_at?: string };
-        Update: { id?: string; name?: string; created_at?: string };
+        Row: { id: string; name: string; plan: Plan; created_at: string };
+        Insert: {
+          id: string;
+          name: string;
+          plan?: Plan;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          plan?: Plan;
+          created_at?: string;
+        };
         Relationships: [];
       };
       booths: {
