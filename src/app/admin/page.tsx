@@ -28,34 +28,55 @@ export default async function AdminPage() {
   const now = Date.now();
   const cutoff7d = new Date(now - 7 * 86_400_000).toISOString();
 
-  const [{ data: vendorRows }, { data: eventRows }] = await Promise.all([
-    supabase
-      .from("vendors")
-      .select("id, name, plan, is_admin, created_at")
-      .order("created_at", { ascending: false }),
-    supabase.from("events").select("type, created_at"),
-  ]);
-
-  const [
-    { count: boothTotal },
-    { count: boothActive },
-    { count: orderTotal },
-    { count: order7d },
-  ] = await Promise.all([
-    supabase.from("booths").select("id", { count: "exact", head: true }),
-    supabase
-      .from("booths")
-      .select("id", { count: "exact", head: true })
-      .eq("is_active", true),
-    supabase.from("orders").select("id", { count: "exact", head: true }),
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", cutoff7d),
-  ]);
+  const [{ data: vendorRows }, { data: eventRows }, { data: boothRows }] =
+    await Promise.all([
+      supabase
+        .from("vendors")
+        .select("id, name, plan, is_admin, created_at")
+        .order("created_at", { ascending: false }),
+      supabase.from("events").select("type, created_at"),
+      supabase.from("booths").select("id, vendor_id, is_active"),
+    ]);
 
   const vendors = (vendorRows ?? []) as AdminVendorRow[];
-  const vstat = summarizeVendors(vendors, now);
+
+  // Exclude internal (admin) accounts from the numbers so test booths/orders
+  // don't skew the metrics. The vendor table below still lists everyone.
+  const adminVendorIds = new Set(
+    vendors.filter((v) => v.is_admin).map((v) => v.id),
+  );
+  const realBooths = (boothRows ?? []).filter(
+    (b) => !adminVendorIds.has(b.vendor_id),
+  );
+  const adminBoothIds = (boothRows ?? [])
+    .filter((b) => adminVendorIds.has(b.vendor_id))
+    .map((b) => b.id);
+
+  const boothTotal = realBooths.length;
+  const boothActive = realBooths.filter((b) => b.is_active).length;
+
+  // Orders can grow large — count in the DB, excluding admin-owned booths.
+  let orderTotalQuery = supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true });
+  let order7dQuery = supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", cutoff7d);
+  if (adminBoothIds.length) {
+    const exclude = `(${adminBoothIds.join(",")})`;
+    orderTotalQuery = orderTotalQuery.not("booth_id", "in", exclude);
+    order7dQuery = order7dQuery.not("booth_id", "in", exclude);
+  }
+  const [{ count: orderTotal }, { count: order7d }] = await Promise.all([
+    orderTotalQuery,
+    order7dQuery,
+  ]);
+
+  const vstat = summarizeVendors(
+    vendors.filter((v) => !v.is_admin),
+    now,
+  );
   const estat = summarizeEvents(eventRows ?? [], now);
 
   const upgradeClicks = estat.byType["upgrade_cta"] ?? 0;
