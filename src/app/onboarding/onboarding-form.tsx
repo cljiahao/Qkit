@@ -29,8 +29,10 @@ export function OnboardingForm() {
       setLoading(false);
       return;
     }
-    router.push("/dashboard");
-    router.refresh();
+    // replace (not push) so Back doesn't return to onboarding; no refresh — the
+    // dashboard is revalidate=0 so it re-fetches the new vendor on navigation,
+    // and a refresh here would cancel the navigation.
+    router.replace("/dashboard");
   }
 
   return (

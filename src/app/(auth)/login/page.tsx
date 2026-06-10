@@ -41,6 +41,8 @@ export default function LoginPage() {
   const supabase = createClient();
   const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
+  // Set when a signup needs email confirmation (no session returned).
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const {
     register,
@@ -63,22 +65,70 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginInput) {
     setLoading(true);
-    const { error } =
-      mode === "signin"
-        ? await supabase.auth.signInWithPassword(data)
-        : await supabase.auth.signUp(data);
 
+    if (mode === "signup") {
+      const { data: result, error } = await supabase.auth.signUp(data);
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+        return;
+      }
+      // Email confirmation on → no session yet. Show a "check your email" state
+      // instead of bouncing to a dashboard the user can't reach.
+      if (!result.session) {
+        setSentTo(data.email);
+        setLoading(false);
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword(data);
     if (error) {
       toast.error(error.message);
       setLoading(false);
       return;
     }
-
     router.push("/dashboard");
     router.refresh();
   }
 
   const isSignin = mode === "signin";
+
+  if (sentTo) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-5">
+        <div className="w-full max-w-md text-center">
+          <div className="ticket overflow-hidden rounded-2xl border border-border px-7 py-10 shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]">
+            <span className="font-display inline-flex items-baseline gap-0.5 text-2xl font-semibold tracking-tight">
+              <span className="text-primary">Q</span>Kit
+            </span>
+            <h1 className="font-display mt-6 text-3xl font-semibold leading-tight">
+              Check your email
+            </h1>
+            <p className="mt-3 text-sm text-muted-foreground">
+              We sent a confirmation link to{" "}
+              <span className="font-medium text-foreground">{sentTo}</span>.
+              Click it to activate your account, then sign in.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-7 h-11 w-full rounded-xl"
+              onClick={() => {
+                setSentTo(null);
+                setMode("signin");
+              }}
+            >
+              Back to sign in
+            </Button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-5">
