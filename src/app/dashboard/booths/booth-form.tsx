@@ -66,8 +66,9 @@ export function BoothForm({ vendorId, initial }: Props) {
       return;
     }
     toast.success("Booth saved");
-    router.push("/dashboard/booths");
-    router.refresh();
+    // replace + no refresh: a refresh here races and cancels the navigation
+    // (same bug as onboarding). The list is revalidate=0 so it refetches on nav.
+    router.replace("/dashboard/booths");
   }
 
   return (
