@@ -144,6 +144,7 @@ export interface Database {
           menu_items: Json;
           is_active: boolean;
           image_url: string | null;
+          hours: Json | null;
           created_at: string;
         };
         Insert: {
@@ -153,6 +154,7 @@ export interface Database {
           menu_items?: Json;
           is_active?: boolean;
           image_url?: string | null;
+          hours?: Json | null;
           created_at?: string;
         };
         Update: {
@@ -162,6 +164,7 @@ export interface Database {
           menu_items?: Json;
           is_active?: boolean;
           image_url?: string | null;
+          hours?: Json | null;
           created_at?: string;
         };
         Relationships: [

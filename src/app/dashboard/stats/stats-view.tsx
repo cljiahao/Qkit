@@ -16,6 +16,23 @@ interface Props {
   summary: StatsSummary;
 }
 
+// Compact axis tick, e.g. 0 -> "12a", 13 -> "1p".
+function hourTick(h: number): string {
+  const period = h < 12 ? "a" : "p";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}${period}`;
+}
+
+// Readable range for tooltip/caption, e.g. 12 -> "12pm–1pm".
+function hourRange(h: number): string {
+  const fmt = (n: number) => {
+    const period = n < 12 ? "am" : "pm";
+    const h12 = n % 12 === 0 ? 12 : n % 12;
+    return `${h12}${period}`;
+  };
+  return `${fmt(h)}–${fmt((h + 1) % 24)}`;
+}
+
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -28,7 +45,14 @@ function Kpi({ label, value }: { label: string; value: string }) {
 }
 
 export function StatsView({ summary }: Props) {
-  const { revenue_cents, orderCount, aov_cents, topItems } = summary;
+  const {
+    revenue_cents,
+    orderCount,
+    aov_cents,
+    topItems,
+    hourly,
+    busiestHour,
+  } = summary;
 
   if (orderCount === 0) {
     return (
@@ -84,6 +108,66 @@ export function StatsView({ summary }: Props) {
             <Bar dataKey="quantity" radius={[0, 6, 6, 0]}>
               {topItems.map((t) => (
                 <Cell key={t.label} fill="var(--color-primary)" />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-4 flex items-baseline justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Busiest hours
+          </p>
+          {busiestHour !== null && (
+            <p className="text-xs font-medium text-muted-foreground">
+              Peak{" "}
+              <span className="font-semibold text-foreground">
+                {hourRange(busiestHour)}
+              </span>
+            </p>
+          )}
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart
+            data={hourly}
+            margin={{ left: -18, right: 8, top: 4, bottom: 0 }}
+          >
+            <XAxis
+              dataKey="hour"
+              tickFormatter={(h) => hourTick(Number(h))}
+              interval={2}
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              width={28}
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--color-muted)", opacity: 0.3 }}
+              formatter={(value, _name, item) => {
+                const revenue =
+                  (item?.payload as { revenue_cents?: number } | undefined)
+                    ?.revenue_cents ?? 0;
+                return [`${value} orders · ${formatPrice(revenue)}`, ""];
+              }}
+              labelFormatter={(h) => hourRange(Number(h))}
+            />
+            <Bar dataKey="orders" radius={[4, 4, 0, 0]}>
+              {hourly.map((b) => (
+                <Cell
+                  key={b.hour}
+                  fill={
+                    b.hour === busiestHour
+                      ? "var(--color-primary)"
+                      : "var(--color-border)"
+                  }
+                />
               ))}
             </Bar>
           </BarChart>

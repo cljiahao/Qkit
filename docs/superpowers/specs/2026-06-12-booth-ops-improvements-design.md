@@ -72,7 +72,7 @@ window).
 ### Enforcement (two layers)
 
 - **Customer page** (`order/[boothId]/page.tsx` + `order-form.tsx`): when closed,
-  render the menu **read-only** with a banner *"Closed — opens 10:00"*; disable
+  render the menu **read-only** with a banner _"Closed — opens 10:00"_; disable
   the place-order button. Customers can still browse.
 - **`placeOrder` server action**: re-fetch the booth, run `isBoothOpen`, reject
   with `"This booth is closed"` if not open. Client checks are never trusted.
@@ -82,8 +82,8 @@ window).
 `src/app/dashboard/booths/working-hours-editor.tsx` — a controlled component
 under the Active checkbox in `booth-form.tsx`. Local state mirrors `BoothHours`.
 
-- **Default = daily:** `Opens [time] Closes [time]`, hint *"Leave blank = always
-  open."* Both blank → `hours = null`.
+- **Default = daily:** `Opens [time] Closes [time]`, hint _"Leave blank = always
+  open."_ Both blank → `hours = null`.
 - **Button "Set different hours per day"** → `weekly`: seven rows (Mon–Sun), each
   `Opens/Closes` + a **Closed** checkbox. On expand, every day pre-fills with the
   current daily window (tweak, not start blank).
@@ -143,7 +143,12 @@ Extend `src/lib/stats.ts`:
 - `StatsOrder` gains `created_at: string`.
 - `StatsSummary` gains:
   ```ts
-  hourly: { hour: number; orders: number; revenue_cents: number }[]; // 24 entries, 0..23
+  hourly: {
+    hour: number;
+    orders: number;
+    revenue_cents: number;
+  }
+  []; // 24 entries, 0..23
   busiestHour: number | null; // hour with most orders, null if no orders
   ```
 - Bucket each non-cancelled order by `sgtHour(created_at)`. Single pass alongside
@@ -151,7 +156,7 @@ Extend `src/lib/stats.ts`:
 
 `stats-view.tsx`: add a **"Busiest hours"** Recharts bar chart (orders per hour;
 hours with zero orders shown as empty bars for shape) and a caption
-*"Busiest: 12–1pm (34 orders)"* derived from `busiestHour`. Honors the existing
+_"Busiest: 12–1pm (34 orders)"_ derived from `busiestHour`. Honors the existing
 range (24h/7d/30d) and booth filters — over a multi-day range it surfaces the
 recurring daily peak, which is the actionable view for staffing/prep. The stats
 page already passes full order rows; ensure `created_at` is included.
@@ -160,25 +165,25 @@ page already passes full order rows; ensure `created_at` is included.
 
 ## Files touched
 
-| File | Change |
-|------|--------|
-| `supabase/migrations/0007_booth_hours.sql` | **new** — `booths.hours jsonb` nullable |
-| `src/lib/tz.ts` | **new** — SGT helpers |
-| `src/lib/tz.test.ts` | **new** |
-| `src/lib/hours.ts` | **new** — `isBoothOpen`, `nextOpenLabel` |
-| `src/lib/hours.test.ts` | **new** |
-| `src/lib/types.ts` | `booths.hours` |
-| `src/lib/schemas.ts` | `boothHoursSchema`, `boothFormSchema.hours` |
-| `src/app/dashboard/booths/working-hours-editor.tsx` | **new** |
-| `src/app/dashboard/booths/booth-form.tsx` | embed editor, thread `hours` |
-| `src/app/dashboard/booths/actions.ts` | persist `hours` |
-| `src/app/dashboard/booths/[boothId]/page.tsx` | pass `hours` into form initial |
-| `src/app/order/[boothId]/page.tsx` + `order-form.tsx` | closed banner + disable order |
-| `src/app/order/[boothId]/actions.ts` | server-side closed rejection |
-| `src/app/dashboard/page.tsx` | select `is_active`, `hours`; pass server `now` |
-| `src/app/dashboard/realtime-order-board.tsx` | pill recolor, hide dead tabs, open/closed pill |
-| `src/lib/stats.ts` + `stats.test.ts` | hourly histogram + busiest hour |
-| `src/app/dashboard/stats/*` | busiest-hour chart, ensure `created_at` |
+| File                                                  | Change                                         |
+| ----------------------------------------------------- | ---------------------------------------------- |
+| `supabase/migrations/0007_booth_hours.sql`            | **new** — `booths.hours jsonb` nullable        |
+| `src/lib/tz.ts`                                       | **new** — SGT helpers                          |
+| `src/lib/tz.test.ts`                                  | **new**                                        |
+| `src/lib/hours.ts`                                    | **new** — `isBoothOpen`, `nextOpenLabel`       |
+| `src/lib/hours.test.ts`                               | **new**                                        |
+| `src/lib/types.ts`                                    | `booths.hours`                                 |
+| `src/lib/schemas.ts`                                  | `boothHoursSchema`, `boothFormSchema.hours`    |
+| `src/app/dashboard/booths/working-hours-editor.tsx`   | **new**                                        |
+| `src/app/dashboard/booths/booth-form.tsx`             | embed editor, thread `hours`                   |
+| `src/app/dashboard/booths/actions.ts`                 | persist `hours`                                |
+| `src/app/dashboard/booths/[boothId]/page.tsx`         | pass `hours` into form initial                 |
+| `src/app/order/[boothId]/page.tsx` + `order-form.tsx` | closed banner + disable order                  |
+| `src/app/order/[boothId]/actions.ts`                  | server-side closed rejection                   |
+| `src/app/dashboard/page.tsx`                          | select `is_active`, `hours`; pass server `now` |
+| `src/app/dashboard/realtime-order-board.tsx`          | pill recolor, hide dead tabs, open/closed pill |
+| `src/lib/stats.ts` + `stats.test.ts`                  | hourly histogram + busiest hour                |
+| `src/app/dashboard/stats/*`                           | busiest-hour chart, ensure `created_at`        |
 
 ## Migration step (vendor action)
 

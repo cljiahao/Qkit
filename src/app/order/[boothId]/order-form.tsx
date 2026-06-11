@@ -20,9 +20,10 @@ import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
 interface Props {
   boothId: string;
   menuItems: MenuItem[];
+  closed?: boolean;
 }
 
-export function OrderForm({ boothId, menuItems }: Props) {
+export function OrderForm({ boothId, menuItems, closed = false }: Props) {
   const router = useRouter();
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
@@ -89,6 +90,10 @@ export function OrderForm({ boothId, menuItems }: Props) {
   );
 
   async function onSubmit(formData: { customerName: string }) {
+    if (closed) {
+      toast.error("This booth is closed right now");
+      return;
+    }
     if (cartItems.length === 0) {
       toast.error("Add at least one item to your order");
       return;
@@ -193,6 +198,7 @@ export function OrderForm({ boothId, menuItems }: Props) {
                       size="sm"
                       className="rounded-lg"
                       onClick={() => onAddClick(item)}
+                      disabled={closed}
                     >
                       {hasOptions ? "Customize" : "Add"}
                     </Button>
@@ -305,15 +311,17 @@ export function OrderForm({ boothId, menuItems }: Props) {
             type="submit"
             size="lg"
             className="h-14 w-full rounded-xl text-base font-semibold"
-            disabled={submitting || !hasItems}
+            disabled={submitting || !hasItems || closed}
           >
-            {submitting
-              ? "Placing order…"
-              : hasItems
-                ? cartPriced
-                  ? `Place order · ${formatPrice(total)}`
-                  : "Place order"
-                : "Add items to order"}
+            {closed
+              ? "Booth closed"
+              : submitting
+                ? "Placing order…"
+                : hasItems
+                  ? cartPriced
+                    ? `Place order · ${formatPrice(total)}`
+                    : "Place order"
+                  : "Add items to order"}
           </Button>
         </div>
       </div>

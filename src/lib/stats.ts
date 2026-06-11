@@ -1,10 +1,12 @@
 import type { OrderItem, OrderStatus } from "@/lib/types";
 import { formatOptions } from "@/lib/utils";
+import { sgtHour } from "@/lib/tz";
 
 export type StatsOrder = {
   status: OrderStatus;
   total_cents: number;
   items: OrderItem[];
+  created_at: string;
 };
 
 export type TopItem = {
@@ -13,11 +15,19 @@ export type TopItem = {
   revenue_cents: number;
 };
 
+export type HourBucket = {
+  hour: number; // 0–23, SGT
+  orders: number;
+  revenue_cents: number;
+};
+
 export type StatsSummary = {
   revenue_cents: number;
   orderCount: number;
   aov_cents: number;
   topItems: TopItem[];
+  hourly: HourBucket[]; // always 24 entries, hour 0..23
+  busiestHour: number | null; // hour with the most orders, null if none
 };
 
 /** Label an order line by name plus its selected options, e.g. "Kopi · Iced". */
@@ -38,7 +48,17 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
   const aov_cents = orderCount ? Math.round(revenue_cents / orderCount) : 0;
 
   const byLabel = new Map<string, TopItem>();
+  const hourly: HourBucket[] = Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    orders: 0,
+    revenue_cents: 0,
+  }));
+
   for (const order of counted) {
+    const bucket = hourly[sgtHour(order.created_at)];
+    bucket.orders += 1;
+    bucket.revenue_cents += order.total_cents;
+
     for (const item of order.items) {
       const label = itemLabel(item);
       const existing = byLabel.get(label);
@@ -62,5 +82,22 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     )
     .slice(0, topN);
 
-  return { revenue_cents, orderCount, aov_cents, topItems };
+  // Peak by order count; earliest hour wins a tie (stable, deterministic).
+  let busiestHour: number | null = null;
+  let peak = 0;
+  for (const b of hourly) {
+    if (b.orders > peak) {
+      peak = b.orders;
+      busiestHour = b.hour;
+    }
+  }
+
+  return {
+    revenue_cents,
+    orderCount,
+    aov_cents,
+    topItems,
+    hourly,
+    busiestHour,
+  };
 }

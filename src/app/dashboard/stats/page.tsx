@@ -64,6 +64,7 @@ export default async function StatsPage({ searchParams }: Props) {
       status: row.status,
       total_cents: row.total_cents,
       items: parseOrderItems(row.items),
+      created_at: row.created_at,
     }));
   }
 

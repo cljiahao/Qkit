@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import { MediaImage } from "@/components/media-image";
 import { createServerClient } from "@/lib/supabase/server";
-import { parseMenuItems } from "@/lib/schemas";
+import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
+import { isBoothOpen, nextOpenLabel } from "@/lib/hours";
 import { OrderForm } from "./order-form";
+
+export const revalidate = 0;
 
 interface Props {
   params: Promise<{ boothId: string }>;
@@ -14,7 +17,7 @@ export default async function OrderPage({ params }: Props) {
 
   const { data: booth } = await supabase
     .from("booths")
-    .select("id, name, image_url, menu_items")
+    .select("id, name, image_url, hours, menu_items")
     .eq("id", boothId)
     .eq("is_active", true)
     .single();
@@ -22,6 +25,15 @@ export default async function OrderPage({ params }: Props) {
   if (!booth) notFound();
 
   const available = parseMenuItems(booth.menu_items).filter((m) => m.available);
+
+  // Server-time open/closed check (SGT). is_active is already true here.
+  // eslint-disable-next-line react-hooks/purity
+  const nowIso = new Date().toISOString();
+  const hours = parseBoothHours(booth.hours);
+  const open = isBoothOpen({ is_active: true, hours }, nowIso);
+  const reopen = open
+    ? null
+    : nextOpenLabel({ is_active: true, hours }, nowIso);
 
   return (
     <div className="mx-auto min-h-screen max-w-lg px-5 pb-28 pt-8">
@@ -44,7 +56,20 @@ export default async function OrderPage({ params }: Props) {
           {booth.name}
         </h1>
       </header>
-      <OrderForm boothId={booth.id} menuItems={available} />
+
+      {!open && (
+        <div className="mb-7 rounded-xl border border-status-cancelled/30 bg-status-cancelled/10 px-4 py-3 text-center">
+          <p className="font-display text-lg font-semibold text-status-cancelled">
+            Closed right now
+          </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {reopen ?? "Not taking orders at the moment."} You can browse the
+            menu below.
+          </p>
+        </div>
+      )}
+
+      <OrderForm boothId={booth.id} menuItems={available} closed={!open} />
     </div>
   );
 }

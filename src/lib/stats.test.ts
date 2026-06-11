@@ -5,19 +5,32 @@ function order(
   status: StatsOrder["status"],
   total_cents: number,
   items: StatsOrder["items"] = [],
+  created_at = "2026-06-12T04:00:00Z", // 12:00 SGT
 ): StatsOrder {
-  return { status, total_cents, items };
+  return { status, total_cents, items, created_at };
 }
 
 describe("computeStats", () => {
   it("returns zeros for no orders", () => {
     const s = computeStats([]);
-    expect(s).toEqual({
-      revenue_cents: 0,
-      orderCount: 0,
-      aov_cents: 0,
-      topItems: [],
-    });
+    expect(s.revenue_cents).toBe(0);
+    expect(s.orderCount).toBe(0);
+    expect(s.aov_cents).toBe(0);
+    expect(s.topItems).toEqual([]);
+    expect(s.hourly).toHaveLength(24);
+    expect(s.hourly.every((b) => b.orders === 0)).toBe(true);
+    expect(s.busiestHour).toBeNull();
+  });
+
+  it("buckets orders by SGT hour and reports the busiest", () => {
+    const s = computeStats([
+      order("completed", 500, [], "2026-06-12T04:00:00Z"), // 12:00 SGT
+      order("ready", 500, [], "2026-06-12T04:30:00Z"), // 12:30 SGT
+      order("completed", 300, [], "2026-06-12T01:00:00Z"), // 09:00 SGT
+    ]);
+    expect(s.busiestHour).toBe(12);
+    expect(s.hourly[12]).toEqual({ hour: 12, orders: 2, revenue_cents: 1000 });
+    expect(s.hourly[9]).toEqual({ hour: 9, orders: 1, revenue_cents: 300 });
   });
 
   it("sums revenue and counts orders, AOV = revenue / count", () => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { MenuItem, OptionGroup, OrderItem } from "@/lib/types";
+import type { BoothHours } from "@/lib/hours";
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -89,13 +90,46 @@ export const menuItemFormSchema = z.object({
   available: z.boolean(),
 });
 
+const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
+const dayWindowSchema = z.object({ open: hhmm, close: hhmm });
+
+/**
+ * Booth working hours (stored as JSONB). null = no restriction. Same schema
+ * for read and write: tolerant in that an unparseable JSONB value falls back to
+ * null via parseBoothHours, strict in that the editor must emit valid windows.
+ */
+export const boothHoursSchema = z
+  .discriminatedUnion("mode", [
+    z.object({ mode: z.literal("daily"), open: hhmm, close: hhmm }),
+    z.object({
+      mode: z.literal("weekly"),
+      days: z.object({
+        mon: dayWindowSchema.nullable(),
+        tue: dayWindowSchema.nullable(),
+        wed: dayWindowSchema.nullable(),
+        thu: dayWindowSchema.nullable(),
+        fri: dayWindowSchema.nullable(),
+        sat: dayWindowSchema.nullable(),
+        sun: dayWindowSchema.nullable(),
+      }),
+    }),
+  ])
+  .nullable();
+
 export const boothFormSchema = z.object({
   boothId: z.string().uuid().optional(),
   name: z.string().min(1, "Booth name is required").max(100),
   image_url: imageUrlString.nullable(),
   is_active: z.boolean(),
+  hours: boothHoursSchema.default(null),
   menu_items: z.array(menuItemFormSchema),
 });
+
+/** Parse a JSONB hours value; any malformed shape degrades to null (open). */
+export function parseBoothHours(data: unknown): BoothHours {
+  const parsed = boothHoursSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
+}
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;

@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/image-uploader";
 import { MenuEditor } from "./menu-editor";
+import { WorkingHoursEditor } from "./working-hours-editor";
 import { saveBooth } from "./actions";
 import {
   boothFormSchema,
   sanitizeOptionGroups,
   type MenuItemFormInput,
 } from "@/lib/schemas";
+import type { BoothHours } from "@/lib/hours";
 
 interface Props {
   vendorId: string;
@@ -22,6 +24,7 @@ interface Props {
     name: string;
     image_url: string | null;
     is_active: boolean;
+    hours: BoothHours;
     menu_items: MenuItemFormInput[];
   };
 }
@@ -33,6 +36,7 @@ export function BoothForm({ vendorId, initial }: Props) {
     initial?.image_url ?? null,
   );
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
+  const [hours, setHours] = useState<BoothHours>(initial?.hours ?? null);
   const [items, setItems] = useState<MenuItemFormInput[]>(
     initial?.menu_items ?? [],
   );
@@ -45,6 +49,7 @@ export function BoothForm({ vendorId, initial }: Props) {
       name,
       image_url: imageUrl,
       is_active: isActive,
+      hours,
       // Strip half-filled option groups so a blank group/choice never fails
       // optionGroupSchema (choices.min(1)) and blocks the whole save.
       menu_items: items.map((it) => ({
@@ -114,6 +119,8 @@ export function BoothForm({ vendorId, initial }: Props) {
           </span>
         </span>
       </label>
+
+      <WorkingHoursEditor value={hours} onChange={setHours} />
 
       <MenuEditor vendorId={vendorId} items={items} onChange={setItems} />
 

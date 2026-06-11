@@ -11,8 +11,15 @@ import { boothColor } from "@/lib/booth-color";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/lib/types";
 
+type BoothView = {
+  id: string;
+  name: string;
+  is_active: boolean;
+  open: boolean;
+};
+
 interface Props {
-  booths: { id: string; name: string }[];
+  booths: BoothView[];
   initialOrders: Order[];
 }
 
@@ -23,14 +30,30 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
   const orders = useRealtimeOrders(boothIds, initialOrders);
   const [filter, setFilter] = useState<BoothFilter>("all");
 
-  const multiBooth = booths.length > 1;
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
 
   const active = sortActiveOrders(
     orders.filter((o) => o.status !== "completed" && o.status !== "cancelled"),
   );
+  const activeCountFor = (id: string) =>
+    active.filter((o) => o.booth_id === id).length;
+
+  // A booth's tab shows only if it's active OR still has orders in flight — a
+  // turned-off booth with a queue stays until it clears, then self-removes.
+  const visibleBooths = booths.filter(
+    (b) => b.is_active || activeCountFor(b.id) > 0,
+  );
+  const multiBooth = visibleBooths.length > 1;
+
+  // If the selected booth's tab vanished, fall back to All.
+  const effectiveFilter =
+    filter !== "all" && !visibleBooths.some((b) => b.id === filter)
+      ? "all"
+      : filter;
   const visible =
-    filter === "all" ? active : active.filter((o) => o.booth_id === filter);
+    effectiveFilter === "all"
+      ? active
+      : active.filter((o) => o.booth_id === effectiveFilter);
 
   if (booths.length === 0) {
     return (
@@ -49,9 +72,14 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
     );
   }
 
+  const idle = visible.length === 0;
+  // Single-booth boards show an open/closed pill in the header (multi-booth gets
+  // it per tab instead).
+  const soleBooth = visibleBooths.length === 1 ? visibleBooths[0] : null;
+
   return (
     <div>
-      <div className="mb-7 flex items-end justify-between">
+      <div className="mb-7 flex items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             The pass
@@ -60,13 +88,34 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
             Live orders
           </h1>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
-            <span className="relative inline-flex size-2 rounded-full bg-primary" />
+        <div className="flex items-center gap-2">
+          {soleBooth && !soleBooth.open && (
+            <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1.5 text-sm font-semibold text-muted-foreground">
+              Closed
+            </span>
+          )}
+          <span
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold",
+              idle
+                ? "bg-emerald-500/10 text-emerald-600"
+                : "bg-primary/10 text-primary",
+            )}
+          >
+            <span className="relative flex size-2">
+              {!idle && (
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
+              )}
+              <span
+                className={cn(
+                  "relative inline-flex size-2 rounded-full",
+                  idle ? "bg-emerald-500" : "bg-primary",
+                )}
+              />
+            </span>
+            {idle ? "All clear" : `${visible.length} active`}
           </span>
-          {visible.length} active
-        </span>
+        </div>
       </div>
 
       {multiBooth && (
@@ -74,23 +123,24 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
           <BoothTab
             label="All"
             count={active.length}
-            active={filter === "all"}
+            active={effectiveFilter === "all"}
             onClick={() => setFilter("all")}
           />
-          {booths.map((b) => (
+          {visibleBooths.map((b) => (
             <BoothTab
               key={b.id}
               label={b.name}
               color={boothColor(b.id)}
-              count={active.filter((o) => o.booth_id === b.id).length}
-              active={filter === b.id}
+              count={activeCountFor(b.id)}
+              open={b.open}
+              active={effectiveFilter === b.id}
               onClick={() => setFilter(b.id)}
             />
           ))}
         </div>
       )}
 
-      {visible.length === 0 ? (
+      {idle ? (
         <div className="ticket mt-10 overflow-hidden rounded-2xl border border-dashed border-border py-20 text-center">
           <p className="font-display text-2xl font-semibold">All caught up</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -118,12 +168,14 @@ function BoothTab({
   active,
   onClick,
   color,
+  open,
 }: {
   label: string;
   count: number;
   active: boolean;
   onClick: () => void;
   color?: string;
+  open?: boolean;
 }) {
   return (
     <button
@@ -143,6 +195,11 @@ function BoothTab({
         />
       )}
       <span className="max-w-[10rem] truncate">{label}</span>
+      {open === false && (
+        <span className="text-[0.6rem] font-bold uppercase tracking-wide opacity-70">
+          closed
+        </span>
+      )}
       <span
         className={cn(
           "rounded-full px-1.5 text-xs tabular-nums",

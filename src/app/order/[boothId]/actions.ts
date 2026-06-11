@@ -2,7 +2,12 @@
 
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
-import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
+import {
+  placeOrderSchema,
+  parseBoothHours,
+  type PlaceOrderInput,
+} from "@/lib/schemas";
+import { isBoothOpen } from "@/lib/hours";
 import { genOrderNumber } from "@/lib/utils";
 
 type PlaceOrderResult =
@@ -33,6 +38,22 @@ export async function placeOrder(
     };
 
   const supabase = await createServerClient();
+
+  // Re-check the booth is open server-side — never trust the client's state.
+  const { data: booth } = await supabase
+    .from("booths")
+    .select("is_active, hours")
+    .eq("id", boothId)
+    .single();
+  if (!booth) return { success: false, error: "Booth not found" };
+  const nowIso = new Date().toISOString();
+  if (
+    !isBoothOpen(
+      { is_active: booth.is_active, hours: parseBoothHours(booth.hours) },
+      nowIso,
+    )
+  )
+    return { success: false, error: "This booth is closed" };
 
   const { count, error: countError } = await supabase
     .from("orders")
