@@ -3,6 +3,17 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { OrderStatusBadge } from "./order-status-badge";
 import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
@@ -10,13 +21,24 @@ import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import type { Order, OrderStatus } from "@/lib/types";
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  pending: "confirmed",
-  confirmed: "preparing",
   preparing: "ready",
   ready: "completed",
 };
 
-export function OrderCard({ order }: { order: Order }) {
+// Label for the advance button, keyed by the order's CURRENT status — intent,
+// not the raw next-status name.
+const ADVANCE_LABEL: Partial<Record<OrderStatus, string>> = {
+  preparing: "Mark Ready",
+  ready: "Mark Picked Up",
+};
+
+export function OrderCard({
+  order,
+  boothName,
+}: {
+  order: Order;
+  boothName?: string;
+}) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [updating, setUpdating] = useState(false);
   const supabase = createClient();
@@ -68,7 +90,14 @@ export function OrderCard({ order }: { order: Order }) {
             {order.customer_name}
           </p>
         </div>
-        <OrderStatusBadge status={status} />
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <OrderStatusBadge status={status} />
+          {boothName && (
+            <span className="max-w-[8rem] truncate rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
+              {boothName}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="perforation mx-4" />
@@ -122,18 +151,44 @@ export function OrderCard({ order }: { order: Order }) {
                 onClick={advanceStatus}
                 disabled={updating}
               >
-                Mark {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                {ADVANCE_LABEL[status]}
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-9 rounded-lg text-muted-foreground hover:text-destructive"
-              onClick={cancelOrder}
-              disabled={updating}
-            >
-              Cancel
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 rounded-lg text-muted-foreground hover:text-destructive"
+                  disabled={updating}
+                >
+                  Cancel
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Cancel order #{order.order_number}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently cancels the order and removes it from the
+                    board. This can&apos;t be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={updating}>
+                    Keep order
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={cancelOrder}
+                    disabled={updating}
+                    className="bg-destructive text-white hover:bg-destructive/90"
+                  >
+                    Cancel order
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
 

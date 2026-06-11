@@ -54,7 +54,9 @@ export async function placeOrder(
     customer_name: order.customerName,
     items: order.items,
     total_cents: totalCents,
-    status: "pending",
+    // Orders land as "preparing" — no separate ack step; the booth starts
+    // making it the moment it arrives.
+    status: "preparing",
   });
 
   if (error) {

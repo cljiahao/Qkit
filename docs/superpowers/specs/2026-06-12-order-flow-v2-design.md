@@ -110,7 +110,7 @@ Wrap the vendor Cancel action in a shadcn `AlertDialog`:
 - Trigger: the existing Cancel button.
 - Title: `Cancel order #<order_number>?`
 - Body: `This permanently cancels the order and removes it from the board. This
-  can't be undone.`
+can't be undone.`
 - Actions: **Keep order** (close) / **Cancel order** (destructive → runs
   `cancelOrder`).
 
@@ -121,13 +121,13 @@ CLI (`pnpm dlx shadcn@latest add alert-dialog`) — do not hand-author it.
 
 ## Files touched
 
-| File | Change |
-|------|--------|
-| `src/app/order/[boothId]/actions.ts` | insert `status: "preparing"` |
-| `src/components/order-card.tsx` | new `NEXT_STATUS`, button labels, `boothName` badge, AlertDialog on cancel |
-| `src/app/dashboard/realtime-order-board.tsx` | sort, booth tabs, pass `boothName` |
-| `src/app/order/[boothId]/[orderNumber]/order-status-poller.tsx` | 2-step `STEPS` |
-| `src/components/ui/alert-dialog.tsx` | add via shadcn CLI if missing |
+| File                                                            | Change                                                                     |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `src/app/order/[boothId]/actions.ts`                            | insert `status: "preparing"`                                               |
+| `src/components/order-card.tsx`                                 | new `NEXT_STATUS`, button labels, `boothName` badge, AlertDialog on cancel |
+| `src/app/dashboard/realtime-order-board.tsx`                    | sort, booth tabs, pass `boothName`                                         |
+| `src/app/order/[boothId]/[orderNumber]/order-status-poller.tsx` | 2-step `STEPS`                                                             |
+| `src/components/ui/alert-dialog.tsx`                            | add via shadcn CLI if missing                                              |
 
 No migration. No `types.ts` change (enum already lists all values).
 

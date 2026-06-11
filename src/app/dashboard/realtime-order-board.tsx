@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
+import { sortActiveOrders } from "@/lib/orders";
+import { cn } from "@/lib/utils";
 import type { Order } from "@/lib/types";
 
 interface Props {
@@ -12,12 +15,21 @@ interface Props {
   initialOrders: Order[];
 }
 
+type BoothFilter = "all" | string;
+
 export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
   const boothIds = booths.map((b) => b.id);
   const orders = useRealtimeOrders(boothIds, initialOrders);
-  const active = orders.filter(
-    (o) => o.status !== "completed" && o.status !== "cancelled",
+  const [filter, setFilter] = useState<BoothFilter>("all");
+
+  const multiBooth = booths.length > 1;
+  const boothName = new Map(booths.map((b) => [b.id, b.name]));
+
+  const active = sortActiveOrders(
+    orders.filter((o) => o.status !== "completed" && o.status !== "cancelled"),
   );
+  const visible =
+    filter === "all" ? active : active.filter((o) => o.booth_id === filter);
 
   if (booths.length === 0) {
     return (
@@ -52,10 +64,31 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-60" />
             <span className="relative inline-flex size-2 rounded-full bg-primary" />
           </span>
-          {active.length} active
+          {visible.length} active
         </span>
       </div>
-      {active.length === 0 ? (
+
+      {multiBooth && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          <BoothTab
+            label="All"
+            count={active.length}
+            active={filter === "all"}
+            onClick={() => setFilter("all")}
+          />
+          {booths.map((b) => (
+            <BoothTab
+              key={b.id}
+              label={b.name}
+              count={active.filter((o) => o.booth_id === b.id).length}
+              active={filter === b.id}
+              onClick={() => setFilter(b.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {visible.length === 0 ? (
         <div className="ticket mt-10 overflow-hidden rounded-2xl border border-dashed border-border py-20 text-center">
           <p className="font-display text-2xl font-semibold">All caught up</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -64,11 +97,50 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {active.map((order) => (
-            <OrderCard key={order.id} order={order} />
+          {visible.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
+            />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function BoothTab({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-background text-muted-foreground hover:bg-secondary",
+      )}
+    >
+      <span className="max-w-[10rem] truncate">{label}</span>
+      <span
+        className={cn(
+          "rounded-full px-1.5 text-xs tabular-nums",
+          active ? "bg-primary-foreground/20" : "bg-secondary",
+        )}
+      >
+        {count}
+      </span>
+    </button>
   );
 }
