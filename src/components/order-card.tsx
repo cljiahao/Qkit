@@ -17,7 +17,9 @@ import {
 import { OrderStatusBadge } from "./order-status-badge";
 import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
-import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
+import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
+import { boothColor } from "@/lib/booth-color";
+import { ChevronDown } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -41,10 +43,12 @@ export function OrderCard({
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [updating, setUpdating] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const supabase = createClient();
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
   const nextStatus = NEXT_STATUS[status];
+  const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
 
   async function advanceStatus() {
     if (!nextStatus) return;
@@ -93,8 +97,12 @@ export function OrderCard({
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <OrderStatusBadge status={status} />
           {boothName && (
-            <span className="max-w-[8rem] truncate rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
-              {boothName}
+            <span className="inline-flex max-w-[8rem] items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
+              <span
+                className="size-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: boothColor(order.booth_id) }}
+              />
+              <span className="truncate">{boothName}</span>
             </span>
           )}
         </div>
@@ -102,29 +110,60 @@ export function OrderCard({
 
       <div className="perforation mx-4" />
 
-      <div className="space-y-1.5 px-4 py-3">
-        {items.map((item, i) => (
-          <div key={i} className="text-sm">
-            <div className="flex justify-between gap-2">
-              <span className="truncate">
-                <span className="font-mono text-muted-foreground">
-                  {item.quantity}×
-                </span>{" "}
-                {item.name}
-              </span>
-              {priced && (
-                <span className="shrink-0 font-mono text-muted-foreground">
-                  {formatPrice((item.price_cents ?? 0) * item.quantity)}
+      <div className="px-4 py-3">
+        <div className="space-y-1.5">
+          {items.map((item, i) => (
+            <div key={i} className="text-sm">
+              <div className="flex justify-between gap-2">
+                <span className="truncate">
+                  <span className="font-mono text-muted-foreground">
+                    {item.quantity}×
+                  </span>{" "}
+                  {item.name}
                 </span>
-              )}
+                {priced && (
+                  <span className="shrink-0 font-mono text-muted-foreground">
+                    {formatPrice((item.price_cents ?? 0) * item.quantity)}
+                  </span>
+                )}
+              </div>
+              {(item.options?.length ?? 0) > 0 &&
+                (expanded ? (
+                  <ul className="mt-0.5 space-y-0.5 pl-5 text-xs text-muted-foreground">
+                    {(item.options ?? []).map((o, j) => (
+                      <li key={j}>
+                        <span className="font-medium text-foreground/70">
+                          {o.group}:
+                        </span>{" "}
+                        {o.choice}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="truncate pl-5 text-xs text-muted-foreground">
+                    {formatOptions(item.options)}
+                  </p>
+                ))}
             </div>
-            {formatOptions(item.options) && (
-              <p className="pl-5 text-xs text-muted-foreground">
-                {formatOptions(item.options)}
-              </p>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {hasOptions && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1 text-[0.7rem] font-medium text-muted-foreground transition-colors hover:bg-secondary/50"
+          >
+            <ChevronDown
+              className={cn(
+                "size-3.5 transition-transform",
+                expanded && "rotate-180",
+              )}
+            />
+            {expanded ? "Hide options" : "Show options"}
+          </button>
+        )}
       </div>
 
       <div className="mt-auto">

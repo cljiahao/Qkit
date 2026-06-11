@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { sortActiveOrders } from "@/lib/orders";
+import { boothColor } from "@/lib/booth-color";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/lib/types";
 
@@ -80,6 +81,7 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
             <BoothTab
               key={b.id}
               label={b.name}
+              color={boothColor(b.id)}
               count={active.filter((o) => o.booth_id === b.id).length}
               active={filter === b.id}
               onClick={() => setFilter(b.id)}
@@ -115,11 +117,13 @@ function BoothTab({
   count,
   active,
   onClick,
+  color,
 }: {
   label: string;
   count: number;
   active: boolean;
   onClick: () => void;
+  color?: string;
 }) {
   return (
     <button
@@ -132,6 +136,12 @@ function BoothTab({
           : "border-border bg-background text-muted-foreground hover:bg-secondary",
       )}
     >
+      {color && (
+        <span
+          className="size-2 shrink-0 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      )}
       <span className="max-w-[10rem] truncate">{label}</span>
       <span
         className={cn(
