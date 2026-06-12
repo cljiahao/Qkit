@@ -188,6 +188,19 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Bottom add button — reachable without scrolling back up on long menus. */}
+      {items.length > 0 && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full rounded-lg"
+          onClick={addItem}
+        >
+          <Plus className="size-3.5" /> Add item
+        </Button>
+      )}
     </div>
   );
 }

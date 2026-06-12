@@ -107,6 +107,9 @@ export function ImageUploader({
             {uploading ? "Uploading…" : "Add a booth banner"}
           </span>
           <span className="text-xs">JPEG, PNG, or WebP · up to 2 MB</span>
+          <span className="text-xs">
+            Best at a 3:1 wide ratio (e.g. 1200×400)
+          </span>
         </>
       )}
       {variant === "thumb" && (

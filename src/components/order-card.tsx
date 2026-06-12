@@ -131,11 +131,13 @@ export function OrderCard({
                 (expanded ? (
                   <ul className="mt-0.5 space-y-0.5 pl-5 text-xs text-muted-foreground">
                     {(item.options ?? []).map((o, j) => (
-                      <li key={j}>
+                      <li key={j} className="flex justify-between gap-3">
                         <span className="font-medium text-foreground/70">
                           {o.group}:
-                        </span>{" "}
-                        {o.choice}
+                        </span>
+                        <span className="text-right text-foreground/90">
+                          {o.choice}
+                        </span>
                       </li>
                     ))}
                   </ul>
