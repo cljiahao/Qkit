@@ -20,13 +20,13 @@
       "origin_hash": "ccf4bb6c4cec18d0210387a608c1bfff84348719d09fe2efc959561d10f86ac6",
       "path": ".claude/hooks/verify.sh"
     },
-    ".claude/skills/next-verify.md": {
+    ".claude/skills/next-verify/SKILL.md": {
       "origin_hash": "56f246c992455b3d4706bd1039fb18c7d90d45034ba35315ad7e421246a27b25",
-      "path": ".claude/skills/next-verify.md"
+      "path": ".claude/skills/next-verify/SKILL.md"
     },
-    ".claude/skills/supabase-migrate.md": {
+    ".claude/skills/supabase-migrate/SKILL.md": {
       "origin_hash": "217c7a62bec1d2a0714e1f7029af134d2e3ea9deacf4d69b02f01e15c54730c5",
-      "path": ".claude/skills/supabase-migrate.md"
+      "path": ".claude/skills/supabase-migrate/SKILL.md"
     }
   }
 }

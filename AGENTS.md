@@ -98,9 +98,14 @@ PreToolUse: blocks secrets + CI files (exit 2): `.env*` (except `.env.example`),
 and blocks `--no-verify`. App code, skills, specs unrestricted.
 UserPromptSubmit: pattern-checks prompts for injection phrases; exit 2 blocks.
 PostToolUse: `tsc --noEmit --incremental` after every Edit/Write. Feedback-only.
-Stop: runs the test suite; exit 2 feeds failures back, exit 0 on pass.
-PostCompact: re-injects first 30 lines of this file after compaction.
-Project skills: `.claude/skills/` | Manifest: `.claude/harness.json`
+Stop: exits 0 when `stop_hook_active` (no re-entry loop); else runs the test
+suite, exit 2 feeds failures back, exit 0 on pass.
+SessionStart (startup|resume|compact): re-injects first 30 lines of this file —
+the documented inject path (PostCompact stdout is ignored, cannot inject context).
+`permissions.deny`: blocks **reading** `.env*` and `./secrets/**` (Edit/Write
+of secrets already blocked by PreToolUse).
+Project skills (directory form, `<name>/SKILL.md`): `.claude/skills/` |
+Manifest: `.claude/harness.json`
 
 ## Skills Security
 
