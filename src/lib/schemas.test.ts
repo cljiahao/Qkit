@@ -6,6 +6,9 @@ import {
   boothFormSchema,
   placeOrderSchema,
   sanitizeOptionGroups,
+  parseBoothHours,
+  parseMenuItems,
+  parseOrderItems,
 } from "./schemas";
 
 describe("vendorSchema", () => {
@@ -275,5 +278,75 @@ describe("placeOrderSchema options", () => {
         ],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("parseBoothHours", () => {
+  it("returns null for null / undefined / garbage", () => {
+    expect(parseBoothHours(null)).toBeNull();
+    expect(parseBoothHours(undefined)).toBeNull();
+    expect(parseBoothHours({ mode: "monthly" })).toBeNull();
+    expect(parseBoothHours("nope")).toBeNull();
+  });
+
+  it("passes a valid daily window through", () => {
+    expect(
+      parseBoothHours({ mode: "daily", open: "10:00", close: "18:00" }),
+    ).toEqual({ mode: "daily", open: "10:00", close: "18:00" });
+  });
+
+  it("degrades a daily window with a malformed time to null", () => {
+    expect(
+      parseBoothHours({ mode: "daily", open: "10am", close: "18:00" }),
+    ).toBeNull();
+  });
+
+  it("passes a valid weekly schedule through", () => {
+    const weekly = {
+      mode: "weekly" as const,
+      days: {
+        mon: null,
+        tue: null,
+        wed: null,
+        thu: null,
+        fri: { open: "10:00", close: "18:00" },
+        sat: null,
+        sun: null,
+      },
+    };
+    expect(parseBoothHours(weekly)).toEqual(weekly);
+  });
+});
+
+describe("parseMenuItems", () => {
+  it("returns [] for a non-array", () => {
+    expect(parseMenuItems(null)).toEqual([]);
+    expect(parseMenuItems({})).toEqual([]);
+  });
+
+  it("keeps valid items and drops malformed ones", () => {
+    const out = parseMenuItems([
+      { id: "kopi", name: "Kopi", available: true },
+      { id: "bad" }, // missing name + available
+      { id: "teh", name: "Teh", price_cents: 140, available: false },
+    ]);
+    expect(out.map((i) => i.id)).toEqual(["kopi", "teh"]);
+    expect(out[0].description).toBe(""); // default applied
+  });
+});
+
+describe("parseOrderItems", () => {
+  it("returns [] for a non-array", () => {
+    expect(parseOrderItems("nope")).toEqual([]);
+  });
+
+  it("keeps valid items and drops malformed ones", () => {
+    const out = parseOrderItems([
+      { menuItemId: "kopi", name: "Kopi", quantity: 2 },
+      { menuItemId: "bad", name: "Bad", quantity: 0 }, // quantity < 1
+      { name: "NoId", quantity: 1 }, // missing menuItemId
+    ]);
+    expect(out.map((i) => i.menuItemId)).toEqual(["kopi"]);
+    expect(out[0].quantity).toBe(2);
   });
 });
