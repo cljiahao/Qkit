@@ -145,6 +145,7 @@ export interface Database {
           is_active: boolean;
           image_url: string | null;
           hours: Json | null;
+          order_seq: number;
           created_at: string;
         };
         Insert: {
@@ -155,6 +156,7 @@ export interface Database {
           is_active?: boolean;
           image_url?: string | null;
           hours?: Json | null;
+          order_seq?: number;
           created_at?: string;
         };
         Update: {
@@ -165,6 +167,7 @@ export interface Database {
           is_active?: boolean;
           image_url?: string | null;
           hours?: Json | null;
+          order_seq?: number;
           created_at?: string;
         };
         Relationships: [
@@ -224,7 +227,10 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      next_order_number: {
+        Args: { p_booth_id: string };
+        Returns: string;
+      };
     };
     Enums: {
       order_status: OrderStatus;
