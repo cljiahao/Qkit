@@ -1,11 +1,39 @@
 "use server";
 
+import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { boothFormSchema, type BoothFormInput } from "@/lib/schemas";
 
 type SaveBoothResult =
   | { success: true; boothId: string }
   | { success: false; error: string };
+
+type DeleteBoothResult = { success: true } | { success: false; error: string };
+
+/**
+ * Hard-delete a booth and (via ON DELETE CASCADE, migration 0009) all of its
+ * orders. RLS (booths_vendor_all) scopes the delete to the caller's own
+ * booths, so a non-owner simply deletes zero rows — the 404-style "not found"
+ * never reveals another vendor's booth.
+ */
+export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
+  if (!z.string().uuid().safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const { count, error } = await supabase
+    .from("booths")
+    .delete({ count: "exact" })
+    .eq("id", boothId);
+  if (error) return { success: false, error: "Could not delete booth" };
+  if (!count) return { success: false, error: "Booth not found" };
+  return { success: true };
+}
 
 export async function saveBooth(
   input: BoothFormInput,
