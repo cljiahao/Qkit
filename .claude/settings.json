@@ -65,26 +65,30 @@
             "command": "node",
             "args": [
               "-e",
-              "const{execSync}=require('child_process');try{execSync('pnpm test',{encoding:'utf8',stdio:['ignore','pipe','pipe']});process.exit(0);}catch(e){const out=((e.stdout||'')+(e.stderr||'')).split(/\\r?\\n/).slice(-20).join('\\n');process.stderr.write(out+'\\n');process.exit(2);}"
+              "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{const d=JSON.parse(b||'{}');if(d.stop_hook_active){process.exit(0);}const{execSync}=require('child_process');try{execSync('pnpm test',{encoding:'utf8',stdio:['ignore','pipe','pipe']});process.exit(0);}catch(e){const out=((e.stdout||'')+(e.stderr||'')).split(/\\r?\\n/).slice(-20).join('\\n');process.stderr.write(out+'\\n');process.exit(2);}});"
             ]
           }
         ]
       }
     ],
-    "PostCompact": [
+    "SessionStart": [
       {
+        "matcher": "startup|resume|compact",
         "hooks": [
           {
             "type": "command",
             "command": "node",
             "args": [
               "-e",
-              "const fs=require('fs');try{const t=fs.readFileSync('AGENTS.md','utf8').split(/\\r?\\n/).slice(0,30).join('\\n');process.stdout.write('=== Post-compact context ===\\n'+t+'\\n');}catch{}process.exit(0);"
+              "const fs=require('fs');try{const t=fs.readFileSync('AGENTS.md','utf8').split(/\\r?\\n/).slice(0,30).join('\\n');process.stdout.write('=== QKit routing context (AGENTS.md) ===\\n'+t+'\\n');}catch{}process.exit(0);"
             ]
           }
         ]
       }
     ]
+  },
+  "permissions": {
+    "deny": ["Read(.env*)", "Read(./secrets/**)"]
   },
   "skillListingBudgetFraction": 0.02
 }
