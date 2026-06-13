@@ -11,7 +11,7 @@ import type { OrderStatus } from "@/lib/types";
 // drop the socket. Order status changes on a minute scale, so a few seconds of
 // latency is fine and a poll works everywhere. The vendor dashboard, on
 // desktop where latency matters, keeps realtime.
-const POLL_MS = 4000;
+const POLL_MS = 5000;
 const TERMINAL: OrderStatus[] = ["completed", "cancelled"];
 
 interface Props {
@@ -41,20 +41,46 @@ export function OrderStatusPoller({
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
 
   // Poll the status until it reaches a terminal state. Works on every browser
-  // (no WebSocket dependency).
+  // (no WebSocket dependency). Polling pauses while the tab is backgrounded
+  // (phone pocketed) and resumes with an immediate refresh on return — saves
+  // needless DB hits and gives a fresh status the instant the customer looks.
   useEffect(() => {
     if (TERMINAL.includes(status)) return;
     let stopped = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
     async function tick() {
+      if (document.hidden) return;
       const next = await getOrderStatus(boothId, orderNumber);
       if (!stopped && next) setStatus(next);
     }
-    const id = setInterval(tick, POLL_MS);
-    // Catch a change that landed between SSR and hydration.
-    void tick();
+    function start() {
+      if (!timer) timer = setInterval(tick, POLL_MS);
+    }
+    function stop() {
+      if (timer) {
+        clearInterval(timer);
+        timer = undefined;
+      }
+    }
+    function onVisibility() {
+      if (document.hidden) {
+        stop();
+      } else {
+        void tick();
+        start();
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibility);
+    if (!document.hidden) {
+      void tick(); // catch a change between SSR and hydration
+      start();
+    }
     return () => {
       stopped = true;
-      clearInterval(id);
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [boothId, orderNumber, status]);
 
