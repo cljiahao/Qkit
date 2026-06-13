@@ -1,21 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { orderRowSchema } from "@/lib/schemas";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { getOrderStatus } from "./status-actions";
 import type { OrderStatus } from "@/lib/types";
 
-// Poll cadence for the realtime fallback. Safari/iOS frequently drop the
-// Supabase WebSocket, so the page would otherwise freeze on its last status.
-const POLL_MS = 5000;
+// Poll cadence. The customer status page is poll-only by design: Supabase
+// realtime (WebSocket) is unreliable on the devices customers actually use —
+// Safari/iOS and in-app webviews (Instagram/WhatsApp/WeChat) flaky-block or
+// drop the socket. Order status changes on a minute scale, so a few seconds of
+// latency is fine and a poll works everywhere. The vendor dashboard, on
+// desktop where latency matters, keeps realtime.
+const POLL_MS = 4000;
 const TERMINAL: OrderStatus[] = ["completed", "cancelled"];
-
-const statusUpdateSchema = orderRowSchema.pick({
-  order_number: true,
-  status: true,
-});
 
 interface Props {
   boothId: string;
@@ -42,40 +39,9 @@ export function OrderStatusPoller({
   initialStatus,
 }: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
-  const supabase = createClient();
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`order-${boothId}-${orderNumber}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `booth_id=eq.${boothId}`,
-        },
-        (payload) => {
-          // Realtime payloads are untrusted — validate before use.
-          const parsed = statusUpdateSchema.safeParse(payload.new);
-          if (parsed.success && parsed.data.order_number === orderNumber) {
-            setStatus(parsed.data.status);
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // supabase client and setStatus are stable; only re-subscribe when the
-    // booth/order identifiers change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boothId, orderNumber]);
-
-  // Polling fallback. Realtime above is best-effort (instant when the socket
-  // is up); this guarantees the status still advances on browsers that drop
-  // the WebSocket (Safari/iOS). Stops once the order reaches a terminal state.
+  // Poll the status until it reaches a terminal state. Works on every browser
+  // (no WebSocket dependency).
   useEffect(() => {
     if (TERMINAL.includes(status)) return;
     let stopped = false;
