@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Bell, BellRing } from "lucide-react";
 import { OrderStatusBadge } from "@/components/order-status-badge";
+import {
+  fireReadyNotification,
+  isNotifySupported,
+  notifyPermission,
+  playReadyChime,
+  requestNotifyPermission,
+} from "@/lib/order-alerts";
 import { getOrderStatus } from "./status-actions";
 import type { OrderStatus } from "@/lib/types";
 
@@ -18,6 +26,7 @@ interface Props {
   boothId: string;
   orderNumber: string;
   initialStatus: OrderStatus;
+  boothName: string;
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, string> = {
@@ -37,8 +46,28 @@ export function OrderStatusPoller({
   boothId,
   orderNumber,
   initialStatus,
+  boothName,
 }: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
+  // null until known (avoids SSR/hydration mismatch); "default" = can ask.
+  const [permission, setPermission] = useState<NotificationPermission | null>(
+    null,
+  );
+  const [requesting, setRequesting] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPermission(notifyPermission());
+  }, []);
+
+  async function onEnableNotify() {
+    setRequesting(true);
+    const result = await requestNotifyPermission();
+    setPermission(result);
+    setRequesting(false);
+    // Unlock the AudioContext on this gesture so the later chime can play.
+    if (result === "granted") playReadyChime();
+  }
 
   // Poll the status until it reaches a terminal state. Works on every browser
   // (no WebSocket dependency). Polling pauses while the tab is backgrounded
@@ -84,10 +113,52 @@ export function OrderStatusPoller({
     };
   }, [boothId, orderNumber, status]);
 
+  // Alert the moment the order flips to ready. setState bails on an identical
+  // value, so this fires once per real transition, not every poll.
+  useEffect(() => {
+    if (status !== "ready") return;
+
+    // System popup — reaches the customer even with the tab backgrounded
+    // (where supported + granted); a no-op otherwise.
+    fireReadyNotification(boothName, orderNumber);
+
+    if (!document.hidden) {
+      playReadyChime();
+      return;
+    }
+
+    // Backgrounded: flash the tab title until the customer comes back, then
+    // restore it and chime once they're looking.
+    const original = document.title;
+    let on = false;
+    const flash = setInterval(() => {
+      on = !on;
+      document.title = on ? "🔔 Order ready!" : original;
+    }, 1000);
+    function onVisible() {
+      if (document.hidden) return;
+      clearInterval(flash);
+      document.title = original;
+      playReadyChime();
+      document.removeEventListener("visibilitychange", onVisible);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(flash);
+      document.title = original;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [status, boothName, orderNumber]);
+
   const completed = status === "completed";
   const cancelled = status === "cancelled";
   // completed sits past the last step; cancelled has no progress.
   const activeIndex = completed ? STEPS.length - 1 : STEPS.indexOf(status);
+
+  // Offer the notify opt-in only while still waiting — moot once ready/done.
+  const waiting = !["ready", "completed", "cancelled"].includes(status);
+  const canAsk = waiting && isNotifySupported() && permission === "default";
+  const willNotify = waiting && permission === "granted";
 
   return (
     <div className="space-y-5 px-6 py-6 text-center">
@@ -119,6 +190,25 @@ export function OrderStatusPoller({
       {status === "ready" && (
         <p className="animate-pulse text-sm font-medium text-status-ready">
           Please collect your order now
+        </p>
+      )}
+
+      {canAsk && (
+        <button
+          type="button"
+          onClick={onEnableNotify}
+          disabled={requesting}
+          className="mx-auto flex items-center gap-2 rounded-full border border-primary/40 bg-primary/[0.04] px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
+        >
+          <Bell className="size-4" />
+          {requesting ? "Just a sec…" : "Notify me when it's ready"}
+        </button>
+      )}
+
+      {willNotify && (
+        <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground">
+          <BellRing className="size-3.5 text-primary" />
+          We&apos;ll alert you the moment it&apos;s ready
         </p>
       )}
     </div>

@@ -60,6 +60,7 @@ export default async function OrderStatusPage({ params }: Props) {
           boothId={boothId}
           orderNumber={orderNumber}
           initialStatus={order.status}
+          boothName={booth?.name ?? "Your order"}
         />
 
         <div className="perforation" />
