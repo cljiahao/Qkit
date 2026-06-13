@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
 import { isBoothOpen, nextOpenLabel } from "@/lib/hours";
 import { OrderForm } from "./order-form";
+import { RecentOrders } from "./recent-orders";
 
 export const revalidate = 0;
 
@@ -56,6 +57,8 @@ export default async function OrderPage({ params }: Props) {
           {booth.name}
         </h1>
       </header>
+
+      <RecentOrders boothId={booth.id} />
 
       {!open && (
         <div className="mb-7 rounded-xl border border-status-cancelled/30 bg-status-cancelled/10 px-4 py-3 text-center">

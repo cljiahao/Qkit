@@ -14,6 +14,7 @@ import { ItemCustomizer } from "@/components/item-customizer";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { cartKey } from "@/lib/cart";
+import { addRecentOrder } from "@/lib/recent-orders";
 import { placeOrder } from "./actions";
 import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
 
@@ -111,6 +112,14 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
       setSubmitting(false);
       return;
     }
+
+    // Remember on-device so the customer can find this order again after
+    // closing the tab (no server-side customer identity exists).
+    addRecentOrder({
+      boothId,
+      orderNumber: result.orderNumber,
+      customerName: formData.customerName,
+    });
 
     router.push(`/order/${boothId}/${result.orderNumber}`);
   }
