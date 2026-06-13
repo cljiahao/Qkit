@@ -1,5 +1,5 @@
 {
-  "templatecentral_version": "4.0.0",
+  "templatecentral_version": "5.0.0",
   "stack": "nextjs",
   "adapted": "Next 16 + Supabase (auth/db/realtime) — not better-auth/Drizzle",
   "seeded_at": "2026-06-05",

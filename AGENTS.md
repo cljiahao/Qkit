@@ -1,4 +1,4 @@
-<!-- templateCentral: nextjs@4.0.0 (Supabase variant — NOT better-auth/Drizzle) -->
+<!-- templateCentral: nextjs@5.0.0 (Supabase variant — NOT better-auth/Drizzle) -->
 
 # AGENTS.md — QKit
 

@@ -24,6 +24,11 @@
 .DS_Store
 *.pem
 
+# agent framework symlink — per-machine convenience, never commit. A tracked
+# symlink breaks Windows CI runners ("Unable to load symbolic/hard linked
+# file"). Recreate locally: ln -s .claude .agents
+.agents
+
 # debug
 npm-debug.log*
 yarn-debug.log*
