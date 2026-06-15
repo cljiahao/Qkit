@@ -159,3 +159,23 @@ body {
   border: 0;
   border-top: 1.5px dashed var(--color-border);
 }
+
+/* staggered load reveal for dashboard panels (stats) */
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-rise {
+  animation: fade-rise 0.4s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-rise {
+    animation: none;
+  }
+}

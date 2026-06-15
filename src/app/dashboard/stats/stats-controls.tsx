@@ -8,6 +8,7 @@ const RANGES: { value: string; label: string }[] = [
   { value: "24h", label: "24h" },
   { value: "7d", label: "7 days" },
   { value: "30d", label: "30 days" },
+  { value: "90d", label: "90 days" },
 ];
 
 interface Props {

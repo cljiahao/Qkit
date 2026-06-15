@@ -7,7 +7,7 @@ export const PLAN_LIMITS: Record<
   { maxBooths: number; statsRanges: readonly string[] }
 > = {
   free: { maxBooths: 1, statsRanges: ["24h"] },
-  pro: { maxBooths: Infinity, statsRanges: ["24h", "7d", "30d"] },
+  pro: { maxBooths: Infinity, statsRanges: ["24h", "7d", "30d", "90d"] },
 };
 
 /**

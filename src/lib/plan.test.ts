@@ -33,6 +33,6 @@ describe("allowedStatsRanges", () => {
   });
 
   it("pro sees all ranges", () => {
-    expect(allowedStatsRanges("pro")).toEqual(["24h", "7d", "30d"]);
+    expect(allowedStatsRanges("pro")).toEqual(["24h", "7d", "30d", "90d"]);
   });
 });

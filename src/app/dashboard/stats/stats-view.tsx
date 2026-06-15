@@ -1,62 +1,47 @@
-"use client";
-
-import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { formatPrice } from "@/lib/utils";
+import Link from "next/link";
+import { Lock } from "lucide-react";
 import type { StatsSummary } from "@/lib/stats";
+import { KpiRow } from "./kpi-row";
+import { BusyHeatmap } from "./busy-heatmap";
+import { TopItems } from "./top-items";
+import { OptionsBreakdown } from "./options-breakdown";
+import { MarginTable } from "./margin-table";
+
+type Deltas = {
+  revenue: number | null;
+  orders: number | null;
+  aov: number | null;
+} | null;
 
 interface Props {
   summary: StatsSummary;
+  deltas: Deltas;
+  pro: boolean;
 }
 
-// 12-hour clock label. `long` picks "am"/"pm" vs the compact "a"/"p".
-function hour12(h: number, long: boolean): string {
-  const period = (h < 12 ? "a" : "p") + (long ? "m" : "");
+function hourLabel(h: number): string {
+  const period = h < 12 ? "am" : "pm";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}${period}`;
 }
 
-// Compact axis tick, e.g. 0 -> "12a", 13 -> "1p".
-const hourTick = (h: number): string => hour12(h, false);
-
-// Readable range for tooltip/caption, e.g. 12 -> "12pm–1pm".
-const hourRange = (h: number): string =>
-  `${hour12(h, true)}–${hour12((h + 1) % 24, true)}`;
-
-// Recharts tooltip payloads are loosely typed; pull revenue_cents safely.
-function revenueCents(payload: unknown): number {
-  return (payload as { revenue_cents?: number } | null)?.revenue_cents ?? 0;
-}
-
-function Kpi({ label, value }: { label: string; value: string }) {
+/** One reveal block — staggers in on load (see .fade-rise in globals.css). */
+function Block({
+  delay,
+  children,
+}: {
+  delay: number;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 font-mono text-2xl font-bold">{value}</p>
+    <div className="fade-rise" style={{ animationDelay: `${delay}ms` }}>
+      {children}
     </div>
   );
 }
 
-export function StatsView({ summary }: Props) {
-  const {
-    revenue_cents,
-    orderCount,
-    aov_cents,
-    topItems,
-    hourly,
-    busiestHour,
-  } = summary;
-
-  if (orderCount === 0) {
+export function StatsView({ summary, deltas, pro }: Props) {
+  if (summary.orderCount === 0) {
     return (
       <div className="ticket overflow-hidden rounded-2xl border border-dashed border-border py-20 text-center">
         <p className="font-display text-2xl font-semibold">No orders yet</p>
@@ -67,110 +52,57 @@ export function StatsView({ summary }: Props) {
     );
   }
 
-  // ~44px per row keeps labels readable; min height avoids a squashed chart.
-  const chartHeight = Math.max(160, topItems.length * 44);
-
   return (
-    <div className="space-y-7">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Kpi label="Revenue" value={formatPrice(revenue_cents)} />
-        <Kpi label="Orders" value={String(orderCount)} />
-        <Kpi label="Avg order" value={formatPrice(aov_cents)} />
-      </div>
+    <div className="space-y-6">
+      <KpiRow summary={summary} deltas={deltas} pro={pro} />
 
-      <div className="rounded-xl border border-border bg-card p-4">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Top items
-        </p>
-        <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart
-            data={topItems}
-            layout="vertical"
-            margin={{ left: 8, right: 16, top: 0, bottom: 0 }}
-          >
-            <XAxis type="number" allowDecimals={false} hide />
-            <YAxis
-              type="category"
-              dataKey="label"
-              width={140}
-              tick={{ fontSize: 12 }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              cursor={{ fill: "var(--color-muted)", opacity: 0.3 }}
-              formatter={(value, _name, item) => [
-                `${value} sold · ${formatPrice(revenueCents(item?.payload))}`,
-                "",
-              ]}
-              labelFormatter={(label) => String(label)}
-            />
-            <Bar dataKey="quantity" radius={[0, 6, 6, 0]}>
-              {topItems.map((t) => (
-                <Cell key={t.label} fill="var(--color-primary)" />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="mb-4 flex items-baseline justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Busiest hours
-          </p>
-          {busiestHour !== null && (
-            <p className="text-xs font-medium text-muted-foreground">
-              Peak{" "}
-              <span className="font-semibold text-foreground">
-                {hourRange(busiestHour)}
-              </span>
-            </p>
+      {pro ? (
+        <>
+          <Block delay={180}>
+            <BusyHeatmap summary={summary} />
+          </Block>
+          <Block delay={240}>
+            <TopItems items={summary.topItems} />
+          </Block>
+          {summary.optionBreakdown.length > 0 && (
+            <Block delay={300}>
+              <OptionsBreakdown options={summary.optionBreakdown} />
+            </Block>
           )}
-        </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart
-            data={hourly}
-            margin={{ left: -18, right: 8, top: 4, bottom: 0 }}
-          >
-            <XAxis
-              dataKey="hour"
-              tickFormatter={(h) => hourTick(Number(h))}
-              interval={2}
-              tick={{ fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              width={28}
-              tick={{ fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              cursor={{ fill: "var(--color-muted)", opacity: 0.3 }}
-              formatter={(value, _name, item) => [
-                `${value} orders · ${formatPrice(revenueCents(item?.payload))}`,
-                "",
-              ]}
-              labelFormatter={(h) => hourRange(Number(h))}
-            />
-            <Bar dataKey="orders" radius={[4, 4, 0, 0]}>
-              {hourly.map((b) => (
-                <Cell
-                  key={b.hour}
-                  fill={
-                    b.hour === busiestHour
-                      ? "var(--color-primary)"
-                      : "var(--color-border)"
-                  }
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+          {summary.grossMargin && (
+            <Block delay={360}>
+              <MarginTable summary={summary} />
+            </Block>
+          )}
+        </>
+      ) : (
+        <>
+          {summary.busiestHour !== null && (
+            <Block delay={180}>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Busiest hour
+                </p>
+                <p className="mt-1 font-mono text-2xl font-bold">
+                  {hourLabel(summary.busiestHour)}
+                </p>
+              </div>
+            </Block>
+          )}
+          <Block delay={240}>
+            <TopItems items={summary.topItems} limit={3} />
+          </Block>
+          <Block delay={300}>
+            <Link
+              href="/dashboard/plan"
+              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/[0.04] px-4 py-5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              <Lock className="size-4" />
+              Upgrade for trends, busy-times heatmap, profit margins &amp; more
+            </Link>
+          </Block>
+        </>
+      )}
     </div>
   );
 }
