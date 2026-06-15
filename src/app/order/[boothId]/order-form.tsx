@@ -38,40 +38,45 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
     resolver: zodResolver(placeOrderSchema.pick({ customerName: true })),
   });
 
-  function addConfigured(item: MenuItem, options: SelectedOption[]) {
-    const key = cartKey(item.id, options);
+  // Single cart mutator. The updater receives the current entry (or undefined)
+  // and returns: a CartItem to set, null to remove, or undefined to no-op
+  // (keeps the same Map ref, so no needless re-render).
+  function updateCart(
+    key: string,
+    fn: (existing: CartItem | undefined) => CartItem | null | undefined,
+  ) {
     setCart((prev) => {
+      const result = fn(prev.get(key));
+      if (result === undefined) return prev;
       const next = new Map(prev);
-      const existing = next.get(key);
-      next.set(key, {
-        menuItemId: item.id,
-        name: item.name,
-        price_cents: item.price_cents,
-        options: options.length ? options : undefined,
-        quantity: existing ? existing.quantity + 1 : 1,
-      });
+      if (result === null) next.delete(key);
+      else next.set(key, result);
       return next;
     });
+  }
+
+  function addConfigured(item: MenuItem, options: SelectedOption[]) {
+    updateCart(cartKey(item.id, options), (existing) => ({
+      menuItemId: item.id,
+      name: item.name,
+      price_cents: item.price_cents,
+      options: options.length ? options : undefined,
+      quantity: existing ? existing.quantity + 1 : 1,
+    }));
   }
 
   function increment(key: string) {
-    setCart((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(key);
-      if (!existing) return prev;
-      next.set(key, { ...existing, quantity: existing.quantity + 1 });
-      return next;
-    });
+    updateCart(key, (existing) =>
+      existing ? { ...existing, quantity: existing.quantity + 1 } : undefined,
+    );
   }
 
   function decrement(key: string) {
-    setCart((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(key);
-      if (!existing) return prev;
-      if (existing.quantity <= 1) next.delete(key);
-      else next.set(key, { ...existing, quantity: existing.quantity - 1 });
-      return next;
+    updateCart(key, (existing) => {
+      if (!existing) return undefined;
+      return existing.quantity <= 1
+        ? null
+        : { ...existing, quantity: existing.quantity - 1 };
     });
   }
 
