@@ -31,6 +31,7 @@ export default async function EditBoothPage({ params }: Props) {
     name: m.name,
     description: m.description,
     price_cents: m.price_cents,
+    cost_cents: m.cost_cents,
     image_url: m.image_url ?? null,
     option_groups: m.option_groups,
     available: m.available,

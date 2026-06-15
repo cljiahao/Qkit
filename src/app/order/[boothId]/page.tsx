@@ -25,7 +25,11 @@ export default async function OrderPage({ params }: Props) {
 
   if (!booth) notFound();
 
-  const available = parseMenuItems(booth.menu_items).filter((m) => m.available);
+  // Strip cost_cents before anything reaches the customer's browser — vendor
+  // cost is private and only ever used server-side for margin stats.
+  const available = parseMenuItems(booth.menu_items)
+    .filter((m) => m.available)
+    .map(({ cost_cents: _cost, ...m }) => m);
 
   // Server-time open/closed check (SGT). is_active is already true here.
   const nowIso = new Date().toISOString();

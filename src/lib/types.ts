@@ -44,7 +44,6 @@ export type CartItem = {
   menuItemId: string;
   name: string;
   price_cents?: number;
-  cost_cents?: number;
   quantity: number;
   options?: SelectedOption[];
 };

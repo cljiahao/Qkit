@@ -83,6 +83,8 @@ export const menuItemFormSchema = z.object({
   name: z.string().min(1, "Item name is required").max(100),
   description: z.string().max(500).default(""),
   price_cents: z.number().int().nonnegative().optional(),
+  // Vendor's unit cost — drives margin stats. Never sent to customers.
+  cost_cents: z.number().int().nonnegative().optional(),
   image_url: menuImageUrl,
   // The menu editor builds these; sanitizeOptionGroups runs before save so a
   // half-filled group never reaches optionGroupSchema (choices.min(1)).
@@ -147,6 +149,7 @@ export const menuItemSchema = z.object({
   name: z.string(),
   description: z.string().default(""),
   price_cents: z.number().int().nonnegative().optional(),
+  cost_cents: z.number().int().nonnegative().optional(),
   image_url: menuImageUrl,
   available: z.boolean(),
   option_groups: z.array(optionGroupSchema).optional(),
@@ -156,6 +159,8 @@ export const orderItemSchema = z.object({
   menuItemId: z.string(),
   name: z.string(),
   price_cents: z.number().int().nonnegative().optional(),
+  // Snapshotted from the menu at order time (server-side), for margin stats.
+  cost_cents: z.number().int().nonnegative().optional(),
   quantity: z.number().int().min(1),
   options: z.array(selectedOptionSchema).optional(),
 });

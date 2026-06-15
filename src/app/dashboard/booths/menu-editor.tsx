@@ -47,6 +47,17 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
     update(index, { price_cents: Math.round(value * 100) });
   }
 
+  function setCost(index: number, dollars: string) {
+    const trimmed = dollars.trim();
+    if (trimmed === "") {
+      update(index, { cost_cents: undefined });
+      return;
+    }
+    const value = Number(trimmed);
+    if (Number.isNaN(value) || value < 0) return;
+    update(index, { cost_cents: Math.round(value * 100) });
+  }
+
   function addItem() {
     onChange([
       ...items,
@@ -127,8 +138,8 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
                 <Trash2 className="size-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative min-w-[7rem] flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   $
                 </span>
@@ -137,6 +148,18 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
                   placeholder="Price (optional)"
                   value={centsToDollars(item.price_cents)}
                   onChange={(e) => setPrice(i, e.target.value)}
+                  className="rounded-lg pl-7"
+                />
+              </div>
+              <div className="relative min-w-[7rem] flex-1">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  inputMode="decimal"
+                  placeholder="Cost (optional)"
+                  value={centsToDollars(item.cost_cents)}
+                  onChange={(e) => setCost(i, e.target.value)}
                   className="rounded-lg pl-7"
                 />
               </div>
@@ -150,6 +173,10 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
                 Available
               </label>
             </div>
+            <p className="-mt-1 text-xs text-muted-foreground">
+              Cost is private — used only for your profit/margin stats, never
+              shown to customers.
+            </p>
 
             {/* Customization — collapsed by default; most items have none. */}
             {(() => {

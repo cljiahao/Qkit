@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import {
   placeOrderSchema,
   parseBoothHours,
+  parseMenuItems,
   type PlaceOrderInput,
 } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
@@ -34,7 +35,7 @@ export async function placeOrder(
   // Re-check the booth is open server-side — never trust the client's state.
   const { data: booth } = await supabase
     .from("booths")
-    .select("is_active, hours")
+    .select("is_active, hours, menu_items")
     .eq("id", boothId)
     .single();
   if (!booth) return { success: false, error: "Booth not found" };
@@ -60,11 +61,22 @@ export async function placeOrder(
 
   const totalCents = cartTotal(order.items);
 
+  // Snapshot each line's vendor cost from the booth menu (cost never travels
+  // through the client). Frozen onto the order so margin stats stay accurate
+  // even if the vendor edits costs later.
+  const costByItem = new Map(
+    parseMenuItems(booth.menu_items).map((m) => [m.id, m.cost_cents]),
+  );
+  const items = order.items.map((it) => {
+    const cost = costByItem.get(it.menuItemId);
+    return cost != null ? { ...it, cost_cents: cost } : it;
+  });
+
   const { error } = await supabase.from("orders").insert({
     booth_id: boothId,
     order_number: orderNumber,
     customer_name: order.customerName,
-    items: order.items,
+    items,
     total_cents: totalCents,
     // Orders land as "preparing" — no separate ack step; the booth starts
     // making it the moment it arrives.

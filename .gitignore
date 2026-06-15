@@ -23,6 +23,9 @@
 /playwright-report
 /playwright/.cache
 
+# brainstorming visual companion (local mockups, not committed)
+/.superpowers
+
 # next.js
 /.next/
 /out/
