@@ -18,6 +18,11 @@
 /reports
 /stryker-out.txt
 
+# playwright (e2e)
+/test-results
+/playwright-report
+/playwright/.cache
+
 # next.js
 /.next/
 /out/

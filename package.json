@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:mutation": "stryker run",
+    "test:e2e": "playwright test",
     "check": "prettier --check . && eslint . && tsc --noEmit",
     "format": "prettier --write .",
     "prepare": "husky"
@@ -42,6 +43,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
+    "@playwright/test": "^1.60.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@tailwindcss/postcss": "^4.0.0",

@@ -26,9 +26,20 @@ pnpm dev          # dev server — http://localhost:3000
 pnpm build        # production build
 pnpm test         # run test suite (vitest)
 pnpm test:mutation # stryker mutation testing (scoped to src/lib; ~1 min)
+pnpm test:e2e     # playwright e2e smoke (needs local Supabase up — see below)
 pnpm check        # prettier --check + eslint + tsc --noEmit
 pnpm format       # prettier --write
 ```
+
+E2E (Playwright, `e2e/`) is a small critical-path smoke against a REAL local
+Supabase — it covers what the mocked unit/component tests cannot (RLS, the
+`proxy.ts` auth guard, the full order lifecycle). To run:
+
+1. Docker running, then `supabase start`
+2. apply migrations + the `supabase/seed/coffee-cart.sql` seed
+3. `pnpm test:e2e` (auto-starts `pnpm dev`)
+   `auth-guard.spec.ts` needs only a booting app; `customer-order.spec.ts` needs
+   the coffee-cart seed (the "Kopitiam Cart" booth).
 
 Mutation testing (Stryker) is scoped to `src/lib` — the pure business logic.
 Components/actions/supabase clients are excluded (I/O- or DOM-bound, low signal).
