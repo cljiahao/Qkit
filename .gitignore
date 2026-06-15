@@ -13,6 +13,11 @@
 # testing
 /coverage
 
+# mutation testing (stryker)
+/.stryker-tmp
+/reports
+/stryker-out.txt
+
 # next.js
 /.next/
 /out/

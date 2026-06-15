@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutation testing is scoped to src/lib — the pure, fast, deterministic business logic. Components/actions/supabase clients are excluded: they are I/O- or DOM-bound, slow to mutate, and low-signal.",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/lib/**/*.ts",
+    "!src/lib/**/*.test.ts",
+    "!src/lib/types.ts",
+    "!src/lib/action-result.ts",
+    "!src/lib/supabase/**"
+  ],
+  "reporters": ["clear-text", "progress"],
+  "clearTextReporter": {
+    "allowColor": false,
+    "maxTestsToLog": 3
+  },
+  "thresholds": {
+    "high": 90,
+    "low": 80,
+    "break": 80
+  }
+}

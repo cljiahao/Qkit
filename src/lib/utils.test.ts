@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cn, formatPrice, genOrderNumber, orderHasPricing } from "./utils";
+import {
+  cn,
+  formatOptions,
+  formatPrice,
+  genOrderNumber,
+  orderHasPricing,
+} from "./utils";
 
 describe("cn", () => {
   it("merges class names", () => {
@@ -58,5 +64,23 @@ describe("orderHasPricing", () => {
 
   it("treats price_cents 0 as priced", () => {
     expect(orderHasPricing([{ price_cents: 0 }])).toBe(true);
+  });
+});
+
+describe("formatOptions", () => {
+  it("joins choices with a middot separator", () => {
+    expect(formatOptions([{ choice: "Iced" }, { choice: "Less" }])).toBe(
+      "Iced · Less",
+    );
+  });
+
+  it("returns a single choice unchanged", () => {
+    expect(formatOptions([{ choice: "Hot" }])).toBe("Hot");
+  });
+
+  it("is empty for no options", () => {
+    expect(formatOptions([])).toBe("");
+    expect(formatOptions(null)).toBe("");
+    expect(formatOptions(undefined)).toBe("");
   });
 });

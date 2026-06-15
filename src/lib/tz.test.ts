@@ -22,4 +22,21 @@ describe("tz (Asia/Singapore)", () => {
     expect(sgtWeekday("2026-06-12T17:00:00Z")).toBe("sat");
     expect(sgtHour("2026-06-12T17:00:00Z")).toBe(1);
   });
+
+  it("maps each weekday correctly (2026-06-08 is Monday)", () => {
+    // All at 04:00Z = 12:00 SGT, same calendar day.
+    expect(sgtWeekday("2026-06-08T04:00:00Z")).toBe("mon");
+    expect(sgtWeekday("2026-06-09T04:00:00Z")).toBe("tue");
+    expect(sgtWeekday("2026-06-10T04:00:00Z")).toBe("wed");
+    expect(sgtWeekday("2026-06-11T04:00:00Z")).toBe("thu");
+    expect(sgtWeekday("2026-06-12T04:00:00Z")).toBe("fri");
+    expect(sgtWeekday("2026-06-13T04:00:00Z")).toBe("sat");
+    expect(sgtWeekday("2026-06-14T04:00:00Z")).toBe("sun");
+  });
+
+  it("reads an exact non-round hour and minute", () => {
+    // 05:45Z -> 13:45 SGT
+    expect(sgtHour("2026-06-12T05:45:00Z")).toBe(13);
+    expect(sgtMinutes("2026-06-12T05:45:00Z")).toBe(13 * 60 + 45);
+  });
 });

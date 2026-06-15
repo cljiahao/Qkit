@@ -71,6 +71,90 @@ describe("isBoothOpen", () => {
       isBoothOpen({ is_active: true, hours }, "2026-06-12T15:00:00Z"),
     ).toBe(true); // 23:00 — still open
   });
+
+  it("daily boundaries are open-inclusive, close-exclusive (with minutes)", () => {
+    const hours: BoothHours = { mode: "daily", open: "09:30", close: "17:30" };
+    const open = (z: string) => isBoothOpen({ is_active: true, hours }, z);
+    expect(open("2026-06-12T01:29:00Z")).toBe(false); // 09:29 — before open
+    expect(open("2026-06-12T01:30:00Z")).toBe(true); //  09:30 — open edge IS open
+    expect(open("2026-06-12T09:29:00Z")).toBe(true); //  17:29 — last open minute
+    expect(open("2026-06-12T09:30:00Z")).toBe(false); // 17:30 — close edge IS closed
+  });
+
+  it("overnight boundaries: open edge open, close edge closed", () => {
+    const hours: BoothHours = { mode: "daily", open: "22:00", close: "06:00" };
+    const open = (z: string) => isBoothOpen({ is_active: true, hours }, z);
+    expect(open("2026-06-12T14:00:00Z")).toBe(true); //  22:00 — open edge
+    expect(open("2026-06-11T21:59:00Z")).toBe(true); //  05:59 — last open minute
+    expect(open("2026-06-11T22:00:00Z")).toBe(false); // 06:00 — close edge closed
+  });
+});
+
+const CLOSED_WEEK = {
+  mon: null,
+  tue: null,
+  wed: null,
+  thu: null,
+  fri: null,
+  sat: null,
+  sun: null,
+} as const;
+
+describe("nextOpenLabel weekly day labels", () => {
+  // today = Fri 09:00 SGT; every listed day is closed today so the forward
+  // scan reaches the single open day and must print its abbreviation.
+  it.each([
+    ["mon", "Mon"],
+    ["tue", "Tue"],
+    ["wed", "Wed"],
+    ["thu", "Thu"],
+    ["sun", "Sun"],
+  ])("names %s as 'Opens %s 10:00'", (day, label) => {
+    const hours: BoothHours = {
+      mode: "weekly",
+      days: { ...CLOSED_WEEK, [day]: { open: "10:00", close: "18:00" } },
+    };
+    expect(
+      nextOpenLabel({ is_active: true, hours }, "2026-06-12T01:00:00Z"),
+    ).toBe(`Opens ${label} 10:00`);
+  });
+
+  it("names Fri when today (Mon) is closed", () => {
+    const hours: BoothHours = {
+      mode: "weekly",
+      days: { ...CLOSED_WEEK, fri: { open: "10:00", close: "18:00" } },
+    };
+    expect(
+      nextOpenLabel({ is_active: true, hours }, "2026-06-08T01:00:00Z"),
+    ).toBe("Opens Fri 10:00");
+  });
+
+  it("wraps a full week to the same day when it is the only one open", () => {
+    // today = Fri 18:00, only Fri open 10:00–12:00 (already past) → next is Fri
+    // next week (loop must reach i=7).
+    const hours: BoothHours = {
+      mode: "weekly",
+      days: { ...CLOSED_WEEK, fri: { open: "10:00", close: "12:00" } },
+    };
+    expect(
+      nextOpenLabel({ is_active: true, hours }, "2026-06-12T10:00:00Z"),
+    ).toBe("Opens Fri 10:00");
+  });
+
+  it("after today's window closes, names a later open day (not today)", () => {
+    // today = Fri 13:00, Fri window 10:00–12:00 already past, Sat opens 11:00.
+    const hours: BoothHours = {
+      mode: "weekly",
+      days: {
+        ...CLOSED_WEEK,
+        fri: { open: "10:00", close: "12:00" },
+        sat: { open: "11:00", close: "20:00" },
+      },
+    };
+    expect(
+      nextOpenLabel({ is_active: true, hours }, "2026-06-12T05:00:00Z"),
+    ).toBe("Opens Sat 11:00");
+  });
 });
 
 describe("nextOpenLabel", () => {

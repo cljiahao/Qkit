@@ -7,6 +7,27 @@ import {
   weekFromDaily,
 } from "./hours-editor";
 
+describe("constants", () => {
+  it("DEFAULT_WINDOW is 09:00–17:00", () => {
+    // Assert literal values (not via the constant) so a mutated default is caught.
+    expect(DEFAULT_WINDOW).toEqual({ open: "09:00", close: "17:00" });
+  });
+
+  it("emptyWeek has all seven days, each closed", () => {
+    const week = emptyWeek();
+    expect(Object.keys(week).sort()).toEqual([
+      "fri",
+      "mon",
+      "sat",
+      "sun",
+      "thu",
+      "tue",
+      "wed",
+    ]);
+    expect(Object.values(week).every((w) => w === null)).toBe(true);
+  });
+});
+
 describe("dailyHours", () => {
   it("builds a window when both ends are set", () => {
     expect(dailyHours("09:00", "17:00")).toEqual({
@@ -33,7 +54,17 @@ describe("weekFromDaily", () => {
 
   it("falls back to the default window when daily was blank", () => {
     const week = weekFromDaily("", "");
-    expect(week.wed).toEqual(DEFAULT_WINDOW);
+    expect(week.wed).toEqual({ open: "09:00", close: "17:00" });
+  });
+
+  it("falls back to default when only one end is set (needs BOTH)", () => {
+    // Guards `open && close` against the `open || close` mutant.
+    expect(weekFromDaily("09:00", "")).toMatchObject({
+      mon: { open: "09:00", close: "17:00" },
+    });
+    expect(weekFromDaily("", "17:00")).toMatchObject({
+      mon: { open: "09:00", close: "17:00" },
+    });
   });
 });
 

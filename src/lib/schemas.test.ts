@@ -1,15 +1,56 @@
 import { describe, expect, it } from "vitest";
 import {
+  loginSchema,
   vendorSchema,
   menuItemSchema,
   menuItemFormSchema,
   boothFormSchema,
   placeOrderSchema,
+  orderStatusSchema,
   sanitizeOptionGroups,
   parseBoothHours,
   parseMenuItems,
   parseOrderItems,
 } from "./schemas";
+
+describe("loginSchema", () => {
+  it("accepts a valid email + 8-char password", () => {
+    expect(
+      loginSchema.safeParse({ email: "a@b.co", password: "12345678" }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a password shorter than 8", () => {
+    expect(
+      loginSchema.safeParse({ email: "a@b.co", password: "1234567" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a malformed email", () => {
+    expect(
+      loginSchema.safeParse({ email: "not-an-email", password: "12345678" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("orderStatusSchema", () => {
+  it.each([
+    "pending",
+    "confirmed",
+    "preparing",
+    "ready",
+    "completed",
+    "cancelled",
+  ])("accepts %s", (status) => {
+    expect(orderStatusSchema.safeParse(status).success).toBe(true);
+  });
+
+  it("rejects an unknown status", () => {
+    expect(orderStatusSchema.safeParse("shipped").success).toBe(false);
+    expect(orderStatusSchema.safeParse("").success).toBe(false);
+  });
+});
 
 describe("vendorSchema", () => {
   it("accepts a valid stall name", () => {
@@ -111,6 +152,58 @@ describe("placeOrderSchema", () => {
         items: [{ menuItemId: "1", name: "Queue item", quantity: 2 }],
       }).success,
     ).toBe(true);
+  });
+
+  const item = (over = {}) => ({
+    menuItemId: "1",
+    name: "X",
+    quantity: 1,
+    ...over,
+  });
+
+  it("rejects an empty cart (needs at least one item)", () => {
+    expect(
+      placeOrderSchema.safeParse({ customerName: "Sam", items: [] }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an empty customer name", () => {
+    expect(
+      placeOrderSchema.safeParse({ customerName: "", items: [item()] }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+    ["over the max of 20", 21],
+  ])("rejects quantity %s", (_label, quantity) => {
+    expect(
+      placeOrderSchema.safeParse({
+        customerName: "Sam",
+        items: [item({ quantity })],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts the quantity boundaries 1 and 20", () => {
+    for (const quantity of [1, 20]) {
+      expect(
+        placeOrderSchema.safeParse({
+          customerName: "Sam",
+          items: [item({ quantity })],
+        }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("rejects an empty menuItemId", () => {
+    expect(
+      placeOrderSchema.safeParse({
+        customerName: "Sam",
+        items: [item({ menuItemId: "" })],
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -299,6 +392,15 @@ describe("parseBoothHours", () => {
     expect(
       parseBoothHours({ mode: "daily", open: "10am", close: "18:00" }),
     ).toBeNull();
+  });
+
+  it.each([
+    ["a single-digit hour", "9:00"],
+    ["trailing garbage (no $ anchor)", "09:00x"],
+    ["leading garbage (no ^ anchor)", "x09:00"],
+    ["three-digit hour", "100:00"],
+  ])("rejects %s as the open time", (_label, open) => {
+    expect(parseBoothHours({ mode: "daily", open, close: "18:00" })).toBeNull();
   });
 
   it("passes a valid weekly schedule through", () => {

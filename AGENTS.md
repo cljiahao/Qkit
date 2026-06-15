@@ -25,9 +25,15 @@ Vitest · pnpm 11 · Node ≥24 · deploy target: Vercel
 pnpm dev          # dev server — http://localhost:3000
 pnpm build        # production build
 pnpm test         # run test suite (vitest)
+pnpm test:mutation # stryker mutation testing (scoped to src/lib; ~1 min)
 pnpm check        # prettier --check + eslint + tsc --noEmit
 pnpm format       # prettier --write
 ```
+
+Mutation testing (Stryker) is scoped to `src/lib` — the pure business logic.
+Components/actions/supabase clients are excluded (I/O- or DOM-bound, low signal).
+Score gate: build breaks under 80%. Component behavior is covered by RTL+jsdom
+tests (`*.dom.test.tsx`), unit logic by node tests (`*.test.ts`).
 
 ## File Layout
 

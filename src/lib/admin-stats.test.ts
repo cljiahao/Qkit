@@ -22,6 +22,19 @@ describe("summarizeVendors", () => {
     expect(s.new30d).toBe(3); // 1d, 3d, 10d
   });
 
+  it("includes a signup exactly on the window boundary (<=)", () => {
+    // Exactly 7 / 30 days ago must still count — guards the <= boundary.
+    const s = summarizeVendors(
+      [
+        { plan: "free", created_at: daysAgo(7) },
+        { plan: "free", created_at: daysAgo(30) },
+      ],
+      NOW,
+    );
+    expect(s.new7d).toBe(1); // the 7-day-old one
+    expect(s.new30d).toBe(2); // both
+  });
+
   it("handles empty input", () => {
     expect(summarizeVendors([], NOW)).toEqual({
       total: 0,

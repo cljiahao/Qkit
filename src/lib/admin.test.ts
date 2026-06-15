@@ -2,19 +2,29 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock the server Supabase client and next/navigation. vi.hoisted so the fns
 // exist before the (hoisted) vi.mock factories run.
-const { maybeSingle, getUser, notFoundMock } = vi.hoisted(() => ({
-  maybeSingle: vi.fn(),
-  getUser: vi.fn(),
-  notFoundMock: vi.fn(() => {
-    // Real notFound() throws to halt the request; mirror that so code after it
-    // never runs and callers reject.
-    throw new Error("NEXT_NOT_FOUND");
-  }),
-}));
+const { maybeSingle, getUser, notFoundMock, fromMock, selectMock, eqMock } =
+  vi.hoisted(() => {
+    const maybeSingle = vi.fn();
+    const eqMock = vi.fn(() => ({ maybeSingle }));
+    const selectMock = vi.fn(() => ({ eq: eqMock }));
+    const fromMock = vi.fn(() => ({ select: selectMock }));
+    return {
+      maybeSingle,
+      getUser: vi.fn(),
+      fromMock,
+      selectMock,
+      eqMock,
+      notFoundMock: vi.fn(() => {
+        // Real notFound() throws to halt the request; mirror that so code after
+        // it never runs and callers reject.
+        throw new Error("NEXT_NOT_FOUND");
+      }),
+    };
+  });
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: vi.fn(async () => ({
-    from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }),
+    from: fromMock,
     auth: { getUser },
   })),
 }));
@@ -27,6 +37,9 @@ beforeEach(() => {
   maybeSingle.mockReset();
   getUser.mockReset();
   notFoundMock.mockClear();
+  fromMock.mockClear();
+  selectMock.mockClear();
+  eqMock.mockClear();
 });
 
 describe("isAdmin", () => {
@@ -38,6 +51,14 @@ describe("isAdmin", () => {
   it("false when no row (RLS hides it for non-admins)", async () => {
     maybeSingle.mockResolvedValue({ data: null });
     expect(await isAdmin("u1")).toBe(false);
+  });
+
+  it("queries the admins table by user_id", async () => {
+    maybeSingle.mockResolvedValue({ data: null });
+    await isAdmin("u1");
+    expect(fromMock).toHaveBeenCalledWith("admins");
+    expect(selectMock).toHaveBeenCalledWith("user_id");
+    expect(eqMock).toHaveBeenCalledWith("user_id", "u1");
   });
 });
 

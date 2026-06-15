@@ -110,6 +110,47 @@ describe("recent-orders", () => {
     ).not.toThrow();
   });
 
+  it("sorts by placedAt descending regardless of stored order", () => {
+    localStorage.setItem(
+      "qkit:recent-orders",
+      JSON.stringify([
+        {
+          boothId: "b1",
+          orderNumber: "0001",
+          customerName: "A",
+          placedAt: 100,
+        },
+        {
+          boothId: "b1",
+          orderNumber: "0002",
+          customerName: "B",
+          placedAt: 300,
+        },
+        {
+          boothId: "b1",
+          orderNumber: "0003",
+          customerName: "C",
+          placedAt: 200,
+        },
+      ]),
+    );
+    expect(getRecentOrders().map((o) => o.orderNumber)).toEqual([
+      "0002",
+      "0003",
+      "0001",
+    ]);
+  });
+
+  it.each([
+    ["boothId", { orderNumber: "0001", customerName: "A", placedAt: 1 }],
+    ["orderNumber", { boothId: "b1", customerName: "A", placedAt: 1 }],
+    ["customerName", { boothId: "b1", orderNumber: "0001", placedAt: 1 }],
+    ["placedAt", { boothId: "b1", orderNumber: "0001", customerName: "A" }],
+  ])("drops an entry missing %s", (_field, obj) => {
+    localStorage.setItem("qkit:recent-orders", JSON.stringify([obj]));
+    expect(getRecentOrders()).toEqual([]);
+  });
+
   it("tolerates garbage in storage", () => {
     localStorage.setItem("qkit:recent-orders", "not json");
     expect(getRecentOrders()).toEqual([]);
