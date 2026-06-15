@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
-import type { StatsSummary } from "@/lib/stats";
+import type { SeriesPoint, StatsSummary } from "@/lib/stats";
 import { KpiRow } from "./kpi-row";
+import { ExportButton } from "./export-button";
+import { TrendChart } from "./trend-chart";
 import { BusyHeatmap } from "./busy-heatmap";
 import { TopItems } from "./top-items";
 import { OptionsBreakdown } from "./options-breakdown";
@@ -16,6 +18,9 @@ type Deltas = {
 interface Props {
   summary: StatsSummary;
   deltas: Deltas;
+  series: SeriesPoint[] | null;
+  range: string;
+  boothId: string;
   pro: boolean;
 }
 
@@ -40,7 +45,14 @@ function Block({
   );
 }
 
-export function StatsView({ summary, deltas, pro }: Props) {
+export function StatsView({
+  summary,
+  deltas,
+  series,
+  range,
+  boothId,
+  pro,
+}: Props) {
   if (summary.orderCount === 0) {
     return (
       <div className="ticket overflow-hidden rounded-2xl border border-dashed border-border py-20 text-center">
@@ -58,6 +70,14 @@ export function StatsView({ summary, deltas, pro }: Props) {
 
       {pro ? (
         <>
+          <div className="flex justify-end">
+            <ExportButton summary={summary} range={range} boothId={boothId} />
+          </div>
+          {series && (
+            <Block delay={120}>
+              <TrendChart series={series} range={range} />
+            </Block>
+          )}
           <Block delay={180}>
             <BusyHeatmap summary={summary} />
           </Block>

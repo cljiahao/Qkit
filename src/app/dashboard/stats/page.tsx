@@ -3,7 +3,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
 import { parseOrderItems } from "@/lib/schemas";
-import { computeStats, pctChange, type StatsOrder } from "@/lib/stats";
+import {
+  computeStats,
+  pctChange,
+  windowSeries,
+  type SeriesPoint,
+  type StatsOrder,
+} from "@/lib/stats";
 import { allowedStatsRanges, normalizePlan } from "@/lib/plan";
 import { MS_PER_DAY } from "@/lib/utils";
 import type { Database } from "@/lib/types";
@@ -86,14 +92,16 @@ export default async function StatsPage({ searchParams }: Props) {
     boothParam && boothIds.includes(boothParam) ? boothParam : "all";
   const queryIds = selectedBooth === "all" ? boothIds : [selectedBooth];
 
-  const summary = computeStats(await fetchOrders(supabase, queryIds, cutoff));
+  const orders = await fetchOrders(supabase, queryIds, cutoff);
+  const summary = computeStats(orders);
 
-  // Period comparison (Pro): same metrics over the immediately prior window.
+  // Period comparison + trend are Pro-only.
   let deltas: {
     revenue: number | null;
     orders: number | null;
     aov: number | null;
   } | null = null;
+  let series: SeriesPoint[] | null = null;
   if (pro && queryIds.length) {
     const priorCutoff = new Date(now - 2 * days * MS_PER_DAY).toISOString();
     const prior = computeStats(
@@ -104,6 +112,10 @@ export default async function StatsPage({ searchParams }: Props) {
       orders: pctChange(summary.orderCount, prior.orderCount),
       aov: pctChange(summary.aov_cents, prior.aov_cents),
     };
+    // 24h → 24 hourly slots; multi-day → one slot per day.
+    const buckets = days === 1 ? 24 : days;
+    const bucketMs = days === 1 ? 3_600_000 : MS_PER_DAY;
+    series = windowSeries(orders, now, buckets, bucketMs);
   }
 
   return (
@@ -124,7 +136,14 @@ export default async function StatsPage({ searchParams }: Props) {
         allowedRanges={allowedRanges}
       />
 
-      <StatsView summary={summary} deltas={deltas} pro={pro} />
+      <StatsView
+        summary={summary}
+        deltas={deltas}
+        series={series}
+        range={range}
+        boothId={selectedBooth}
+        pro={pro}
+      />
     </div>
   );
 }

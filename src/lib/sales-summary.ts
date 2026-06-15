@@ -1,0 +1,107 @@
+import type { StatsSummary } from "@/lib/stats";
+
+// ── Stable external sales contract (v1) ──────────────────────────────────────
+// This is the FROZEN shape that the `/api/v1/sales/summary` route returns and
+// that CSV export mirrors. It is intentionally decoupled from the internal
+// StatsSummary (which can churn) so sibling -kit products and exports keep
+// working across refactors. snake_case + explicit `version` = language-agnostic,
+// versionable. Add fields additively; bump `version` for breaking changes.
+
+export type SalesSummaryV1 = {
+  version: 1;
+  generated_at: string; // ISO 8601, supplied by the caller
+  range: string; // "24h" | "7d" | "30d" | "90d"
+  booth_id: string; // a booth id, or "all"
+  revenue_cents: number;
+  order_count: number;
+  aov_cents: number;
+  cancelled: number;
+  fulfilment_rate: number; // 0..1
+  gross_margin: {
+    revenue_cents: number;
+    cost_cents: number;
+    profit_cents: number;
+    margin_pct: number;
+  } | null;
+  top_items: {
+    label: string;
+    quantity: number;
+    revenue_cents: number;
+    profit_cents: number;
+  }[];
+};
+
+export function toSalesSummaryV1(
+  summary: StatsSummary,
+  meta: { range: string; boothId: string; generatedAt: string },
+): SalesSummaryV1 {
+  const gm = summary.grossMargin;
+  return {
+    version: 1,
+    generated_at: meta.generatedAt,
+    range: meta.range,
+    booth_id: meta.boothId,
+    revenue_cents: summary.revenue_cents,
+    order_count: summary.orderCount,
+    aov_cents: summary.aov_cents,
+    cancelled: summary.cancelled,
+    fulfilment_rate: summary.fulfilmentRate,
+    gross_margin: gm
+      ? {
+          revenue_cents: gm.revenue_cents,
+          cost_cents: gm.cost_cents,
+          profit_cents: gm.profit_cents,
+          margin_pct: gm.marginPct,
+        }
+      : null,
+    top_items: summary.topItems.map((t) => ({
+      label: t.label,
+      quantity: t.quantity,
+      revenue_cents: t.revenue_cents,
+      profit_cents: t.profit_cents,
+    })),
+  };
+}
+
+function dollars(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+function csvCell(value: string | number): string {
+  const s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * Serialise a sales summary to CSV: a key/value summary block, then the
+ * top-items table. Monetary values are plain decimals (no "$") so spreadsheets
+ * treat them as numbers.
+ */
+export function salesSummaryToCsv(s: SalesSummaryV1): string {
+  const rows: (string | number)[][] = [
+    ["Metric", "Value"],
+    ["Generated at", s.generated_at],
+    ["Range", s.range],
+    ["Booth", s.booth_id],
+    ["Revenue", dollars(s.revenue_cents)],
+    ["Orders", s.order_count],
+    ["Avg order", dollars(s.aov_cents)],
+    ["Cancelled", s.cancelled],
+    ["Fulfilment %", Math.round(s.fulfilment_rate * 100)],
+  ];
+  if (s.gross_margin) {
+    rows.push(["Gross margin %", Math.round(s.gross_margin.margin_pct)]);
+    rows.push(["Profit", dollars(s.gross_margin.profit_cents)]);
+  }
+  rows.push([]);
+  rows.push(["Item", "Quantity", "Revenue", "Profit"]);
+  for (const it of s.top_items) {
+    rows.push([
+      it.label,
+      it.quantity,
+      dollars(it.revenue_cents),
+      dollars(it.profit_cents),
+    ]);
+  }
+  return rows.map((r) => r.map(csvCell).join(",")).join("\n");
+}

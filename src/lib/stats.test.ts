@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { computeStats, pctChange, type StatsOrder } from "./stats";
+import {
+  computeStats,
+  pctChange,
+  windowSeries,
+  type StatsOrder,
+} from "./stats";
 
 function order(
   status: StatsOrder["status"],
@@ -156,6 +161,43 @@ describe("pctChange", () => {
   it("is null when prior is 0 (undefined growth)", () => {
     expect(pctChange(50, 0)).toBeNull();
     expect(pctChange(0, 0)).toBeNull();
+  });
+});
+
+describe("windowSeries", () => {
+  const DAY = 86_400_000;
+  const now = Date.parse("2026-06-12T00:00:00Z");
+
+  it("buckets orders into daily slots, newest slot last", () => {
+    const s = windowSeries(
+      [
+        order("completed", 100, [], "2026-06-12T00:00:00Z"), // today (slot 2)
+        order("ready", 200, [], "2026-06-11T00:00:00Z"), // 1d ago (slot 1)
+        order("completed", 300, [], "2026-06-10T00:00:00Z"), // 2d ago (slot 0)
+      ],
+      now,
+      3,
+      DAY,
+    );
+    expect(s).toHaveLength(3);
+    expect(s[2]).toEqual({ orders: 1, revenue_cents: 100 });
+    expect(s[1]).toEqual({ orders: 1, revenue_cents: 200 });
+    expect(s[0]).toEqual({ orders: 1, revenue_cents: 300 });
+  });
+
+  it("ignores orders outside the window and cancelled orders", () => {
+    const s = windowSeries(
+      [
+        order("completed", 100, [], "2026-06-12T00:00:00Z"),
+        order("cancelled", 999, [], "2026-06-12T00:00:00Z"),
+        order("completed", 500, [], "2026-06-01T00:00:00Z"), // 11d ago, out
+      ],
+      now,
+      3,
+      DAY,
+    );
+    expect(s[2]).toEqual({ orders: 1, revenue_cents: 100 });
+    expect(s.reduce((n, p) => n + p.orders, 0)).toBe(1);
   });
 });
 

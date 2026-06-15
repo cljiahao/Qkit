@@ -64,6 +64,37 @@ export function pctChange(current: number, prior: number): number | null {
   return ((current - prior) / prior) * 100;
 }
 
+export type SeriesPoint = { orders: number; revenue_cents: number };
+
+/**
+ * Bucket orders into a fixed-size time series ending "now" — the trend line.
+ * `buckets` slots of `bucketMs` each; index 0 is the oldest slot, the last is
+ * the current one. Orders outside the window are ignored. Cancelled excluded.
+ * Pure: nowMs is passed in (no Date.now), created_at is parsed deterministically.
+ */
+export function windowSeries(
+  orders: StatsOrder[],
+  nowMs: number,
+  buckets: number,
+  bucketMs: number,
+): SeriesPoint[] {
+  const series: SeriesPoint[] = Array.from({ length: buckets }, () => ({
+    orders: 0,
+    revenue_cents: 0,
+  }));
+  for (const o of orders) {
+    if (o.status === "cancelled") continue;
+    const t = Date.parse(o.created_at);
+    if (!Number.isFinite(t)) continue;
+    const ago = Math.floor((nowMs - t) / bucketMs);
+    const idx = buckets - 1 - ago;
+    if (idx < 0 || idx >= buckets) continue;
+    series[idx].orders += 1;
+    series[idx].revenue_cents += o.total_cents;
+  }
+  return series;
+}
+
 /**
  * Aggregate order rows into KPIs, patterns, and (cost-aware) margins. Cancelled
  * orders are excluded from revenue/items but counted for the fulfilment rate.
