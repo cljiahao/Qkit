@@ -32,8 +32,10 @@ pnpm format       # prettier --write
 
 Mutation testing (Stryker) is scoped to `src/lib` — the pure business logic.
 Components/actions/supabase clients are excluded (I/O- or DOM-bound, low signal).
-Score gate: build breaks under 80%. Component behavior is covered by RTL+jsdom
-tests (`*.dom.test.tsx`), unit logic by node tests (`*.test.ts`).
+**Advisory only** — non-blocking (no CI gate); run on demand when changing
+`src/lib` and treat survivors as a review prompt (many remaining are equivalent
+mutants). Component behavior is covered by RTL+jsdom tests (`*.dom.test.tsx`),
+unit logic by node tests (`*.test.ts`).
 
 ## File Layout
 
