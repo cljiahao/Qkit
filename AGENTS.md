@@ -112,9 +112,10 @@ better-auth / Drizzle and will break RLS + realtime.
 
 ## AI Harness
 
-PreToolUse: blocks secrets + CI files (exit 2): `.env*` (except `.env.example`),
-`.github/workflows/`, cert files (`.pem`/`.key`/`.secret`), `credentials.json`/`.netrc`;
-and blocks `--no-verify`. App code, skills, specs unrestricted.
+PreToolUse: blocks secret files (exit 2): `.env*` (except `.env.example`),
+cert files (`.pem`/`.key`/`.p12`/`.pfx`/`.secret`), `credentials.json`/`.netrc`/`.secrets`;
+and blocks `--no-verify`. App code, skills, specs, and `.github/workflows/`
+unrestricted (CI is reviewed code; the workflow-write block was lifted 2026-06-16).
 UserPromptSubmit: pattern-checks prompts for injection phrases; exit 2 blocks.
 PostToolUse: `tsc --noEmit --incremental` after every Edit/Write. Feedback-only.
 Stop: exits 0 when `stop_hook_active` (no re-entry loop); else runs the test

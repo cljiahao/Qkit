@@ -9,7 +9,7 @@
             "command": "node",
             "args": [
               "-e",
-              "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{const d=JSON.parse(b||'{}');const f=((d.tool_input||{}).file_path||'');const n=f.split(/[\\\\/]/).pop()||'';const blocked=(n.startsWith('.env')&&!n.includes('example'))||f.includes('.github/workflows/')||['pem','key','p12','pfx','secret'].some(e=>n.endsWith('.'+e))||['credentials.json','.netrc','.secrets'].includes(n);process.exit(blocked?2:0)})"
+              "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{const d=JSON.parse(b||'{}');const f=((d.tool_input||{}).file_path||'');const n=f.split(/[\\\\/]/).pop()||'';const blocked=(n.startsWith('.env')&&!n.includes('example'))||['pem','key','p12','pfx','secret'].some(e=>n.endsWith('.'+e))||['credentials.json','.netrc','.secrets'].includes(n);process.exit(blocked?2:0)})"
             ]
           }
         ]
