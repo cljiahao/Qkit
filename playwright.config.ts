@@ -13,7 +13,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: "list",
+  // List for live console output; also emit an HTML report in CI so a failed
+  // run has an uploadable artifact (see .github/workflows/ci.yml).
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
