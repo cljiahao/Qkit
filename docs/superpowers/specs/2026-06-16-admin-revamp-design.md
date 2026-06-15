@@ -40,7 +40,7 @@ the band + funnel. CTA-click counts demoted to one small supporting line.
   `lib/admin-stats.ts` → `{ signedUp, withBooth, withOrder, pro }`. Pure + tested.
 - `admin/page.tsx` consolidates to ~5 queries (Promise.all): vendors; booths
   `(id, vendor_id, is_active)`; orders `(booth_id, status, total_cents,
-  created_at)`; events; audit. Everything (funnel, 7d/prior counts + Δ, trend
+created_at)`; events; audit. Everything (funnel, 7d/prior counts + Δ, trend
   series) is derived in-memory from those.
   - NOTE: fetching all orders is fine at validation scale; revisit with
     aggregation if volume grows (leave a comment).

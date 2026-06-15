@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { summarizeEvents, summarizeVendors } from "./admin-stats";
+import {
+  activationFunnel,
+  summarizeEvents,
+  summarizeVendors,
+} from "./admin-stats";
+import type { Plan } from "@/lib/types";
 
 const NOW = Date.parse("2026-06-11T00:00:00Z");
 const daysAgo = (n: number) => new Date(NOW - n * 86_400_000).toISOString();
@@ -67,5 +72,37 @@ describe("summarizeEvents", () => {
       byType: {},
       last7dByType: {},
     });
+  });
+});
+
+describe("activationFunnel", () => {
+  const v = (id: string, plan: Plan = "free") => ({ id, plan });
+
+  it("counts distinct vendors at each stage", () => {
+    const f = activationFunnel(
+      [v("a"), v("b"), v("c", "pro"), v("d")],
+      [
+        { id: "b1", vendor_id: "a" },
+        { id: "b2", vendor_id: "a" }, // a has two booths — counts once
+        { id: "b3", vendor_id: "b" },
+        { id: "b4", vendor_id: "c" },
+      ],
+      ["b1", "b1", "b4"], // orders on a's and c's booths
+    );
+    expect(f).toEqual({ signedUp: 4, withBooth: 3, withOrder: 2, pro: 1 });
+  });
+
+  it("ignores booths/orders with no matching vendor", () => {
+    const f = activationFunnel(
+      [v("a")],
+      [{ id: "b1", vendor_id: "ghost" }],
+      ["b1", "unknown-booth"],
+    );
+    expect(f).toEqual({ signedUp: 1, withBooth: 0, withOrder: 0, pro: 0 });
+  });
+
+  it("is all-zero (except signups) with no booths or orders", () => {
+    const f = activationFunnel([v("a"), v("b")], [], []);
+    expect(f).toEqual({ signedUp: 2, withBooth: 0, withOrder: 0, pro: 0 });
   });
 });

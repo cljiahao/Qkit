@@ -18,6 +18,44 @@ export type EventSummary = {
   last7dByType: Record<string, number>;
 };
 
+export type ActivationFunnel = {
+  signedUp: number; // vendors
+  withBooth: number; // vendors with ≥1 booth
+  withOrder: number; // vendors with ≥1 order
+  pro: number; // vendors on the Pro plan
+};
+
+/**
+ * Vendor activation funnel: signed up → created a booth → took an order →
+ * upgraded to Pro. Counts DISTINCT vendors at each stage (a vendor with two
+ * booths counts once). Foreign booth/order rows (no matching vendor) are
+ * ignored. Pure: no DB.
+ */
+export function activationFunnel(
+  vendors: { id: string; plan: Plan }[],
+  booths: { id: string; vendor_id: string }[],
+  orderBoothIds: string[],
+): ActivationFunnel {
+  const vendorIds = new Set(vendors.map((v) => v.id));
+  const boothToVendor = new Map<string, string>();
+  const withBooth = new Set<string>();
+  for (const b of booths) {
+    boothToVendor.set(b.id, b.vendor_id);
+    if (vendorIds.has(b.vendor_id)) withBooth.add(b.vendor_id);
+  }
+  const withOrder = new Set<string>();
+  for (const boothId of new Set(orderBoothIds)) {
+    const vendorId = boothToVendor.get(boothId);
+    if (vendorId && vendorIds.has(vendorId)) withOrder.add(vendorId);
+  }
+  return {
+    signedUp: vendors.length,
+    withBooth: withBooth.size,
+    withOrder: withOrder.size,
+    pro: vendors.filter((v) => v.plan === "pro").length,
+  };
+}
+
 function withinDays(createdAt: string, nowMs: number, days: number): boolean {
   const t = Date.parse(createdAt);
   return Number.isFinite(t) && nowMs - t <= days * MS_PER_DAY;
