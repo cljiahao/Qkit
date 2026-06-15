@@ -19,19 +19,17 @@ import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { boothColor } from "@/lib/booth-color";
+import { isTerminal } from "@/lib/orders";
 import { ChevronDown } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
 
-const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  preparing: "ready",
-  ready: "completed",
-};
-
-// Label for the advance button, keyed by the order's CURRENT status — intent,
-// not the raw next-status name.
-const ADVANCE_LABEL: Partial<Record<OrderStatus, string>> = {
-  preparing: "Mark Ready",
-  ready: "Mark Picked Up",
+// Forward transition keyed by the order's CURRENT status: where the advance
+// button takes it (next) and what it says (label = intent, not the raw name).
+const ADVANCE: Partial<
+  Record<OrderStatus, { next: OrderStatus; label: string }>
+> = {
+  preparing: { next: "ready", label: "Mark Ready" },
+  ready: { next: "completed", label: "Mark Picked Up" },
 };
 
 export function OrderCard({
@@ -47,21 +45,21 @@ export function OrderCard({
   const supabase = useMemo(() => createClient(), []);
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
-  const nextStatus = NEXT_STATUS[status];
+  const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
 
   async function advanceStatus() {
-    if (!nextStatus) return;
+    if (!advance) return;
     setUpdating(true);
     const { error } = await supabase
       .from("orders")
-      .update({ status: nextStatus })
+      .update({ status: advance.next })
       .eq("id", order.id);
 
     if (error) {
       toast.error("Failed to update order");
     } else {
-      setStatus(nextStatus);
+      setStatus(advance.next);
     }
     setUpdating(false);
   }
@@ -81,7 +79,7 @@ export function OrderCard({
     setUpdating(false);
   }
 
-  const closed = status === "completed" || status === "cancelled";
+  const closed = isTerminal(status);
 
   return (
     <div className="ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]">
@@ -185,14 +183,14 @@ export function OrderCard({
 
         {!closed && (
           <div className="flex gap-2 px-4 pb-4">
-            {nextStatus && (
+            {advance && (
               <Button
                 size="sm"
                 className="h-9 flex-1 rounded-lg font-semibold"
                 onClick={advanceStatus}
                 disabled={updating}
               >
-                {ADVANCE_LABEL[status]}
+                {advance.label}
               </Button>
             )}
             <AlertDialog>

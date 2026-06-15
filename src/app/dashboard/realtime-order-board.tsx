@@ -6,7 +6,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
-import { sortActiveOrders } from "@/lib/orders";
+import { isTerminal, sortActiveOrders } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/lib/types";
@@ -32,9 +32,7 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
 
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
 
-  const active = sortActiveOrders(
-    orders.filter((o) => o.status !== "completed" && o.status !== "cancelled"),
-  );
+  const active = sortActiveOrders(orders.filter((o) => !isTerminal(o.status)));
   const activeCountFor = (id: string) =>
     active.filter((o) => o.booth_id === id).length;
 

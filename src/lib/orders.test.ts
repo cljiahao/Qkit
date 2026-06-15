@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { sortActiveOrders } from "./orders";
-import type { Order } from "./types";
+import { isTerminal, sortActiveOrders } from "./orders";
+import type { Order, OrderStatus } from "./types";
 
 function order(over: Partial<Order>): Order {
   return {
@@ -83,5 +83,17 @@ describe("sortActiveOrders", () => {
     ];
     sortActiveOrders(input);
     expect(input.map((o) => o.id)).toEqual(["r", "p"]);
+  });
+});
+
+describe("isTerminal", () => {
+  it("is true only for completed and cancelled", () => {
+    expect(isTerminal("completed")).toBe(true);
+    expect(isTerminal("cancelled")).toBe(true);
+  });
+
+  it("is false for in-flight statuses", () => {
+    const live: OrderStatus[] = ["pending", "confirmed", "preparing", "ready"];
+    for (const s of live) expect(isTerminal(s)).toBe(false);
   });
 });

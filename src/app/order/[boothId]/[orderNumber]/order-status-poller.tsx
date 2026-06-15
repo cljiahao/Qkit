@@ -11,6 +11,7 @@ import {
   requestNotifyPermission,
 } from "@/lib/order-alerts";
 import { getOrderStatus } from "./status-actions";
+import { isTerminal } from "@/lib/orders";
 import type { OrderStatus } from "@/lib/types";
 
 // Poll cadence. The customer status page is poll-only by design: Supabase
@@ -20,7 +21,6 @@ import type { OrderStatus } from "@/lib/types";
 // latency is fine and a poll works everywhere. The vendor dashboard, on
 // desktop where latency matters, keeps realtime.
 const POLL_MS = 5000;
-const TERMINAL: OrderStatus[] = ["completed", "cancelled"];
 
 interface Props {
   boothId: string;
@@ -74,7 +74,7 @@ export function OrderStatusPoller({
   // (phone pocketed) and resumes with an immediate refresh on return — saves
   // needless DB hits and gives a fresh status the instant the customer looks.
   useEffect(() => {
-    if (TERMINAL.includes(status)) return;
+    if (isTerminal(status)) return;
     let stopped = false;
     let timer: ReturnType<typeof setInterval> | undefined;
 
@@ -156,7 +156,7 @@ export function OrderStatusPoller({
   const activeIndex = completed ? STEPS.length - 1 : STEPS.indexOf(status);
 
   // Offer the notify opt-in only while still waiting — moot once ready/done.
-  const waiting = !["ready", "completed", "cancelled"].includes(status);
+  const waiting = status !== "ready" && !isTerminal(status);
   const canAsk = waiting && isNotifySupported() && permission === "default";
   const willNotify = waiting && permission === "granted";
 

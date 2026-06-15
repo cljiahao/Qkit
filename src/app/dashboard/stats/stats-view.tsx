@@ -16,21 +16,23 @@ interface Props {
   summary: StatsSummary;
 }
 
-// Compact axis tick, e.g. 0 -> "12a", 13 -> "1p".
-function hourTick(h: number): string {
-  const period = h < 12 ? "a" : "p";
+// 12-hour clock label. `long` picks "am"/"pm" vs the compact "a"/"p".
+function hour12(h: number, long: boolean): string {
+  const period = (h < 12 ? "a" : "p") + (long ? "m" : "");
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}${period}`;
 }
 
+// Compact axis tick, e.g. 0 -> "12a", 13 -> "1p".
+const hourTick = (h: number): string => hour12(h, false);
+
 // Readable range for tooltip/caption, e.g. 12 -> "12pm–1pm".
-function hourRange(h: number): string {
-  const fmt = (n: number) => {
-    const period = n < 12 ? "am" : "pm";
-    const h12 = n % 12 === 0 ? 12 : n % 12;
-    return `${h12}${period}`;
-  };
-  return `${fmt(h)}–${fmt((h + 1) % 24)}`;
+const hourRange = (h: number): string =>
+  `${hour12(h, true)}–${hour12((h + 1) % 24, true)}`;
+
+// Recharts tooltip payloads are loosely typed; pull revenue_cents safely.
+function revenueCents(payload: unknown): number {
+  return (payload as { revenue_cents?: number } | null)?.revenue_cents ?? 0;
 }
 
 function Kpi({ label, value }: { label: string; value: string }) {
@@ -97,12 +99,10 @@ export function StatsView({ summary }: Props) {
             />
             <Tooltip
               cursor={{ fill: "var(--color-muted)", opacity: 0.3 }}
-              formatter={(value, _name, item) => {
-                const revenue =
-                  (item?.payload as { revenue_cents?: number } | undefined)
-                    ?.revenue_cents ?? 0;
-                return [`${value} sold · ${formatPrice(revenue)}`, ""];
-              }}
+              formatter={(value, _name, item) => [
+                `${value} sold · ${formatPrice(revenueCents(item?.payload))}`,
+                "",
+              ]}
               labelFormatter={(label) => String(label)}
             />
             <Bar dataKey="quantity" radius={[0, 6, 6, 0]}>
@@ -150,12 +150,10 @@ export function StatsView({ summary }: Props) {
             />
             <Tooltip
               cursor={{ fill: "var(--color-muted)", opacity: 0.3 }}
-              formatter={(value, _name, item) => {
-                const revenue =
-                  (item?.payload as { revenue_cents?: number } | undefined)
-                    ?.revenue_cents ?? 0;
-                return [`${value} orders · ${formatPrice(revenue)}`, ""];
-              }}
+              formatter={(value, _name, item) => [
+                `${value} orders · ${formatPrice(revenueCents(item?.payload))}`,
+                "",
+              ]}
               labelFormatter={(h) => hourRange(Number(h))}
             />
             <Bar dataKey="orders" radius={[4, 4, 0, 0]}>

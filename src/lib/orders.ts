@@ -1,5 +1,13 @@
 import type { Order, OrderStatus } from "@/lib/types";
 
+// A finished order — off the active board, no further transitions. Single
+// source of truth for the "is this done" check that several views need.
+export const TERMINAL_STATUSES: OrderStatus[] = ["completed", "cancelled"];
+
+export function isTerminal(status: OrderStatus): boolean {
+  return TERMINAL_STATUSES.includes(status);
+}
+
 // Active-board ordering. Lower rank = higher on the board. Only the statuses
 // that appear on the active board are ranked meaningfully; terminal/legacy
 // statuses fall to the end so a stray order never sorts above live work.
