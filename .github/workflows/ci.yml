@@ -45,3 +45,33 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  mutation:
+    name: mutation (changed lib)
+    runs-on: ubuntu-latest
+    # PRs only, scoped to the src/lib files the PR touches. Advisory: the
+    # Stryker config sets break=null, so a low score never fails the check.
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Mutation-test changed src/lib files
+        run: |
+          git fetch origin "$GITHUB_BASE_REF" --depth=1
+          FILES=$(git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" \
+            | grep -E '^src/lib/.*\.ts$' \
+            | grep -vE '\.test\.ts$|/types\.ts$|/action-result\.ts$' \
+            | paste -sd, -)
+          if [ -z "$FILES" ]; then
+            echo "No src/lib changes — skipping mutation."
+            exit 0
+          fi
+          echo "Mutating: $FILES"
+          pnpm exec stryker run --mutate "$FILES"
