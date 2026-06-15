@@ -5,6 +5,13 @@ import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { WeekdayKey } from "@/lib/tz";
 import type { BoothHours, DayWindow } from "@/lib/hours";
+import {
+  DEFAULT_WINDOW,
+  dailyFromWeek,
+  dailyHours,
+  emptyWeek,
+  weekFromDaily,
+} from "@/lib/hours-editor";
 
 const DAYS: { key: WeekdayKey; label: string }[] = [
   { key: "mon", label: "Monday" },
@@ -15,20 +22,6 @@ const DAYS: { key: WeekdayKey; label: string }[] = [
   { key: "sat", label: "Saturday" },
   { key: "sun", label: "Sunday" },
 ];
-
-const DEFAULT_WINDOW: DayWindow = { open: "09:00", close: "17:00" };
-
-function emptyWeek(): Record<WeekdayKey, DayWindow | null> {
-  return {
-    mon: null,
-    tue: null,
-    wed: null,
-    thu: null,
-    fri: null,
-    sat: null,
-    sun: null,
-  };
-}
 
 const timeInputClass =
   "h-9 rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
@@ -54,8 +47,7 @@ export function WorkingHoursEditor({
   function emitDaily(open: string, close: string) {
     setDailyOpen(open);
     setDailyClose(close);
-    // Both blank -> no restriction (null). One blank -> still null until paired.
-    onChange(open && close ? { mode: "daily", open, close } : null);
+    onChange(dailyHours(open, close));
   }
 
   function emitWeek(next: Record<WeekdayKey, DayWindow | null>) {
@@ -65,28 +57,12 @@ export function WorkingHoursEditor({
 
   function goWeekly() {
     setMode("weekly");
-    // Pre-fill every day with the current daily window so the vendor tweaks
-    // rather than starts blank.
-    const win: DayWindow =
-      dailyOpen && dailyClose
-        ? { open: dailyOpen, close: dailyClose }
-        : DEFAULT_WINDOW;
-    emitWeek({
-      mon: win,
-      tue: win,
-      wed: win,
-      thu: win,
-      fri: win,
-      sat: win,
-      sun: win,
-    });
+    emitWeek(weekFromDaily(dailyOpen, dailyClose));
   }
 
   function goDaily() {
     setMode("daily");
-    const first = DAYS.map((d) => days[d.key]).find(Boolean) ?? null;
-    const open = first?.open ?? dailyOpen;
-    const close = first?.close ?? dailyClose;
+    const { open, close } = dailyFromWeek(days, dailyOpen, dailyClose);
     emitDaily(open, close);
   }
 
