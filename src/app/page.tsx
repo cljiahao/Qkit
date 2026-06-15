@@ -2,9 +2,13 @@ import Link from "next/link";
 import { Bell, ListChecks, QrCode, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandingCta } from "@/components/landing-cta";
+import { LandingBoardPreview } from "@/components/landing-board-preview";
+import { FeaturedBooths } from "@/components/featured-booths";
 import { createServerClient } from "@/lib/supabase/server";
 
 export const revalidate = 0;
+
+const TRUST = ["No app", "No hardware", "Free to start"];
 
 const STEPS = [
   {
@@ -20,7 +24,7 @@ const STEPS = [
   {
     icon: Bell,
     title: "Watch orders land",
-    body: "Orders hit your live board in real time. Move them pending → ready → done.",
+    body: "Orders hit your live board in real time. Move them preparing → ready → done.",
   },
 ];
 
@@ -35,22 +39,30 @@ const MOAT = [
   },
   {
     title: "Know your numbers",
-    body: "Revenue, order count, and top items per booth — so you stock and staff the next event right.",
+    body: "Revenue trends, your busiest day × hour, top sellers, and true profit margin per item — so you stock and staff the next event right.",
   },
 ];
 
 const FAQ = [
   {
     q: "Do customers need to download anything?",
-    a: "No. They scan the QR and order in their phone browser, then track status on the same page.",
+    a: "No. They scan the QR and order in their phone browser, then track status on the same page — nothing to install.",
+  },
+  {
+    q: "How long does it take to set up?",
+    a: "Minutes. Add your items, print the QR poster, stick it on the stall — you're taking orders.",
+  },
+  {
+    q: "What do I need to run it?",
+    a: "Any phone, tablet, or laptop with a browser. No app, no special hardware, no POS terminal.",
   },
   {
     q: "Can I take payment through QKit?",
-    a: "Not yet — orders are sent to your live board and you settle however you like (cash, PayNow, terminal). Online payment is on the roadmap.",
+    a: "Not yet. Orders land on your live board and you settle however you like — cash, PayNow, or your own terminal. Online payment is on the roadmap.",
   },
   {
     q: "How much does it cost?",
-    a: "Free to start with one booth. Pro unlocks multiple booths and full stats. Reach out when you're ready to upgrade.",
+    a: "Free for one booth with today's stats. Pro adds unlimited booths and full analytics — start free, upgrade when you're ready.",
   },
   {
     q: "Does it work for non-food booths?",
@@ -93,38 +105,64 @@ export default async function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="mx-auto max-w-3xl px-5 pb-16 pt-14 text-center sm:pt-20">
-        <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          <ScanLine className="size-3.5" />
-          Scan · order · track
-        </span>
-        <h1 className="font-display mt-6 text-5xl font-semibold leading-[1.05] sm:text-6xl">
-          Live booth ordering,
-          <br />
-          minus the queue.
-        </h1>
-        <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-          QKit turns any booth into a QR-ordering stall. Customers scan and
-          order from their phone; you watch every order land in real time.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <LandingCta
-            href={primaryHref}
-            event={user ? undefined : "landing_cta"}
-            className="h-12 rounded-xl px-7 text-base font-semibold"
-          >
-            {primaryLabel}
-          </LandingCta>
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="h-12 rounded-xl px-7 text-base font-semibold"
-          >
-            <Link href="#how">See how</Link>
-          </Button>
+      <section className="mx-auto max-w-6xl px-5 pb-10 pt-10 sm:pt-16">
+        <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div className="text-center lg:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <ScanLine className="size-3.5" />
+              Scan · order · track
+            </span>
+            <h1 className="font-display mt-6 text-5xl font-semibold leading-[1.05] sm:text-6xl">
+              Live booth ordering,
+              <br />
+              minus the queue.
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground lg:mx-0">
+              QKit turns any booth into a QR-ordering stall. Customers scan and
+              order from their phone; you watch every order land in real time.
+            </p>
+            <div className="mt-8 flex justify-center gap-3 lg:justify-start">
+              <LandingCta
+                href={primaryHref}
+                event={user ? undefined : "landing_cta"}
+                className="h-12 rounded-xl px-7 text-base font-semibold"
+              >
+                {primaryLabel}
+              </LandingCta>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-12 rounded-xl px-7 text-base font-semibold"
+              >
+                <Link href="#how">See how</Link>
+              </Button>
+            </div>
+          </div>
+          <LandingBoardPreview />
         </div>
       </section>
+
+      {/* Trust strip */}
+      <section className="mx-auto max-w-5xl px-5 pb-14">
+        <p className="text-center text-sm text-muted-foreground">
+          Built in Singapore for hawker stalls, night-market &amp; event booths.
+        </p>
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
+          {TRUST.map((t) => (
+            <span
+              key={t}
+              className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured booths — seam: hidden until real, consenting vendors exist.
+          Future spec wires the data source (showcase opt-in + consent + admin). */}
+      <FeaturedBooths featured={[]} />
 
       {/* How it works */}
       <section id="how" className="mx-auto max-w-5xl px-5 py-14">
@@ -194,7 +232,9 @@ export default async function LandingPage() {
             </p>
             <ul className="mt-4 space-y-2 text-sm">
               <li>Unlimited booths</li>
-              <li>Full stats (7d / 30d + top items)</li>
+              <li>Full stats: 7 / 30 / 90-day + period comparison</li>
+              <li>Busy-times heatmap &amp; revenue trends</li>
+              <li>Profit margin per item + CSV export</li>
               <li>Everything in Free</li>
             </ul>
           </div>
