@@ -90,6 +90,26 @@ describe("recent-orders", () => {
     expect(all.some((o) => o.orderNumber === "0005")).toBe(false);
   });
 
+  it("swallows storage write failures (private mode / quota)", () => {
+    const throwingLs = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+      removeItem: () => {},
+      clear: () => {},
+    };
+    vi.stubGlobal("window", { localStorage: throwingLs });
+    vi.stubGlobal("localStorage", throwingLs);
+    expect(() =>
+      addRecentOrder({
+        boothId: "b1",
+        orderNumber: "0001",
+        customerName: "Ada",
+      }),
+    ).not.toThrow();
+  });
+
   it("tolerates garbage in storage", () => {
     localStorage.setItem("qkit:recent-orders", "not json");
     expect(getRecentOrders()).toEqual([]);

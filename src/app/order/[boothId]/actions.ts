@@ -8,10 +8,10 @@ import {
   type PlaceOrderInput,
 } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
+import { cartTotal } from "@/lib/cart";
+import type { ActionResult } from "@/lib/action-result";
 
-type PlaceOrderResult =
-  | { success: true; orderNumber: string }
-  | { success: false; error: string };
+type PlaceOrderResult = ActionResult<{ orderNumber: string }>;
 
 const boothIdSchema = z.string().uuid();
 
@@ -58,10 +58,7 @@ export async function placeOrder(
   if (numError || !orderNumber)
     return { success: false, error: "Failed to generate order number" };
 
-  const totalCents = order.items.reduce(
-    (sum, item) => sum + (item.price_cents ?? 0) * item.quantity,
-    0,
-  );
+  const totalCents = cartTotal(order.items);
 
   const { error } = await supabase.from("orders").insert({
     booth_id: boothId,

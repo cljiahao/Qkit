@@ -2,8 +2,9 @@
 
 import { createServerClient } from "@/lib/supabase/server";
 import { vendorSchema, type VendorInput } from "@/lib/schemas";
+import type { ActionResult } from "@/lib/action-result";
 
-type CreateVendorResult = { success: true } | { success: false; error: string };
+type CreateVendorResult = ActionResult;
 
 export async function createVendor(
   input: VendorInput,

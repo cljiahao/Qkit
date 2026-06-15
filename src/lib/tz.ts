@@ -15,20 +15,25 @@ const WEEKDAY_MAP: Record<string, WeekdayKey> = {
   Sat: "sat",
 };
 
+// Options are constant, so build the formatter once. Intl.DateTimeFormat
+// construction is comparatively expensive and sgtParts runs per order on the
+// stats hot path.
+const SGT_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: BOOTH_TZ,
+  hourCycle: "h23", // 00–23; avoids the "24:00" some engines emit at midnight
+  hour: "2-digit",
+  minute: "2-digit",
+  weekday: "short",
+});
+
 function sgtParts(iso: string): {
   hour: number;
   minute: number;
   weekday: WeekdayKey;
 } {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: BOOTH_TZ,
-    hourCycle: "h23", // 00–23; avoids the "24:00" some engines emit at midnight
-    hour: "2-digit",
-    minute: "2-digit",
-    weekday: "short",
-  });
   const map: Record<string, string> = {};
-  for (const p of fmt.formatToParts(new Date(iso))) map[p.type] = p.value;
+  for (const p of SGT_FORMAT.formatToParts(new Date(iso)))
+    map[p.type] = p.value;
   return {
     hour: Number(map.hour),
     minute: Number(map.minute),

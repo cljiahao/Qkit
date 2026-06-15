@@ -13,7 +13,7 @@ import { MediaImage } from "@/components/media-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
-import { cartKey } from "@/lib/cart";
+import { cartKey, cartTotal } from "@/lib/cart";
 import { addRecentOrder } from "@/lib/recent-orders";
 import { placeOrder } from "./actions";
 import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
@@ -85,10 +85,7 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
 
   const cartEntries = Array.from(cart.entries());
   const cartItems = Array.from(cart.values());
-  const total = cartItems.reduce(
-    (sum, i) => sum + (i.price_cents ?? 0) * i.quantity,
-    0,
-  );
+  const total = cartTotal(cartItems);
 
   async function onSubmit(formData: { customerName: string }) {
     if (closed) {

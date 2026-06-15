@@ -4,13 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
+import type { ActionResult } from "@/lib/action-result";
 
 const setPlanSchema = z.object({
   vendorId: z.string().uuid(),
   plan: z.enum(["free", "pro"]),
 });
-
-type Result = { success: true } | { success: false; error: string };
 
 /**
  * Flip a vendor's plan. Admin-only: requireAdmin() 404s non-admins before any
@@ -19,7 +18,7 @@ type Result = { success: true } | { success: false; error: string };
  */
 export async function setVendorPlan(
   input: z.infer<typeof setPlanSchema>,
-): Promise<Result> {
+): Promise<ActionResult> {
   const { user } = await requireAdmin();
 
   const parsed = setPlanSchema.safeParse(input);

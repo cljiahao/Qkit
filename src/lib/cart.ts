@@ -24,3 +24,10 @@ export function cartKey(
     .map((o) => `${o.group}${US}${o.choice}`);
   return [menuItemId, ...parts].join(US);
 }
+
+/** Sum of line totals (price × quantity) in cents. Unpriced items count as 0. */
+export function cartTotal(
+  items: { price_cents?: number | null; quantity: number }[],
+): number {
+  return items.reduce((sum, i) => sum + (i.price_cents ?? 0) * i.quantity, 0);
+}

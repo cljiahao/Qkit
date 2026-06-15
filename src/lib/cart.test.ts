@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cartKey } from "./cart";
+import { cartKey, cartTotal } from "./cart";
 
 describe("cartKey", () => {
   it("returns the bare id when there are no options", () => {
@@ -48,5 +48,30 @@ describe("cartKey", () => {
     ]);
     const one = cartKey("burger", [{ group: "Add-ons", choice: "Egg" }]);
     expect(both).not.toBe(one);
+  });
+});
+
+describe("cartTotal", () => {
+  it("is 0 for an empty cart", () => {
+    expect(cartTotal([])).toBe(0);
+  });
+
+  it("sums price × quantity across lines", () => {
+    expect(
+      cartTotal([
+        { price_cents: 350, quantity: 2 },
+        { price_cents: 500, quantity: 1 },
+      ]),
+    ).toBe(1200);
+  });
+
+  it("treats missing/null prices as 0", () => {
+    expect(
+      cartTotal([
+        { price_cents: null, quantity: 3 },
+        { quantity: 2 },
+        { price_cents: 250, quantity: 1 },
+      ]),
+    ).toBe(250);
   });
 });

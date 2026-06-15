@@ -3,12 +3,10 @@
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { boothFormSchema, type BoothFormInput } from "@/lib/schemas";
+import type { ActionResult } from "@/lib/action-result";
 
-type SaveBoothResult =
-  | { success: true; boothId: string }
-  | { success: false; error: string };
-
-type DeleteBoothResult = { success: true } | { success: false; error: string };
+type SaveBoothResult = ActionResult<{ boothId: string }>;
+type DeleteBoothResult = ActionResult;
 
 /**
  * Hard-delete a booth and (via ON DELETE CASCADE, migration 0009) all of its

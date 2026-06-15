@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,7 +44,7 @@ export function OrderCard({
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [updating, setUpdating] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
   const nextStatus = NEXT_STATUS[status];
