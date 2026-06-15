@@ -74,7 +74,13 @@ export async function placeOrder(
     status: "preparing",
   });
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("placeOrder insert failed", error.message);
+    return {
+      success: false,
+      error: "Could not place order. Please try again.",
+    };
+  }
 
   return { success: true, orderNumber };
 }

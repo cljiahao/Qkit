@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { summarizeEvents, summarizeVendors } from "@/lib/admin-stats";
+import { MS_PER_DAY } from "@/lib/utils";
 import { VendorTable, type AdminVendorRow } from "./vendor-table";
 
 export const revalidate = 0;
@@ -24,7 +25,7 @@ export default async function AdminPage() {
   // Reading the wall clock in an async server component is intentional here.
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
-  const cutoff7d = new Date(now - 7 * 86_400_000).toISOString();
+  const cutoff7d = new Date(now - 7 * MS_PER_DAY).toISOString();
 
   const [
     { data: vendorRows },

@@ -1,4 +1,5 @@
 import type { Plan } from "@/lib/types";
+import { MS_PER_DAY } from "@/lib/utils";
 
 export type VendorRowLite = { plan: Plan; created_at: string };
 export type EventRowLite = { type: string; created_at: string };
@@ -17,11 +18,9 @@ export type EventSummary = {
   last7dByType: Record<string, number>;
 };
 
-const DAY = 86_400_000;
-
 function withinDays(createdAt: string, nowMs: number, days: number): boolean {
   const t = Date.parse(createdAt);
-  return Number.isFinite(t) && nowMs - t <= days * DAY;
+  return Number.isFinite(t) && nowMs - t <= days * MS_PER_DAY;
 }
 
 /** Aggregate vendor rows into plan counts + recent signups. Pure. */

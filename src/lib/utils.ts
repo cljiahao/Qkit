@@ -5,6 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Milliseconds in one day. Shared by rolling-window stats cutoffs. */
+export const MS_PER_DAY = 86_400_000;
+
 export function formatPrice(cents: number): string {
   return new Intl.NumberFormat("en-SG", {
     style: "currency",

@@ -28,7 +28,6 @@ export default async function OrderPage({ params }: Props) {
   const available = parseMenuItems(booth.menu_items).filter((m) => m.available);
 
   // Server-time open/closed check (SGT). is_active is already true here.
-  // eslint-disable-next-line react-hooks/purity
   const nowIso = new Date().toISOString();
   const hours = parseBoothHours(booth.hours);
   const open = isBoothOpen({ is_active: true, hours }, nowIso);

@@ -37,13 +37,15 @@ export async function setVendorPlan(
   }
 
   // Audit trail of who changed what. Best-effort — don't fail the action if the
-  // audit insert hiccups.
-  await supabase.from("admin_audit").insert({
+  // audit insert hiccups, but log it so a broken trail is visible.
+  const { error: auditError } = await supabase.from("admin_audit").insert({
     admin_id: user.id,
     action: "set_plan",
     target_id: parsed.data.vendorId,
     detail: { to: parsed.data.plan },
   });
+  if (auditError)
+    console.error("admin_audit insert failed", auditError.message);
 
   revalidatePath("/admin");
   return { success: true };

@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { parseOrderItems } from "@/lib/schemas";
 import { computeStats, type StatsOrder } from "@/lib/stats";
 import { allowedStatsRanges, normalizePlan } from "@/lib/plan";
+import { MS_PER_DAY } from "@/lib/utils";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
 
@@ -34,7 +35,7 @@ export default async function StatsPage({ searchParams }: Props) {
   // is intentional (the rolling-window cutoff). The purity rule targets client
   // render, not RSC data fetching.
   // eslint-disable-next-line react-hooks/purity
-  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  const cutoff = new Date(Date.now() - days * MS_PER_DAY).toISOString();
 
   const supabase = await createServerClient();
 

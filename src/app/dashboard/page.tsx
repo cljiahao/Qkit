@@ -22,7 +22,6 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: true });
 
   // Open/closed as of this request (SGT); revalidate=0 re-evaluates on nav.
-  // eslint-disable-next-line react-hooks/purity
   const nowIso = new Date().toISOString();
   const boothViews = (booths ?? []).map((b) => ({
     id: b.id,
