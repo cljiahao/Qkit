@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Bell, BellOff, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { isTerminal, sortActiveOrders } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
+import { playReadyChime } from "@/lib/order-alerts";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/lib/types";
 
@@ -27,8 +29,49 @@ type BoothFilter = "all" | string;
 
 export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
   const boothIds = booths.map((b) => b.id);
-  const orders = useRealtimeOrders(boothIds, initialOrders);
   const [filter, setFilter] = useState<BoothFilter>("all");
+  const [soundOn, setSoundOn] = useState(false);
+  const [away, setAway] = useState(0); // new orders that arrived while hidden
+  const originalTitle = useRef("");
+
+  // Restore the sound preference + remember the tab title (post-hydration).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSoundOn(localStorage.getItem("qkit:sound") === "on");
+    originalTitle.current = document.title;
+  }, []);
+
+  // Clear the "while away" badge the moment the vendor looks back at the tab.
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) setAway(0);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  // Reflect the away-count in the tab title so a backgrounded vendor notices.
+  useEffect(() => {
+    if (away > 0) document.title = `(${away}) New orders · QKit`;
+    else if (originalTitle.current) document.title = originalTitle.current;
+  }, [away]);
+
+  function handleNewOrder(order: Order) {
+    if (soundOn) playReadyChime();
+    toast(`New order #${order.order_number} · ${order.customer_name}`);
+    if (document.hidden) setAway((n) => n + 1);
+  }
+
+  function toggleSound() {
+    setSoundOn((on) => {
+      const next = !on;
+      localStorage.setItem("qkit:sound", next ? "on" : "off");
+      if (next) playReadyChime(); // this tap unlocks the AudioContext
+      return next;
+    });
+  }
+
+  const orders = useRealtimeOrders(boothIds, initialOrders, handleNewOrder);
 
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
 
@@ -87,6 +130,27 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleSound}
+            aria-pressed={soundOn}
+            title={soundOn ? "New-order sound on" : "New-order sound off"}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors",
+              soundOn
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-secondary",
+            )}
+          >
+            {soundOn ? (
+              <Bell className="size-3.5" />
+            ) : (
+              <BellOff className="size-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {soundOn ? "Sound on" : "Sound off"}
+            </span>
+          </button>
           {soleBooth && !soleBooth.open && (
             <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1.5 text-sm font-semibold text-muted-foreground">
               Closed

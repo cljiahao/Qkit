@@ -1,14 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { orderRowSchema } from "@/lib/schemas";
 import type { Order } from "@/lib/types";
 
-export function useRealtimeOrders(boothIds: string[], initialOrders: Order[]) {
+export function useRealtimeOrders(
+  boothIds: string[],
+  initialOrders: Order[],
+  onInsert?: (order: Order) => void,
+) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const supabase = createClient();
   const filterString = useMemo(() => boothIds.join(","), [boothIds]);
+
+  // Hold the latest callback in a ref so a fresh closure each render doesn't
+  // force a channel re-subscribe.
+  const onInsertRef = useRef(onInsert);
+  useEffect(() => {
+    onInsertRef.current = onInsert;
+  });
 
   useEffect(() => {
     if (boothIds.length === 0) return;
@@ -38,6 +49,7 @@ export function useRealtimeOrders(boothIds: string[], initialOrders: Order[]) {
 
           if (payload.eventType === "INSERT") {
             setOrders((prev) => [order, ...prev]);
+            onInsertRef.current?.(order);
           } else if (payload.eventType === "UPDATE") {
             setOrders((prev) =>
               prev.map((o) => (o.id === order.id ? order : o)),
