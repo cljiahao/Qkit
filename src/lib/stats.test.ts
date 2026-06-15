@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeStats, type StatsOrder } from "./stats";
+import { computeStats, pctChange, type StatsOrder } from "./stats";
 
 function order(
   status: StatsOrder["status"],
@@ -57,7 +57,13 @@ describe("computeStats", () => {
     expect(s.revenue_cents).toBe(1000);
     expect(s.orderCount).toBe(1);
     expect(s.topItems).toEqual([
-      { label: "Kopi", quantity: 1, revenue_cents: 1000 },
+      {
+        label: "Kopi",
+        quantity: 1,
+        revenue_cents: 1000,
+        cost_cents: 0,
+        profit_cents: 1000,
+      },
     ]);
   });
 
@@ -72,8 +78,20 @@ describe("computeStats", () => {
       ]),
     ]);
     expect(s.topItems).toEqual([
-      { label: "Kopi", quantity: 5, revenue_cents: 700 },
-      { label: "Teh", quantity: 1, revenue_cents: 140 },
+      {
+        label: "Kopi",
+        quantity: 5,
+        revenue_cents: 700,
+        cost_cents: 0,
+        profit_cents: 700,
+      },
+      {
+        label: "Teh",
+        quantity: 1,
+        revenue_cents: 140,
+        cost_cents: 0,
+        profit_cents: 140,
+      },
     ]);
   });
 
@@ -105,7 +123,13 @@ describe("computeStats", () => {
       order("completed", 0, [{ menuItemId: "w", name: "Water", quantity: 4 }]),
     ]);
     expect(s.topItems).toEqual([
-      { label: "Water", quantity: 4, revenue_cents: 0 },
+      {
+        label: "Water",
+        quantity: 4,
+        revenue_cents: 0,
+        cost_cents: 0,
+        profit_cents: 0,
+      },
     ]);
   });
 
@@ -119,5 +143,145 @@ describe("computeStats", () => {
     const s = computeStats([order("completed", 0, items)], 10);
     expect(s.topItems).toHaveLength(10);
     expect(s.topItems[0].label).toBe("Item 14"); // highest quantity first
+  });
+});
+
+describe("pctChange", () => {
+  it("computes percent change", () => {
+    expect(pctChange(150, 100)).toBeCloseTo(50);
+    expect(pctChange(80, 100)).toBeCloseTo(-20);
+    expect(pctChange(100, 100)).toBe(0);
+  });
+
+  it("is null when prior is 0 (undefined growth)", () => {
+    expect(pctChange(50, 0)).toBeNull();
+    expect(pctChange(0, 0)).toBeNull();
+  });
+});
+
+describe("computeStats — fulfilment + cancelled", () => {
+  it("counts cancelled and rates fulfilment = completed / (completed + cancelled)", () => {
+    const s = computeStats([
+      order("completed", 100),
+      order("completed", 100),
+      order("ready", 100), // in-flight: not completed, not cancelled
+      order("cancelled", 100),
+    ]);
+    expect(s.cancelled).toBe(1);
+    // 2 completed / (2 completed + 1 cancelled) = 0.666…
+    expect(s.fulfilmentRate).toBeCloseTo(2 / 3);
+  });
+
+  it("fulfilment rate is 0 when nothing completed or cancelled", () => {
+    const s = computeStats([order("preparing", 100), order("ready", 100)]);
+    expect(s.fulfilmentRate).toBe(0);
+    expect(s.cancelled).toBe(0);
+  });
+});
+
+describe("computeStats — day×hour matrix", () => {
+  it("is 7×24 and buckets by SGT weekday (row 0 = Mon) and hour", () => {
+    // 2026-06-12T04:00:00Z = Fri 12:00 SGT; 2026-06-08T01:00:00Z = Mon 09:00 SGT.
+    const s = computeStats([
+      order("completed", 100, [], "2026-06-12T04:00:00Z"),
+      order("ready", 100, [], "2026-06-12T04:30:00Z"),
+      order("completed", 100, [], "2026-06-08T01:00:00Z"),
+    ]);
+    expect(s.dayHour).toHaveLength(7);
+    expect(s.dayHour[0]).toHaveLength(24);
+    expect(s.dayHour[4][12]).toBe(2); // Fri 12:00
+    expect(s.dayHour[0][9]).toBe(1); // Mon 09:00
+    expect(s.dayHour[2][3]).toBe(0); // untouched cell
+  });
+});
+
+describe("computeStats — option breakdown", () => {
+  it("counts selected choices weighted by quantity, ranked desc", () => {
+    const s = computeStats([
+      order("completed", 0, [
+        {
+          menuItemId: "k",
+          name: "Kopi",
+          quantity: 3,
+          options: [{ group: "Temperature", choice: "Iced" }],
+        },
+        {
+          menuItemId: "k",
+          name: "Kopi",
+          quantity: 1,
+          options: [{ group: "Temperature", choice: "Hot" }],
+        },
+      ]),
+    ]);
+    expect(s.optionBreakdown[0]).toEqual({
+      group: "Temperature",
+      choice: "Iced",
+      count: 3,
+    });
+    expect(s.optionBreakdown).toContainEqual({
+      group: "Temperature",
+      choice: "Hot",
+      count: 1,
+    });
+  });
+});
+
+describe("computeStats — margins", () => {
+  it("is null when no item carries a cost", () => {
+    const s = computeStats([
+      order("completed", 140, [
+        { menuItemId: "k", name: "Kopi", price_cents: 140, quantity: 1 },
+      ]),
+    ]);
+    expect(s.grossMargin).toBeNull();
+    expect(s.topItems[0].cost_cents).toBe(0);
+  });
+
+  it("computes profit + margin from snapshotted costs", () => {
+    const s = computeStats([
+      order("completed", 0, [
+        {
+          menuItemId: "k",
+          name: "Kopi",
+          price_cents: 200,
+          cost_cents: 50,
+          quantity: 2,
+        },
+        {
+          menuItemId: "t",
+          name: "Teh",
+          price_cents: 100,
+          cost_cents: 40,
+          quantity: 1,
+        },
+      ]),
+    ]);
+    // revenue = 200*2 + 100 = 500; cost = 50*2 + 40 = 140; profit = 360.
+    expect(s.grossMargin).toEqual({
+      revenue_cents: 500,
+      cost_cents: 140,
+      profit_cents: 360,
+      marginPct: (360 / 500) * 100,
+    });
+    const kopi = s.topItems.find((t) => t.label === "Kopi")!;
+    expect(kopi.profit_cents).toBe(300); // 400 - 100
+  });
+
+  it("treats a missing cost on one item as 0 (still surfaces margin)", () => {
+    const s = computeStats([
+      order("completed", 0, [
+        {
+          menuItemId: "k",
+          name: "Kopi",
+          price_cents: 200,
+          cost_cents: 50,
+          quantity: 1,
+        },
+        { menuItemId: "w", name: "Water", price_cents: 0, quantity: 1 },
+      ]),
+    ]);
+    expect(s.grossMargin).not.toBeNull();
+    expect(s.grossMargin!.cost_cents).toBe(50);
+    expect(s.grossMargin!.revenue_cents).toBe(200);
   });
 });

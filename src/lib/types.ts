@@ -32,6 +32,9 @@ export type MenuItem = {
   name: string;
   description: string;
   price_cents?: number;
+  // Vendor's unit cost (optional). Drives margin/profit stats. Never shown to
+  // customers — server strips it from the public booth read.
+  cost_cents?: number;
   image_url?: string | null;
   available: boolean;
   option_groups?: OptionGroup[];
@@ -41,6 +44,7 @@ export type CartItem = {
   menuItemId: string;
   name: string;
   price_cents?: number;
+  cost_cents?: number;
   quantity: number;
   options?: SelectedOption[];
 };
@@ -49,6 +53,8 @@ export type OrderItem = {
   menuItemId: string;
   name: string;
   price_cents?: number;
+  // Snapshotted at order time so historical profit is immune to later cost edits.
+  cost_cents?: number;
   quantity: number;
   options?: SelectedOption[];
 };

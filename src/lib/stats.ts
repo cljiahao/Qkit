@@ -1,6 +1,6 @@
 import type { OrderItem, OrderStatus } from "@/lib/types";
 import { formatOptions } from "@/lib/utils";
-import { sgtHour } from "@/lib/tz";
+import { sgtHour, sgtWeekday, type WeekdayKey } from "@/lib/tz";
 
 export type StatsOrder = {
   status: OrderStatus;
@@ -13,6 +13,8 @@ export type TopItem = {
   label: string;
   quantity: number;
   revenue_cents: number;
+  cost_cents: number;
+  profit_cents: number;
 };
 
 export type HourBucket = {
@@ -21,14 +23,31 @@ export type HourBucket = {
   revenue_cents: number;
 };
 
+export type OptionCount = { group: string; choice: string; count: number };
+
+export type GrossMargin = {
+  revenue_cents: number;
+  cost_cents: number;
+  profit_cents: number;
+  marginPct: number; // profit / revenue * 100
+};
+
 export type StatsSummary = {
   revenue_cents: number;
   orderCount: number;
   aov_cents: number;
+  cancelled: number;
+  fulfilmentRate: number; // 0..1 — completed / (completed + cancelled)
   topItems: TopItem[];
   hourly: HourBucket[]; // always 24 entries, hour 0..23
   busiestHour: number | null; // hour with the most orders, null if none
+  dayHour: number[][]; // [7][24] order counts; row 0 = Mon (SGT)
+  optionBreakdown: OptionCount[]; // most-selected customization choices
+  grossMargin: GrossMargin | null; // null when no item carries a cost
 };
+
+// Row order for the day×hour matrix; index 0 = Monday.
+const WEEK: WeekdayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 /** Label an order line by name plus its selected options, e.g. "Kopi · Iced". */
 function itemLabel(item: OrderItem): string {
@@ -37,41 +56,85 @@ function itemLabel(item: OrderItem): string {
 }
 
 /**
- * Aggregate order rows into KPIs + top items. Cancelled orders are excluded
- * from every metric. Pure: no DB, no React, no Date — unit-testable.
+ * Percent change of current vs prior. Returns null when prior is 0 — growth
+ * from nothing is undefined, and the UI should show "—" rather than ∞/NaN.
+ */
+export function pctChange(current: number, prior: number): number | null {
+  if (prior === 0) return null;
+  return ((current - prior) / prior) * 100;
+}
+
+/**
+ * Aggregate order rows into KPIs, patterns, and (cost-aware) margins. Cancelled
+ * orders are excluded from revenue/items but counted for the fulfilment rate.
+ * Pure: no DB, no React, no Date — unit-testable.
  */
 export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
   const counted = orders.filter((o) => o.status !== "cancelled");
+  const cancelled = orders.length - counted.length;
+  const completed = counted.filter((o) => o.status === "completed").length;
+  const fulfilmentDenom = completed + cancelled;
+  const fulfilmentRate = fulfilmentDenom ? completed / fulfilmentDenom : 0;
 
   const revenue_cents = counted.reduce((sum, o) => sum + o.total_cents, 0);
   const orderCount = counted.length;
   const aov_cents = orderCount ? Math.round(revenue_cents / orderCount) : 0;
 
   const byLabel = new Map<string, TopItem>();
+  const optionMap = new Map<string, OptionCount>();
   const hourly: HourBucket[] = Array.from({ length: 24 }, (_, hour) => ({
     hour,
     orders: 0,
     revenue_cents: 0,
   }));
+  const dayHour: number[][] = Array.from({ length: 7 }, () =>
+    Array.from({ length: 24 }, () => 0),
+  );
+
+  let anyCost = false;
+  let itemRevenue = 0;
+  let itemCost = 0;
 
   for (const order of counted) {
-    const bucket = hourly[sgtHour(order.created_at)];
-    bucket.orders += 1;
-    bucket.revenue_cents += order.total_cents;
+    const hour = sgtHour(order.created_at);
+    hourly[hour].orders += 1;
+    hourly[hour].revenue_cents += order.total_cents;
+    dayHour[WEEK.indexOf(sgtWeekday(order.created_at))][hour] += 1;
 
     for (const item of order.items) {
       const label = itemLabel(item);
-      const existing = byLabel.get(label);
       const revenue = (item.price_cents ?? 0) * item.quantity;
+      if (item.cost_cents != null) anyCost = true;
+      const cost = (item.cost_cents ?? 0) * item.quantity;
+      itemRevenue += revenue;
+      itemCost += cost;
+
+      const existing = byLabel.get(label);
       if (existing) {
         existing.quantity += item.quantity;
         existing.revenue_cents += revenue;
+        existing.cost_cents += cost;
+        existing.profit_cents += revenue - cost;
       } else {
         byLabel.set(label, {
           label,
           quantity: item.quantity,
           revenue_cents: revenue,
+          cost_cents: cost,
+          profit_cents: revenue - cost,
         });
+      }
+
+      for (const opt of item.options ?? []) {
+        const key = `${opt.group}${opt.choice}`;
+        const oc = optionMap.get(key);
+        if (oc) oc.count += item.quantity;
+        else
+          optionMap.set(key, {
+            group: opt.group,
+            choice: opt.choice,
+            count: item.quantity,
+          });
       }
     }
   }
@@ -80,6 +143,10 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     .sort(
       (a, b) => b.quantity - a.quantity || b.revenue_cents - a.revenue_cents,
     )
+    .slice(0, topN);
+
+  const optionBreakdown = [...optionMap.values()]
+    .sort((a, b) => b.count - a.count)
     .slice(0, topN);
 
   // Peak by order count; earliest hour wins a tie (stable, deterministic).
@@ -92,12 +159,30 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     }
   }
 
+  // Margin only when at least one item carried a cost — otherwise profit would
+  // falsely equal revenue. Revenue here is item-level (matches the cost basis).
+  const grossMargin: GrossMargin | null = anyCost
+    ? {
+        revenue_cents: itemRevenue,
+        cost_cents: itemCost,
+        profit_cents: itemRevenue - itemCost,
+        marginPct: itemRevenue
+          ? ((itemRevenue - itemCost) / itemRevenue) * 100
+          : 0,
+      }
+    : null;
+
   return {
     revenue_cents,
     orderCount,
     aov_cents,
+    cancelled,
+    fulfilmentRate,
     topItems,
     hourly,
     busiestHour,
+    dayHour,
+    optionBreakdown,
+    grossMargin,
   };
 }
