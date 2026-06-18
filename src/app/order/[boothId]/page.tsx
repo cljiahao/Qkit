@@ -17,12 +17,17 @@ export default async function OrderPage({ params }: Props) {
   const { boothId } = await params;
   const supabase = await createServerClient();
 
-  const { data: booth } = await supabase
-    .from("booths")
-    .select("id, name, image_url, hours, menu_items")
-    .eq("id", boothId)
-    .eq("is_active", true)
-    .single();
+  // Booth row and live stock both key only on boothId and are independent, so
+  // fetch them together — one round-trip on the customer hot path (QR scan).
+  const [{ data: booth }, { data: remainingData }] = await Promise.all([
+    supabase
+      .from("booths")
+      .select("id, name, image_url, hours, menu_items")
+      .eq("id", boothId)
+      .eq("is_active", true)
+      .single(),
+    supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
+  ]);
 
   if (!booth) notFound();
 
@@ -42,9 +47,6 @@ export default async function OrderPage({ params }: Props) {
 
   // Live remaining stock per capped item (counts only, no order PII). Absent
   // until migration 0010 lands → treated as all-unlimited.
-  const { data: remainingData } = await supabase.rpc("booth_remaining_stock", {
-    p_booth_id: booth.id,
-  });
   const remaining = parseRemaining(remainingData);
 
   return (

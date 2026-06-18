@@ -33,12 +33,16 @@ export async function placeOrder(
 
   const supabase = await createServerClient();
 
-  // Re-check the booth is open server-side — never trust the client's state.
-  const { data: booth } = await supabase
-    .from("booths")
-    .select("is_active, hours, menu_items")
-    .eq("id", boothId)
-    .single();
+  // Booth row and live stock both key only on boothId and are independent —
+  // fetch together. Both re-checked server-side; never trust the client.
+  const [{ data: booth }, { data: remainingData }] = await Promise.all([
+    supabase
+      .from("booths")
+      .select("is_active, hours, menu_items")
+      .eq("id", boothId)
+      .single(),
+    supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
+  ]);
   if (!booth) return { success: false, error: "Booth not found" };
   const nowIso = new Date().toISOString();
   if (
@@ -49,12 +53,8 @@ export async function placeOrder(
   )
     return { success: false, error: "This booth is closed" };
 
-  // Re-check sold-out caps server-side against live remaining (counts only).
   // Soft cap: a rare simultaneous-tap oversell-by-one is acceptable and
   // self-heals on cancel; this rejects the obvious "just sold out" case.
-  const { data: remainingData } = await supabase.rpc("booth_remaining_stock", {
-    p_booth_id: boothId,
-  });
   if (overStockLines(order.items, parseRemaining(remainingData)).length > 0)
     return {
       success: false,
