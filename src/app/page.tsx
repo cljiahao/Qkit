@@ -5,6 +5,8 @@ import { LandingCta } from "@/components/landing-cta";
 import { LandingBoardPreview } from "@/components/landing-board-preview";
 import { FeaturedBooths } from "@/components/featured-booths";
 import { createServerClient } from "@/lib/supabase/server";
+import { DEFAULT_PRICING } from "@/lib/pricing";
+import { formatPrice } from "@/lib/utils";
 
 export const revalidate = 0;
 
@@ -34,8 +36,8 @@ const MOAT = [
     body: "Customers order from the browser; you see it instantly. Nothing to install on either side.",
   },
   {
-    title: "Built for stalls",
-    body: "Queue-only or priced, single booth or many, drinks or food — options and customization fit any stall.",
+    title: "Runs the stall, not just the orders",
+    body: "Queue-only or priced, one booth or many, drinks or food. Schedule open/close and cap stock so orders stop the moment you sell out — no babysitting the board.",
   },
   {
     title: "Know your numbers",
@@ -58,11 +60,23 @@ const FAQ = [
   },
   {
     q: "Can I take payment through QKit?",
-    a: "Not yet. Orders land on your live board and you settle however you like — cash, PayNow, or your own terminal. Online payment is on the roadmap.",
+    a: "Not yet. Orders land on your live board and you settle however you like — cash, PayNow, or your own terminal. Online card payment is on the roadmap.",
   },
   {
     q: "How much does it cost?",
-    a: "Free for one booth with today's stats. Pro adds unlimited booths and full analytics — start free, upgrade when you're ready.",
+    a: "Start free with one booth (up to 6 items) and today's stats. Need the full kit for a market day? Grab an event pass for that event, or go monthly if you trade most weeks. You only pay when you need more.",
+  },
+  {
+    q: "Event pass or monthly — what's the difference?",
+    a: "Same full features either way. The pass unlocks them for a single event (great for the occasional market); monthly keeps them on plus full sales history and trends across events (better if you trade most weeks). Pay by PayNow or cash for now.",
+  },
+  {
+    q: "Can orders stop when I sell out?",
+    a: "Yes. Set a stock limit per item and QKit counts it down as orders come in, then marks it sold out so customers can't order what you've run out of. Included with the event pass and monthly.",
+  },
+  {
+    q: "Can I schedule when my booth takes orders?",
+    a: "Yes. Set open/close hours and orders stop automatically outside them — no need to flip the booth off by hand. Included with the event pass and monthly.",
   },
   {
     q: "Does it work for non-food booths?",
@@ -72,9 +86,26 @@ const FAQ = [
 
 export default async function LandingPage() {
   const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    { data: pricingRow },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("pricing")
+      .select("event_pass_cents, monthly_cents, currency")
+      .eq("id", 1)
+      .maybeSingle(),
+  ]);
+
+  const pricing = pricingRow ?? DEFAULT_PRICING;
+  // Only show a figure once a real price is set (avoid "$0.00" pre-config).
+  const passPrice =
+    pricing.event_pass_cents > 0 ? formatPrice(pricing.event_pass_cents) : null;
+  const monthlyPrice =
+    pricing.monthly_cents > 0 ? formatPrice(pricing.monthly_cents) : null;
 
   const primaryHref = user ? "/dashboard" : "/login";
   const primaryLabel = user ? "Go to dashboard" : "Get started";
@@ -206,40 +237,77 @@ export default async function LandingPage() {
       </section>
 
       {/* Pricing teaser */}
-      <section className="mx-auto max-w-3xl px-5 py-14">
-        <h2 className="font-display mb-10 text-center text-3xl font-semibold">
-          Simple pricing
+      <section className="mx-auto max-w-5xl px-5 py-14">
+        <h2 className="font-display mb-3 text-center text-3xl font-semibold">
+          Pricing that fits how you trade
         </h2>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <p className="mx-auto mb-10 max-w-xl text-center text-sm text-muted-foreground">
+          Run free, pay per event when you need the full kit, or go monthly if
+          you trade most weeks.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-3">
+          {/* Free */}
           <div className="rounded-2xl border border-border p-6">
             <p className="font-display text-2xl font-semibold">Free</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Try it with one booth.
             </p>
-            <ul className="mt-4 space-y-2 text-sm">
-              <li>1 booth</li>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              <li>1 booth · up to 6 items</li>
               <li>Live order board</li>
-              <li>QR poster + menu customization</li>
+              <li>QR poster + customization</li>
               <li>Today&apos;s stats</li>
+              <li>Unlimited orders</li>
             </ul>
           </div>
-          <div className="ticket rounded-2xl border border-primary/40 bg-primary/[0.04] p-6">
-            <p className="font-display text-2xl font-semibold text-primary">
-              Pro
-            </p>
+
+          {/* Event pass */}
+          <div className="rounded-2xl border border-border p-6">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="font-display text-2xl font-semibold">Event pass</p>
+              {passPrice && (
+                <span className="font-mono text-sm font-bold">{passPrice}</span>
+              )}
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              For real operations.
+              Full kit for one event.
             </p>
-            <ul className="mt-4 space-y-2 text-sm">
-              <li>Unlimited booths</li>
-              <li>Full stats: 7 / 30 / 90-day + period comparison</li>
-              <li>Busy-times heatmap &amp; revenue trends</li>
-              <li>Profit margin per item + CSV export</li>
-              <li>Everything in Free</li>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              <li>Extra booths</li>
+              <li>Unlimited items &amp; customization</li>
+              <li>Scheduled auto-close hours</li>
+              <li>Sold-out stock caps</li>
+              <li>That event&apos;s stats</li>
+            </ul>
+          </div>
+
+          {/* Monthly Pro */}
+          <div className="ticket rounded-2xl border border-primary/40 bg-primary/[0.04] p-6">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="font-display text-2xl font-semibold text-primary">
+                Monthly Pro
+              </p>
+              {monthlyPrice && (
+                <span className="font-mono text-sm font-bold text-primary">
+                  {monthlyPrice}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              For trading most weeks.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+              <li>Everything in the pass</li>
+              <li>Full history: 7 / 30 / 90-day</li>
+              <li>Busy-times heatmap &amp; trends</li>
+              <li>Profit margin per item + CSV</li>
             </ul>
           </div>
         </div>
-        <div className="mt-8 text-center">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Pay by PayNow or cash — card payments coming soon.
+        </p>
+        <div className="mt-6 text-center">
           <LandingCta
             href={primaryHref}
             event={user ? undefined : "landing_cta"}
