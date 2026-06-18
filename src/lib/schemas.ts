@@ -145,8 +145,11 @@ export type PricingFormInput = z.infer<typeof pricingFormSchema>;
 
 export const grantPassSchema = z.object({
   vendorId: z.string().uuid(),
-  // Up to 30 days, covering multi-day markets. Presets in the UI; bounded here.
-  durationHours: z.number().int().positive().max(720),
+  // Sold per day; 1 covers a few-hour market, up to 14 for long bazaars/fairs.
+  days: z.number().int().positive().max(14),
+  // When the pass starts (ISO). Omitted = starts now. Lets a vendor schedule it
+  // for their event date; entitlement is computed from [validFrom, expires_at).
+  validFromIso: z.string().datetime().optional(),
   note: z.string().max(200).optional(),
   // What QKit actually collected (cents). 0/omitted = free comp / design partner.
   amountCents: z.number().int().nonnegative().max(10_000_00).optional(),

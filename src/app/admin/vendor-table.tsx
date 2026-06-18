@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Sparkles, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { setVendorPlan, grantPass } from "./actions";
+import { setVendorPlan, grantPass, revokePass } from "./actions";
 import type { Plan } from "@/lib/types";
 
 export type AdminVendorRow = {
@@ -18,12 +18,6 @@ export type AdminVendorRow = {
   passExpiresAt?: string | null;
 };
 
-const DURATIONS = [
-  { label: "24h", hours: 24 },
-  { label: "48h", hours: 48 },
-  { label: "72h", hours: 72 },
-];
-
 function hoursLeft(iso: string, nowMs: number): number {
   return Math.max(0, Math.round((Date.parse(iso) - nowMs) / 3_600_000));
 }
@@ -34,6 +28,8 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
   const [granting, setGranting] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [amount, setAmount] = useState(""); // $ collected; blank = free comp
+  const [startDate, setStartDate] = useState(""); // "YYYY-MM-DD"; blank = now
+  const [days, setDays] = useState("1");
   // Snapshot once (lazy init avoids an impure Date.now() during render).
   const [now] = useState(() => Date.now());
 
@@ -49,6 +45,15 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
     setGranting(null);
     setNote("");
     setAmount("");
+    setStartDate("");
+    setDays("1");
+  }
+
+  // A date-only input is local midnight; toISOString gives the start instant.
+  function startIso(): string | undefined {
+    if (!startDate) return undefined;
+    const ms = Date.parse(startDate);
+    return Number.isNaN(ms) ? undefined : new Date(ms).toISOString();
   }
 
   function flip(v: AdminVendorRow) {
@@ -73,12 +78,13 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
     });
   }
 
-  function grant(v: AdminVendorRow, hours: number) {
+  function grant(v: AdminVendorRow, days: number) {
     const amountCents = parseAmountCents();
     startTransition(async () => {
       const res = await grantPass({
         vendorId: v.id,
-        durationHours: hours,
+        days,
+        validFromIso: startIso(),
         note: note.trim() || undefined,
         amountCents,
       });
@@ -86,9 +92,23 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
         toast.error(res.error);
         return;
       }
+      const when = startDate ? ` from ${startDate}` : "";
       toast.success(
-        `${v.name} → ${hours}h pass${amountCents ? ` · $${(amountCents / 100).toFixed(2)}` : " · free"}`,
+        `${v.name} → ${days}-day pass${when}${amountCents ? ` · $${(amountCents / 100).toFixed(2)}` : " · free"}`,
       );
+      reset();
+      router.refresh();
+    });
+  }
+
+  function revoke(v: AdminVendorRow) {
+    startTransition(async () => {
+      const res = await revokePass({ vendorId: v.id });
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(`${v.name} → pass revoked`);
       reset();
       router.refresh();
     });
@@ -173,18 +193,50 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
                   <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
                     <Ticket className="size-3.5" /> Pass:
                   </span>
-                  {DURATIONS.map((d) => (
-                    <Button
-                      key={d.hours}
-                      size="sm"
-                      className="rounded-lg"
-                      disabled={pending}
-                      onClick={() => grant(v, d.hours)}
-                    >
-                      {d.label}
-                    </Button>
-                  ))}
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    title="Start date (blank = now)"
+                    className="h-9 rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  />
+                  <div className="flex items-center gap-1">
+                    <Input
+                      inputMode="numeric"
+                      value={days}
+                      onChange={(e) => setDays(e.target.value)}
+                      className="h-9 w-14 rounded-lg text-center text-sm"
+                      title="Number of days"
+                    />
+                    <span className="text-xs text-muted-foreground">days</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="rounded-lg"
+                    disabled={pending}
+                    onClick={() => {
+                      const d = parseInt(days, 10);
+                      if (!d || d < 1) {
+                        toast.error("Enter days (1+)");
+                        return;
+                      }
+                      grant(v, d);
+                    }}
+                  >
+                    Grant pass
+                  </Button>
                   <span className="mx-1 h-5 w-px bg-border" />
+                  {livePass && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive hover:text-white"
+                      disabled={pending}
+                      onClick={() => revoke(v)}
+                    >
+                      Revoke pass
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -202,8 +254,9 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Amount records to revenue (pass or subscription). Blank/0 =
-                  free comp — access granted, no revenue logged.
+                  Pass starts on the date (blank = now) and runs the chosen
+                  days. Amount records to revenue; blank/0 = free comp. Revoke
+                  ends access now (not a refund).
                 </p>
               </div>
             )}

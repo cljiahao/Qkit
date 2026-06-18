@@ -244,8 +244,8 @@ export default async function LandingPage() {
           Pricing that fits how you trade
         </h2>
         <p className="mx-auto mb-10 max-w-xl text-center text-sm text-muted-foreground">
-          Run free, pay per event when you need the full kit, or go monthly if
-          you trade most weeks.
+          Run free, pay per day for the events you need the full kit, or go
+          monthly if you trade most weeks.
         </p>
         <div className="grid gap-5 sm:grid-cols-3">
           {/* Free */}
@@ -274,11 +274,21 @@ export default async function LandingPage() {
                     : "text-xs font-semibold text-primary"
                 }
               >
-                {passPrice ?? "Free in beta"}
+                {passPrice ? (
+                  <>
+                    {passPrice}
+                    <span className="font-normal text-muted-foreground">
+                      {" "}
+                      /day
+                    </span>
+                  </>
+                ) : (
+                  "Free in beta"
+                )}
               </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Full kit for one event.
+              Full kit, priced per day.
             </p>
             {passPrice && (
               <span className="mt-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">

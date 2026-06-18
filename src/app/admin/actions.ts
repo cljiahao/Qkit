@@ -86,8 +86,11 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
   const parsed = grantPassSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Invalid input" };
 
+  // The pass is a window: starts at validFrom (or now) and runs `days`.
+  const MS_PER_DAY = 86_400_000;
+  const validFrom = parsed.data.validFromIso ?? new Date().toISOString();
   const expiresAt = new Date(
-    Date.now() + parsed.data.durationHours * 3_600_000,
+    Date.parse(validFrom) + parsed.data.days * MS_PER_DAY,
   ).toISOString();
 
   const supabase = await createServiceClient();
@@ -95,6 +98,7 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
     .from("licenses")
     .insert({
       vendor_id: parsed.data.vendorId,
+      valid_from: validFrom,
       expires_at: expiresAt,
       source: "admin_manual",
       note: parsed.data.note ?? null,
@@ -125,10 +129,52 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
     action: "grant_pass",
     target_id: parsed.data.vendorId,
     detail: {
-      hours: parsed.data.durationHours,
+      days: parsed.data.days,
+      valid_from: validFrom,
       note: parsed.data.note ?? null,
       amount_cents: parsed.data.amountCents ?? 0,
     },
+  });
+  if (auditError)
+    console.error("admin_audit insert failed", auditError.message);
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+const revokePassSchema = z.object({ vendorId: z.string().uuid() });
+
+/**
+ * Revoke a vendor's live pass(es): end the window now (set expires_at = now)
+ * rather than delete, so the record + its payment + audit trail survive. Revoke
+ * removes access only — it is not a refund. Admin-only, service-role.
+ */
+export async function revokePass(
+  input: z.infer<typeof revokePassSchema>,
+): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+
+  const parsed = revokePassSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid input" };
+
+  const nowIso = new Date().toISOString();
+  const supabase = await createServiceClient();
+  const { data: ended, error } = await supabase
+    .from("licenses")
+    .update({ expires_at: nowIso })
+    .eq("vendor_id", parsed.data.vendorId)
+    .gt("expires_at", nowIso)
+    .select("id");
+  if (error) {
+    console.error("revokePass failed", error.message);
+    return { success: false, error: "Could not revoke pass" };
+  }
+
+  const { error: auditError } = await supabase.from("admin_audit").insert({
+    admin_id: user.id,
+    action: "revoke_pass",
+    target_id: parsed.data.vendorId,
+    detail: { ended: ended?.length ?? 0 },
   });
   if (auditError)
     console.error("admin_audit insert failed", auditError.message);

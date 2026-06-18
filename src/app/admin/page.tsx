@@ -124,17 +124,19 @@ export default async function AdminPage() {
       .select("event_pass_cents, monthly_cents, currency")
       .eq("id", 1)
       .maybeSingle(),
-    supabase.from("licenses").select("vendor_id, expires_at"),
+    supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
     supabase.from("payments").select("amount_cents, created_at"),
   ]);
 
   const licenses = licenseRows ?? [];
   const payments = paymentRows ?? [];
 
-  // Latest live pass per vendor (longest remaining window).
+  // Latest currently-active pass per vendor (in-window: valid_from <= now <
+  // expires_at; longest remaining wins). A scheduled-future pass isn't "live".
   const passByVendor = new Map<string, string>();
   for (const l of licenses) {
-    if (Date.parse(l.expires_at) <= now) continue;
+    if (Date.parse(l.valid_from) > now || Date.parse(l.expires_at) <= now)
+      continue;
     const cur = passByVendor.get(l.vendor_id);
     if (!cur || Date.parse(l.expires_at) > Date.parse(cur))
       passByVendor.set(l.vendor_id, l.expires_at);

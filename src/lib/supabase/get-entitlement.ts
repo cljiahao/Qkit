@@ -34,14 +34,17 @@ export async function loadEntitlement(): Promise<{
     };
   }
 
-  // Take the latest-EXPIRING license (DESC on expires_at), not the most-recently
-  // minted — overlapping passes should grant the longest window.
+  // A pass counts only inside its window: valid_from <= now < expires_at. Among
+  // currently-active licenses, take the latest-expiring (longest remaining).
+  const nowIso = new Date(now).toISOString();
   const [{ data: vendor }, { data: license }] = await Promise.all([
     supabase.from("vendors").select("*").eq("id", user.id).maybeSingle(),
     supabase
       .from("licenses")
       .select("expires_at")
       .eq("vendor_id", user.id)
+      .lte("valid_from", nowIso)
+      .gt("expires_at", nowIso)
       .order("expires_at", { ascending: false })
       .limit(1)
       .maybeSingle(),

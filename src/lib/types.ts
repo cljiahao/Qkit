@@ -148,6 +148,7 @@ export interface Database {
         Row: {
           id: string;
           vendor_id: string;
+          valid_from: string;
           expires_at: string;
           source: string;
           note: string | null;
@@ -156,6 +157,7 @@ export interface Database {
         Insert: {
           id?: string;
           vendor_id: string;
+          valid_from?: string;
           expires_at: string;
           source?: string;
           note?: string | null;
@@ -164,6 +166,7 @@ export interface Database {
         Update: {
           id?: string;
           vendor_id?: string;
+          valid_from?: string;
           expires_at?: string;
           source?: string;
           note?: string | null;

@@ -116,7 +116,7 @@ export default async function PlanPage() {
             <p className="mt-1 font-mono text-2xl font-bold">
               {passPrice ?? "Free"}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
-                {passPrice ? "/ event" : "in beta"}
+                {passPrice ? "/ day" : "in beta"}
               </span>
             </p>
             {passPrice && (
@@ -125,9 +125,9 @@ export default async function PlanPage() {
               </span>
             )}
             <p className="mt-2 flex-1 text-sm text-muted-foreground">
-              All Pro features for the event — extra booths, customization,
-              auto-close, sold-out caps, and that event&apos;s stats. Best for
-              the occasional market.
+              All Pro features for your event — extra booths, customization,
+              auto-close, sold-out caps, and that event&apos;s stats. Pick the
+              dates, pay per day. Best for the occasional market.
             </p>
             <div className="mt-4">
               <UpgradeCta
