@@ -33,6 +33,7 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
   const [pending, startTransition] = useTransition();
   const [granting, setGranting] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [amount, setAmount] = useState(""); // $ collected; blank = free comp
   // Snapshot once (lazy init avoids an impure Date.now() during render).
   const [now] = useState(() => Date.now());
 
@@ -50,19 +51,28 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
   }
 
   function grant(v: AdminVendorRow, hours: number) {
+    const dollars = Number(amount.trim());
+    const amountCents =
+      amount.trim() && !Number.isNaN(dollars) && dollars >= 0
+        ? Math.round(dollars * 100)
+        : 0;
     startTransition(async () => {
       const res = await grantPass({
         vendorId: v.id,
         durationHours: hours,
         note: note.trim() || undefined,
+        amountCents,
       });
       if (!res.success) {
         toast.error(res.error);
         return;
       }
-      toast.success(`${v.name} → ${hours}h pass`);
+      toast.success(
+        `${v.name} → ${hours}h pass${amountCents ? ` · $${(amountCents / 100).toFixed(2)}` : " · free"}`,
+      );
       setGranting(null);
       setNote("");
+      setAmount("");
       router.refresh();
     });
   }
@@ -140,6 +150,19 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
                   onChange={(e) => setNote(e.target.value)}
                   className="h-9 max-w-[16rem] flex-1 rounded-lg text-sm"
                 />
+                <div className="relative w-28">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="0 = free"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="h-9 rounded-lg pl-7 text-sm"
+                    title="What you collected (blank/0 = free comp)"
+                  />
+                </div>
                 {DURATIONS.map((d) => (
                   <Button
                     key={d.hours}

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { MediaImage } from "@/components/media-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
-import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
+import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { cartKey, cartTotal } from "@/lib/cart";
 import { addRecentOrder } from "@/lib/recent-orders";
 import { remainingFor, type Remaining } from "@/lib/stock";
@@ -218,11 +218,16 @@ export function OrderForm({
                           Sold out
                         </p>
                       ) : (
-                        left <= 5 && (
-                          <p className="mt-1 text-xs font-medium text-muted-foreground">
-                            {left} left
-                          </p>
-                        )
+                        <p
+                          className={cn(
+                            "mt-1 text-xs font-medium",
+                            left <= 5
+                              ? "font-semibold text-status-preparing"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {left} left
+                        </p>
                       ))}
                   </div>
                 </div>

@@ -7,7 +7,7 @@ import {
   summarizeVendors,
 } from "@/lib/admin-stats";
 import { pctChange, windowSeries, type StatsOrder } from "@/lib/stats";
-import { cn, MS_PER_DAY } from "@/lib/utils";
+import { cn, formatPrice, MS_PER_DAY } from "@/lib/utils";
 import type { Plan } from "@/lib/types";
 import { DEFAULT_PRICING } from "@/lib/pricing";
 import { VendorTable, type AdminVendorRow } from "./vendor-table";
@@ -93,6 +93,7 @@ export default async function AdminPage() {
   const now = Date.now();
   const cutoff7d = new Date(now - 7 * MS_PER_DAY).toISOString();
   const cutoff14d = new Date(now - 14 * MS_PER_DAY).toISOString();
+  const cutoff30d = new Date(now - 30 * MS_PER_DAY).toISOString();
 
   // NOTE: fetching all booths/orders is fine at validation scale; revisit with
   // server-side aggregation if volume grows.
@@ -124,16 +125,26 @@ export default async function AdminPage() {
       .maybeSingle(),
     supabase
       .from("licenses")
-      .select("vendor_id, expires_at")
-      .gt("expires_at", new Date(now).toISOString())
-      .order("expires_at", { ascending: false }),
+      .select("vendor_id, expires_at, amount_cents, created_at"),
   ]);
 
-  // Most-recent live pass per vendor (rows already ordered by expiry desc).
+  const licenses = licenseRows ?? [];
+
+  // Latest live pass per vendor (longest remaining window).
   const passByVendor = new Map<string, string>();
-  for (const l of licenseRows ?? [])
-    if (!passByVendor.has(l.vendor_id))
+  for (const l of licenses) {
+    if (Date.parse(l.expires_at) <= now) continue;
+    const cur = passByVendor.get(l.vendor_id);
+    if (!cur || Date.parse(l.expires_at) > Date.parse(cur))
       passByVendor.set(l.vendor_id, l.expires_at);
+  }
+
+  // QKit's own revenue — what we actually collected (amount_cents), NOT vendor
+  // GMV. Beta comps are $0, so this honestly reflects real earnings.
+  const revenue30d = licenses
+    .filter((l) => l.created_at >= cutoff30d)
+    .reduce((sum, l) => sum + l.amount_cents, 0);
+  const revenueAll = licenses.reduce((sum, l) => sum + l.amount_cents, 0);
 
   const vendors: AdminVendorRow[] = (vendorRows ?? []).map((v) => ({
     ...v,
@@ -165,13 +176,14 @@ export default async function AdminPage() {
     inWindow(v.created_at, cutoff14d, cutoff7d),
   ).length;
 
-  const series = windowSeries(
-    orders.map(
-      (o): StatsOrder => ({
-        status: o.status,
-        total_cents: o.total_cents,
+  // 14-day trend of QKit revenue (collected pass/sub amounts), not vendor sales.
+  const revSeries = windowSeries(
+    licenses.map(
+      (l): StatsOrder => ({
+        status: "completed",
+        total_cents: l.amount_cents,
         items: [],
-        created_at: o.created_at,
+        created_at: l.created_at,
       }),
     ),
     now,
@@ -193,21 +205,24 @@ export default async function AdminPage() {
         </h1>
       </div>
 
-      {/* North-star band — active vendors leads (the validation signal). */}
+      {/* North-star band — QKit revenue leads; active vendors is the leading
+          indicator behind it. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Active vendors" value={funnel.withOrder} big />
+        <Stat label="QKit revenue · 30d" value={formatPrice(revenue30d)} big />
+        <Stat label="Revenue · all time" value={formatPrice(revenueAll)} />
+        <Stat label="Active vendors" value={funnel.withOrder} />
+        <Stat label="Pro" value={vstat.pro} />
+        <Stat
+          label="Signups · 7d"
+          value={vstat.new7d}
+          delta={pctChange(vstat.new7d, signupsPrior7d)}
+        />
         <Stat
           label="Orders · 7d"
           value={orders7d}
           delta={pctChange(orders7d, ordersPrior7d)}
         />
         <Stat label="Vendors" value={vstat.total} />
-        <Stat
-          label="Signups · 7d"
-          value={vstat.new7d}
-          delta={pctChange(vstat.new7d, signupsPrior7d)}
-        />
-        <Stat label="Pro" value={vstat.pro} />
         <Stat
           label="Active booths"
           value={booths.filter((b) => b.is_active).length}
@@ -216,7 +231,7 @@ export default async function AdminPage() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <ActivationFunnelView funnel={funnel} />
-        <TrendChart series={series} range="14d" title="Booth sales volume" />
+        <TrendChart series={revSeries} range="14d" title="QKit revenue" />
       </div>
 
       <p className="text-xs text-muted-foreground">

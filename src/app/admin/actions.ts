@@ -79,6 +79,7 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
     expires_at: expiresAt,
     source: "admin_manual",
     note: parsed.data.note ?? null,
+    amount_cents: parsed.data.amountCents ?? 0,
   });
   if (error) {
     console.error("grantPass failed", error.message);
@@ -92,6 +93,7 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
     detail: {
       hours: parsed.data.durationHours,
       note: parsed.data.note ?? null,
+      amount_cents: parsed.data.amountCents ?? 0,
     },
   });
   if (auditError)

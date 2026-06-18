@@ -148,6 +148,8 @@ export const grantPassSchema = z.object({
   // Up to 30 days, covering multi-day markets. Presets in the UI; bounded here.
   durationHours: z.number().int().positive().max(720),
   note: z.string().max(200).optional(),
+  // What QKit actually collected (cents). 0/omitted = free comp / design partner.
+  amountCents: z.number().int().nonnegative().max(10_000_00).optional(),
 });
 export type GrantPassInput = z.infer<typeof grantPassSchema>;
 

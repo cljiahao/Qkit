@@ -151,6 +151,7 @@ export interface Database {
           expires_at: string;
           source: string;
           note: string | null;
+          amount_cents: number;
           created_at: string;
         };
         Insert: {
@@ -159,6 +160,7 @@ export interface Database {
           expires_at: string;
           source?: string;
           note?: string | null;
+          amount_cents?: number;
           created_at?: string;
         };
         Update: {
@@ -167,6 +169,7 @@ export interface Database {
           expires_at?: string;
           source?: string;
           note?: string | null;
+          amount_cents?: number;
           created_at?: string;
         };
         Relationships: [
