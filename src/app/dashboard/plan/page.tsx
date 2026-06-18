@@ -62,6 +62,13 @@ export default async function PlanPage() {
     .eq("id", 1)
     .maybeSingle();
   const pricing = pricingRow ?? DEFAULT_PRICING;
+  // Prices unset (= pre-Stripe beta) → the pass is a free trial we grant on
+  // request. Set prices in /admin to flip the whole page to paid/PayNow.
+  const passPrice =
+    pricing.event_pass_cents > 0 ? formatPrice(pricing.event_pass_cents) : null;
+  const monthlyPrice =
+    pricing.monthly_cents > 0 ? formatPrice(pricing.monthly_cents) : null;
+  const paidMode = passPrice !== null || monthlyPrice !== null;
 
   const tier = entitlement.tier;
 
@@ -107,9 +114,9 @@ export default async function PlanPage() {
               <h2 className="font-display text-xl font-semibold">Event pass</h2>
             </div>
             <p className="mt-1 font-mono text-2xl font-bold">
-              {formatPrice(pricing.event_pass_cents)}
+              {passPrice ?? "Free"}
               <span className="ml-1 text-sm font-normal text-muted-foreground">
-                / event
+                {passPrice ? "/ event" : "in beta"}
               </span>
             </p>
             <p className="mt-2 flex-1 text-sm text-muted-foreground">
@@ -118,7 +125,10 @@ export default async function PlanPage() {
               the occasional market.
             </p>
             <div className="mt-4">
-              <UpgradeCta option="event" label="Get a pass" />
+              <UpgradeCta
+                option="event"
+                label={paidMode ? "Get a pass" : "Request a pass"}
+              />
             </div>
           </div>
 
@@ -131,10 +141,12 @@ export default async function PlanPage() {
               </h2>
             </div>
             <p className="mt-1 font-mono text-2xl font-bold">
-              {formatPrice(pricing.monthly_cents)}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">
-                / month
-              </span>
+              {monthlyPrice ?? "Soon"}
+              {monthlyPrice && (
+                <span className="ml-1 text-sm font-normal text-muted-foreground">
+                  / month
+                </span>
+              )}
             </p>
             <p className="mt-2 flex-1 text-sm text-muted-foreground">
               Everything in the pass, plus full sales history and trends
@@ -143,7 +155,7 @@ export default async function PlanPage() {
             <div className="mt-4">
               <UpgradeCta
                 option="monthly"
-                label="Go monthly"
+                label={monthlyPrice ? "Go monthly" : "Notify me"}
                 variant="outline"
               />
             </div>
@@ -153,8 +165,9 @@ export default async function PlanPage() {
 
       {tier !== "pro" && (
         <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-xs text-muted-foreground">
-          Pay by PayNow or cash — message us and we&apos;ll activate your pass.
-          Card payments are coming soon.
+          {paidMode
+            ? "Pay by PayNow or cash — message us and we'll activate your pass. Card payments are coming soon."
+            : "Free while we're in beta — message us and we'll unlock the full kit for your next event. Per-event and monthly pricing arrive with card payments."}
         </p>
       )}
 

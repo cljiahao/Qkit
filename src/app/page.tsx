@@ -64,11 +64,11 @@ const FAQ = [
   },
   {
     q: "How much does it cost?",
-    a: "Start free with one booth (up to 6 items) and today's stats. Need the full kit for a market day? Grab an event pass for that event, or go monthly if you trade most weeks. You only pay when you need more.",
+    a: "Start free with one booth (up to 6 items) and today's stats. The full kit — extra booths, customization, auto-close, sold-out caps — is free while we're in beta: just ask and we'll unlock it for your next event. Per-event and monthly pricing arrive with card payments.",
   },
   {
     q: "Event pass or monthly — what's the difference?",
-    a: "Same full features either way. The pass unlocks them for a single event (great for the occasional market); monthly keeps them on plus full sales history and trends across events (better if you trade most weeks). Pay by PayNow or cash for now.",
+    a: "Same full features either way. A pass unlocks them for a single event (great for the occasional market); monthly keeps them on plus full sales history and trends across events (better if you trade most weeks). Both are free during beta — paid plans land with card payments.",
   },
   {
     q: "Can orders stop when I sell out?",
@@ -101,11 +101,13 @@ export default async function LandingPage() {
   ]);
 
   const pricing = pricingRow ?? DEFAULT_PRICING;
-  // Only show a figure once a real price is set (avoid "$0.00" pre-config).
+  // Prices unset (= pre-Stripe beta) → the pass is a free trial granted on
+  // request. Set prices in /admin to flip the page to paid/PayNow framing.
   const passPrice =
     pricing.event_pass_cents > 0 ? formatPrice(pricing.event_pass_cents) : null;
   const monthlyPrice =
     pricing.monthly_cents > 0 ? formatPrice(pricing.monthly_cents) : null;
+  const paidMode = passPrice !== null || monthlyPrice !== null;
 
   const primaryHref = user ? "/dashboard" : "/login";
   const primaryLabel = user ? "Go to dashboard" : "Get started";
@@ -265,9 +267,15 @@ export default async function LandingPage() {
           <div className="rounded-2xl border border-border p-6">
             <div className="flex items-baseline justify-between gap-2">
               <p className="font-display text-2xl font-semibold">Event pass</p>
-              {passPrice && (
-                <span className="font-mono text-sm font-bold">{passPrice}</span>
-              )}
+              <span
+                className={
+                  passPrice
+                    ? "font-mono text-sm font-bold"
+                    : "text-xs font-semibold text-primary"
+                }
+              >
+                {passPrice ?? "Free in beta"}
+              </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               Full kit for one event.
@@ -287,11 +295,15 @@ export default async function LandingPage() {
               <p className="font-display text-2xl font-semibold text-primary">
                 Monthly Pro
               </p>
-              {monthlyPrice && (
-                <span className="font-mono text-sm font-bold text-primary">
-                  {monthlyPrice}
-                </span>
-              )}
+              <span
+                className={
+                  monthlyPrice
+                    ? "font-mono text-sm font-bold text-primary"
+                    : "text-xs font-semibold text-muted-foreground"
+                }
+              >
+                {monthlyPrice ?? "Coming soon"}
+              </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               For trading most weeks.
@@ -305,7 +317,9 @@ export default async function LandingPage() {
           </div>
         </div>
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Pay by PayNow or cash — card payments coming soon.
+          {paidMode
+            ? "Pay by PayNow or cash — card payments coming soon."
+            : "Free while we're in beta — ask for a pass to unlock the full kit for your next event."}
         </p>
         <div className="mt-6 text-center">
           <LandingCta
