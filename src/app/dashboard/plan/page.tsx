@@ -119,6 +119,11 @@ export default async function PlanPage() {
                 {passPrice ? "/ event" : "in beta"}
               </span>
             </p>
+            {passPrice && (
+              <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+                Founding price
+              </span>
+            )}
             <p className="mt-2 flex-1 text-sm text-muted-foreground">
               All Pro features for the event — extra booths, customization,
               auto-close, sold-out caps, and that event&apos;s stats. Best for
@@ -148,6 +153,11 @@ export default async function PlanPage() {
                 </span>
               )}
             </p>
+            {monthlyPrice && (
+              <span className="mt-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+                Founding price
+              </span>
+            )}
             <p className="mt-2 flex-1 text-sm text-muted-foreground">
               Everything in the pass, plus full sales history and trends
               (7/30/90 days). Best if you trade most weeks.
@@ -166,7 +176,7 @@ export default async function PlanPage() {
       {tier !== "pro" && (
         <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-xs text-muted-foreground">
           {paidMode
-            ? "Pay by PayNow or cash — message us and we'll activate your pass. Card payments are coming soon."
+            ? "Founding price — locks in while we're in beta. Pay by PayNow or cash; message us and we'll activate your pass. Card payments coming soon."
             : "Free while we're in beta — message us and we'll unlock the full kit for your next event. Per-event and monthly pricing arrive with card payments."}
         </p>
       )}

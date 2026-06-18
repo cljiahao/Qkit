@@ -280,6 +280,11 @@ export default async function LandingPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Full kit for one event.
             </p>
+            {passPrice && (
+              <span className="mt-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+                Founding price
+              </span>
+            )}
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>Extra booths</li>
               <li>Unlimited items &amp; customization</li>
@@ -308,6 +313,11 @@ export default async function LandingPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               For trading most weeks.
             </p>
+            {monthlyPrice && (
+              <span className="mt-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+                Founding price
+              </span>
+            )}
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>Everything in the pass</li>
               <li>Full history: 7 / 30 / 90-day</li>
@@ -318,7 +328,7 @@ export default async function LandingPage() {
         </div>
         <p className="mt-6 text-center text-xs text-muted-foreground">
           {paidMode
-            ? "Pay by PayNow or cash — card payments coming soon."
+            ? "Founding price for early vendors — locks in while we're in beta. Pay by PayNow or cash; card payments coming soon."
             : "Free while we're in beta — ask for a pass to unlock the full kit for your next event."}
         </p>
         <div className="mt-6 text-center">
