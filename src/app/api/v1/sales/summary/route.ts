@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
+import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { parseOrderItems } from "@/lib/schemas";
 import { computeStats, type StatsOrder } from "@/lib/stats";
-import { allowedStatsRanges, normalizePlan } from "@/lib/plan";
 import { toSalesSummaryV1 } from "@/lib/sales-summary";
 import { MS_PER_DAY } from "@/lib/utils";
 
@@ -22,13 +21,12 @@ const RANGE_DAYS: Record<string, number> = {
 };
 
 export async function GET(request: Request) {
-  const { user, vendor } = await getVendor();
+  const { user, vendor, entitlement } = await loadEntitlement();
   if (!user || !vendor) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const plan = normalizePlan(vendor.plan);
-  const allowed = allowedStatsRanges(plan);
+  const allowed = entitlement.statsRanges;
   const params = new URL(request.url).searchParams;
   const requested = params.get("range") ?? "7d";
   const range = allowed.includes(requested)

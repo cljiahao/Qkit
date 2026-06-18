@@ -90,6 +90,8 @@ export const menuItemFormSchema = z.object({
   // half-filled group never reaches optionGroupSchema (choices.min(1)).
   option_groups: z.array(optionGroupSchema).optional(),
   available: z.boolean(),
+  // Optional sold-out cap (Pro). null/absent = unlimited.
+  stock: z.number().int().nonnegative().nullable().optional(),
 });
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
@@ -133,6 +135,22 @@ export function parseBoothHours(data: unknown): BoothHours {
   return parsed.success ? parsed.data : null;
 }
 
+// ── Admin: pricing + license minting ─────────────────────────────────────────
+
+export const pricingFormSchema = z.object({
+  event_pass_cents: z.number().int().nonnegative().max(10_000_00),
+  monthly_cents: z.number().int().nonnegative().max(10_000_00),
+});
+export type PricingFormInput = z.infer<typeof pricingFormSchema>;
+
+export const grantPassSchema = z.object({
+  vendorId: z.string().uuid(),
+  // Up to 30 days, covering multi-day markets. Presets in the UI; bounded here.
+  durationHours: z.number().int().positive().max(720),
+  note: z.string().max(200).optional(),
+});
+export type GrantPassInput = z.infer<typeof grantPassSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 export type VendorInput = z.infer<typeof vendorSchema>;
@@ -153,6 +171,7 @@ export const menuItemSchema = z.object({
   image_url: menuImageUrl,
   available: z.boolean(),
   option_groups: z.array(optionGroupSchema).optional(),
+  stock: z.number().int().nonnegative().nullable().optional(),
 });
 
 export const orderItemSchema = z.object({

@@ -38,6 +38,9 @@ export type MenuItem = {
   image_url?: string | null;
   available: boolean;
   option_groups?: OptionGroup[];
+  // Optional sold-out cap (Pro). null/absent = unlimited. Remaining is computed
+  // live from non-cancelled orders (see booth_remaining_stock) — not decremented.
+  stock?: number | null;
 };
 
 export type CartItem = {
@@ -141,6 +144,64 @@ export interface Database {
           },
         ];
       };
+      licenses: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          expires_at: string;
+          source: string;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          expires_at: string;
+          source?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          vendor_id?: string;
+          expires_at?: string;
+          source?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "licenses_vendor_id_fkey";
+            columns: ["vendor_id"];
+            referencedRelation: "vendors";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pricing: {
+        Row: {
+          id: number;
+          event_pass_cents: number;
+          monthly_cents: number;
+          currency: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          event_pass_cents?: number;
+          monthly_cents?: number;
+          currency?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          event_pass_cents?: number;
+          monthly_cents?: number;
+          currency?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       booths: {
         Row: {
           id: string;
@@ -236,6 +297,10 @@ export interface Database {
         Args: { p_booth_id: string };
         Returns: string;
       };
+      booth_remaining_stock: {
+        Args: { p_booth_id: string };
+        Returns: Json;
+      };
     };
     Enums: {
       order_status: OrderStatus;
@@ -249,5 +314,7 @@ export interface Database {
 export type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
 export type Booth = Database["public"]["Tables"]["booths"]["Row"];
 export type Order = Database["public"]["Tables"]["orders"]["Row"];
+export type License = Database["public"]["Tables"]["licenses"]["Row"];
+export type Pricing = Database["public"]["Tables"]["pricing"]["Row"];
 export type Admin = Database["public"]["Tables"]["admins"]["Row"];
 export type AdminAudit = Database["public"]["Tables"]["admin_audit"]["Row"];

@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/image-uploader";
+import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
+import { canAddMenuItem, type Entitlement } from "@/lib/plan";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { OptionGroup } from "@/lib/types";
 
@@ -14,14 +16,17 @@ interface Props {
   vendorId: string;
   items: MenuItemFormInput[];
   onChange: (items: MenuItemFormInput[]) => void;
+  entitlement: Entitlement;
 }
 
 function centsToDollars(cents?: number): string {
   return cents == null ? "" : (cents / 100).toFixed(2);
 }
 
-export function MenuEditor({ vendorId, items, onChange }: Props) {
+export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const atItemCap = !canAddMenuItem(entitlement, items.length);
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -58,6 +63,17 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
     update(index, { cost_cents: Math.round(value * 100) });
   }
 
+  function setStock(index: number, raw: string) {
+    const trimmed = raw.trim();
+    if (trimmed === "") {
+      update(index, { stock: null });
+      return;
+    }
+    const value = Number(trimmed);
+    if (!Number.isInteger(value) || value < 0) return;
+    update(index, { stock: value });
+  }
+
   function addItem() {
     onChange([
       ...items,
@@ -82,15 +98,22 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Menu items
         </Label>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="rounded-lg"
-          onClick={addItem}
-        >
-          <Plus className="size-3.5" /> Add item
-        </Button>
+        {atItemCap ? (
+          <ProLock
+            feature="menu_items"
+            label={`${entitlement.maxMenuItems}-item limit · Pro`}
+          />
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-lg"
+            onClick={addItem}
+          >
+            <Plus className="size-3.5" /> Add item
+          </Button>
+        )}
       </div>
 
       {items.length === 0 && (
@@ -178,6 +201,32 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
               shown to customers.
             </p>
 
+            {/* Sold-out cap (Pro/pass). Remaining auto-counts from live orders. */}
+            {entitlement.stockCaps ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Sold-out limit
+                </Label>
+                <Input
+                  inputMode="numeric"
+                  placeholder="Unlimited"
+                  value={item.stock == null ? "" : String(item.stock)}
+                  onChange={(e) => setStock(i, e.target.value)}
+                  className="h-9 w-28 rounded-lg"
+                />
+                <span className="text-xs text-muted-foreground">
+                  Orders stop when sold out. Leave blank for unlimited.
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <ProLock feature="stock_cap" label="Sold-out limit · Pro" />
+                <span className="text-xs text-muted-foreground">
+                  Auto-stop orders when an item sells out.
+                </span>
+              </div>
+            )}
+
             {/* Customization — collapsed by default; most items have none. */}
             {(() => {
               const groups: OptionGroup[] = item.option_groups ?? [];
@@ -206,6 +255,7 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
                       <OptionGroupsEditor
                         groups={groups}
                         onChange={(g) => update(i, { option_groups: g })}
+                        entitlement={entitlement}
                       />
                     </div>
                   )}
@@ -217,17 +267,23 @@ export function MenuEditor({ vendorId, items, onChange }: Props) {
       </div>
 
       {/* Bottom add button — reachable without scrolling back up on long menus. */}
-      {items.length > 0 && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full rounded-lg"
-          onClick={addItem}
-        >
-          <Plus className="size-3.5" /> Add item
-        </Button>
-      )}
+      {items.length > 0 &&
+        (atItemCap ? (
+          <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-xs text-muted-foreground">
+            <span>Reached your {entitlement.maxMenuItems}-item limit.</span>
+            <ProLock feature="menu_items" label="Upgrade" />
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full rounded-lg"
+            onClick={addItem}
+          >
+            <Plus className="size-3.5" /> Add item
+          </Button>
+        ))}
     </div>
   );
 }

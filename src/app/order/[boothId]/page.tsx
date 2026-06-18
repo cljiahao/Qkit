@@ -3,6 +3,7 @@ import { MediaImage } from "@/components/media-image";
 import { createServerClient } from "@/lib/supabase/server";
 import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
 import { isBoothOpen, nextOpenLabel } from "@/lib/hours";
+import { parseRemaining } from "@/lib/stock";
 import { OrderForm } from "./order-form";
 import { RecentOrders } from "./recent-orders";
 
@@ -38,6 +39,13 @@ export default async function OrderPage({ params }: Props) {
   const reopen = open
     ? null
     : nextOpenLabel({ is_active: true, hours }, nowIso);
+
+  // Live remaining stock per capped item (counts only, no order PII). Absent
+  // until migration 0010 lands → treated as all-unlimited.
+  const { data: remainingData } = await supabase.rpc("booth_remaining_stock", {
+    p_booth_id: booth.id,
+  });
+  const remaining = parseRemaining(remainingData);
 
   return (
     <div className="mx-auto min-h-screen max-w-lg px-5 pb-28 pt-8">
@@ -75,7 +83,12 @@ export default async function OrderPage({ params }: Props) {
         </div>
       )}
 
-      <OrderForm boothId={booth.id} menuItems={available} closed={!open} />
+      <OrderForm
+        boothId={booth.id}
+        menuItems={available}
+        closed={!open}
+        remaining={remaining}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/types";
 
 // Allowlist of trackable events. Reject anything else so the table can't be
 // stuffed with arbitrary types from the client.
@@ -12,13 +13,26 @@ export type EventType = z.infer<typeof eventTypeSchema>;
  * Best-effort analytics. Fire-and-forget: validates the type, inserts via the
  * normal client (RLS allows insert), and never throws to the caller — analytics
  * must not disrupt the user flow, and it's a no-op until migration 0005 lands.
+ *
+ * `metadata` (e.g. `{ feature: "stock" }` on an upgrade_cta) is best-effort too:
+ * a non-object or oversized value is dropped rather than risking the insert.
  */
-export async function logEvent(type: EventType): Promise<void> {
+export async function logEvent(
+  type: EventType,
+  metadata?: Record<string, unknown>,
+): Promise<void> {
   const parsed = eventTypeSchema.safeParse(type);
   if (!parsed.success) return;
+  const safeMeta =
+    metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? metadata
+      : undefined;
   try {
     const supabase = await createServerClient();
-    await supabase.from("events").insert({ type: parsed.data });
+    await supabase.from("events").insert({
+      type: parsed.data,
+      ...(safeMeta ? { metadata: safeMeta as Json } : {}),
+    });
   } catch {
     // swallow — table may not exist yet, or insert may fail; analytics is
     // non-critical.

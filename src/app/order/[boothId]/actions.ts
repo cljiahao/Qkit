@@ -10,6 +10,7 @@ import {
 } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
 import { cartTotal } from "@/lib/cart";
+import { overStockLines, parseRemaining } from "@/lib/stock";
 import type { ActionResult } from "@/lib/action-result";
 
 type PlaceOrderResult = ActionResult<{ orderNumber: string }>;
@@ -47,6 +48,18 @@ export async function placeOrder(
     )
   )
     return { success: false, error: "This booth is closed" };
+
+  // Re-check sold-out caps server-side against live remaining (counts only).
+  // Soft cap: a rare simultaneous-tap oversell-by-one is acceptable and
+  // self-heals on cancel; this rejects the obvious "just sold out" case.
+  const { data: remainingData } = await supabase.rpc("booth_remaining_stock", {
+    p_booth_id: boothId,
+  });
+  if (overStockLines(order.items, parseRemaining(remainingData)).length > 0)
+    return {
+      success: false,
+      error: "Sorry — an item just sold out. Please adjust your order.",
+    };
 
   // Atomically claim a unique order number. The DB function row-locks the
   // booth's counter, so concurrent/duplicate submits can never collide on

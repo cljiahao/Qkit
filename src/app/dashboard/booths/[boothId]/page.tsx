@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { getVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
+import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
 import { BoothForm } from "../booth-form";
 
@@ -12,7 +12,7 @@ interface Props {
 
 export default async function EditBoothPage({ params }: Props) {
   const { boothId } = await params;
-  const { user, vendor } = await getVendor();
+  const { user, vendor, entitlement } = await loadEntitlement();
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
 
@@ -35,6 +35,7 @@ export default async function EditBoothPage({ params }: Props) {
     image_url: m.image_url ?? null,
     option_groups: m.option_groups,
     available: m.available,
+    stock: m.stock,
   }));
 
   return (
@@ -42,6 +43,7 @@ export default async function EditBoothPage({ params }: Props) {
       <h1 className="font-display mb-6 text-3xl font-semibold">Edit booth</h1>
       <BoothForm
         vendorId={vendor.id}
+        entitlement={entitlement}
         initial={{
           boothId: booth.id,
           name: booth.name,

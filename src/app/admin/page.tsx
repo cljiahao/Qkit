@@ -10,6 +10,7 @@ import { pctChange, windowSeries, type StatsOrder } from "@/lib/stats";
 import { cn, MS_PER_DAY } from "@/lib/utils";
 import type { Plan } from "@/lib/types";
 import { VendorTable, type AdminVendorRow } from "./vendor-table";
+import { PricingForm } from "./pricing-form";
 import { ActivationFunnelView } from "./activation-funnel";
 import { TrendChart } from "../dashboard/stats/trend-chart";
 
@@ -100,6 +101,8 @@ export default async function AdminPage() {
     { data: orderRows },
     { data: eventRows },
     { data: auditRows },
+    { data: pricingRow },
+    { data: licenseRows },
   ] = await Promise.all([
     supabase
       .from("vendors")
@@ -113,9 +116,33 @@ export default async function AdminPage() {
       .select("id, action, target_id, detail, created_at")
       .order("created_at", { ascending: false })
       .limit(10),
+    supabase
+      .from("pricing")
+      .select("event_pass_cents, monthly_cents, currency")
+      .eq("id", 1)
+      .maybeSingle(),
+    supabase
+      .from("licenses")
+      .select("vendor_id, expires_at")
+      .gt("expires_at", new Date(now).toISOString())
+      .order("expires_at", { ascending: false }),
   ]);
 
-  const vendors = (vendorRows ?? []) as AdminVendorRow[];
+  // Most-recent live pass per vendor (rows already ordered by expiry desc).
+  const passByVendor = new Map<string, string>();
+  for (const l of licenseRows ?? [])
+    if (!passByVendor.has(l.vendor_id))
+      passByVendor.set(l.vendor_id, l.expires_at);
+
+  const vendors: AdminVendorRow[] = (vendorRows ?? []).map((v) => ({
+    ...v,
+    passExpiresAt: passByVendor.get(v.id) ?? null,
+  }));
+  const pricing = pricingRow ?? {
+    event_pass_cents: 0,
+    monthly_cents: 0,
+    currency: "SGD",
+  };
   const booths = boothRows ?? [];
   const orders = orderRows ?? [];
   const events = eventRows ?? [];
@@ -199,6 +226,13 @@ export default async function AdminPage() {
         Funnel signals · {landingClicks} landing CTA · {upgradeClicks} upgrade
         CTA clicks
       </p>
+
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Pricing
+        </h2>
+        <PricingForm initial={pricing} />
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

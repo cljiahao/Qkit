@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
+import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { boothFormSchema, type BoothFormInput } from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 
@@ -41,18 +42,46 @@ export async function saveBooth(
     return { success: false, error: "Invalid booth details" };
   const data = parsed.data;
 
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Server-side entitlement enforcement (the UI also gates, but never trust it).
+  const { user, entitlement } = await loadEntitlement();
   if (!user) return { success: false, error: "Not authenticated" };
+
+  // Count caps reject (don't silently drop content — that would lose the
+  // vendor's work). Feature caps degrade quietly.
+  if (
+    entitlement.maxMenuItems !== null &&
+    data.menu_items.length > entitlement.maxMenuItems
+  )
+    return {
+      success: false,
+      error: `Your plan allows up to ${entitlement.maxMenuItems} menu items. Remove some or upgrade.`,
+    };
+
+  const maxGroups = entitlement.maxOptionGroupsPerItem;
+  if (
+    maxGroups !== null &&
+    data.menu_items.some((it) => (it.option_groups?.length ?? 0) > maxGroups)
+  )
+    return {
+      success: false,
+      error: `Your plan allows up to ${maxGroups} customization groups per item. Upgrade for more.`,
+    };
+
+  // Auto-close hours and per-item stock caps are Pro/pass — strip for free so a
+  // stored value can't keep enforcing after a pass expires.
+  const hours = entitlement.autoCloseHours ? data.hours : null;
+  const menu_items = entitlement.stockCaps
+    ? data.menu_items
+    : data.menu_items.map(({ stock: _stock, ...rest }) => rest);
+
+  const supabase = await createServerClient();
 
   const row = {
     name: data.name,
     image_url: data.image_url,
     is_active: data.is_active,
-    hours: data.hours,
-    menu_items: data.menu_items,
+    hours,
+    menu_items,
   };
 
   if (data.boothId) {

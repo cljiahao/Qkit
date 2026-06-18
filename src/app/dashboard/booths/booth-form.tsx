@@ -27,10 +27,12 @@ import {
   sanitizeOptionGroups,
   type MenuItemFormInput,
 } from "@/lib/schemas";
+import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
 
 interface Props {
   vendorId: string;
+  entitlement: Entitlement;
   initial?: {
     boothId: string;
     name: string;
@@ -41,7 +43,7 @@ interface Props {
   };
 }
 
-export function BoothForm({ vendorId, initial }: Props) {
+export function BoothForm({ vendorId, entitlement, initial }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(
@@ -146,9 +148,18 @@ export function BoothForm({ vendorId, initial }: Props) {
         </span>
       </label>
 
-      <WorkingHoursEditor value={hours} onChange={setHours} />
+      <WorkingHoursEditor
+        value={hours}
+        onChange={setHours}
+        entitlement={entitlement}
+      />
 
-      <MenuEditor vendorId={vendorId} items={items} onChange={setItems} />
+      <MenuEditor
+        vendorId={vendorId}
+        items={items}
+        onChange={setItems}
+        entitlement={entitlement}
+      />
 
       <div className="flex gap-3">
         <Button

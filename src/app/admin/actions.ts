@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
+import {
+  grantPassSchema,
+  pricingFormSchema,
+  type GrantPassInput,
+  type PricingFormInput,
+} from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 
 const setPlanSchema = z.object({
@@ -47,5 +53,89 @@ export async function setVendorPlan(
     console.error("admin_audit insert failed", auditError.message);
 
   revalidatePath("/admin");
+  return { success: true };
+}
+
+/**
+ * Mint a time-boxed Pro pass for a vendor (manual fulfilment of a PayNow/cash
+ * payment — Stripe is deferred until ACRA/UEN). Service-role insert; RLS blocks
+ * client writes to licenses. Admin-only.
+ */
+export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+
+  const parsed = grantPassSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid input" };
+
+  const expiresAt = new Date(
+    Date.now() + parsed.data.durationHours * 3_600_000,
+  ).toISOString();
+
+  const supabase = await createServiceClient();
+  const { error } = await supabase.from("licenses").insert({
+    vendor_id: parsed.data.vendorId,
+    expires_at: expiresAt,
+    source: "admin_manual",
+    note: parsed.data.note ?? null,
+  });
+  if (error) {
+    console.error("grantPass failed", error.message);
+    return { success: false, error: "Could not grant pass" };
+  }
+
+  const { error: auditError } = await supabase.from("admin_audit").insert({
+    admin_id: user.id,
+    action: "grant_pass",
+    target_id: parsed.data.vendorId,
+    detail: {
+      hours: parsed.data.durationHours,
+      note: parsed.data.note ?? null,
+    },
+  });
+  if (auditError)
+    console.error("admin_audit insert failed", auditError.message);
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/** Update the single pricing row shown on the offer page. Admin-only. */
+export async function setPricing(
+  input: PricingFormInput,
+): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+
+  const parsed = pricingFormSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid input" };
+
+  const updated_at = new Date().toISOString();
+
+  const supabase = await createServiceClient();
+  const { error } = await supabase
+    .from("pricing")
+    .update({
+      event_pass_cents: parsed.data.event_pass_cents,
+      monthly_cents: parsed.data.monthly_cents,
+      updated_at,
+    })
+    .eq("id", 1);
+  if (error) {
+    console.error("setPricing failed", error.message);
+    return { success: false, error: "Could not update pricing" };
+  }
+
+  const { error: auditError } = await supabase.from("admin_audit").insert({
+    admin_id: user.id,
+    action: "set_pricing",
+    detail: {
+      event_pass_cents: parsed.data.event_pass_cents,
+      monthly_cents: parsed.data.monthly_cents,
+    },
+  });
+  if (auditError)
+    console.error("admin_audit insert failed", auditError.message);
+
+  revalidatePath("/admin");
+  revalidatePath("/dashboard/plan");
   return { success: true };
 }

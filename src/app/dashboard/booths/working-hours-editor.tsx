@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProLock } from "@/components/pro-lock";
+import type { Entitlement } from "@/lib/plan";
 import type { WeekdayKey } from "@/lib/tz";
 import type { BoothHours, DayWindow } from "@/lib/hours";
 import {
@@ -29,9 +31,11 @@ const timeInputClass =
 export function WorkingHoursEditor({
   value,
   onChange,
+  entitlement,
 }: {
   value: BoothHours;
   onChange: (hours: BoothHours) => void;
+  entitlement: Entitlement;
 }) {
   const [mode, setMode] = useState<"daily" | "weekly">(value?.mode ?? "daily");
   const [dailyOpen, setDailyOpen] = useState(
@@ -43,6 +47,27 @@ export function WorkingHoursEditor({
   const [days, setDays] = useState<Record<WeekdayKey, DayWindow | null>>(
     value?.mode === "weekly" ? value.days : emptyWeek(),
   );
+
+  // Scheduled auto-close is Pro/pass. Free booths open/close with the Active
+  // toggle only; show a locked card that nudges to the plan page. (After hooks
+  // so hook order stays stable across renders.)
+  if (!entitlement.autoCloseHours) {
+    return (
+      <div className="space-y-2 rounded-xl border border-dashed border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Working hours</span>
+          </div>
+          <ProLock feature="auto_close_hours" label="Pro" />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Schedule open/close times so orders stop automatically — no need to
+          flip the booth off by hand. Upgrade to set hours.
+        </p>
+      </div>
+    );
+  }
 
   function emitDaily(open: string, close: string) {
     setDailyOpen(open);

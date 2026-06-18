@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
+import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { parseOrderItems } from "@/lib/schemas";
 import {
   computeStats,
@@ -10,7 +10,6 @@ import {
   type SeriesPoint,
   type StatsOrder,
 } from "@/lib/stats";
-import { allowedStatsRanges, normalizePlan } from "@/lib/plan";
 import { MS_PER_DAY } from "@/lib/utils";
 import type { Database } from "@/lib/types";
 import { StatsControls } from "./stats-controls";
@@ -54,15 +53,14 @@ async function fetchOrders(
 
 export default async function StatsPage({ searchParams }: Props) {
   const { range: rangeParam, booth: boothParam } = await searchParams;
-  const { user, vendor } = await getVendor();
+  const { user, vendor, entitlement } = await loadEntitlement();
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
 
-  // Plan gate: free vendors see today only. Clamp an out-of-plan (or unknown)
-  // range to the widest the plan allows.
-  const plan = normalizePlan(vendor.plan);
-  const pro = plan === "pro";
-  const allowedRanges = allowedStatsRanges(plan);
+  // Plan gate: free + pass see today only; longitudinal history is Pro. Clamp an
+  // out-of-plan (or unknown) range to the widest the entitlement allows.
+  const pro = entitlement.tier === "pro";
+  const allowedRanges = entitlement.statsRanges;
   const requested = rangeParam && rangeParam in RANGE_DAYS ? rangeParam : "7d";
   const range = allowedRanges.includes(requested)
     ? requested

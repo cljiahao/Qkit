@@ -15,6 +15,7 @@ import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { cartKey, cartTotal } from "@/lib/cart";
 import { addRecentOrder } from "@/lib/recent-orders";
+import { remainingFor, type Remaining } from "@/lib/stock";
 import { placeOrder } from "./actions";
 import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
 
@@ -22,9 +23,16 @@ interface Props {
   boothId: string;
   menuItems: MenuItem[];
   closed?: boolean;
+  // Live remaining per capped item (id → count). Absent id = unlimited.
+  remaining?: Remaining;
 }
 
-export function OrderForm({ boothId, menuItems, closed = false }: Props) {
+export function OrderForm({
+  boothId,
+  menuItems,
+  closed = false,
+  remaining = {},
+}: Props) {
   const router = useRouter();
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
@@ -55,7 +63,29 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
     });
   }
 
+  // Stock is per menu item, pooled across its option variants. Sum the current
+  // cart quantity for an item so a capped item can't be over-added.
+  function qtyInCartFor(menuItemId: string): number {
+    let n = 0;
+    for (const it of cart.values()) {
+      if (it.menuItemId === menuItemId) n += it.quantity;
+    }
+    return n;
+  }
+
+  /** Block (and explain) when adding one more would exceed the live cap. */
+  function blockedByStock(menuItemId: string): boolean {
+    const left = remainingFor(remaining, menuItemId);
+    if (left === null) return false;
+    if (qtyInCartFor(menuItemId) >= left) {
+      toast.error(left <= 0 ? "Sold out" : `Only ${left} left`);
+      return true;
+    }
+    return false;
+  }
+
   function addConfigured(item: MenuItem, options: SelectedOption[]) {
+    if (blockedByStock(item.id)) return;
     updateCart(cartKey(item.id, options), (existing) => ({
       menuItemId: item.id,
       name: item.name,
@@ -66,6 +96,8 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
   }
 
   function increment(key: string) {
+    const entry = cart.get(key);
+    if (entry && blockedByStock(entry.menuItemId)) return;
     updateCart(key, (existing) =>
       existing ? { ...existing, quantity: existing.quantity + 1 } : undefined,
     );
@@ -143,13 +175,17 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
             // Inline +/- only for plain items (keyed by id). Option items are
             // added via the sheet and managed in the cart summary.
             const plainInCart = hasOptions ? undefined : cart.get(item.id);
+            const left = remainingFor(remaining, item.id);
+            const soldOut = left !== null && left <= 0;
             return (
               <div
                 key={item.id}
                 className={`flex items-center justify-between gap-4 rounded-xl border bg-card p-3.5 transition-colors ${
-                  plainInCart
-                    ? "border-primary/40 bg-primary/[0.04]"
-                    : "border-border"
+                  soldOut
+                    ? "border-border opacity-60"
+                    : plainInCart
+                      ? "border-primary/40 bg-primary/[0.04]"
+                      : "border-border"
                 }`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -176,6 +212,18 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
                         {formatPrice(item.price_cents)}
                       </p>
                     )}
+                    {left !== null &&
+                      (soldOut ? (
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
+                          Sold out
+                        </p>
+                      ) : (
+                        left <= 5 && (
+                          <p className="mt-1 text-xs font-medium text-muted-foreground">
+                            {left} left
+                          </p>
+                        )
+                      ))}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -209,9 +257,9 @@ export function OrderForm({ boothId, menuItems, closed = false }: Props) {
                       size="sm"
                       className="rounded-lg"
                       onClick={() => onAddClick(item)}
-                      disabled={closed}
+                      disabled={closed || soldOut}
                     >
-                      {hasOptions ? "Customize" : "Add"}
+                      {soldOut ? "Sold out" : hasOptions ? "Customize" : "Add"}
                     </Button>
                   )}
                 </div>

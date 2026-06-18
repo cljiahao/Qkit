@@ -3,11 +3,14 @@
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ProLock } from "@/components/pro-lock";
+import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
 import type { OptionGroup } from "@/lib/types";
 
 interface Props {
   groups: OptionGroup[];
   onChange: (groups: OptionGroup[]) => void;
+  entitlement: Entitlement;
 }
 
 /**
@@ -15,7 +18,10 @@ interface Props {
  * number of groups (Size, Spice, Add-ons, …), each single- or multi-select,
  * with any number of choices. Not coffee-specific.
  */
-export function OptionGroupsEditor({ groups, onChange }: Props) {
+export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
+  // canHaveOptionGroups(count) asks "may an item carry `count` groups?" — so the
+  // cap is hit when adding one more (groups.length + 1) is not allowed.
+  const atGroupCap = !canHaveOptionGroups(entitlement, groups.length + 1);
   function updateGroup(gi: number, patch: Partial<OptionGroup>) {
     onChange(groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)));
   }
@@ -145,15 +151,24 @@ export function OptionGroupsEditor({ groups, onChange }: Props) {
         </div>
       ))}
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="rounded-lg"
-        onClick={addGroup}
-      >
-        <Plus className="size-3.5" /> Add option group
-      </Button>
+      {atGroupCap ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            {entitlement.maxOptionGroupsPerItem}-group limit per item.
+          </span>
+          <ProLock feature="option_groups" label="Upgrade" />
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-lg"
+          onClick={addGroup}
+        >
+          <Plus className="size-3.5" /> Add option group
+        </Button>
+      )}
     </div>
   );
 }

@@ -2,16 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
+import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { parseMenuItems } from "@/lib/schemas";
-import { canAddBooth, normalizePlan } from "@/lib/plan";
+import { canAddBooth } from "@/lib/plan";
 import { BoothList } from "./booth-list";
 
 export const revalidate = 0;
 
 export default async function BoothsPage() {
-  const { user, vendor } = await getVendor();
+  const { user, vendor, entitlement } = await loadEntitlement();
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
 
@@ -30,7 +30,7 @@ export default async function BoothsPage() {
     itemCount: parseMenuItems(b.menu_items).length,
   }));
 
-  const canCreate = canAddBooth(normalizePlan(vendor.plan), rows.length);
+  const canCreate = canAddBooth(entitlement, rows.length);
 
   return (
     <div>
