@@ -12,6 +12,8 @@ interface BoothRow {
   is_active: boolean;
   image_url: string | null;
   itemCount: number;
+  // Active but beyond the plan's serve limit — not orderable by customers.
+  paused: boolean;
 }
 
 export function BoothList({ booths }: { booths: BoothRow[] }) {
@@ -46,13 +48,20 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
               </p>
               <span
                 className={`mt-1 inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold ${
-                  booth.is_active
-                    ? "text-status-ready"
-                    : "text-muted-foreground"
+                  booth.paused
+                    ? "text-amber-600"
+                    : booth.is_active
+                      ? "text-status-ready"
+                      : "text-muted-foreground"
                 }`}
+                title={
+                  booth.paused
+                    ? "Active but paused — your plan serves one live booth at a time"
+                    : undefined
+                }
               >
                 <span className="size-1.5 rounded-full bg-current" />
-                {booth.is_active ? "Active" : "Off"}
+                {booth.paused ? "Paused" : booth.is_active ? "Active" : "Off"}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">

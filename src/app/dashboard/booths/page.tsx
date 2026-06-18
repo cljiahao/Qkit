@@ -6,6 +6,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { parseMenuItems } from "@/lib/schemas";
 import { canAddBooth } from "@/lib/plan";
+import { servableBoothIds, isBoothPaused } from "@/lib/booth-access";
+import { ProLock } from "@/components/pro-lock";
 import { BoothList } from "./booth-list";
 
 export const revalidate = 0;
@@ -18,19 +20,23 @@ export default async function BoothsPage() {
   const supabase = await createServerClient();
   const { data: booths } = await supabase
     .from("booths")
-    .select("id, name, is_active, image_url, menu_items")
+    .select("id, name, is_active, image_url, menu_items, created_at")
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: true });
 
-  const rows = (booths ?? []).map((b) => ({
+  const all = booths ?? [];
+  const servable = servableBoothIds(all, entitlement);
+  const rows = all.map((b) => ({
     id: b.id,
     name: b.name,
     is_active: b.is_active,
     image_url: b.image_url,
     itemCount: parseMenuItems(b.menu_items).length,
+    paused: isBoothPaused(b, servable),
   }));
 
   const canCreate = canAddBooth(entitlement, rows.length);
+  const pausedCount = rows.filter((r) => r.paused).length;
 
   return (
     <div>
@@ -57,6 +63,18 @@ export default async function BoothsPage() {
           </Button>
         )}
       </div>
+
+      {pausedCount > 0 && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+          <span className="text-muted-foreground">
+            Your plan serves <strong>1 live booth</strong> at a time —{" "}
+            {pausedCount} booth{pausedCount === 1 ? " is" : "s are"} paused for
+            customers. Keep all your booths live at once with Pro or an event
+            pass.
+          </span>
+          <ProLock feature="multi_booth_active" label="Keep all live" />
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="ticket mt-10 overflow-hidden rounded-2xl border border-dashed border-border py-16 text-center">

@@ -76,6 +76,24 @@ export async function saveBooth(
 
   const supabase = await createServerClient();
 
+  // Active-booth gate: free vendors serve one live booth at a time. Block
+  // activating a second (they swap by deactivating another). RLS booth_servable
+  // is the real backstop; this gives a clear error instead of a silent pause.
+  if (data.is_active && entitlement.maxBooths !== null) {
+    let q = supabase
+      .from("booths")
+      .select("id", { count: "exact", head: true })
+      .eq("vendor_id", user.id)
+      .eq("is_active", true);
+    if (data.boothId) q = q.neq("id", data.boothId);
+    const { count } = await q;
+    if ((count ?? 0) >= entitlement.maxBooths)
+      return {
+        success: false,
+        error: `Your plan serves ${entitlement.maxBooths} active booth at a time. Deactivate another booth first, or upgrade.`,
+      };
+  }
+
   const row = {
     name: data.name,
     image_url: data.image_url,
