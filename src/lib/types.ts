@@ -151,7 +151,6 @@ export interface Database {
           expires_at: string;
           source: string;
           note: string | null;
-          amount_cents: number;
           created_at: string;
         };
         Insert: {
@@ -160,7 +159,6 @@ export interface Database {
           expires_at: string;
           source?: string;
           note?: string | null;
-          amount_cents?: number;
           created_at?: string;
         };
         Update: {
@@ -169,12 +167,51 @@ export interface Database {
           expires_at?: string;
           source?: string;
           note?: string | null;
-          amount_cents?: number;
           created_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: "licenses_vendor_id_fkey";
+            columns: ["vendor_id"];
+            referencedRelation: "vendors";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payments: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          kind: "pass" | "subscription";
+          amount_cents: number;
+          source: string;
+          note: string | null;
+          license_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          kind: "pass" | "subscription";
+          amount_cents: number;
+          source?: string;
+          note?: string | null;
+          license_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          vendor_id?: string;
+          kind?: "pass" | "subscription";
+          amount_cents?: number;
+          source?: string;
+          note?: string | null;
+          license_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payments_vendor_id_fkey";
             columns: ["vendor_id"];
             referencedRelation: "vendors";
             referencedColumns: ["id"];
@@ -319,5 +356,6 @@ export type Booth = Database["public"]["Tables"]["booths"]["Row"];
 export type Order = Database["public"]["Tables"]["orders"]["Row"];
 export type License = Database["public"]["Tables"]["licenses"]["Row"];
 export type Pricing = Database["public"]["Tables"]["pricing"]["Row"];
+export type Payment = Database["public"]["Tables"]["payments"]["Row"];
 export type Admin = Database["public"]["Tables"]["admins"]["Row"];
 export type AdminAudit = Database["public"]["Tables"]["admin_audit"]["Row"];

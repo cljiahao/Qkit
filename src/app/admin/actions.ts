@@ -15,6 +15,9 @@ import type { ActionResult } from "@/lib/action-result";
 const setPlanSchema = z.object({
   vendorId: z.string().uuid(),
   plan: z.enum(["free", "pro"]),
+  // When flipping to pro against a real (non-comp) payment, record it.
+  amountCents: z.number().int().nonnegative().max(10_000_00).optional(),
+  note: z.string().max(200).optional(),
 });
 
 /**
@@ -43,13 +46,27 @@ export async function setVendorPlan(
     return { success: false, error: "Could not update plan" };
   }
 
+  // Record subscription revenue when flipping to pro against a real payment
+  // (blank/0 = a comp, no ledger row). Best-effort.
+  const amount = parsed.data.amountCents ?? 0;
+  if (parsed.data.plan === "pro" && amount > 0) {
+    const { error: payError } = await supabase.from("payments").insert({
+      vendor_id: parsed.data.vendorId,
+      kind: "subscription",
+      amount_cents: amount,
+      source: "paynow",
+      note: parsed.data.note ?? null,
+    });
+    if (payError) console.error("payment insert failed", payError.message);
+  }
+
   // Audit trail of who changed what. Best-effort — don't fail the action if the
   // audit insert hiccups, but log it so a broken trail is visible.
   const { error: auditError } = await supabase.from("admin_audit").insert({
     admin_id: user.id,
     action: "set_plan",
     target_id: parsed.data.vendorId,
-    detail: { to: parsed.data.plan },
+    detail: { to: parsed.data.plan, amount_cents: amount },
   });
   if (auditError)
     console.error("admin_audit insert failed", auditError.message);
@@ -74,16 +91,33 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
   ).toISOString();
 
   const supabase = await createServiceClient();
-  const { error } = await supabase.from("licenses").insert({
-    vendor_id: parsed.data.vendorId,
-    expires_at: expiresAt,
-    source: "admin_manual",
-    note: parsed.data.note ?? null,
-    amount_cents: parsed.data.amountCents ?? 0,
-  });
-  if (error) {
-    console.error("grantPass failed", error.message);
+  const { data: license, error } = await supabase
+    .from("licenses")
+    .insert({
+      vendor_id: parsed.data.vendorId,
+      expires_at: expiresAt,
+      source: "admin_manual",
+      note: parsed.data.note ?? null,
+    })
+    .select("id")
+    .single();
+  if (error || !license) {
+    console.error("grantPass failed", error?.message ?? "no row");
     return { success: false, error: "Could not grant pass" };
+  }
+
+  // Record the money separately in the revenue ledger (0 = free comp → no row).
+  const amount = parsed.data.amountCents ?? 0;
+  if (amount > 0) {
+    const { error: payError } = await supabase.from("payments").insert({
+      vendor_id: parsed.data.vendorId,
+      kind: "pass",
+      amount_cents: amount,
+      source: "paynow",
+      note: parsed.data.note ?? null,
+      license_id: license.id,
+    });
+    if (payError) console.error("payment insert failed", payError.message);
   }
 
   const { error: auditError } = await supabase.from("admin_audit").insert({

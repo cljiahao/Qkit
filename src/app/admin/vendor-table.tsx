@@ -37,25 +37,44 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
   // Snapshot once (lazy init avoids an impure Date.now() during render).
   const [now] = useState(() => Date.now());
 
+  // Shared by grant + make-pro: parse the $ field to cents (blank/invalid = 0 = comp).
+  function parseAmountCents(): number {
+    const dollars = Number(amount.trim());
+    return amount.trim() && !Number.isNaN(dollars) && dollars >= 0
+      ? Math.round(dollars * 100)
+      : 0;
+  }
+
+  function reset() {
+    setGranting(null);
+    setNote("");
+    setAmount("");
+  }
+
   function flip(v: AdminVendorRow) {
     const next: Plan = v.plan === "pro" ? "free" : "pro";
+    const amountCents = parseAmountCents();
     startTransition(async () => {
-      const res = await setVendorPlan({ vendorId: v.id, plan: next });
+      const res = await setVendorPlan({
+        vendorId: v.id,
+        plan: next,
+        amountCents,
+        note: note.trim() || undefined,
+      });
       if (!res.success) {
         toast.error(res.error);
         return;
       }
-      toast.success(`${v.name} → ${next}`);
+      toast.success(
+        `${v.name} → ${next}${next === "pro" && amountCents ? ` · $${(amountCents / 100).toFixed(2)}` : ""}`,
+      );
+      reset();
       router.refresh();
     });
   }
 
   function grant(v: AdminVendorRow, hours: number) {
-    const dollars = Number(amount.trim());
-    const amountCents =
-      amount.trim() && !Number.isNaN(dollars) && dollars >= 0
-        ? Math.round(dollars * 100)
-        : 0;
+    const amountCents = parseAmountCents();
     startTransition(async () => {
       const res = await grantPass({
         vendorId: v.id,
@@ -70,9 +89,7 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
       toast.success(
         `${v.name} → ${hours}h pass${amountCents ? ` · $${(amountCents / 100).toFixed(2)}` : " · free"}`,
       );
-      setGranting(null);
-      setNote("");
-      setAmount("");
+      reset();
       router.refresh();
     });
   }
@@ -118,62 +135,76 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
               </span>
               <Button
                 size="sm"
-                variant="outline"
+                variant={granting === v.id ? "default" : "outline"}
                 className="rounded-lg"
                 disabled={pending}
-                onClick={() => setGranting((id) => (id === v.id ? null : v.id))}
+                onClick={() =>
+                  granting === v.id ? reset() : setGranting(v.id)
+                }
               >
-                <Ticket className="size-3.5" /> Grant pass
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded-lg"
-                disabled={pending}
-                onClick={() => flip(v)}
-              >
-                {v.plan === "pro" ? (
-                  "Downgrade"
-                ) : (
-                  <>
-                    <Sparkles className="size-3.5" /> Make Pro
-                  </>
-                )}
+                Manage
               </Button>
             </div>
 
             {granting === v.id && (
-              <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-border bg-muted/30 px-4 py-3">
-                <Input
-                  placeholder="Payment note (e.g. PayNow ref)"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  className="h-9 max-w-[16rem] flex-1 rounded-lg text-sm"
-                />
-                <div className="relative w-28">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    $
-                  </span>
+              <div className="space-y-3 border-t border-dashed border-border bg-muted/30 px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <Input
-                    inputMode="decimal"
-                    placeholder="0 = free"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="h-9 rounded-lg pl-7 text-sm"
-                    title="What you collected (blank/0 = free comp)"
+                    placeholder="Payment note (e.g. PayNow ref)"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="h-9 max-w-[16rem] flex-1 rounded-lg text-sm"
                   />
+                  <div className="relative w-28">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      inputMode="decimal"
+                      placeholder="0 = free"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="h-9 rounded-lg pl-7 text-sm"
+                      title="What you collected (blank/0 = free comp)"
+                    />
+                  </div>
                 </div>
-                {DURATIONS.map((d) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+                    <Ticket className="size-3.5" /> Pass:
+                  </span>
+                  {DURATIONS.map((d) => (
+                    <Button
+                      key={d.hours}
+                      size="sm"
+                      className="rounded-lg"
+                      disabled={pending}
+                      onClick={() => grant(v, d.hours)}
+                    >
+                      {d.label}
+                    </Button>
+                  ))}
+                  <span className="mx-1 h-5 w-px bg-border" />
                   <Button
-                    key={d.hours}
                     size="sm"
+                    variant="outline"
                     className="rounded-lg"
                     disabled={pending}
-                    onClick={() => grant(v, d.hours)}
+                    onClick={() => flip(v)}
                   >
-                    {d.label}
+                    {v.plan === "pro" ? (
+                      "Downgrade"
+                    ) : (
+                      <>
+                        <Sparkles className="size-3.5" /> Make Pro
+                      </>
+                    )}
                   </Button>
-                ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Amount records to revenue (pass or subscription). Blank/0 =
+                  free comp — access granted, no revenue logged.
+                </p>
               </div>
             )}
           </div>

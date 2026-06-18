@@ -105,6 +105,7 @@ export default async function AdminPage() {
     { data: auditRows },
     { data: pricingRow },
     { data: licenseRows },
+    { data: paymentRows },
   ] = await Promise.all([
     supabase
       .from("vendors")
@@ -123,12 +124,12 @@ export default async function AdminPage() {
       .select("event_pass_cents, monthly_cents, currency")
       .eq("id", 1)
       .maybeSingle(),
-    supabase
-      .from("licenses")
-      .select("vendor_id, expires_at, amount_cents, created_at"),
+    supabase.from("licenses").select("vendor_id, expires_at"),
+    supabase.from("payments").select("amount_cents, created_at"),
   ]);
 
   const licenses = licenseRows ?? [];
+  const payments = paymentRows ?? [];
 
   // Latest live pass per vendor (longest remaining window).
   const passByVendor = new Map<string, string>();
@@ -139,12 +140,12 @@ export default async function AdminPage() {
       passByVendor.set(l.vendor_id, l.expires_at);
   }
 
-  // QKit's own revenue — what we actually collected (amount_cents), NOT vendor
-  // GMV. Beta comps are $0, so this honestly reflects real earnings.
-  const revenue30d = licenses
-    .filter((l) => l.created_at >= cutoff30d)
-    .reduce((sum, l) => sum + l.amount_cents, 0);
-  const revenueAll = licenses.reduce((sum, l) => sum + l.amount_cents, 0);
+  // QKit's own revenue — what we actually collected, from the payments ledger
+  // (NOT vendor GMV). Beta comps record no payment, so this is honest earnings.
+  const revenue30d = payments
+    .filter((p) => p.created_at >= cutoff30d)
+    .reduce((sum, p) => sum + p.amount_cents, 0);
+  const revenueAll = payments.reduce((sum, p) => sum + p.amount_cents, 0);
 
   const vendors: AdminVendorRow[] = (vendorRows ?? []).map((v) => ({
     ...v,
@@ -178,12 +179,12 @@ export default async function AdminPage() {
 
   // 14-day trend of QKit revenue (collected pass/sub amounts), not vendor sales.
   const revSeries = windowSeries(
-    licenses.map(
-      (l): StatsOrder => ({
+    payments.map(
+      (p): StatsOrder => ({
         status: "completed",
-        total_cents: l.amount_cents,
+        total_cents: p.amount_cents,
         items: [],
-        created_at: l.created_at,
+        created_at: p.created_at,
       }),
     ),
     now,
