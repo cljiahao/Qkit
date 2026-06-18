@@ -69,8 +69,9 @@ export function normalizePlan(value: unknown): Plan {
 /**
  * Resolve a vendor's effective entitlement. Permanent pro (subscription/comp via
  * vendors.plan) outranks a time-boxed pass; an unexpired license grants the pass
- * tier; otherwise free. `licenseExpiresAt` is the vendor's most-recent license
- * expiry (ISO string) or null. Defensive: an unparseable expiry is ignored.
+ * tier; otherwise free. `licenseExpiresAt` is the vendor's latest-expiring
+ * license expiry (ISO string) or null. Defensive: an unparseable expiry is
+ * ignored.
  */
 export function getEntitlement(
   plan: unknown,

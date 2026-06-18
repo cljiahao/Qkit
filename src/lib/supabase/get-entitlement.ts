@@ -27,6 +27,8 @@ export async function loadEntitlement(): Promise<{
     };
   }
 
+  // Take the latest-EXPIRING license (DESC on expires_at), not the most-recently
+  // minted — overlapping passes should grant the longest window.
   const supabase = await createServerClient();
   const { data } = await supabase
     .from("licenses")

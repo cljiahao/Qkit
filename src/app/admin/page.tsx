@@ -9,6 +9,7 @@ import {
 import { pctChange, windowSeries, type StatsOrder } from "@/lib/stats";
 import { cn, MS_PER_DAY } from "@/lib/utils";
 import type { Plan } from "@/lib/types";
+import { DEFAULT_PRICING } from "@/lib/pricing";
 import { VendorTable, type AdminVendorRow } from "./vendor-table";
 import { PricingForm } from "./pricing-form";
 import { ActivationFunnelView } from "./activation-funnel";
@@ -138,11 +139,7 @@ export default async function AdminPage() {
     ...v,
     passExpiresAt: passByVendor.get(v.id) ?? null,
   }));
-  const pricing = pricingRow ?? {
-    event_pass_cents: 0,
-    monthly_cents: 0,
-    currency: "SGD",
-  };
+  const pricing = pricingRow ?? DEFAULT_PRICING;
   const booths = boothRows ?? [];
   const orders = orderRows ?? [];
   const events = eventRows ?? [];

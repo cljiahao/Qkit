@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Check, Sparkles, Ticket } from "lucide-react";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
+import { DEFAULT_PRICING } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { UpgradeCta } from "./upgrade-cta";
 import { PassCountdown } from "./pass-countdown";
@@ -60,11 +61,7 @@ export default async function PlanPage() {
     .select("event_pass_cents, monthly_cents, currency")
     .eq("id", 1)
     .maybeSingle();
-  const pricing = pricingRow ?? {
-    event_pass_cents: 0,
-    monthly_cents: 0,
-    currency: "SGD",
-  };
+  const pricing = pricingRow ?? DEFAULT_PRICING;
 
   const tier = entitlement.tier;
 
