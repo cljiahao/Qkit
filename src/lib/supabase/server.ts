@@ -37,14 +37,17 @@ export async function createServerClient() {
 }
 
 // Uses the secret key — bypasses RLS. Only use in Server Actions/Route Handlers.
+// CRITICAL: do NOT attach the request cookies here. If the user's auth cookies
+// are passed, @supabase/ssr hydrates their session and authenticates every query
+// as that user (RLS applies) instead of as service-role — silently breaking
+// admin writes (license inserts denied, cross-vendor updates match 0 rows). An
+// empty cookie adapter means the secret key drives auth → true RLS bypass.
 export async function createServiceClient() {
-  const cookieStore = await cookies();
-
   return createSSRClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SECRET_KEY!,
     {
-      cookies: cookieMethods(cookieStore),
+      cookies: { getAll: () => [], setAll: () => {} },
       auth: {
         autoRefreshToken: false,
         persistSession: false,

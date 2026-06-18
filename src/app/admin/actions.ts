@@ -31,13 +31,15 @@ export async function setVendorPlan(
   if (!parsed.success) return { success: false, error: "Invalid input" };
 
   const supabase = await createServiceClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("vendors")
     .update({ plan: parsed.data.plan })
-    .eq("id", parsed.data.vendorId);
+    .eq("id", parsed.data.vendorId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
-    console.error("setVendorPlan failed", error.message);
+  if (error || !updated) {
+    console.error("setVendorPlan failed", error?.message ?? "no row updated");
     return { success: false, error: "Could not update plan" };
   }
 

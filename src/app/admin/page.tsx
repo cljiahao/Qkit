@@ -216,7 +216,7 @@ export default async function AdminPage() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <ActivationFunnelView funnel={funnel} />
-        <TrendChart series={series} range="14d" />
+        <TrendChart series={series} range="14d" title="Booth sales volume" />
       </div>
 
       <p className="text-xs text-muted-foreground">

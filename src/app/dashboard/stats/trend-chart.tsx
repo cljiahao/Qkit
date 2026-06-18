@@ -22,20 +22,27 @@ function ordersOf(payload: unknown): number {
   return (payload as { orders?: number } | null)?.orders ?? 0;
 }
 
-/** Revenue trend across the window — shape of growth, not just the delta. */
+/**
+ * Revenue trend across the window — shape of growth, not just the delta. The
+ * `title` defaults to "Revenue trend" (the vendor's own sales); the admin view
+ * passes a clearer label since there it's aggregate booth sales (GMV), not QKit's
+ * own earnings.
+ */
 export function TrendChart({
   series,
   range,
+  title = "Revenue trend",
 }: {
   series: SeriesPoint[];
   range: string;
+  title?: string;
 }) {
   const data = series.map((p, i) => ({ ...p, i }));
 
   return (
     <section className="rounded-xl border border-border bg-card p-4">
       <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Revenue trend{" "}
+        {title}{" "}
         <span className="font-normal normal-case tracking-normal text-muted-foreground/70">
           · {RANGE_LABEL[range] ?? range}
         </span>
