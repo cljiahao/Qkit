@@ -28,17 +28,17 @@ Two hard constraints shape the approach:
 Three rungs, segmented by **behaviour, not by crippling features** (the named
 freemium anti-pattern is forcing one model on every segment / stripping features):
 
-| Rung | For | Unlocks |
-|---|---|---|
-| **Free** | no-risk entry, tiny booths | 1 booth, 6 menu items, 3 option groups/item, manual open/close, 24h stats, unlimited orders |
-| **Per-event pass** (time-boxed) | occasional / biweekly vendors, first-timers | **all operational Pro features** for the window + **that event's own (24h) stats** |
-| **Monthly subscription** | regular organisers (≈3+ events/mo) | all operational Pro features **+ longitudinal stats** (7/30/90d trends, cross-event history) |
+| Rung                            | For                                         | Unlocks                                                                                      |
+| ------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Free**                        | no-risk entry, tiny booths                  | 1 booth, 6 menu items, 3 option groups/item, manual open/close, 24h stats, unlimited orders  |
+| **Per-event pass** (time-boxed) | occasional / biweekly vendors, first-timers | **all operational Pro features** for the window + **that event's own (24h) stats**           |
+| **Monthly subscription**        | regular organisers (≈3+ events/mo)          | all operational Pro features **+ longitudinal stats** (7/30/90d trends, cross-event history) |
 
-Rationale for the stats split: longitudinal stats are *naturally* a recurring-use
+Rationale for the stats split: longitudinal stats are _naturally_ a recurring-use
 value. A one-off buyer wants "how did today go?" (24h) but gets little from a
 90-day trend — so trends accrue to subscribers **without** the pass being
 feature-gimped operationally. An event vendor needs auto-close and sold-out caps
-*most*, so the pass must include them.
+_most_, so the pass must include them.
 
 Breakeven guidance: with pass ≈ 1/3 of monthly, ~3 events/month is the crossover —
 biweekly vendors land on the pass, weekly+ on subscription. **Absolute prices are
@@ -91,7 +91,7 @@ JSONB, saved via the booth-save server action under the vendor's own session.
   "Add item" past the cap, etc.). This matches the existing app-layer stats
   gating.
 - **Caveat (documented, not hidden):** a free vendor could bypass these via a raw
-  client write to *their own* booth. This is **quota evasion, not a security
+  client write to _their own_ booth. This is **quota evasion, not a security
   hole** — no access to other vendors' data, no privilege escalation. The rigorous
   fix is a DB trigger validating JSONB content against the vendor's plan; it is
   **out of scope** for the validation test (YAGNI). Document it as future
@@ -108,7 +108,7 @@ No inventory concept exists today; `MenuItem.available` is a manual on/off toggl
   `MenuItem` type, `menuItemSchema`, `menuItemFormSchema`.
 - **Soft cap, live-order-aware:**
   `remaining = stock − Σ quantity of this item across **non-cancelled** orders for
-  the booth`. A cancelled (or amended-down) order automatically returns its stock —
+the booth`. A cancelled (or amended-down) order automatically returns its stock —
   no manual restock. No JSONB decrement → no write race.
 - **Count without leaking orders:** orders are not publicly readable (RLS). Add a
   `SECURITY DEFINER` SQL function `booth_remaining_stock(p_booth_id uuid)` →
