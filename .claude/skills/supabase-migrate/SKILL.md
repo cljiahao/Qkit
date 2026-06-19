@@ -1,6 +1,8 @@
 ---
 name: supabase-migrate
 description: Apply Supabase schema migrations and regenerate DB types, with a safety gate.
+allowed-tools: "Bash(supabase *), Bash(pnpm *)"
+disable-model-invocation: true
 ---
 
 QKit uses Supabase (Postgres + RLS + realtime), not Drizzle. Migrations live in

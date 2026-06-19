@@ -97,6 +97,8 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
 | ------------------- | ------------------------------------------------------------ |
 | `/next-verify`      | typecheck + lint + test in one pass                          |
 | `/supabase-migrate` | apply `supabase/migrations` + regenerate types (safety gate) |
+| `/security-scan`    | local secret scan (gitleaks) + dependency audit before push  |
+| `/changelog`        | append a Keep-a-Changelog entry under `[Unreleased]`         |
 
 ### templateCentral plugin skills
 
@@ -122,8 +124,15 @@ Stop: exits 0 when `stop_hook_active` (no re-entry loop); else runs the test
 suite, exit 2 feeds failures back, exit 0 on pass.
 SessionStart (startup|resume|compact): re-injects first 30 lines of this file —
 the documented inject path (PostCompact stdout is ignored, cannot inject context).
-`permissions.deny`: blocks **reading** `.env*` and `./secrets/**` (Edit/Write
-of secrets already blocked by PreToolUse).
+`permissions`: max-privilege — bare-tool `allow` (Bash/Read/Edit/Write/web/Skill/
+Task) so common work doesn't prompt; `deny` covers secret reads/edits (`.env.local`
+and other `.env.<env>` variants, `./secrets/**` — `.env.example` is the one
+whitelisted env file) and irreversible ops (`rm -rf`, `git push --force`/`-f`,
+`git reset --hard`, `git clean -fd/-fx`, `git filter-branch`, ref-delete). Deny
+always wins (enforced even under bypass); it's a guardrail, not a sandbox —
+prefix-matched and wrapper-bypassable. CI security: `.github/workflows/security.yml`
+(gitleaks v3 + CodeQL + `pnpm audit`) and `.github/dependabot.yml` (security-only).
+RLS isolation: `supabase/tests/rls.test.sql` via `supabase test db`.
 Project skills (directory form, `<name>/SKILL.md`): `.claude/skills/` |
 Manifest: `.claude/harness.json`
 
@@ -135,6 +144,9 @@ Manifest: `.claude/harness.json`
 
 ## Project-Specific Notes
 
-- Plan of record: `docs/superpowers/plans/2026-06-05-qkit-core.md`.
+- **Inviolable rules:** `docs/constitution.md` (RLS-is-authz, service-role
+  server-only, Zod boundaries, no secrets in `NEXT_PUBLIC_*`, deny-rules are a
+  guardrail not a sandbox). Read it before changing auth, schema, or the harness.
+- Plan of record: `docs/plans/2026-06-05-qkit-core.md` (specs in `docs/specs/`).
 - Migrated 15→16 on 2026-06-05 (`middleware.ts`→`proxy.ts`, `next lint`→eslint CLI).
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration -->

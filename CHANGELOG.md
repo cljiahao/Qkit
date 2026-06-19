@@ -6,8 +6,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- AI harness governance: `docs/constitution.md` (inviolable rules — RLS-is-authz,
+  service-role server-only, Zod boundaries, deny-rules-are-a-guardrail).
+- Project skills `/security-scan` (local gitleaks + `pnpm audit`) and `/changelog`;
+  scoped `allowed-tools` on all project skills.
+- pgTAP RLS isolation test (`supabase/tests/rls.test.sql`, run via
+  `supabase test db`) — asserts a vendor cannot read or mutate another's data.
+
+### Security
+
+- CI security scanning (`.github/workflows/security.yml`): gitleaks v3 secret
+  scan, CodeQL (javascript-typescript, security-extended), and a `pnpm audit`
+  high/critical gate.
+- `.github/dependabot.yml`: security-updates only (npm + github-actions);
+  version-update PRs disabled (`open-pull-requests-limit: 0`).
+
 ### Changed
 
+- Permissions are now max-privilege: bare-tool `allow` so routine work doesn't
+  prompt, with a `deny` list scoped to secret reads/edits and irreversible git/fs
+  ops (force-push, hard reset, `rm -rf`, history rewrite). `.env.example` is the
+  only whitelisted env file.
+- De-branded docs layout: `docs/superpowers/{specs,plans}` → `docs/{specs,plans}`.
 - Upgraded Next.js 15 → 16.2.7 (Turbopack). Renamed `src/middleware.ts` →
   `src/proxy.ts` (`export proxy`); switched the `check` script from `next lint`
   (removed in 16) to the ESLint CLI with `eslint-config-next`'s flat config.

@@ -193,13 +193,24 @@ Security-updates-only via `open-pull-requests-limit: 0` (documented trick that
 keeps security PRs flowing while disabling version bumps). Ecosystems: `npm`,
 `github-actions`.
 
-### `e2e/rls-isolation.spec.ts` (new)
+### `supabase/tests/rls.test.sql` (new — pgTAP, not e2e)
 
-Defense-in-depth for the auth model: seed two vendors (A, B) with booths+orders;
-assert vendor A's authenticated session **cannot** read or mutate vendor B's
-booths or orders (RLS denies). Needs a two-vendor seed
-(`supabase/seed/rls-isolation.sql` or extend existing seed). This is the one
-project-specific security test — it guards the single most important invariant.
+Defense-in-depth for the auth model. **Layer chosen via research:** Supabase's
+official RLS-testing path is **pgTAP run by `supabase test db`** — in-database,
+transaction-isolated (auto-rollback), fast, parallelizable, no app/browser boot.
+Playwright is for user flows, not policy assertions (heavier, slower).
+
+Self-contained native pgTAP (no basejump `supabase_test_helpers` dependency):
+inside one transaction, insert two vendors (A, B) + their booths/orders, then
+simulate each session with `set local role authenticated` +
+`set_config('request.jwt.claims', '{"sub":"<vendor-id>","role":"authenticated"}')`
+and assert with `results_eq`/`throws_ok`/`is_empty`:
+
+- Vendor A sees only A's booths/orders (`is_empty` for B's rows under A's claims).
+- Vendor A cannot UPDATE/DELETE B's order (`throws_ok` or zero rows affected).
+- `rls_enabled` on `vendors`, `booths`, `orders`.
+
+Run: `supabase test db` (local). Guards the single most important invariant.
 
 ---
 
@@ -208,25 +219,29 @@ project-specific security test — it guards the single most important invariant
 Existing layers are correct; formalize and document the matrix in
 `docs/constitution.md` (or an AGENTS.md "Testing" section):
 
-| Layer         | Tool                            | Scope                            | CI               |
-| ------------- | ------------------------------- | -------------------------------- | ---------------- |
-| Unit          | vitest `*.test.ts`              | `src/lib` pure logic             | every push/PR    |
-| Component     | vitest `*.dom.test.tsx` (jsdom) | React behavior                   | every push/PR    |
-| E2E           | playwright                      | auth guard, order lifecycle, RLS | push/PR (subset) |
-| Mutation      | stryker (`src/lib`)             | advisory, changed files          | PR only          |
-| Type/lint/fmt | `pnpm check`                    | prettier + eslint + tsc          | every push/PR    |
+| Layer         | Tool                            | Scope                       | CI                |
+| ------------- | ------------------------------- | --------------------------- | ----------------- |
+| Unit          | vitest `*.test.ts`              | `src/lib` pure logic        | every push/PR     |
+| Component     | vitest `*.dom.test.tsx` (jsdom) | React behavior              | every push/PR     |
+| E2E           | playwright                      | auth guard, order lifecycle | push/PR (subset)  |
+| RLS           | pgTAP (`supabase test db`)      | cross-vendor isolation      | local / opt-in CI |
+| Mutation      | stryker (`src/lib`)             | advisory, changed files     | PR only           |
+| Type/lint/fmt | `pnpm check`                    | prettier + eslint + tsc     | every push/PR     |
 
-CI gains the new `security.yml`; `ci.yml` adds the `rls-isolation` e2e to the e2e
-job (or a dedicated job if it needs the full local Supabase). `verify.sh` remains
-the local heavy gate (build + check + test).
+CI gains the new `security.yml`. The pgTAP RLS test runs locally via
+`supabase test db` (and `verify.sh`); CI wiring is opt-in (needs `supabase start`,
+heavier than the auth-guard e2e job) — left out of the default CI by default.
+`verify.sh` remains the local heavy gate (build + check + test).
 
 ---
 
-## F. Version drift
+## F. Version metadata
 
-- `harness.json`: `templatecentral_version` `5.0.0` → `4.2.0` (match installed
-  plugin). Note: a `/plugin` check reported 5.1.0 available — record the
-  _installed/seeded-against_ version, not latest; re-seeding is out of scope.
+- `harness.json`: **leave `templatecentral_version: 5.0.0` unchanged.** Re-checked:
+  the cache holds 4.2.0→5.1.0 (5.1.0 latest); `5.0.0` is the accurate
+  _seed-time_ version (seeded 2026-06-05). The earlier "drift to 4.2.0" was a
+  misread of a stale cache dir — downgrading would be wrong. Re-seeding against
+  5.1.0 is a separate, out-of-scope task.
 - CHANGELOG: add an `## [Unreleased]` entry summarizing this harness work.
 
 ---
@@ -241,8 +256,8 @@ the local heavy gate (build + check + test).
 - [ ] `docs/constitution.md` committed; AGENTS.md + memory references updated.
 - [ ] `security.yml` (gitleaks v3 + CodeQL + pnpm audit) and `dependabot.yml`
       (security-only) committed and valid YAML.
-- [ ] `rls-isolation.spec.ts` passes against local Supabase (vendor A cannot read
-      vendor B).
+- [ ] `supabase/tests/rls.test.sql` passes via `supabase test db` (vendor A cannot
+      read or mutate vendor B's rows).
 - [ ] `harness.json` version corrected; CHANGELOG Unreleased entry added.
 - [ ] `pnpm check && pnpm test` green.
 
@@ -253,7 +268,7 @@ the local heavy gate (build + check + test).
   keep PR + weekly.
 - **gitleaks false positives** on `.env.example` placeholders — add a
   `.gitleaks.toml` allowlist for example/dummy values if it fires.
-- **RLS e2e flakiness** if seed isn't deterministic — fixed seed file, unique
-  vendor emails.
+- **RLS test determinism** — pgTAP runs in one rolled-back transaction with
+  inline fixtures (fixed UUIDs/emails), so no shared-state flakiness.
 - **Permission deny bypassability** — accepted; it's a guardrail (documented in
   constitution).

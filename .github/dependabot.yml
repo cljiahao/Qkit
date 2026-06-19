@@ -1,0 +1,17 @@
+version: 2
+
+# Security updates ONLY. Version-update PRs are intentionally disabled
+# (open-pull-requests-limit: 0) — they were dropped earlier as noise for a
+# solo, direct-to-main project. Dependabot still opens PRs for known CVEs.
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0

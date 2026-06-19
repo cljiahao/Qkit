@@ -1,6 +1,7 @@
 ---
 name: next-verify
 description: Run typecheck + lint + test suite for this project in one pass.
+allowed-tools: "Bash(pnpm *)"
 ---
 
 Run `pnpm check && pnpm test` and report any failures.
