@@ -14,7 +14,7 @@ const { placeOrder, addRecentOrder, push } = vi.hoisted(() => ({
 vi.mock("./actions", () => ({ placeOrder }));
 vi.mock("@/lib/recent-orders", () => ({ addRecentOrder }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 // Stub the customization sheet: when open, expose one button that adds the
 // item with a fixed option so the option path is exercised without radix.
@@ -63,6 +63,7 @@ function renderForm(closed = false) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.sessionStorage.clear(); // no stale reorder seed leaking between tests
   placeOrder.mockResolvedValue({ success: true, orderNumber: "0042" });
 });
 
@@ -127,8 +128,28 @@ describe("OrderForm cart", () => {
       boothId: "b1",
       orderNumber: "0042",
       customerName: "Ada",
+      items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
     });
     expect(push).toHaveBeenCalledWith("/order/b1/0042");
+  });
+
+  it("seeds the cart from a reorder handoff on mount", async () => {
+    window.sessionStorage.setItem(
+      "qkit:reorder:b1",
+      JSON.stringify({
+        lines: [{ menuItemId: "kopi", quantity: 2 }],
+        customerName: "Bo",
+      }),
+    );
+    renderForm();
+
+    // Cart prefilled (2 × $3.50), name filled, seed consumed (read-once).
+    expect(await screen.findByText("Your order")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Place order · \$7\.00/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Your name")).toHaveValue("Bo");
+    expect(window.sessionStorage.getItem("qkit:reorder:b1")).toBeNull();
   });
 
   it("surfaces a server error and does not navigate", async () => {

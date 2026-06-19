@@ -4,11 +4,17 @@
 // surface "track your recent order" links. Best-effort only: private mode or a
 // cleared cache simply yields an empty list.
 
+import type { ReorderLine } from "@/lib/reorder";
+
 export interface RecentOrder {
   boothId: string;
   orderNumber: string;
   customerName: string;
   placedAt: number; // epoch ms
+  // Compact snapshot of the order's lines, so the list can offer "Reorder"
+  // without a server round-trip. Optional: entries placed before this existed
+  // (and any future write that omits it) simply have no reorder button.
+  items?: ReorderLine[];
 }
 
 const KEY = "qkit:recent-orders";

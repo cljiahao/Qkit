@@ -90,6 +90,45 @@ describe("recent-orders", () => {
     expect(all.some((o) => o.orderNumber === "0005")).toBe(false);
   });
 
+  it("round-trips an items snapshot for reorder", () => {
+    addRecentOrder({
+      boothId: "b1",
+      orderNumber: "0001",
+      customerName: "Ada",
+      items: [
+        {
+          menuItemId: "latte",
+          quantity: 2,
+          options: [{ group: "Milk", choice: "Oat" }],
+        },
+      ],
+    });
+    expect(getRecentOrdersForBooth("b1")[0].items).toEqual([
+      {
+        menuItemId: "latte",
+        quantity: 2,
+        options: [{ group: "Milk", choice: "Oat" }],
+      },
+    ]);
+  });
+
+  it("still loads legacy entries that predate the items field", () => {
+    localStorage.setItem(
+      "qkit:recent-orders",
+      JSON.stringify([
+        {
+          boothId: "b1",
+          orderNumber: "0001",
+          customerName: "Ada",
+          placedAt: 1,
+        },
+      ]),
+    );
+    const [entry] = getRecentOrdersForBooth("b1");
+    expect(entry.orderNumber).toBe("0001");
+    expect(entry.items).toBeUndefined();
+  });
+
   it("swallows storage write failures (private mode / quota)", () => {
     const throwingLs = {
       getItem: () => null,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,8 @@ import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { cartKey, cartTotal } from "@/lib/cart";
 import { addRecentOrder } from "@/lib/recent-orders";
+import { reconcileReorder } from "@/lib/reorder";
+import { takeReorder } from "@/lib/reorder-handoff";
 import { remainingFor, type Remaining } from "@/lib/stock";
 import { placeOrder } from "./actions";
 import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
@@ -41,10 +43,43 @@ export function OrderForm({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<{ customerName: string }>({
     resolver: zodResolver(placeOrderSchema.pick({ customerName: true })),
   });
+
+  // Seed the cart from a "reorder" handoff (status page / recent-orders list).
+  // Post-mount + read-once (sessionStorage), so a refresh won't re-seed. Lines
+  // are reconciled against the LIVE menu + stock here — prices/availability are
+  // always current, never the stale snapshot.
+  useEffect(() => {
+    const seed = takeReorder(boothId);
+    if (!seed) return;
+    const { items, unavailable } = reconcileReorder(
+      seed.lines,
+      menuItems,
+      remaining,
+    );
+    if (items.length === 0) {
+      toast.error("Those items aren't available anymore — start a new order.");
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCart(
+      new Map(items.map((it) => [cartKey(it.menuItemId, it.options), it])),
+    );
+    if (seed.customerName) setValue("customerName", seed.customerName);
+    const n = items.length;
+    toast.success(
+      unavailable > 0
+        ? `Added ${n} item${n > 1 ? "s" : ""} · ${unavailable} no longer available`
+        : `Added ${n} item${n > 1 ? "s" : ""} to your order`,
+    );
+    // boothId is the only real input; menuItems/remaining are stable props and
+    // takeReorder is read-once, so re-runs are harmless no-ops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boothId]);
 
   // Single cart mutator. The updater receives the current entry (or undefined)
   // and returns: a CartItem to set, null to remove, or undefined to no-op
@@ -162,11 +197,17 @@ export function OrderForm({
     }
 
     // Remember on-device so the customer can find this order again after
-    // closing the tab (no server-side customer identity exists).
+    // closing the tab (no server-side customer identity exists). The compact
+    // items snapshot powers one-tap reorder from the list.
     addRecentOrder({
       boothId,
       orderNumber: result.orderNumber,
       customerName: formData.customerName,
+      items: cartItems.map((it) => ({
+        menuItemId: it.menuItemId,
+        quantity: it.quantity,
+        options: it.options,
+      })),
     });
 
     router.push(`/order/${boothId}/${result.orderNumber}`);

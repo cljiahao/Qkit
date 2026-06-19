@@ -5,6 +5,7 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { parseOrderItems } from "@/lib/schemas";
 import { FeedbackForm } from "@/components/feedback-form";
+import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
 
 interface Props {
@@ -109,7 +110,21 @@ export default async function OrderStatusPage({ params }: Props) {
         />
       </div>
 
-      <div className="mt-auto pt-8 text-center">
+      <div className="mt-auto flex flex-col items-center gap-3 pt-8">
+        {items.length > 0 && (
+          <ReorderButton
+            boothId={boothId}
+            // Client-safe lines only — cost_cents never leaves the server.
+            lines={items.map((it) => ({
+              menuItemId: it.menuItemId,
+              quantity: it.quantity,
+              options: it.options,
+            }))}
+            customerName={order.customer_name}
+            label="Reorder these items"
+            className="h-11 rounded-xl px-5"
+          />
+        )}
         <Link
           href={`/order/${boothId}`}
           className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
