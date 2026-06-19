@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin";
+import { AdminNav } from "./admin-nav";
 
 export default async function AdminLayout({
   children,
@@ -40,6 +41,7 @@ export default async function AdminLayout({
           </form>
         </div>
       </header>
+      <AdminNav />
       {children}
     </div>
   );

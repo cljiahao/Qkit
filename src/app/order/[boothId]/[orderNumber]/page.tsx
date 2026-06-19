@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { parseOrderItems } from "@/lib/schemas";
+import { FeedbackForm } from "@/components/feedback-form";
 import { OrderStatusPoller } from "./order-status-poller";
 
 interface Props {
@@ -97,6 +98,15 @@ export default async function OrderStatusPage({ params }: Props) {
             </div>
           )}
         </section>
+      </div>
+
+      <div className="mt-6">
+        <FeedbackForm
+          source="customer"
+          boothId={boothId}
+          orderNumber={orderNumber}
+          prompt="How was ordering here?"
+        />
       </div>
 
       <div className="mt-auto pt-8 text-center">

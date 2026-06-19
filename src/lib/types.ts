@@ -245,6 +245,39 @@ export interface Database {
         };
         Relationships: [];
       };
+      feedback: {
+        Row: {
+          id: string;
+          source: "customer" | "vendor";
+          vendor_id: string | null;
+          booth_id: string | null;
+          order_number: string | null;
+          rating: number | null;
+          message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source: "customer" | "vendor";
+          vendor_id?: string | null;
+          booth_id?: string | null;
+          order_number?: string | null;
+          rating?: number | null;
+          message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source?: "customer" | "vendor";
+          vendor_id?: string | null;
+          booth_id?: string | null;
+          order_number?: string | null;
+          rating?: number | null;
+          message?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       booths: {
         Row: {
           id: string;
@@ -364,5 +397,6 @@ export type Order = Database["public"]["Tables"]["orders"]["Row"];
 export type License = Database["public"]["Tables"]["licenses"]["Row"];
 export type Pricing = Database["public"]["Tables"]["pricing"]["Row"];
 export type Payment = Database["public"]["Tables"]["payments"]["Row"];
+export type Feedback = Database["public"]["Tables"]["feedback"]["Row"];
 export type Admin = Database["public"]["Tables"]["admins"]["Row"];
 export type AdminAudit = Database["public"]["Tables"]["admin_audit"]["Row"];

@@ -156,6 +156,23 @@ export const grantPassSchema = z.object({
 });
 export type GrantPassInput = z.infer<typeof grantPassSchema>;
 
+// ── In-product feedback ──────────────────────────────────────────────────────
+
+export const feedbackSchema = z
+  .object({
+    source: z.enum(["customer", "vendor"]),
+    boothId: z.string().uuid().optional(),
+    orderNumber: z.string().max(40).optional(),
+    rating: z.number().int().min(1).max(5).optional(),
+    message: z.string().trim().max(2000).optional(),
+  })
+  // Require at least a rating or a non-empty message.
+  .refine((d) => d.rating != null || (d.message && d.message.length > 0), {
+    message: "Add a rating or a message",
+    path: ["message"],
+  });
+export type FeedbackInput = z.infer<typeof feedbackSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 export type VendorInput = z.infer<typeof vendorSchema>;
