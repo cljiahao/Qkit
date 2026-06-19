@@ -139,7 +139,21 @@ export function OrderForm({
       customerName: formData.customerName,
       items: cartItems,
     };
-    const result = await placeOrder(boothId, input);
+    // One retry on a transient network failure (patchy event-site signal) so a
+    // dropped request doesn't lose the order. The DB order number is atomic, so
+    // a retried submit can't duplicate.
+    let result: Awaited<ReturnType<typeof placeOrder>>;
+    try {
+      result = await placeOrder(boothId, input);
+    } catch {
+      try {
+        result = await placeOrder(boothId, input);
+      } catch {
+        toast.error("Network issue — please try again.");
+        setSubmitting(false);
+        return;
+      }
+    }
 
     if (!result.success) {
       toast.error(result.error ?? "Order failed");
@@ -238,7 +252,7 @@ export function OrderForm({
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="size-8 rounded-lg"
+                        className="size-11 rounded-lg"
                         onClick={() => decrement(item.id)}
                       >
                         <Minus className="size-3.5" />
@@ -249,7 +263,7 @@ export function OrderForm({
                       <Button
                         type="button"
                         size="icon"
-                        className="size-8 rounded-lg"
+                        className="size-11 rounded-lg"
                         onClick={() => increment(item.id)}
                       >
                         <Plus className="size-3.5" />
@@ -260,7 +274,7 @@ export function OrderForm({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="rounded-lg"
+                      className="h-11 rounded-lg px-4"
                       onClick={() => onAddClick(item)}
                       disabled={closed || soldOut}
                     >
@@ -308,7 +322,7 @@ export function OrderForm({
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="size-7 rounded-lg"
+                      className="size-9 rounded-lg"
                       onClick={() => decrement(key)}
                       aria-label="Remove one"
                     >
@@ -320,7 +334,7 @@ export function OrderForm({
                     <Button
                       type="button"
                       size="icon"
-                      className="size-7 rounded-lg"
+                      className="size-9 rounded-lg"
                       onClick={() => increment(key)}
                       aria-label="Add one"
                     >

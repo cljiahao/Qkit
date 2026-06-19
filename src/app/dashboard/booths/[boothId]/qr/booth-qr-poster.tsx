@@ -107,9 +107,14 @@ export function BoothQrPoster({ boothId, name, isActive }: Props) {
         </div>
 
         {url && (
-          <p className="break-all font-mono text-xs text-muted-foreground">
-            {url}
-          </p>
+          <>
+            <p className="text-xs text-muted-foreground">
+              Can&apos;t scan? Type this link:
+            </p>
+            <p className="mt-0.5 break-all font-mono text-xs text-muted-foreground">
+              {url}
+            </p>
+          </>
         )}
 
         {!isActive && (
