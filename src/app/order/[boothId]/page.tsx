@@ -19,17 +19,24 @@ export default async function OrderPage({ params }: Props) {
 
   // Booth row and live stock both key only on boothId and are independent, so
   // fetch them together — one round-trip on the customer hot path (QR scan).
-  const [{ data: booth }, { data: remainingData }] = await Promise.all([
-    supabase
-      .from("booths")
-      .select("id, name, image_url, hours, menu_items")
-      .eq("id", boothId)
-      .eq("is_active", true)
-      .single(),
-    supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
-  ]);
+  const [{ data: booth }, { data: remainingData }, { data: servableData }] =
+    await Promise.all([
+      supabase
+        .from("booths")
+        .select("id, name, image_url, hours, menu_items")
+        .eq("id", boothId)
+        .eq("is_active", true)
+        .single(),
+      supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
+      supabase.rpc("booth_servable", { p_booth_id: boothId }),
+    ]);
 
   if (!booth) notFound();
+
+  // Authoritative serveability (SECURITY DEFINER): a free vendor's over-limit
+  // "paused" booth isn't orderable even though the signed-in owner's own-row RLS
+  // exposes it. `=== false` only (null/pre-migration → allow).
+  const servable = servableData !== false;
 
   // Strip cost_cents before anything reaches the customer's browser — vendor
   // cost is private and only ever used server-side for margin stats.
@@ -44,6 +51,8 @@ export default async function OrderPage({ params }: Props) {
   const reopen = open
     ? null
     : nextOpenLabel({ is_active: true, hours }, nowIso);
+  // A paused (unservable) booth can't take orders even if its hours say "open".
+  const closed = !open || !servable;
 
   // Live remaining stock per capped item (counts only, no order PII). Absent
   // until migration 0010 lands → treated as all-unlimited.
@@ -76,14 +85,15 @@ export default async function OrderPage({ params }: Props) {
 
       <RecentOrders boothId={booth.id} />
 
-      {!open && (
+      {closed && (
         <div className="mb-7 rounded-xl border border-status-cancelled/30 bg-status-cancelled/10 px-4 py-3 text-center">
           <p className="font-display text-lg font-semibold text-status-cancelled">
-            Closed right now
+            {!servable ? "Not taking orders" : "Closed right now"}
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {reopen ?? "Not taking orders at the moment."} You can browse the
-            menu below.
+            {!servable
+              ? "This booth isn't accepting orders right now."
+              : `${reopen ?? "Not taking orders at the moment."} You can browse the menu below.`}
           </p>
         </div>
       )}
@@ -91,7 +101,7 @@ export default async function OrderPage({ params }: Props) {
       <OrderForm
         boothId={booth.id}
         menuItems={available}
-        closed={!open}
+        closed={closed}
         remaining={remaining}
       />
     </div>

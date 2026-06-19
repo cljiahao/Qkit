@@ -53,17 +53,27 @@ export async function placeOrder(
       error: "Too many orders too fast — wait a moment and try again.",
     };
 
-  // Booth row and live stock both key only on boothId and are independent —
-  // fetch together. Both re-checked server-side; never trust the client.
-  const [{ data: booth }, { data: remainingData }] = await Promise.all([
-    supabase
-      .from("booths")
-      .select("is_active, hours, menu_items")
-      .eq("id", boothId)
-      .single(),
-    supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
-  ]);
+  // Booth row, live stock, and serveability — independent, fetch together.
+  // booth_servable is the authoritative gate (SECURITY DEFINER, same answer for
+  // anyone): blocks ordering on a booth the owner isn't entitled to serve (e.g.
+  // a free vendor's 2nd "paused" booth) even when the vendor is signed in and
+  // their own-row RLS would otherwise expose it.
+  const [{ data: booth }, { data: remainingData }, { data: servable }] =
+    await Promise.all([
+      supabase
+        .from("booths")
+        .select("is_active, hours, menu_items")
+        .eq("id", boothId)
+        .single(),
+      supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
+      supabase.rpc("booth_servable", { p_booth_id: boothId }),
+    ]);
   if (!booth) return { success: false, error: "Booth not found" };
+  if (servable === false)
+    return {
+      success: false,
+      error: "This booth isn't taking orders right now",
+    };
   const nowIso = new Date().toISOString();
   if (
     !isBoothOpen(

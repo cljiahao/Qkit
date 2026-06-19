@@ -377,6 +377,10 @@ export interface Database {
         Args: { p_booth_id: string };
         Returns: Json;
       };
+      booth_servable: {
+        Args: { p_booth_id: string };
+        Returns: boolean;
+      };
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number };
         Returns: boolean;
