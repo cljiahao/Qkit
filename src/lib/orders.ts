@@ -20,6 +20,26 @@ const STATUS_RANK: Record<OrderStatus, number> = {
   cancelled: 3,
 };
 
+export type AgeTone = "fresh" | "aging" | "overdue";
+
+/**
+ * Ticket-aging tone for the live board, relative to a prep-time target (default
+ * 10 min, per KDS norms). < half the target = fresh, up to the target = aging,
+ * at/over = overdue. Pair the tone with the elapsed text + an icon in the UI —
+ * never rely on color alone (WCAG 1.4.1). Pure.
+ */
+export function orderAgeTone(elapsedMs: number, targetMin = 10): AgeTone {
+  const min = elapsedMs / 60_000;
+  if (min < targetMin / 2) return "fresh";
+  if (min < targetMin) return "aging";
+  return "overdue";
+}
+
+/** Whole-minute elapsed label for a ticket, floored at 0. */
+export function elapsedMinutes(elapsedMs: number): number {
+  return Math.max(0, Math.floor(elapsedMs / 60_000));
+}
+
 /**
  * Sort active orders for the vendor board: in-progress (preparing) before
  * ready, then FIFO within a status by created_at (oldest first). created_at is

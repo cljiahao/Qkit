@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +19,8 @@ import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { boothColor } from "@/lib/booth-color";
-import { isTerminal } from "@/lib/orders";
-import { ChevronDown } from "lucide-react";
+import { isTerminal, orderAgeTone, elapsedMinutes } from "@/lib/orders";
+import { ChevronDown, Clock } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
 
 // Forward transition keyed by the order's CURRENT status: where the advance
@@ -43,6 +43,18 @@ export function OrderCard({
   const [updating, setUpdating] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const supabase = useMemo(() => createClient(), []);
+
+  // Ticket aging: tick the clock each 30s (only while live) so the vendor sees
+  // at a glance how long an order has waited against a ~10-min prep target.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (isTerminal(status)) return;
+    const id = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [status]);
+  const elapsedMs = nowMs - Date.parse(order.created_at);
+  const tone = orderAgeTone(elapsedMs);
+  const ageMins = elapsedMinutes(elapsedMs);
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
   const advance = ADVANCE[status];
@@ -82,7 +94,13 @@ export function OrderCard({
   const closed = isTerminal(status);
 
   return (
-    <div className="ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]">
+    <div
+      className={cn(
+        "ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
+        !closed && tone === "aging" && "border-l-4 border-l-amber-500",
+        !closed && tone === "overdue" && "border-l-4 border-l-status-cancelled",
+      )}
+    >
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
         <div className="min-w-0">
           <p className="font-mono text-xl font-bold tracking-tight">
@@ -94,6 +112,22 @@ export function OrderCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <OrderStatusBadge status={status} />
+          {!closed && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-[0.7rem] font-semibold tabular-nums",
+                tone === "overdue"
+                  ? "text-status-cancelled"
+                  : tone === "aging"
+                    ? "text-amber-600"
+                    : "text-muted-foreground",
+              )}
+              title="Time since the order arrived"
+            >
+              <Clock className="size-3" />
+              {ageMins}m
+            </span>
+          )}
           {boothName && (
             <span className="inline-flex max-w-[8rem] items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
               <span

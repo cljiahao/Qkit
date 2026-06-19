@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { isTerminal, sortActiveOrders } from "./orders";
+import {
+  isTerminal,
+  sortActiveOrders,
+  orderAgeTone,
+  elapsedMinutes,
+} from "./orders";
 import type { Order, OrderStatus } from "./types";
+
+const MIN = 60_000;
 
 function order(over: Partial<Order>): Order {
   return {
@@ -83,6 +90,30 @@ describe("sortActiveOrders", () => {
     ];
     sortActiveOrders(input);
     expect(input.map((o) => o.id)).toEqual(["r", "p"]);
+  });
+});
+
+describe("orderAgeTone", () => {
+  it("fresh < half target, aging up to target, overdue at/over (10m default)", () => {
+    expect(orderAgeTone(2 * MIN)).toBe("fresh");
+    expect(orderAgeTone(4 * MIN)).toBe("fresh");
+    expect(orderAgeTone(5 * MIN)).toBe("aging");
+    expect(orderAgeTone(9 * MIN)).toBe("aging");
+    expect(orderAgeTone(10 * MIN)).toBe("overdue");
+    expect(orderAgeTone(30 * MIN)).toBe("overdue");
+  });
+
+  it("respects a custom target", () => {
+    expect(orderAgeTone(2 * MIN, 4)).toBe("aging");
+    expect(orderAgeTone(4 * MIN, 4)).toBe("overdue");
+  });
+});
+
+describe("elapsedMinutes", () => {
+  it("floors to whole minutes, never negative", () => {
+    expect(elapsedMinutes(90_000)).toBe(1);
+    expect(elapsedMinutes(59_000)).toBe(0);
+    expect(elapsedMinutes(-5000)).toBe(0);
   });
 });
 
