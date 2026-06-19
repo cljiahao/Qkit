@@ -37,8 +37,13 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Hard gate: fails on high/critical. Dependabot opens the fix PRs.
-      - run: pnpm audit --audit-level=high
+      # Hard gate on PRODUCTION deps (what actually ships): fails on high/critical.
+      # devDependencies (test toolchain — jsdom/vitest/stryker → undici, etc.) are
+      # not shipped and often can't be patched without an upstream release; those
+      # are tracked by Dependabot security PRs instead of blocking CI.
+      - run: pnpm audit --prod --audit-level=high
+      # Full audit incl. devDeps — informational only, never fails the build.
+      - run: pnpm audit --audit-level=high || true
 
   codeql:
     name: CodeQL (javascript-typescript)

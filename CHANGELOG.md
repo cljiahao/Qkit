@@ -22,6 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   high/critical gate.
 - `.github/dependabot.yml`: security-updates only (npm + github-actions);
   version-update PRs disabled (`open-pull-requests-limit: 0`).
+- Removed `axios` — an unused production dependency carrying a high-severity
+  `form-data` advisory (GHSA-hmw2-7cc7-3qxx). Production `pnpm audit` is clean at
+  the high gate. The audit gate runs `--prod` (shipped code); a full audit runs
+  informationally (dev-toolchain transitive vulns tracked by Dependabot).
 
 ### Changed
 
