@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { headers } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import {
   placeOrderSchema,
@@ -32,6 +33,25 @@ export async function placeOrder(
   const order = parsed.data;
 
   const supabase = await createServerClient();
+
+  // Throttle the public anonymous order POST per IP+booth so a script can't
+  // flood the board. Fixed window: 8 orders / 60s. Fails open if the limiter
+  // errors (don't block a real order on infra hiccups).
+  const hdrs = await headers();
+  const ip =
+    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    hdrs.get("x-real-ip") ||
+    "unknown";
+  const { data: allowed } = await supabase.rpc("check_rate_limit", {
+    p_key: `order:${boothId}:${ip}`,
+    p_limit: 8,
+    p_window_seconds: 60,
+  });
+  if (allowed === false)
+    return {
+      success: false,
+      error: "Too many orders too fast — wait a moment and try again.",
+    };
 
   // Booth row and live stock both key only on boothId and are independent —
   // fetch together. Both re-checked server-side; never trust the client.
