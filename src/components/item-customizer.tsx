@@ -89,14 +89,27 @@ function CustomizerBody({
   return (
     <>
       {item.image_url && (
-        <div className="relative mb-1 h-44 w-full overflow-hidden rounded-xl border border-border">
+        // Sticky hero: the full photo (object-contain, never cropped) sits over a
+        // blurred, zoomed copy of itself so there are no letterbox bars. Stays
+        // pinned while the options scroll.
+        <div className="sticky top-0 z-10 aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
+          <MediaImage
+            src={item.image_url}
+            alt=""
+            aria-hidden
+            fill
+            sizes="(max-width: 640px) 100vw, 32rem"
+            className="scale-110 object-cover blur-xl"
+          />
           <MediaImage
             src={item.image_url}
             alt={item.name}
             fill
             sizes="(max-width: 640px) 100vw, 32rem"
-            className="object-cover"
+            className="object-contain"
           />
+          {/* Keep the sheet's close button legible over a bright photo. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/25 to-transparent" />
         </div>
       )}
       <SheetHeader>
