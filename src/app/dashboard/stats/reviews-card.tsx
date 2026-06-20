@@ -3,26 +3,31 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { shortDateTime } from "@/lib/tz";
 import type { BoothReviews, ReviewSummary } from "@/lib/reviews";
 
 const PAGE = 5;
 
+// Renders fractional stars: 4.5 → four full + one half (not rounded up to 5).
 function Stars({ value }: { value: number }) {
   return (
     <span className="inline-flex">
-      {Array.from({ length: 5 }, (_, i) => (
-        <Star
-          key={i}
-          className={cn(
-            "size-3.5",
-            i < value
-              ? "fill-amber-400 text-amber-400"
-              : "text-muted-foreground/30",
-          )}
-        />
-      ))}
+      {Array.from({ length: 5 }, (_, i) => {
+        const fill = Math.max(0, Math.min(1, value - i)); // 0..1 for this star
+        return (
+          <span key={i} className="relative inline-block">
+            <Star className="size-3.5 text-muted-foreground/30" />
+            {fill > 0 && (
+              <span
+                className="absolute inset-y-0 left-0 overflow-hidden"
+                style={{ width: `${fill * 100}%` }}
+              >
+                <Star className="size-3.5 fill-amber-400 text-amber-400" />
+              </span>
+            )}
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -73,7 +78,7 @@ function BoothDetail({ summary }: { summary: ReviewSummary }) {
           {summary.average?.toFixed(1) ?? "—"}
         </span>
         <div>
-          <Stars value={Math.round(summary.average ?? 0)} />
+          <Stars value={summary.average ?? 0} />
           <p className="text-xs text-muted-foreground">
             {summary.count} rating{summary.count === 1 ? "" : "s"}
           </p>
@@ -161,7 +166,7 @@ export function ReviewsCard({
               {overall.average?.toFixed(1) ?? "—"}
             </span>
             <div>
-              <Stars value={Math.round(overall.average ?? 0)} />
+              <Stars value={overall.average ?? 0} />
               <p className="text-xs text-muted-foreground">
                 {overall.count} rating{overall.count === 1 ? "" : "s"} across
                 all booths
@@ -181,7 +186,7 @@ export function ReviewsCard({
                     <span className="font-semibold">
                       {g.summary.average?.toFixed(1) ?? "—"}
                     </span>
-                    <Stars value={Math.round(g.summary.average ?? 0)} />
+                    <Stars value={g.summary.average ?? 0} />
                     <span className="text-muted-foreground">
                       ({g.summary.count})
                     </span>
