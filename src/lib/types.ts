@@ -284,6 +284,30 @@ export interface Database {
         };
         Relationships: [];
       };
+      purchase_requests: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          kind: "event" | "monthly";
+          status: "pending" | "resolved";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          kind: "event" | "monthly";
+          status?: "pending" | "resolved";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          vendor_id?: string;
+          kind?: "event" | "monthly";
+          status?: "pending" | "resolved";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       booths: {
         Row: {
           id: string;

@@ -41,6 +41,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- "Get a pass" / "Go monthly" now file an in-product **upgrade request** to the
+  admin (migration `0021` + `purchase_requests`) instead of opening a `mailto:`
+  to a personal inbox. The admin Overview shows a pending-requests inbox with a
+  Resolve action; granting a pass/Pro auto-resolves the vendor's request.
 - Pagination everywhere (new reusable `Paginated`): admin tables (vendors, audit
   log, per-vendor CSAT) get prev/next pages; feeds (recent orders, reviews, NPS
   notes) get "Show more / Show less". Every expander now collapses back. Per 2026

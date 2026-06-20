@@ -15,6 +15,7 @@ import { ActivationFunnelView } from "./activation-funnel";
 import { TrendChart } from "../dashboard/stats/trend-chart";
 import { Paginated } from "@/components/paginated";
 import { Stat } from "./stat";
+import { ResolveRequestButton } from "./resolve-request-button";
 
 export const revalidate = 0;
 
@@ -53,6 +54,7 @@ export default async function AdminPage() {
     { data: pricingRow },
     { data: licenseRows },
     { data: paymentRows },
+    { data: requestRows },
   ] = await Promise.all([
     supabase
       .from("vendors")
@@ -73,6 +75,11 @@ export default async function AdminPage() {
       .maybeSingle(),
     supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
     supabase.from("payments").select("amount_cents, created_at"),
+    supabase
+      .from("purchase_requests")
+      .select("id, vendor_id, kind, created_at")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true }),
   ]);
 
   const licenses = licenseRows ?? [];
@@ -113,6 +120,13 @@ export default async function AdminPage() {
 
   const vstat = summarizeVendors(vendors, now);
   const estat = summarizeEvents(events, now);
+
+  // Pending upgrade requests (the admin inbox). Named for display.
+  const vendorName = new Map((vendorRows ?? []).map((v) => [v.id, v.name]));
+  const requests = (requestRows ?? []).map((r) => ({
+    ...r,
+    vendorName: vendorName.get(r.vendor_id) ?? "Unknown vendor",
+  }));
   const funnel = activationFunnel(
     vendors as { id: string; plan: Plan }[],
     booths,
@@ -160,6 +174,32 @@ export default async function AdminPage() {
           Overview
         </h1>
       </div>
+
+      {requests.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Upgrade requests · {requests.length}
+          </h2>
+          <Paginated pageSize={8} className="space-y-2">
+            {requests.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/[0.04] px-4 py-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{r.vendorName}</p>
+                  <p className="font-mono text-xs text-muted-foreground">
+                    wants{" "}
+                    {r.kind === "monthly" ? "Monthly Pro" : "an event pass"} ·{" "}
+                    {r.created_at.slice(0, 16).replace("T", " ")}
+                  </p>
+                </div>
+                <ResolveRequestButton id={r.id} />
+              </div>
+            ))}
+          </Paginated>
+        </section>
+      )}
 
       {/* North-star band — QKit revenue leads; active vendors is the leading
           indicator behind it. */}

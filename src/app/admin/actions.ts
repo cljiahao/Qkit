@@ -71,8 +71,26 @@ export async function setVendorPlan(
   if (auditError)
     console.error("admin_audit insert failed", auditError.message);
 
+  // Upgrading clears any pending request the vendor filed (best-effort).
+  if (parsed.data.plan === "pro")
+    await resolveVendorRequests(supabase, parsed.data.vendorId);
+
   revalidatePath("/admin");
   return { success: true };
+}
+
+// Mark a vendor's pending upgrade requests resolved — called when an admin
+// fulfils them by granting a pass / Pro. Best-effort, never blocks the action.
+async function resolveVendorRequests(
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
+  vendorId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("purchase_requests")
+    .update({ status: "resolved" })
+    .eq("vendor_id", vendorId)
+    .eq("status", "pending");
+  if (error) console.error("resolveVendorRequests failed", error.message);
 }
 
 /**
@@ -137,6 +155,32 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
   });
   if (auditError)
     console.error("admin_audit insert failed", auditError.message);
+
+  await resolveVendorRequests(supabase, parsed.data.vendorId);
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+const resolveRequestSchema = z.object({ id: z.string().uuid() });
+
+/** Dismiss a vendor's upgrade request once handled. Admin-only. */
+export async function resolvePurchaseRequest(
+  input: z.infer<typeof resolveRequestSchema>,
+): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = resolveRequestSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid input" };
+
+  const supabase = await createServiceClient();
+  const { error } = await supabase
+    .from("purchase_requests")
+    .update({ status: "resolved" })
+    .eq("id", parsed.data.id);
+  if (error) {
+    console.error("resolvePurchaseRequest failed", error.message);
+    return { success: false, error: "Could not resolve" };
+  }
 
   revalidatePath("/admin");
   return { success: true };
