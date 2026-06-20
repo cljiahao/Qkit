@@ -73,7 +73,7 @@ export function FeedbackForm({
       {metric === "nps" ? (
         <>
           <div
-            className="flex flex-wrap gap-1.5"
+            className="grid grid-cols-11 gap-1"
             role="radiogroup"
             aria-label="Recommend score, 0 to 10"
           >
@@ -86,17 +86,17 @@ export function FeedbackForm({
                 aria-label={`${n}`}
                 onClick={() => setScore(n)}
                 className={cn(
-                  "inline-flex size-9 items-center justify-center rounded-lg border text-sm font-semibold transition-colors",
+                  "flex aspect-square items-center justify-center rounded-md border text-sm font-semibold tabular-nums transition-colors",
                   score === n
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:border-primary/40",
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:border-primary/50 hover:bg-primary/5",
                 )}
               >
                 {n}
               </button>
             ))}
           </div>
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
             <span>Not likely</span>
             <span>Very likely</span>
           </div>

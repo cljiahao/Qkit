@@ -9,7 +9,7 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MediaImage } from "@/components/media-image";
+import { ZoomableImage } from "@/components/zoomable-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
@@ -246,12 +246,10 @@ export function OrderForm({
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   {item.image_url && (
                     <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border">
-                      <MediaImage
+                      <ZoomableImage
                         src={item.image_url}
-                        alt=""
-                        fill
+                        alt={item.name}
                         sizes="3.5rem"
-                        className="object-cover"
                       />
                     </div>
                   )}

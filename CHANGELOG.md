@@ -41,6 +41,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Mobile dashboard nav collapses behind a **burger menu** (the bar overflowed on
+  phones); the vendor NPS form is now an even 0–10 scale that fits any width.
+- Customer menu photos are **tap-to-enlarge** (fullscreen lightbox, Esc/tap to
+  close) with a subtle corner expand icon + zoom-in cursor as the affordance.
 - "Get a pass" / "Go monthly" now file an in-product **upgrade request** to the
   admin (migration `0021` + `purchase_requests`) instead of opening a `mailto:`
   to a personal inbox. The admin Overview shows a pending-requests inbox with a

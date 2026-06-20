@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MessageSquarePlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { createServerClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
+import { DashboardNav } from "./dashboard-nav";
 
 export default async function DashboardLayout({
   children,
@@ -35,8 +34,8 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/85 px-5 py-3.5 backdrop-blur-md print:hidden">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-y-2">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/85 px-5 py-3.5 backdrop-blur-md print:hidden">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="flex items-baseline gap-3">
             <Link
               href="/dashboard"
@@ -50,41 +49,7 @@ export default async function DashboardLayout({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm" className="rounded-lg">
-              <Link href="/dashboard">Orders</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm" className="rounded-lg">
-              <Link href="/dashboard/booths">Booths</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm" className="rounded-lg">
-              <Link href="/dashboard/stats">Stats</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm" className="rounded-lg">
-              <Link href="/dashboard/plan">Plan</Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              className="rounded-lg border-primary/40 text-primary hover:bg-primary/10"
-            >
-              <Link href="/dashboard/feedback" className="gap-1.5">
-                <MessageSquarePlus className="size-4" />
-                Feedback
-              </Link>
-            </Button>
-            <form action={signOut}>
-              <Button
-                variant="outline"
-                size="sm"
-                type="submit"
-                className="rounded-lg"
-              >
-                Sign out
-              </Button>
-            </form>
-          </div>
+          <DashboardNav signOut={signOut} />
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
