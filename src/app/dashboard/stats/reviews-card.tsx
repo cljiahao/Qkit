@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { shortDateTime } from "@/lib/tz";
@@ -51,23 +52,32 @@ function Distribution({ summary }: { summary: ReviewSummary }) {
   );
 }
 
-function BoothGroup({ group }: { group: BoothReviews }) {
-  const { boothName, summary } = group;
+/** Detailed reviews for one booth: distribution + paged, timestamped comments. */
+function BoothDetail({ summary }: { summary: ReviewSummary }) {
   const [shown, setShown] = useState(PAGE);
   const comments = summary.recent.filter((r) => r.message?.trim());
   const visible = comments.slice(0, shown);
 
+  if (summary.count === 0 && comments.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No reviews for this booth yet.
+      </p>
+    );
+  }
+
   return (
-    <div className="space-y-3 border-t border-border/60 pt-4 first:border-0 first:pt-0">
-      <div className="flex items-center justify-between gap-3">
-        <p className="truncate font-medium">{boothName}</p>
-        <span className="flex shrink-0 items-center gap-1.5 text-sm">
-          <span className="font-semibold">
-            {summary.average?.toFixed(1) ?? "—"}
-          </span>
-          <Stars value={Math.round(summary.average ?? 0)} />
-          <span className="text-muted-foreground">({summary.count})</span>
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="font-display text-4xl font-semibold leading-none">
+          {summary.average?.toFixed(1) ?? "—"}
         </span>
+        <div>
+          <Stars value={Math.round(summary.average ?? 0)} />
+          <p className="text-xs text-muted-foreground">
+            {summary.count} rating{summary.count === 1 ? "" : "s"}
+          </p>
+        </div>
       </div>
 
       <Distribution summary={summary} />
@@ -104,24 +114,107 @@ function BoothGroup({ group }: { group: BoothReviews }) {
   );
 }
 
+interface Props {
+  groups: BoothReviews[];
+  overall: ReviewSummary;
+  selected: string; // "all" or a booth id (follows the page's booth filter)
+  range?: string; // preserved on drill-in links
+  linkable?: boolean; // per-booth rows link to that booth (off in event view)
+}
+
 /**
- * Customer reviews split per booth (so a vendor knows which booth each is for),
- * with timestamps and per-booth "show more" paging. Always visible — a vendor's
- * reputation isn't gated.
+ * Customer reviews driven by the page's booth selector.
+ * - A specific booth → that booth's detailed reviews.
+ * - "All booths" → the overall average plus a per-booth comparison (drill in by
+ *   picking a booth). Mirrors multi-location review dashboards: aggregate rollup
+ *   + per-location detail.
  */
-export function ReviewsCard({ groups }: { groups: BoothReviews[] }) {
+export function ReviewsCard({
+  groups,
+  overall,
+  selected,
+  range,
+  linkable = true,
+}: Props) {
+  const title =
+    selected === "all" ? "Customer reviews · all booths" : "Customer reviews";
+
   return (
-    <section className="space-y-5 rounded-xl border border-border bg-card p-4">
+    <section className="space-y-4 rounded-xl border border-border bg-card p-4">
       <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Customer reviews
+        {title}
       </h2>
-      {groups.length === 0 ? (
+
+      {selected !== "all" ? (
+        <BoothDetail
+          summary={groups.find((g) => g.boothId === selected)?.summary ?? empty}
+        />
+      ) : groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No customer feedback yet. Customers get a prompt after each order.
         </p>
       ) : (
-        groups.map((g) => <BoothGroup key={g.boothId} group={g} />)
+        <>
+          {/* Overall rollup across every booth. */}
+          <div className="flex items-center gap-3">
+            <span className="font-display text-4xl font-semibold leading-none">
+              {overall.average?.toFixed(1) ?? "—"}
+            </span>
+            <div>
+              <Stars value={Math.round(overall.average ?? 0)} />
+              <p className="text-xs text-muted-foreground">
+                {overall.count} rating{overall.count === 1 ? "" : "s"} across
+                all booths
+              </p>
+            </div>
+          </div>
+
+          {/* Per-booth comparison — spot the strong and weak booths. */}
+          <ul className="divide-y divide-border/60">
+            {groups.map((g) => {
+              const inner = (
+                <span className="flex items-center justify-between gap-3 py-2">
+                  <span className="truncate text-sm font-medium">
+                    {g.boothName}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5 text-sm">
+                    <span className="font-semibold">
+                      {g.summary.average?.toFixed(1) ?? "—"}
+                    </span>
+                    <Stars value={Math.round(g.summary.average ?? 0)} />
+                    <span className="text-muted-foreground">
+                      ({g.summary.count})
+                    </span>
+                  </span>
+                </span>
+              );
+              return (
+                <li key={g.boothId}>
+                  {linkable ? (
+                    <Link
+                      href={`/dashboard/stats?booth=${g.boothId}${
+                        range ? `&range=${range}` : ""
+                      }`}
+                      className="block rounded-lg px-1 transition-colors hover:bg-secondary/60"
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className="px-1">{inner}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
     </section>
   );
 }
+
+const empty: ReviewSummary = {
+  count: 0,
+  average: null,
+  distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  recent: [],
+};

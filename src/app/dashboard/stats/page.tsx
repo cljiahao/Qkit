@@ -15,7 +15,11 @@ import { ArrowLeft } from "lucide-react";
 import { MS_PER_DAY } from "@/lib/utils";
 import { shortDay } from "@/lib/tz";
 import { eventLabel } from "@/lib/events";
-import { groupReviewsByBooth, type ReviewRow } from "@/lib/reviews";
+import {
+  groupReviewsByBooth,
+  summarizeReviews,
+  type ReviewRow,
+} from "@/lib/reviews";
 import type { Database } from "@/lib/types";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
@@ -61,26 +65,47 @@ async function fetchOrders(
 }
 
 /**
- * Customer reviews for this vendor's booths, grouped per booth. RLS
+ * All customer reviews for this vendor's booths, newest first. RLS
  * (feedback_vendor_read_own) returns only feedback for booths this vendor owns.
- * Optional [gte, lt) window scopes reviews to a single event.
  */
-async function fetchBoothReviews(
+async function fetchReviewRows(
   supabase: SupabaseClient<Database>,
-  booths: { id: string; name: string }[],
-  gte?: string,
-  lt?: string,
-) {
-  let query = supabase
+): Promise<ReviewRow[]> {
+  const { data } = await supabase
     .from("feedback")
     .select("rating, message, order_number, booth_id, created_at")
     .eq("source", "customer")
     .order("created_at", { ascending: false })
     .limit(500);
-  if (gte) query = query.gte("created_at", gte);
-  if (lt) query = query.lt("created_at", lt);
-  const { data } = await query;
-  return groupReviewsByBooth((data ?? []) as ReviewRow[], booths);
+  return (data ?? []) as ReviewRow[];
+}
+
+/**
+ * Reviews for orders PLACED within [from, to) — keyed by the order's date, not
+ * the review's. A customer who reviews days late (after the event has ended)
+ * still counts toward that event, because the order belongs to it.
+ */
+async function fetchEventReviewRows(
+  supabase: SupabaseClient<Database>,
+  boothIds: string[],
+  from: string,
+  to: string,
+): Promise<ReviewRow[]> {
+  if (!boothIds.length) return [];
+  const { data: orderKeys } = await supabase
+    .from("orders")
+    .select("booth_id, order_number")
+    .in("booth_id", boothIds)
+    .gte("created_at", from)
+    .lt("created_at", to);
+  const inEvent = new Set(
+    (orderKeys ?? []).map((o) => `${o.booth_id}::${o.order_number}`),
+  );
+  if (inEvent.size === 0) return [];
+  const rows = await fetchReviewRows(supabase);
+  return rows.filter(
+    (r) => r.order_number && inEvent.has(`${r.booth_id}::${r.order_number}`),
+  );
 }
 
 export default async function StatsPage({ searchParams }: Props) {
@@ -134,13 +159,16 @@ export default async function StatsPage({ searchParams }: Props) {
       spanDays === 1 ? 24 : spanDays,
       spanDays === 1 ? HOUR_MS : MS_PER_DAY,
     );
-    // Reviews left during this event window, per booth.
-    const eventReviews = await fetchBoothReviews(
+    // Reviews for orders placed during this event — by order date, so late
+    // reviews (written after the event ended) still belong to it.
+    const eventRows = await fetchEventReviewRows(
       supabaseEarly,
-      boothList,
+      allBoothIds,
       from,
       to,
     );
+    const eventGroups = groupReviewsByBooth(eventRows, boothList);
+    const eventOverall = summarizeReviews(eventRows);
     return (
       <div className="space-y-7">
         <div>
@@ -169,7 +197,12 @@ export default async function StatsPage({ searchParams }: Props) {
           pro
         />
 
-        <ReviewsCard groups={eventReviews} />
+        <ReviewsCard
+          groups={eventGroups}
+          overall={eventOverall}
+          selected="all"
+          linkable={false}
+        />
       </div>
     );
   }
@@ -198,7 +231,9 @@ export default async function StatsPage({ searchParams }: Props) {
   const orders = await fetchOrders(supabaseEarly, queryIds, cutoff);
   const summary = computeStats(orders);
 
-  const reviewGroups = await fetchBoothReviews(supabaseEarly, boothList);
+  const reviewRows = await fetchReviewRows(supabaseEarly);
+  const reviewGroups = groupReviewsByBooth(reviewRows, boothList);
+  const reviewOverall = summarizeReviews(reviewRows);
 
   // Period comparison + trend are Pro-only.
   let deltas: {
@@ -250,7 +285,12 @@ export default async function StatsPage({ searchParams }: Props) {
         pro={pro}
       />
 
-      <ReviewsCard groups={reviewGroups} />
+      <ReviewsCard
+        groups={reviewGroups}
+        overall={reviewOverall}
+        selected={selectedBooth}
+        range={range}
+      />
 
       <EventsPanel events={events} />
     </div>
