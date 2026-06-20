@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createServerClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
@@ -61,6 +62,17 @@ export default async function DashboardLayout({
             </Button>
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
               <Link href="/dashboard/plan">Plan</Link>
+            </Button>
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="rounded-lg border-primary/40 text-primary hover:bg-primary/10"
+            >
+              <Link href="/dashboard/feedback" className="gap-1.5">
+                <MessageSquarePlus className="size-4" />
+                Feedback
+              </Link>
             </Button>
             <form action={signOut}>
               <Button

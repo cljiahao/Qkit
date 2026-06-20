@@ -15,7 +15,7 @@ import { ArrowLeft } from "lucide-react";
 import { MS_PER_DAY } from "@/lib/utils";
 import { shortDay } from "@/lib/tz";
 import { eventLabel } from "@/lib/events";
-import { summarizeReviews } from "@/lib/reviews";
+import { groupReviewsByBooth, type ReviewRow } from "@/lib/reviews";
 import type { Database } from "@/lib/types";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
@@ -58,6 +58,29 @@ async function fetchOrders(
     items: parseOrderItems(row.items),
     created_at: row.created_at,
   }));
+}
+
+/**
+ * Customer reviews for this vendor's booths, grouped per booth. RLS
+ * (feedback_vendor_read_own) returns only feedback for booths this vendor owns.
+ * Optional [gte, lt) window scopes reviews to a single event.
+ */
+async function fetchBoothReviews(
+  supabase: SupabaseClient<Database>,
+  booths: { id: string; name: string }[],
+  gte?: string,
+  lt?: string,
+) {
+  let query = supabase
+    .from("feedback")
+    .select("rating, message, order_number, booth_id, created_at")
+    .eq("source", "customer")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (gte) query = query.gte("created_at", gte);
+  if (lt) query = query.lt("created_at", lt);
+  const { data } = await query;
+  return groupReviewsByBooth((data ?? []) as ReviewRow[], booths);
 }
 
 export default async function StatsPage({ searchParams }: Props) {
@@ -111,6 +134,13 @@ export default async function StatsPage({ searchParams }: Props) {
       spanDays === 1 ? 24 : spanDays,
       spanDays === 1 ? HOUR_MS : MS_PER_DAY,
     );
+    // Reviews left during this event window, per booth.
+    const eventReviews = await fetchBoothReviews(
+      supabaseEarly,
+      boothList,
+      from,
+      to,
+    );
     return (
       <div className="space-y-7">
         <div>
@@ -128,15 +158,18 @@ export default async function StatsPage({ searchParams }: Props) {
             {eventLabel(activeEvent)}
           </h1>
         </div>
-        {/* Paid window → full stats regardless of current plan. */}
+        {/* Paid window → full stats regardless of current plan. Hide the trend
+            chart for an empty (zero-revenue) event. */}
         <StatsView
           summary={summary}
           deltas={null}
-          series={series}
+          series={summary.revenue_cents > 0 ? series : null}
           range="event"
           boothId="all"
           pro
         />
+
+        <ReviewsCard groups={eventReviews} />
       </div>
     );
   }
@@ -165,15 +198,7 @@ export default async function StatsPage({ searchParams }: Props) {
   const orders = await fetchOrders(supabaseEarly, queryIds, cutoff);
   const summary = computeStats(orders);
 
-  // Customer reviews of this vendor's booths. RLS (feedback_vendor_read_own)
-  // returns only customer feedback for booths this vendor owns. Ungated.
-  const { data: reviewRows } = await supabaseEarly
-    .from("feedback")
-    .select("rating, message, order_number, created_at")
-    .eq("source", "customer")
-    .order("created_at", { ascending: false })
-    .limit(200);
-  const reviews = summarizeReviews(reviewRows ?? []);
+  const reviewGroups = await fetchBoothReviews(supabaseEarly, boothList);
 
   // Period comparison + trend are Pro-only.
   let deltas: {
@@ -225,7 +250,7 @@ export default async function StatsPage({ searchParams }: Props) {
         pro={pro}
       />
 
-      <ReviewsCard summary={reviews} />
+      <ReviewsCard groups={reviewGroups} />
 
       <EventsPanel events={events} />
     </div>

@@ -5,6 +5,7 @@ export type ReviewRow = {
   rating: number | null;
   message: string | null;
   order_number: string | null;
+  booth_id: string | null;
   created_at: string;
 };
 
@@ -45,4 +46,40 @@ export function summarizeReviews(
     .slice(0, recentLimit);
 
   return { count, average, distribution, recent };
+}
+
+export type BoothReviews = {
+  boothId: string;
+  boothName: string;
+  summary: ReviewSummary;
+};
+
+/**
+ * Split reviews per booth so a vendor knows which booth each is for. Booths are
+ * returned in the given order; a booth with no reviews is omitted. Rows whose
+ * booth_id isn't in `booths` are ignored (shouldn't happen under RLS).
+ */
+export function groupReviewsByBooth(
+  rows: ReviewRow[],
+  booths: { id: string; name: string }[],
+  recentLimit = 50,
+): BoothReviews[] {
+  const byBooth = new Map<string, ReviewRow[]>();
+  for (const r of rows) {
+    if (!r.booth_id) continue;
+    const list = byBooth.get(r.booth_id);
+    if (list) list.push(r);
+    else byBooth.set(r.booth_id, [r]);
+  }
+  const groups: BoothReviews[] = [];
+  for (const booth of booths) {
+    const list = byBooth.get(booth.id);
+    if (!list || list.length === 0) continue;
+    groups.push({
+      boothId: booth.id,
+      boothName: booth.name,
+      summary: summarizeReviews(list, recentLimit),
+    });
+  }
+  return groups;
 }

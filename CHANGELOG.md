@@ -16,8 +16,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   event day and its full stats stay viewable forever — ungated, since it was
   paid for (migration `0020` + `set_license_label` RPC).
 - **Customer reviews for vendors**: a "Customer reviews" card on `/dashboard/stats`
-  shows average rating, distribution, and recent comments for a vendor's booths
-  (RLS now lets a vendor read their own booths' customer feedback).
+  shows average rating, distribution, and recent comments **split per booth**,
+  each comment timestamped, with "show more" paging (RLS now lets a vendor read
+  their own booths' customer feedback). Per-event stats include that event's
+  reviews, and a prominent "Feedback" nav button surfaces the QKit feedback page.
 - AI harness governance: `docs/constitution.md` (inviolable rules — RLS-is-authz,
   service-role server-only, Zod boundaries, deny-rules-are-a-guardrail).
 - Project skills `/security-scan` (local gitleaks + `pnpm audit`) and `/changelog`;

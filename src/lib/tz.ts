@@ -68,3 +68,18 @@ const SGT_DAY_FORMAT = new Intl.DateTimeFormat("en-GB", {
 export function shortDay(ms: number): string {
   return SGT_DAY_FORMAT.format(new Date(ms));
 }
+
+// Cached: short date + time in SGT, e.g. "7 Jun, 2:30 pm" — for review timestamps.
+const SGT_DATETIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: BOOTH_TZ,
+  day: "numeric",
+  month: "short",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
+/** Format an ISO instant as a short SGT date+time like "7 Jun, 2:30 pm". */
+export function shortDateTime(iso: string): string {
+  return SGT_DATETIME_FORMAT.format(new Date(iso));
+}
