@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { npsBreakdown } from "@/lib/nps";
+import { summarizeReviews, type ReviewRow } from "@/lib/reviews";
 
 export const revalidate = 0;
 
@@ -10,23 +11,55 @@ function when(iso: string): string {
   return iso.slice(0, 16).replace("T", " ");
 }
 
+/** A segment of the NPS bar; flex-grows by its share. */
+function Seg({
+  n,
+  total,
+  className,
+}: {
+  n: number;
+  total: number;
+  className: string;
+}) {
+  if (n === 0) return null;
+  return <div style={{ flexGrow: n / total }} className={className} />;
+}
+
 export default async function AdminFeedbackPage() {
   await requireAdmin();
   const supabase = await createServerClient();
   const { data: rows } = await supabase
     .from("feedback")
-    .select("id, source, rating, nps, message, order_number, created_at")
+    .select("id, source, rating, nps, message, created_at")
     .order("created_at", { ascending: false })
     .limit(200);
   const all = rows ?? [];
+
+  // QKit's own metric: vendor → QKit loyalty (NPS) + their written notes.
   const vendorRows = all.filter((f) => f.source === "vendor");
-  const customerRows = all.filter((f) => f.source === "customer");
   const nps = npsBreakdown(
     vendorRows.map((f) => f.nps).filter((n): n is number => n != null),
   );
+  const npsComments = vendorRows.filter((f) => f.message?.trim());
+
+  // Platform health: how customers rate ordering across ALL booths — an
+  // aggregate only. Individual booth reviews live on each vendor's own stats.
+  const csat = summarizeReviews(
+    all
+      .filter((f) => f.source === "customer")
+      .map(
+        (f): ReviewRow => ({
+          rating: f.rating,
+          message: null,
+          order_number: null,
+          booth_id: null,
+          created_at: f.created_at,
+        }),
+      ),
+  );
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10 px-5 py-7">
+    <div className="mx-auto max-w-3xl space-y-8 px-5 py-7">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Internal
@@ -36,103 +69,123 @@ export default async function AdminFeedbackPage() {
         </h1>
       </div>
 
-      {/* ── QKit product feedback (vendor → us): NPS ──────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          QKit feedback · vendors
-        </h2>
-        <div className="flex flex-wrap items-end gap-6 rounded-xl border border-border bg-card p-4">
-          <div>
-            <p className="font-display text-5xl font-semibold leading-none">
+      {/* ── Hero: vendor NPS (QKit's own loyalty metric) ─────────────────── */}
+      <section className="fade-rise ticket overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="px-6 pt-8 pb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Vendor NPS · how vendors rate QKit
+          </p>
+          <div className="mt-2 flex items-end gap-3">
+            <span className="font-display text-6xl font-semibold leading-none">
               {nps.score ?? "—"}
-            </p>
-            <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
-              NPS · {nps.total} response{nps.total === 1 ? "" : "s"}
-            </p>
+            </span>
+            <span className="pb-1 font-mono text-sm text-muted-foreground">
+              {nps.total} response{nps.total === 1 ? "" : "s"}
+            </span>
           </div>
-          <div className="flex gap-4 text-sm">
+
+          <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-muted">
+            <Seg
+              n={nps.detractors}
+              total={nps.total}
+              className="bg-status-cancelled"
+            />
+            <Seg
+              n={nps.passives}
+              total={nps.total}
+              className="bg-muted-foreground/40"
+            />
+            <Seg
+              n={nps.promoters}
+              total={nps.total}
+              className="bg-emerald-500"
+            />
+          </div>
+          <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground">
+            <span>{nps.detractors} detractors</span>
+            <span>{nps.passives} passive</span>
             <span className="text-emerald-600">{nps.promoters} promoters</span>
-            <span className="text-muted-foreground">
-              {nps.passives} passive
-            </span>
-            <span className="text-status-cancelled">
-              {nps.detractors} detractors
-            </span>
           </div>
         </div>
-        {vendorRows.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-            No vendor feedback yet. Vendors are prompted on /dashboard/feedback.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {vendorRows.map((f) => (
-              <div
-                key={f.id}
-                className="rounded-xl border border-border bg-card p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  {f.nps != null && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                      NPS {f.nps}
+
+        {npsComments.length > 0 && (
+          <>
+            <div className="perforation mx-6" />
+            <ul className="divide-y divide-border/60 px-6 py-2">
+              {npsComments.map((f) => (
+                <li key={f.id} className="py-3">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    {f.nps != null && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+                        NPS {f.nps}
+                      </span>
+                    )}
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {when(f.created_at)}
                     </span>
-                  )}
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {when(f.created_at)}
-                  </span>
-                </div>
-                {f.message && <p className="mt-2 text-sm">{f.message}</p>}
-              </div>
-            ))}
-          </div>
+                  </div>
+                  <p className="text-sm">{f.message}</p>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
-      {/* ── Customer order feedback (customer → vendor) ───────────────────── */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Customer order feedback
-        </h2>
-        {customerRows.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-            No customer feedback yet. Customers see a prompt on the order-status
-            page.
+      {/* ── Platform CSAT: aggregate ordering-experience health ──────────── */}
+      <section className="fade-rise space-y-4 rounded-xl border border-border bg-card p-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Platform CSAT
           </p>
-        ) : (
-          <div className="space-y-2">
-            {customerRows.map((f) => (
-              <div
-                key={f.id}
-                className="rounded-xl border border-border bg-card p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  {f.rating != null && (
-                    <span className="inline-flex items-center gap-0.5">
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <Star
-                          key={i}
-                          className={cn(
-                            "size-3.5",
-                            i < f.rating!
-                              ? "fill-amber-400 text-amber-400"
-                              : "text-muted-foreground/30",
-                          )}
-                        />
-                      ))}
-                    </span>
+          <p className="mt-1 text-sm text-muted-foreground">
+            How customers rate ordering across every booth — your ordering-UX
+            health. Individual booth reviews live on each vendor&apos;s stats.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-display text-5xl font-semibold leading-none">
+            {csat.average?.toFixed(1) ?? "—"}
+          </span>
+          <div>
+            <span className="inline-flex">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star
+                  key={i}
+                  className={cn(
+                    "size-4",
+                    i < Math.round(csat.average ?? 0)
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-muted-foreground/30",
                   )}
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {when(f.created_at)}
+                />
+              ))}
+            </span>
+            <p className="font-mono text-xs text-muted-foreground">
+              {csat.count} rating{csat.count === 1 ? "" : "s"}
+            </p>
+          </div>
+        </div>
+        {csat.count > 0 && (
+          <div className="space-y-1">
+            {([5, 4, 3, 2, 1] as const).map((star) => {
+              const n = csat.distribution[star];
+              const pct = Math.round((n / csat.count) * 100);
+              return (
+                <div key={star} className="flex items-center gap-2 text-xs">
+                  <span className="w-3 text-muted-foreground">{star}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-amber-400"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="w-8 text-right font-mono text-muted-foreground">
+                    {n}
                   </span>
                 </div>
-                {f.message && <p className="mt-2 text-sm">{f.message}</p>}
-                {f.order_number && (
-                  <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    order #{f.order_number}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

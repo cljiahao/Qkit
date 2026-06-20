@@ -41,9 +41,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Vendor → QKit feedback is now **NPS** (0–10 "recommend QKit?") instead of 1–5
-  stars; the admin feedback page is split into QKit-NPS and customer-order
-  sections (migration `0019` adds the `nps` column).
+- Admin revamp: tabbed into **Overview · Vendors · Feedback** (vendors moved to
+  their own tab). Cards adopt QKit's ticket/receipt motif (perforated hero,
+  Space Mono figures, staggered reveal). Admin **feedback** no longer shows the
+  raw per-order customer feed (that's vendor-facing) — it tracks **vendor NPS**
+  - an **aggregate platform CSAT** (ordering-UX health) only.
+- Vendor → QKit feedback is **NPS** (0–10 "recommend QKit?") instead of 1–5
+  stars (migration `0019` adds the `nps` column).
 - Fixed the stats/admin trend chart: dated X-axis (was a hidden index) and an
   uncut Y-axis (was clipped by a negative margin + 28px width).
 - Permissions are now max-privilege: bare-tool `allow` so routine work doesn't

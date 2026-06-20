@@ -1,4 +1,3 @@
-import { ArrowDown, ArrowUp } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import {
@@ -7,69 +6,16 @@ import {
   summarizeVendors,
 } from "@/lib/admin-stats";
 import { pctChange, windowSeries, type StatsOrder } from "@/lib/stats";
-import { cn, formatPrice, MS_PER_DAY } from "@/lib/utils";
+import { formatPrice, MS_PER_DAY } from "@/lib/utils";
 import type { Plan } from "@/lib/types";
 import { DEFAULT_PRICING } from "@/lib/pricing";
-import { VendorTable, type AdminVendorRow } from "./vendor-table";
+import { type AdminVendorRow } from "./vendor-table";
 import { PricingForm } from "./pricing-form";
 import { ActivationFunnelView } from "./activation-funnel";
 import { TrendChart } from "../dashboard/stats/trend-chart";
+import { Stat } from "./stat";
 
 export const revalidate = 0;
-
-function Delta({ pct }: { pct: number | null }) {
-  if (pct === null) return null;
-  const up = pct >= 0;
-  const Icon = up ? ArrowUp : ArrowDown;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-0.5 font-mono text-xs font-semibold",
-        up ? "text-emerald-600" : "text-status-cancelled",
-      )}
-      title="vs the previous 7 days"
-    >
-      <Icon className="size-3" />
-      {Math.abs(Math.round(pct))}%
-    </span>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  delta,
-  big,
-}: {
-  label: string;
-  value: string | number;
-  delta?: number | null;
-  big?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border border-border bg-card p-4",
-        big && "sm:col-span-2",
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </p>
-        {delta !== undefined && <Delta pct={delta} />}
-      </div>
-      <p
-        className={cn(
-          "mt-1 font-mono font-bold tabular-nums",
-          big ? "text-3xl" : "text-2xl",
-        )}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function humanizeAction(action: string): string {
   const s = action.replace(/_/g, " ");
@@ -211,24 +157,37 @@ export default async function AdminPage() {
       {/* North-star band — QKit revenue leads; active vendors is the leading
           indicator behind it. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="QKit revenue · 30d" value={formatPrice(revenue30d)} big />
-        <Stat label="Revenue · all time" value={formatPrice(revenueAll)} />
-        <Stat label="Active vendors" value={funnel.withOrder} />
-        <Stat label="Pro" value={vstat.pro} />
         <Stat
-          label="Signups · 7d"
-          value={vstat.new7d}
-          delta={pctChange(vstat.new7d, signupsPrior7d)}
+          label="QKit revenue · 30d"
+          value={formatPrice(revenue30d)}
+          big
+          featured
+          delay={0}
         />
+        <Stat label="Active vendors" value={funnel.withOrder} delay={60} />
         <Stat
           label="Orders · 7d"
           value={orders7d}
           delta={pctChange(orders7d, ordersPrior7d)}
+          delay={120}
         />
-        <Stat label="Vendors" value={vstat.total} />
+        <Stat
+          label="Revenue · all time"
+          value={formatPrice(revenueAll)}
+          delay={180}
+        />
+        <Stat label="Pro vendors" value={vstat.pro} delay={240} />
+        <Stat
+          label="Signups · 7d"
+          value={vstat.new7d}
+          delta={pctChange(vstat.new7d, signupsPrior7d)}
+          delay={300}
+        />
+        <Stat label="Vendors" value={vstat.total} delay={360} />
         <Stat
           label="Active booths"
           value={booths.filter((b) => b.is_active).length}
+          delay={420}
         />
       </div>
 
@@ -247,13 +206,6 @@ export default async function AdminPage() {
           Pricing
         </h2>
         <PricingForm initial={pricing} />
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Vendors
-        </h2>
-        <VendorTable vendors={vendors} />
       </section>
 
       <section className="space-y-3">
