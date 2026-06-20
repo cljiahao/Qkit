@@ -90,14 +90,6 @@ export default async function DashboardLayout({
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
         {children}
       </main>
-      <footer className="border-t border-border px-5 py-4 text-center print:hidden">
-        <Link
-          href="/dashboard/feedback"
-          className="text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
-        >
-          Send feedback
-        </Link>
-      </footer>
     </div>
   );
 }
