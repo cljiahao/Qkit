@@ -10,6 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { MediaImage } from "@/components/media-image";
 import type { MenuItem, SelectedOption } from "@/lib/types";
 
 interface Props {
@@ -87,6 +88,17 @@ function CustomizerBody({
 
   return (
     <>
+      {item.image_url && (
+        <div className="relative mb-1 h-44 w-full overflow-hidden rounded-xl border border-border">
+          <MediaImage
+            src={item.image_url}
+            alt={item.name}
+            fill
+            sizes="(max-width: 640px) 100vw, 32rem"
+            className="object-cover"
+          />
+        </div>
+      )}
       <SheetHeader>
         <SheetTitle className="font-display text-2xl">{item.name}</SheetTitle>
         {item.description && (

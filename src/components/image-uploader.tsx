@@ -5,10 +5,15 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { MediaImage } from "@/components/media-image";
+import { resizeToWebp } from "@/lib/image-resize";
 
 // SVG is intentionally excluded — seed art is referenced by path, not uploaded.
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
-const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+// Generous source cap — we resize + re-encode to WebP before upload, so big
+// phone photos are fine; this only blocks absurd files.
+const MAX_BYTES = 15 * 1024 * 1024; // 15 MB
+// Longest-side target per use: a wide banner vs a small square product photo.
+const MAX_DIM = { banner: 1600, thumb: 1000 } as const;
 
 interface Props {
   vendorId: string;
@@ -35,16 +40,17 @@ export function ImageUploader({
       return;
     }
     if (file.size > MAX_BYTES) {
-      toast.error("Image must be 2 MB or smaller");
+      toast.error("Image must be 15 MB or smaller");
       return;
     }
 
     setUploading(true);
-    const ext = file.name.split(".").pop() ?? "jpg";
+    // Resize + WebP-encode in the browser so storage and load stay fast.
+    const { blob, ext, type } = await resizeToWebp(file, MAX_DIM[variant]);
     const path = `${vendorId}/${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage
       .from("booth-images")
-      .upload(path, file, { upsert: false });
+      .upload(path, blob, { upsert: false, contentType: type });
 
     if (error) {
       toast.error("Upload failed");
@@ -104,18 +110,27 @@ export function ImageUploader({
       {variant === "banner" && (
         <>
           <span className="text-sm font-medium">
-            {uploading ? "Uploading…" : "Add a booth banner"}
+            {uploading ? "Optimizing…" : "Add a booth banner"}
           </span>
-          <span className="text-xs">JPEG, PNG, or WebP · up to 2 MB</span>
+          <span className="text-xs">
+            JPEG, PNG, or WebP — optimized on upload
+          </span>
           <span className="text-xs">
             Best at a 3:1 wide ratio (e.g. 1200×400)
           </span>
         </>
       )}
       {variant === "thumb" && (
-        <span className="text-[10px] font-medium leading-tight">
-          {uploading ? "…" : "Photo"}
-        </span>
+        <>
+          <span className="text-[10px] font-medium leading-tight">
+            {uploading ? "…" : "Add photo"}
+          </span>
+          {!uploading && (
+            <span className="text-[9px] leading-tight text-muted-foreground/80">
+              JPG · PNG · WebP
+            </span>
+          )}
+        </>
       )}
       <input
         ref={inputRef}

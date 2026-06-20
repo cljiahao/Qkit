@@ -41,6 +41,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Vendor image uploads are resized + re-encoded to **WebP in the browser** before
+  upload (banner ≤1600px, product ≤1000px) so storage and load stay fast; source
+  cap raised to 15 MB since we compress. Accepted formats (JPEG/PNG/WebP) are now
+  stated on both uploaders. The customize sheet shows the item photo at the top.
 - Mobile dashboard nav collapses behind a **burger menu** (the bar overflowed on
   phones); the vendor NPS form is now an even 0–10 scale that fits any width.
 - Customer menu photos are **tap-to-enlarge** (fullscreen lightbox, Esc/tap to
