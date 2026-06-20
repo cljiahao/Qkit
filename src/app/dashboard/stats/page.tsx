@@ -15,10 +15,12 @@ import { ArrowLeft } from "lucide-react";
 import { MS_PER_DAY } from "@/lib/utils";
 import { shortDay } from "@/lib/tz";
 import { eventLabel } from "@/lib/events";
+import { summarizeReviews } from "@/lib/reviews";
 import type { Database } from "@/lib/types";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
 import { EventsPanel } from "./events-panel";
+import { ReviewsCard } from "./reviews-card";
 
 export const revalidate = 0;
 
@@ -163,6 +165,16 @@ export default async function StatsPage({ searchParams }: Props) {
   const orders = await fetchOrders(supabaseEarly, queryIds, cutoff);
   const summary = computeStats(orders);
 
+  // Customer reviews of this vendor's booths. RLS (feedback_vendor_read_own)
+  // returns only customer feedback for booths this vendor owns. Ungated.
+  const { data: reviewRows } = await supabaseEarly
+    .from("feedback")
+    .select("rating, message, order_number, created_at")
+    .eq("source", "customer")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const reviews = summarizeReviews(reviewRows ?? []);
+
   // Period comparison + trend are Pro-only.
   let deltas: {
     revenue: number | null;
@@ -212,6 +224,8 @@ export default async function StatsPage({ searchParams }: Props) {
         boothId={selectedBooth}
         pro={pro}
       />
+
+      <ReviewsCard summary={reviews} />
 
       <EventsPanel events={events} />
     </div>

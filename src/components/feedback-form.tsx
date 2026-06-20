@@ -12,18 +12,34 @@ interface Props {
   boothId?: string;
   orderNumber?: string;
   prompt?: string;
+  // "stars" = 1–5 (customer order rating); "nps" = 0–10 recommend score
+  // (vendor → QKit loyalty). Defaults to stars.
+  metric?: "stars" | "nps";
 }
 
-/** Compact rating + message feedback widget → feedback table (admin reads). */
-export function FeedbackForm({ source, boothId, orderNumber, prompt }: Props) {
-  const [rating, setRating] = useState(0);
+/** Compact rating/NPS + message feedback widget → feedback table. */
+export function FeedbackForm({
+  source,
+  boothId,
+  orderNumber,
+  prompt,
+  metric = "stars",
+}: Props) {
+  // For stars: 1–5, 0 = unset. For NPS: 0–10, -1 = unset (0 is a valid score).
+  const [score, setScore] = useState(metric === "nps" ? -1 : 0);
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
   const [pending, start] = useTransition();
 
+  const hasScore = metric === "nps" ? score >= 0 : score > 0;
+
   function send() {
-    if (!rating && !message.trim()) {
-      toast.error("Add a rating or a message");
+    if (!hasScore && !message.trim()) {
+      toast.error(
+        metric === "nps"
+          ? "Pick a score or leave a note"
+          : "Add a rating or a message",
+      );
       return;
     }
     start(async () => {
@@ -31,7 +47,8 @@ export function FeedbackForm({ source, boothId, orderNumber, prompt }: Props) {
         source,
         boothId,
         orderNumber,
-        rating: rating || undefined,
+        rating: metric === "stars" && score > 0 ? score : undefined,
+        nps: metric === "nps" && score >= 0 ? score : undefined,
         message: message.trim() || undefined,
       });
       if (!res.success) {
@@ -53,28 +70,61 @@ export function FeedbackForm({ source, boothId, orderNumber, prompt }: Props) {
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <p className="text-sm font-medium">{prompt ?? "How was it?"}</p>
-      <div className="flex gap-1" role="radiogroup" aria-label="Rating">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            role="radio"
-            aria-checked={rating === n}
-            aria-label={`${n} star${n === 1 ? "" : "s"}`}
-            onClick={() => setRating(n)}
-            className="inline-flex size-11 items-center justify-center rounded-lg hover:bg-secondary"
+      {metric === "nps" ? (
+        <>
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="radiogroup"
+            aria-label="Recommend score, 0 to 10"
           >
-            <Star
-              className={cn(
-                "size-6",
-                n <= rating
-                  ? "fill-amber-400 text-amber-400"
-                  : "text-muted-foreground/40",
-              )}
-            />
-          </button>
-        ))}
-      </div>
+            {Array.from({ length: 11 }, (_, n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={score === n}
+                aria-label={`${n}`}
+                onClick={() => setScore(n)}
+                className={cn(
+                  "inline-flex size-9 items-center justify-center rounded-lg border text-sm font-semibold transition-colors",
+                  score === n
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40",
+                )}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Not likely</span>
+            <span>Very likely</span>
+          </div>
+        </>
+      ) : (
+        <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={score === n}
+              aria-label={`${n} star${n === 1 ? "" : "s"}`}
+              onClick={() => setScore(n)}
+              className="inline-flex size-11 items-center justify-center rounded-lg hover:bg-secondary"
+            >
+              <Star
+                className={cn(
+                  "size-6",
+                  n <= score
+                    ? "fill-amber-400 text-amber-400"
+                    : "text-muted-foreground/40",
+                )}
+              />
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}

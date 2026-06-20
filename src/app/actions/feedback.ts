@@ -51,6 +51,7 @@ export async function submitFeedback(
     booth_id: d.boothId ?? null,
     order_number: d.orderNumber ?? null,
     rating: d.rating ?? null,
+    nps: d.nps ?? null,
     message: d.message && d.message.length > 0 ? d.message : null,
   });
   if (error) {

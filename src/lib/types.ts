@@ -256,6 +256,7 @@ export interface Database {
           booth_id: string | null;
           order_number: string | null;
           rating: number | null;
+          nps: number | null;
           message: string | null;
           created_at: string;
         };
@@ -266,6 +267,7 @@ export interface Database {
           booth_id?: string | null;
           order_number?: string | null;
           rating?: number | null;
+          nps?: number | null;
           message?: string | null;
           created_at?: string;
         };
@@ -276,6 +278,7 @@ export interface Database {
           booth_id?: string | null;
           order_number?: string | null;
           rating?: number | null;
+          nps?: number | null;
           message?: string | null;
           created_at?: string;
         };

@@ -17,7 +17,11 @@ export default function DashboardFeedbackPage() {
           every note.
         </p>
       </div>
-      <FeedbackForm source="vendor" prompt="How's QKit working for you?" />
+      <FeedbackForm
+        source="vendor"
+        metric="nps"
+        prompt="How likely are you to recommend QKit to another vendor?"
+      />
     </div>
   );
 }
