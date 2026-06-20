@@ -64,7 +64,13 @@ export function pctChange(current: number, prior: number): number | null {
   return ((current - prior) / prior) * 100;
 }
 
-export type SeriesPoint = { orders: number; revenue_cents: number };
+export type SeriesPoint = {
+  // Bucket's representative instant (epoch ms) — the right edge of the slot, used
+  // for the trend chart's dated X-axis.
+  t: number;
+  orders: number;
+  revenue_cents: number;
+};
 
 /**
  * Bucket orders into a fixed-size time series ending "now" — the trend line.
@@ -78,7 +84,11 @@ export function windowSeries(
   buckets: number,
   bucketMs: number,
 ): SeriesPoint[] {
-  const series: SeriesPoint[] = Array.from({ length: buckets }, () => ({
+  // idx 0 is the oldest slot, the last is "now". The slot's representative
+  // instant is its right edge: nowMs for the last bucket, one bucketMs earlier
+  // per step back.
+  const series: SeriesPoint[] = Array.from({ length: buckets }, (_, idx) => ({
+    t: nowMs - (buckets - 1 - idx) * bucketMs,
     orders: 0,
     revenue_cents: 0,
   }));

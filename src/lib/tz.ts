@@ -56,3 +56,15 @@ export function sgtMinutes(iso: string): number {
 export function sgtWeekday(iso: string): WeekdayKey {
   return sgtParts(iso).weekday;
 }
+
+// Cached: short calendar date in SGT, e.g. "7 Jun" — used for chart axis ticks.
+const SGT_DAY_FORMAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: BOOTH_TZ,
+  day: "numeric",
+  month: "short",
+});
+
+/** Format an epoch-ms instant as a short SGT date like "7 Jun". */
+export function shortDay(ms: number): string {
+  return SGT_DAY_FORMAT.format(new Date(ms));
+}

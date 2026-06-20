@@ -9,7 +9,16 @@ import {
   YAxis,
 } from "recharts";
 import { formatPrice } from "@/lib/utils";
+import { shortDay } from "@/lib/tz";
 import type { SeriesPoint } from "@/lib/stats";
+
+// Abbreviate the Y axis: "$8" / "$1.2k". Full precision lives in the tooltip.
+function shortMoney(cents: number): string {
+  const dollars = cents / 100;
+  return dollars >= 1000
+    ? `$${(dollars / 1000).toFixed(1)}k`
+    : `$${Math.round(dollars)}`;
+}
 
 const RANGE_LABEL: Record<string, string> = {
   "24h": "last 24 hours",
@@ -37,8 +46,6 @@ export function TrendChart({
   range: string;
   title?: string;
 }) {
-  const data = series.map((p, i) => ({ ...p, i }));
-
   return (
     <section className="rounded-xl border border-border bg-card p-4">
       <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -49,8 +56,8 @@ export function TrendChart({
       </p>
       <ResponsiveContainer width="100%" height={180}>
         <AreaChart
-          data={data}
-          margin={{ left: -18, right: 8, top: 4, bottom: 0 }}
+          data={series}
+          margin={{ left: 0, right: 8, top: 4, bottom: 0 }}
         >
           <defs>
             <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
@@ -66,13 +73,21 @@ export function TrendChart({
               />
             </linearGradient>
           </defs>
-          <XAxis dataKey="i" hide />
-          <YAxis
-            width={28}
+          <XAxis
+            dataKey="t"
             tick={{ fontSize: 11 }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v) => `$${Math.round(Number(v) / 100)}`}
+            minTickGap={28}
+            interval="preserveStartEnd"
+            tickFormatter={(t) => shortDay(Number(t))}
+          />
+          <YAxis
+            width={44}
+            tick={{ fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => shortMoney(Number(v))}
           />
           <Tooltip
             cursor={{ stroke: "var(--color-border)" }}
@@ -80,7 +95,7 @@ export function TrendChart({
               `${formatPrice(Number(value))} · ${ordersOf(item?.payload)} orders`,
               "",
             ]}
-            labelFormatter={() => ""}
+            labelFormatter={(label) => shortDay(Number(label))}
           />
           <Area
             type="monotone"

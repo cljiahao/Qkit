@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sgtHour, sgtMinutes, sgtWeekday } from "./tz";
+import { sgtHour, sgtMinutes, sgtWeekday, shortDay } from "./tz";
 
 // SGT is UTC+8, no DST. 2026-06-12 is a Friday.
 describe("tz (Asia/Singapore)", () => {
@@ -38,5 +38,12 @@ describe("tz (Asia/Singapore)", () => {
     // 05:45Z -> 13:45 SGT
     expect(sgtHour("2026-06-12T05:45:00Z")).toBe(13);
     expect(sgtMinutes("2026-06-12T05:45:00Z")).toBe(13 * 60 + 45);
+  });
+
+  it("formats a short SGT calendar date", () => {
+    // 05:00Z 7 Jun -> 13:00 SGT, same day.
+    expect(shortDay(Date.parse("2026-06-07T05:00:00Z"))).toBe("7 Jun");
+    // 17:00Z 11 Jun -> 01:00 SGT 12 Jun (rolls to next day in SGT).
+    expect(shortDay(Date.parse("2026-06-11T17:00:00Z"))).toBe("12 Jun");
   });
 });

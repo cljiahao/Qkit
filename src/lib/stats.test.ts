@@ -180,9 +180,14 @@ describe("windowSeries", () => {
       DAY,
     );
     expect(s).toHaveLength(3);
-    expect(s[2]).toEqual({ orders: 1, revenue_cents: 100 });
-    expect(s[1]).toEqual({ orders: 1, revenue_cents: 200 });
-    expect(s[0]).toEqual({ orders: 1, revenue_cents: 300 });
+    expect(s[2]).toEqual({ t: now, orders: 1, revenue_cents: 100 });
+    expect(s[1]).toEqual({ t: now - DAY, orders: 1, revenue_cents: 200 });
+    expect(s[0]).toEqual({ t: now - 2 * DAY, orders: 1, revenue_cents: 300 });
+  });
+
+  it("stamps each bucket with its right-edge instant, ascending to now", () => {
+    const s = windowSeries([], now, 3, DAY);
+    expect(s.map((p) => p.t)).toEqual([now - 2 * DAY, now - DAY, now]);
   });
 
   it("ignores orders outside the window and cancelled orders", () => {
@@ -196,7 +201,7 @@ describe("windowSeries", () => {
       3,
       DAY,
     );
-    expect(s[2]).toEqual({ orders: 1, revenue_cents: 100 });
+    expect(s[2]).toEqual({ t: now, orders: 1, revenue_cents: 100 });
     expect(s.reduce((n, p) => n + p.orders, 0)).toBe(1);
   });
 });
