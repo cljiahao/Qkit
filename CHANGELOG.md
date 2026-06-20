@@ -8,6 +8,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- One-tap **reorder**: customers can repeat a past order from the order-status
+  page or their recent-orders list; the cart is rebuilt against the live menu
+  (current prices, removed/changed items skipped). Recent-orders list collapses
+  to 3 with "Show all".
+- **Per-event permanent stats**: a paid pass (license) can be named after the
+  event day and its full stats stay viewable forever — ungated, since it was
+  paid for (migration `0020` + `set_license_label` RPC).
+- **Customer reviews for vendors**: a "Customer reviews" card on `/dashboard/stats`
+  shows average rating, distribution, and recent comments for a vendor's booths
+  (RLS now lets a vendor read their own booths' customer feedback).
 - AI harness governance: `docs/constitution.md` (inviolable rules — RLS-is-authz,
   service-role server-only, Zod boundaries, deny-rules-are-a-guardrail).
 - Project skills `/security-scan` (local gitleaks + `pnpm audit`) and `/changelog`;
@@ -29,6 +39,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Vendor → QKit feedback is now **NPS** (0–10 "recommend QKit?") instead of 1–5
+  stars; the admin feedback page is split into QKit-NPS and customer-order
+  sections (migration `0019` adds the `nps` column).
+- Fixed the stats/admin trend chart: dated X-axis (was a hidden index) and an
+  uncut Y-axis (was clipped by a negative margin + 28px width).
 - Permissions are now max-privilege: bare-tool `allow` so routine work doesn't
   prompt, with a `deny` list scoped to secret reads/edits and irreversible git/fs
   ops (force-push, hard reset, `rm -rf`, history rewrite). `.env.example` is the
