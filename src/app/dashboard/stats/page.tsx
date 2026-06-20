@@ -10,12 +10,19 @@ import {
   type SeriesPoint,
   type StatsOrder,
 } from "@/lib/stats";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { MS_PER_DAY } from "@/lib/utils";
+import { shortDay } from "@/lib/tz";
+import { eventLabel } from "@/lib/events";
 import type { Database } from "@/lib/types";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
+import { EventsPanel } from "./events-panel";
 
 export const revalidate = 0;
+
+const HOUR_MS = 3_600_000;
 
 const RANGE_DAYS: Record<string, number> = {
   "24h": 1,
@@ -25,7 +32,7 @@ const RANGE_DAYS: Record<string, number> = {
 };
 
 interface Props {
-  searchParams: Promise<{ range?: string; booth?: string }>;
+  searchParams: Promise<{ range?: string; booth?: string; event?: string }>;
 }
 
 /** Fetch this vendor's orders for a window [gte, lt). RLS scopes to the vendor. */
@@ -52,10 +59,85 @@ async function fetchOrders(
 }
 
 export default async function StatsPage({ searchParams }: Props) {
-  const { range: rangeParam, booth: boothParam } = await searchParams;
+  const {
+    range: rangeParam,
+    booth: boothParam,
+    event: eventParam,
+  } = await searchParams;
   const { user, vendor, entitlement } = await loadEntitlement();
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
+
+  const supabaseEarly = await createServerClient();
+
+  // The vendor's booths (RLS-scoped). Needed for both the live view filter and
+  // the per-event windows.
+  const { data: boothsData } = await supabaseEarly
+    .from("booths")
+    .select("id, name")
+    .eq("vendor_id", vendor.id)
+    .order("created_at", { ascending: true });
+  const boothList = boothsData ?? [];
+  const allBoothIds = boothList.map((b) => b.id);
+
+  // Paid passes double as named, permanently-viewable events.
+  const { data: licenses } = await supabaseEarly
+    .from("licenses")
+    .select("id, label, valid_from, expires_at")
+    .eq("vendor_id", vendor.id)
+    .order("valid_from", { ascending: false });
+  const events = licenses ?? [];
+
+  // ── Per-event view: a paid window's FULL stats, ungated (they paid). ─────────
+  const activeEvent = eventParam
+    ? events.find((e) => e.id === eventParam)
+    : undefined;
+  if (activeEvent) {
+    const from = activeEvent.valid_from;
+    const to = activeEvent.expires_at;
+    const orders = await fetchOrders(supabaseEarly, allBoothIds, from, to);
+    const summary = computeStats(orders);
+    const spanDays = Math.max(
+      1,
+      Math.ceil((Date.parse(to) - Date.parse(from)) / MS_PER_DAY),
+    );
+    // Sub-day event → hourly buckets; multi-day → one slot per day. Anchored to
+    // the window end so the trend lines up with the event, not "now".
+    const series = windowSeries(
+      orders,
+      Date.parse(to),
+      spanDays === 1 ? 24 : spanDays,
+      spanDays === 1 ? HOUR_MS : MS_PER_DAY,
+    );
+    return (
+      <div className="space-y-7">
+        <div>
+          <Link
+            href="/dashboard/stats"
+            className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+          >
+            <ArrowLeft className="size-3.5" /> All stats
+          </Link>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Event · {shortDay(Date.parse(from))} – {shortDay(Date.parse(to))} ·
+            always available
+          </p>
+          <h1 className="font-display text-4xl font-semibold leading-none">
+            {eventLabel(activeEvent)}
+          </h1>
+        </div>
+        {/* Paid window → full stats regardless of current plan. */}
+        <StatsView
+          summary={summary}
+          deltas={null}
+          series={series}
+          range="event"
+          boothId="all"
+          pro
+        />
+      </div>
+    );
+  }
 
   // Plan gate: free + pass see today only; longitudinal history is Pro. Clamp an
   // out-of-plan (or unknown) range to the widest the entitlement allows.
@@ -73,24 +155,12 @@ export default async function StatsPage({ searchParams }: Props) {
   const now = Date.now();
   const cutoff = new Date(now - days * MS_PER_DAY).toISOString();
 
-  const supabase = await createServerClient();
-
-  // Vendor's booths for the filter dropdown. RLS scopes to this vendor.
-  const { data: booths } = await supabase
-    .from("booths")
-    .select("id, name")
-    .eq("vendor_id", vendor.id)
-    .order("created_at", { ascending: true });
-
-  const boothList = booths ?? [];
-  const boothIds = boothList.map((b) => b.id);
-
   // Only honor a booth filter that belongs to this vendor; else aggregate all.
   const selectedBooth =
-    boothParam && boothIds.includes(boothParam) ? boothParam : "all";
-  const queryIds = selectedBooth === "all" ? boothIds : [selectedBooth];
+    boothParam && allBoothIds.includes(boothParam) ? boothParam : "all";
+  const queryIds = selectedBooth === "all" ? allBoothIds : [selectedBooth];
 
-  const orders = await fetchOrders(supabase, queryIds, cutoff);
+  const orders = await fetchOrders(supabaseEarly, queryIds, cutoff);
   const summary = computeStats(orders);
 
   // Period comparison + trend are Pro-only.
@@ -103,7 +173,7 @@ export default async function StatsPage({ searchParams }: Props) {
   if (pro && queryIds.length) {
     const priorCutoff = new Date(now - 2 * days * MS_PER_DAY).toISOString();
     const prior = computeStats(
-      await fetchOrders(supabase, queryIds, priorCutoff, cutoff),
+      await fetchOrders(supabaseEarly, queryIds, priorCutoff, cutoff),
     );
     deltas = {
       revenue: pctChange(summary.revenue_cents, prior.revenue_cents),
@@ -142,6 +212,8 @@ export default async function StatsPage({ searchParams }: Props) {
         boothId={selectedBooth}
         pro={pro}
       />
+
+      <EventsPanel events={events} />
     </div>
   );
 }

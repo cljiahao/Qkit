@@ -152,6 +152,7 @@ export interface Database {
           expires_at: string;
           source: string;
           note: string | null;
+          label: string | null;
           created_at: string;
         };
         Insert: {
@@ -161,6 +162,7 @@ export interface Database {
           expires_at: string;
           source?: string;
           note?: string | null;
+          label?: string | null;
           created_at?: string;
         };
         Update: {
@@ -170,6 +172,7 @@ export interface Database {
           expires_at?: string;
           source?: string;
           note?: string | null;
+          label?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -384,6 +387,10 @@ export interface Database {
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number };
         Returns: boolean;
+      };
+      set_license_label: {
+        Args: { p_license_id: string; p_label: string | null };
+        Returns: undefined;
       };
     };
     Enums: {
