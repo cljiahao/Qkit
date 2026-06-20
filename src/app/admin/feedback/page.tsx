@@ -25,14 +25,37 @@ function Seg({
   return <div style={{ flexGrow: n / total }} className={className} />;
 }
 
+function StarRow({ value, size = "size-4" }: { value: number; size?: string }) {
+  return (
+    <span className="inline-flex">
+      {Array.from({ length: 5 }, (_, i) => (
+        <Star
+          key={i}
+          className={cn(
+            size,
+            i < value
+              ? "fill-amber-400 text-amber-400"
+              : "text-muted-foreground/30",
+          )}
+        />
+      ))}
+    </span>
+  );
+}
+
 export default async function AdminFeedbackPage() {
   await requireAdmin();
   const supabase = await createServerClient();
-  const { data: rows } = await supabase
-    .from("feedback")
-    .select("id, source, rating, nps, message, created_at")
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const [{ data: rows }, { data: boothRows }, { data: vendorList }] =
+    await Promise.all([
+      supabase
+        .from("feedback")
+        .select("id, source, rating, nps, message, booth_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabase.from("booths").select("id, vendor_id"),
+      supabase.from("vendors").select("id, name"),
+    ]);
   const all = rows ?? [];
 
   // QKit's own metric: vendor → QKit loyalty (NPS) + their written notes.
@@ -57,6 +80,32 @@ export default async function AdminFeedbackPage() {
         }),
       ),
   );
+
+  // Per-vendor CSAT — segmented health, worst-rated first, so problem vendors
+  // surface. Scores only (admin never sees the raw reviews — those are the
+  // vendor's). Maps each customer rating to its booth's owner.
+  const vendorName = new Map((vendorList ?? []).map((v) => [v.id, v.name]));
+  const boothVendor = new Map(
+    (boothRows ?? []).map((b) => [b.id, b.vendor_id]),
+  );
+  const perVendor = new Map<string, { sum: number; count: number }>();
+  for (const f of all) {
+    if (f.source !== "customer" || f.rating == null || !f.booth_id) continue;
+    const vid = boothVendor.get(f.booth_id);
+    if (!vid) continue;
+    const cur = perVendor.get(vid) ?? { sum: 0, count: 0 };
+    cur.sum += f.rating;
+    cur.count += 1;
+    perVendor.set(vid, cur);
+  }
+  const vendorCsat = [...perVendor.entries()]
+    .map(([vid, { sum, count }]) => ({
+      vid,
+      name: vendorName.get(vid) ?? "Unknown vendor",
+      avg: sum / count,
+      count,
+    }))
+    .sort((a, b) => a.avg - b.avg || b.count - a.count);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-5 py-7">
@@ -148,19 +197,7 @@ export default async function AdminFeedbackPage() {
             {csat.average?.toFixed(1) ?? "—"}
           </span>
           <div>
-            <span className="inline-flex">
-              {Array.from({ length: 5 }, (_, i) => (
-                <Star
-                  key={i}
-                  className={cn(
-                    "size-4",
-                    i < Math.round(csat.average ?? 0)
-                      ? "fill-amber-400 text-amber-400"
-                      : "text-muted-foreground/30",
-                  )}
-                />
-              ))}
-            </span>
+            <StarRow value={Math.round(csat.average ?? 0)} />
             <p className="font-mono text-xs text-muted-foreground">
               {csat.count} rating{csat.count === 1 ? "" : "s"}
             </p>
@@ -189,6 +226,43 @@ export default async function AdminFeedbackPage() {
           </div>
         )}
       </section>
+
+      {/* ── Per-vendor CSAT — segmented health, worst first ──────────────── */}
+      {vendorCsat.length > 0 && (
+        <section className="fade-rise space-y-3 rounded-xl border border-border bg-card p-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Satisfaction by vendor
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Lowest-rated first — where ordering quality needs a look. Scores
+              only; the reviews stay with each vendor.
+            </p>
+          </div>
+          <ul className="divide-y divide-border/60">
+            {vendorCsat.map((v) => (
+              <li
+                key={v.vid}
+                className="flex items-center justify-between gap-3 py-2.5"
+              >
+                <span className="truncate text-sm font-medium">{v.name}</span>
+                <span className="flex shrink-0 items-center gap-1.5 text-sm">
+                  <span
+                    className={cn(
+                      "font-mono font-semibold",
+                      v.avg < 3.5 && "text-status-cancelled",
+                    )}
+                  >
+                    {v.avg.toFixed(1)}
+                  </span>
+                  <StarRow value={Math.round(v.avg)} size="size-3.5" />
+                  <span className="text-muted-foreground">({v.count})</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

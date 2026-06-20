@@ -43,9 +43,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Admin revamp: tabbed into **Overview · Vendors · Feedback** (vendors moved to
   their own tab). Cards adopt QKit's ticket/receipt motif (perforated hero,
-  Space Mono figures, staggered reveal). Admin **feedback** no longer shows the
-  raw per-order customer feed (that's vendor-facing) — it tracks **vendor NPS**
-  - an **aggregate platform CSAT** (ordering-UX health) only.
+  Space Mono figures, staggered reveal). Overview adds a **GMV** card (customer
+  spend flowing through booths — the marketplace's throughput). Admin **feedback**
+  drops the raw per-order customer feed (vendor-facing); it tracks **vendor NPS**,
+  an **aggregate platform CSAT**, and a **per-vendor CSAT breakdown** (worst-rated
+  first) to surface ordering-quality issues — scores only, no raw reviews.
 - Vendor → QKit feedback is **NPS** (0–10 "recommend QKit?") instead of 1–5
   stars (migration `0019` adds the `nps` column).
 - Fixed the stats/admin trend chart: dated X-axis (was a hidden index) and an

@@ -95,6 +95,12 @@ export default async function AdminPage() {
     .reduce((sum, p) => sum + p.amount_cents, 0);
   const revenueAll = payments.reduce((sum, p) => sum + p.amount_cents, 0);
 
+  // GMV — total customer spend flowing through booths (vendor sales, not QKit's
+  // take). The marketplace's throughput; cancelled orders excluded.
+  const gmv30d = (orderRows ?? [])
+    .filter((o) => o.created_at >= cutoff30d && o.status !== "cancelled")
+    .reduce((sum, o) => sum + o.total_cents, 0);
+
   const vendors: AdminVendorRow[] = (vendorRows ?? []).map((v) => ({
     ...v,
     passExpiresAt: passByVendor.get(v.id) ?? null,
@@ -164,30 +170,31 @@ export default async function AdminPage() {
           featured
           delay={0}
         />
-        <Stat label="Active vendors" value={funnel.withOrder} delay={60} />
+        <Stat label="GMV · 30d" value={formatPrice(gmv30d)} delay={60} />
+        <Stat label="Active vendors" value={funnel.withOrder} delay={120} />
         <Stat
           label="Orders · 7d"
           value={orders7d}
           delta={pctChange(orders7d, ordersPrior7d)}
-          delay={120}
+          delay={180}
         />
         <Stat
           label="Revenue · all time"
           value={formatPrice(revenueAll)}
-          delay={180}
+          delay={240}
         />
-        <Stat label="Pro vendors" value={vstat.pro} delay={240} />
+        <Stat label="Pro vendors" value={vstat.pro} delay={300} />
         <Stat
           label="Signups · 7d"
           value={vstat.new7d}
           delta={pctChange(vstat.new7d, signupsPrior7d)}
-          delay={300}
+          delay={360}
         />
-        <Stat label="Vendors" value={vstat.total} delay={360} />
+        <Stat label="Vendors" value={vstat.total} delay={420} />
         <Stat
           label="Active booths"
           value={booths.filter((b) => b.is_active).length}
-          delay={420}
+          delay={480}
         />
       </div>
 
