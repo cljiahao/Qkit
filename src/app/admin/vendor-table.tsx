@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Sparkles, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Paginated } from "@/components/paginated";
 import { setVendorPlan, grantPass, revokePass } from "./actions";
 import type { Plan } from "@/lib/types";
 
@@ -123,14 +124,17 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <Paginated pageSize={15} className="space-y-2">
       {vendors.map((v) => {
         const livePass =
           v.passExpiresAt && Date.parse(v.passExpiresAt) > now
             ? v.passExpiresAt
             : null;
         return (
-          <div key={v.id} className="border-t border-border first:border-t-0">
+          <div
+            key={v.id}
+            className="overflow-hidden rounded-xl border border-border"
+          >
             <div className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{v.name}</p>
@@ -263,6 +267,6 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
           </div>
         );
       })}
-    </div>
+    </Paginated>
   );
 }

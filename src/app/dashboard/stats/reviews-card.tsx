@@ -106,14 +106,27 @@ function BoothDetail({ summary }: { summary: ReviewSummary }) {
         </ul>
       )}
 
-      {shown < comments.length && (
-        <button
-          type="button"
-          onClick={() => setShown((s) => s + PAGE)}
-          className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
-        >
-          Show more ({comments.length - shown})
-        </button>
+      {(shown < comments.length || shown > PAGE) && (
+        <div className="flex gap-4 text-xs font-medium">
+          {shown < comments.length && (
+            <button
+              type="button"
+              onClick={() => setShown((s) => s + PAGE)}
+              className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+            >
+              Show more ({comments.length - shown})
+            </button>
+          )}
+          {shown > PAGE && (
+            <button
+              type="button"
+              onClick={() => setShown(PAGE)}
+              className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+            >
+              Show less
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

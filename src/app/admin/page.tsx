@@ -13,6 +13,7 @@ import { type AdminVendorRow } from "./vendor-table";
 import { PricingForm } from "./pricing-form";
 import { ActivationFunnelView } from "./activation-funnel";
 import { TrendChart } from "../dashboard/stats/trend-chart";
+import { Paginated } from "@/components/paginated";
 import { Stat } from "./stat";
 
 export const revalidate = 0;
@@ -64,7 +65,7 @@ export default async function AdminPage() {
       .from("admin_audit")
       .select("id, action, target_id, detail, created_at")
       .order("created_at", { ascending: false })
-      .limit(10),
+      .limit(60),
     supabase
       .from("pricing")
       .select("event_pass_cents, monthly_cents, currency")
@@ -224,11 +225,11 @@ export default async function AdminPage() {
             No admin actions yet.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-border">
+          <Paginated pageSize={10} className="space-y-1.5">
             {(auditRows ?? []).map((row) => (
               <div
                 key={row.id}
-                className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5 text-sm last:border-b-0"
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-sm"
               >
                 <span className="font-medium">
                   {humanizeAction(row.action)}
@@ -243,7 +244,7 @@ export default async function AdminPage() {
                 </span>
               </div>
             ))}
-          </div>
+          </Paginated>
         )}
       </section>
     </div>

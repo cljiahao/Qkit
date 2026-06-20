@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { npsBreakdown } from "@/lib/nps";
 import { summarizeReviews, type ReviewRow } from "@/lib/reviews";
+import { Paginated } from "@/components/paginated";
 
 export const revalidate = 0;
 
@@ -160,9 +161,17 @@ export default async function AdminFeedbackPage() {
         {npsComments.length > 0 && (
           <>
             <div className="perforation mx-6" />
-            <ul className="divide-y divide-border/60 px-6 py-2">
+            <Paginated
+              variant="more"
+              pageSize={5}
+              label="notes"
+              className="px-6 py-2"
+            >
               {npsComments.map((f) => (
-                <li key={f.id} className="py-3">
+                <div
+                  key={f.id}
+                  className="border-b border-border/60 py-3 last:border-b-0"
+                >
                   <div className="mb-1 flex items-center justify-between gap-3">
                     {f.nps != null && (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
@@ -174,9 +183,9 @@ export default async function AdminFeedbackPage() {
                     </span>
                   </div>
                   <p className="text-sm">{f.message}</p>
-                </li>
+                </div>
               ))}
-            </ul>
+            </Paginated>
           </>
         )}
       </section>
@@ -239,9 +248,9 @@ export default async function AdminFeedbackPage() {
               only; the reviews stay with each vendor.
             </p>
           </div>
-          <ul className="divide-y divide-border/60">
+          <Paginated pageSize={8} className="divide-y divide-border/60">
             {vendorCsat.map((v) => (
-              <li
+              <div
                 key={v.vid}
                 className="flex items-center justify-between gap-3 py-2.5"
               >
@@ -258,9 +267,9 @@ export default async function AdminFeedbackPage() {
                   <StarRow value={Math.round(v.avg)} size="size-3.5" />
                   <span className="text-muted-foreground">({v.count})</span>
                 </span>
-              </li>
+              </div>
             ))}
-          </ul>
+          </Paginated>
         </section>
       )}
     </div>

@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ReceiptText } from "lucide-react";
+import { ChevronDown, ChevronUp, ReceiptText } from "lucide-react";
 import { getRecentOrdersForBooth, type RecentOrder } from "@/lib/recent-orders";
-import { ReorderButton } from "@/components/reorder-button";
 
 interface Props {
   boothId: string;
@@ -40,13 +39,10 @@ export function RecentOrders({ boothId }: Props) {
       </h2>
       <ul className="space-y-1.5">
         {visible.map((o) => (
-          <li
-            key={o.orderNumber}
-            className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2"
-          >
+          <li key={o.orderNumber}>
             <Link
               href={`/order/${boothId}/${o.orderNumber}`}
-              className="group flex min-w-0 flex-1 items-center justify-between gap-3 text-sm"
+              className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
             >
               <span className="truncate">
                 <span className="font-mono font-semibold text-primary">
@@ -60,26 +56,24 @@ export function RecentOrders({ boothId }: Props) {
                 Track →
               </span>
             </Link>
-            {o.items && o.items.length > 0 && (
-              <ReorderButton
-                boothId={boothId}
-                lines={o.items}
-                customerName={o.customerName}
-                size="sm"
-                className="h-8 shrink-0 rounded-lg px-2.5 text-xs"
-              />
-            )}
           </li>
         ))}
       </ul>
-      {hidden > 0 && (
+      {(hidden > 0 || showAll) && orders.length > COLLAPSED && (
         <button
           type="button"
-          onClick={() => setShowAll(true)}
+          onClick={() => setShowAll((v) => !v)}
           className="mt-2.5 flex w-full items-center justify-center gap-1 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
         >
-          Show all ({orders.length})
-          <ChevronDown className="size-3.5" />
+          {showAll ? (
+            <>
+              Show less <ChevronUp className="size-3.5" />
+            </>
+          ) : (
+            <>
+              Show all ({orders.length}) <ChevronDown className="size-3.5" />
+            </>
+          )}
         </button>
       )}
     </section>

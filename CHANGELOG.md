@@ -41,6 +41,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Pagination everywhere (new reusable `Paginated`): admin tables (vendors, audit
+  log, per-vendor CSAT) get prev/next pages; feeds (recent orders, reviews, NPS
+  notes) get "Show more / Show less". Every expander now collapses back. Per 2026
+  UX consensus (pagination for tables, load-more for feeds).
+- Reorder lives only on the order page (not the recent-orders list): the list
+  shows no items to reorder _from_, and this also removes the inconsistency where
+  only orders placed after the snapshot feature had a reorder button.
 - Admin revamp: tabbed into **Overview · Vendors · Feedback** (vendors moved to
   their own tab). Cards adopt QKit's ticket/receipt motif (perforated hero,
   Space Mono figures, staggered reveal). Overview adds a **GMV** card (customer
