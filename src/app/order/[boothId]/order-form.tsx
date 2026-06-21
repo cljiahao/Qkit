@@ -361,7 +361,7 @@ export function OrderForm({
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="size-9 rounded-lg"
+                      className="size-11 rounded-lg"
                       onClick={() => decrement(key)}
                       aria-label="Remove one"
                     >
@@ -373,7 +373,7 @@ export function OrderForm({
                     <Button
                       type="button"
                       size="icon"
-                      className="size-9 rounded-lg"
+                      className="size-11 rounded-lg"
                       onClick={() => increment(key)}
                       aria-label="Add one"
                     >

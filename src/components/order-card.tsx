@@ -220,7 +220,7 @@ export function OrderCard({
             {advance && (
               <Button
                 size="sm"
-                className="h-9 flex-1 rounded-lg font-semibold"
+                className="h-11 flex-1 rounded-lg font-semibold"
                 onClick={advanceStatus}
                 disabled={updating}
               >
@@ -232,7 +232,7 @@ export function OrderCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 rounded-lg text-muted-foreground hover:text-destructive"
+                  className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
                   disabled={updating}
                 >
                   Cancel
