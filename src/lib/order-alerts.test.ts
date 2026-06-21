@@ -138,10 +138,10 @@ describe("playReadyChime + unlockAudio", () => {
     expect(await playReadyChime()).toBe(false);
   });
 
-  it("schedules two oscillators and returns true", async () => {
+  it("schedules the chime notes and returns true", async () => {
     const { ctx } = mockAudio("running");
     expect(await playReadyChime()).toBe(true);
-    expect(ctx.createOscillator).toHaveBeenCalledTimes(2);
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(6);
   });
 
   it("reuses one shared context across calls (singleton)", async () => {
@@ -149,7 +149,7 @@ describe("playReadyChime + unlockAudio", () => {
     await playReadyChime();
     await playReadyChime();
     expect(Ctor).toHaveBeenCalledTimes(1); // not a fresh context per chime
-    expect(ctx.createOscillator).toHaveBeenCalledTimes(4);
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(12);
   });
 
   it("resumes a suspended context before scheduling", async () => {

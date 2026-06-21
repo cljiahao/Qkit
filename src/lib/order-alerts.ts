@@ -105,27 +105,36 @@ export function unlockAudio(): void {
   if (ctx && ctx.state === "suspended") void ctx.resume?.();
 }
 
-// Short rising two-note chime on the shared context. Awaits resume first so a
-// context suspended by backgrounding wakes before the notes are scheduled.
+// A bright rising arpeggio played twice — loud and long enough to catch a
+// customer not staring at the screen. Triangle waves carry more harmonics than
+// sine, so they read louder at the same gain. ~1.2s total. Awaits resume first
+// so a context suspended by backgrounding wakes before the notes are scheduled.
 // Returns true if it scheduled sound, false on any failure.
+
+// G5 · C6 · E6 (major triad), rising, then the triad again.
+const CHIME_NOTES = [784, 1047, 1319, 784, 1047, 1319];
+const NOTE_SPACING = 0.2; // seconds between note onsets (no overlap → no clip)
+const NOTE_DURATION = 0.22;
+const PEAK_GAIN = 0.32; // ~2× the old chime
+
 export async function playReadyChime(): Promise<boolean> {
   const ctx = sharedCtx();
   if (!ctx) return false;
   try {
     if (ctx.state === "suspended") await ctx.resume();
     const start = ctx.currentTime;
-    [880, 1320].forEach((freq, i) => {
-      const at = start + i * 0.18;
+    CHIME_NOTES.forEach((freq, i) => {
+      const at = start + i * NOTE_SPACING;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sine";
+      osc.type = "triangle";
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(0.15, at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.16);
+      gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + NOTE_DURATION);
       osc.connect(gain).connect(ctx.destination);
       osc.start(at);
-      osc.stop(at + 0.18);
+      osc.stop(at + NOTE_DURATION + 0.02);
     });
     return true;
   } catch {
