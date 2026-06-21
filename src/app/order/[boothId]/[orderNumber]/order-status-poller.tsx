@@ -9,6 +9,7 @@ import {
   notifyPermission,
   playReadyChime,
   requestNotifyPermission,
+  unlockAudio,
 } from "@/lib/order-alerts";
 import { getOrderStatus } from "./status-actions";
 import { isTerminal } from "@/lib/orders";
@@ -53,6 +54,10 @@ export function OrderStatusPoller({
   const [permission, setPermission] = useState<NotificationPermission | null>(
     null,
   );
+  // Alerts armed on this page: audio unlocked, and notifications requested where
+  // supported. Tracked separately so iOS Safari (no Notification API) can still
+  // arm sound + title-flash.
+  const [armed, setArmed] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
@@ -60,13 +65,19 @@ export function OrderStatusPoller({
     setPermission(notifyPermission());
   }, []);
 
-  async function onEnableNotify() {
+  async function onEnableAlerts() {
     setRequesting(true);
-    const result = await requestNotifyPermission();
-    setPermission(result);
+    // Unlock audio on this gesture (the only reliable moment on mobile), then
+    // request notification permission where the API exists.
+    unlockAudio();
+    if (isNotifySupported()) {
+      const result = await requestNotifyPermission();
+      setPermission(result);
+    }
+    setArmed(true);
     setRequesting(false);
-    // Unlock the AudioContext on this gesture so the later chime can play.
-    if (result === "granted") playReadyChime();
+    // A confirming chime proves to the customer that sound is now on.
+    void playReadyChime();
   }
 
   // Poll the status until it reaches a terminal state. Works on every browser
@@ -120,10 +131,14 @@ export function OrderStatusPoller({
 
     // System popup — reaches the customer even with the tab backgrounded
     // (where supported + granted); a no-op otherwise.
-    fireReadyNotification(boothName, orderNumber);
+    void fireReadyNotification(
+      boothName,
+      orderNumber,
+      window.location.pathname,
+    );
 
     if (!document.hidden) {
-      playReadyChime();
+      void playReadyChime();
       return;
     }
 
@@ -139,7 +154,7 @@ export function OrderStatusPoller({
       if (document.hidden) return;
       clearInterval(flash);
       document.title = original;
-      playReadyChime();
+      void playReadyChime();
       document.removeEventListener("visibilitychange", onVisible);
     }
     document.addEventListener("visibilitychange", onVisible);
@@ -155,10 +170,14 @@ export function OrderStatusPoller({
   // completed sits past the last step; cancelled has no progress.
   const activeIndex = completed ? STEPS.length - 1 : STEPS.indexOf(status);
 
-  // Offer the notify opt-in only while still waiting — moot once ready/done.
+  // Offer to arm alerts while still waiting — moot once ready/done. Shown even
+  // where notifications aren't supported (iOS Safari), because the tap is also
+  // what unlocks sound. Hidden once armed or once permission is already granted.
   const waiting = status !== "ready" && !isTerminal(status);
-  const canAsk = waiting && isNotifySupported() && permission === "default";
-  const willNotify = waiting && permission === "granted";
+  const canArm = waiting && !armed && permission !== "granted";
+  const willNotify = waiting && (armed || permission === "granted");
+  // Be honest about what they'll get: a system popup only where supported.
+  const notifyWorks = isNotifySupported() && permission === "granted";
 
   return (
     <div className="space-y-5 px-6 py-6 text-center">
@@ -193,22 +212,24 @@ export function OrderStatusPoller({
         </p>
       )}
 
-      {canAsk && (
+      {canArm && (
         <button
           type="button"
-          onClick={onEnableNotify}
+          onClick={onEnableAlerts}
           disabled={requesting}
           className="mx-auto flex items-center gap-2 rounded-full border border-primary/40 bg-primary/[0.04] px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
         >
           <Bell className="size-4" />
-          {requesting ? "Just a sec…" : "Notify me when it's ready"}
+          {requesting ? "Just a sec…" : "Alert me when it's ready"}
         </button>
       )}
 
       {willNotify && (
         <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground">
           <BellRing className="size-3.5 text-primary" />
-          We&apos;ll alert you the moment it&apos;s ready
+          {notifyWorks
+            ? "We'll alert you the moment it's ready"
+            : "We'll chime the moment it's ready — keep this tab open"}
         </p>
       )}
     </div>

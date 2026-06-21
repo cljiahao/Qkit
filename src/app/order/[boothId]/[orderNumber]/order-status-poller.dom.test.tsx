@@ -9,12 +9,13 @@ const { getOrderStatus, alerts } = vi.hoisted(() => ({
   getOrderStatus: vi.fn(),
   alerts: {
     isNotifySupported: vi.fn(() => true),
-    notifyPermission: vi.fn(() => "default" as NotificationPermission),
+    notifyPermission: vi.fn((): NotificationPermission | null => "default"),
     requestNotifyPermission: vi.fn(
       async () => "granted" as NotificationPermission,
     ),
-    fireReadyNotification: vi.fn(),
-    playReadyChime: vi.fn(() => true),
+    fireReadyNotification: vi.fn(async () => undefined),
+    playReadyChime: vi.fn(async () => true),
+    unlockAudio: vi.fn(),
   },
 }));
 
@@ -59,6 +60,7 @@ describe("OrderStatusPoller", () => {
       expect(alerts.fireReadyNotification).toHaveBeenCalledWith(
         "Kopi Cart",
         "0007",
+        expect.any(String),
       ),
     );
     // Tab is visible in jsdom, so it chimes immediately.
@@ -75,21 +77,42 @@ describe("OrderStatusPoller", () => {
     expect(screen.getByText("Order complete — enjoy!")).toBeInTheDocument();
   });
 
-  it("offers the notify opt-in and requests permission on click", async () => {
+  it("offers the alert opt-in, unlocks audio + requests permission on click", async () => {
     getOrderStatus.mockResolvedValue("preparing");
     const user = userEvent.setup();
     renderPoller("preparing");
 
     const btn = await screen.findByRole("button", {
-      name: /Notify me when it's ready/,
+      name: /Alert me when it's ready/,
     });
     await user.click(btn);
 
+    expect(alerts.unlockAudio).toHaveBeenCalled();
     expect(alerts.requestNotifyPermission).toHaveBeenCalled();
     await waitFor(() =>
       expect(
         screen.getByText(/We'll alert you the moment it's ready/),
       ).toBeInTheDocument(),
+    );
+  });
+
+  it("still arms (sound-only) where notifications are unsupported", async () => {
+    // iOS Safari tab: no Notification API.
+    alerts.isNotifySupported.mockReturnValue(false);
+    alerts.notifyPermission.mockReturnValue(null);
+    getOrderStatus.mockResolvedValue("preparing");
+    const user = userEvent.setup();
+    renderPoller("preparing");
+
+    const btn = await screen.findByRole("button", {
+      name: /Alert me when it's ready/,
+    });
+    await user.click(btn);
+
+    expect(alerts.unlockAudio).toHaveBeenCalled();
+    expect(alerts.requestNotifyPermission).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByText(/keep this tab open/)).toBeInTheDocument(),
     );
   });
 });

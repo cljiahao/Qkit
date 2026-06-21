@@ -41,6 +41,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Mobile "order ready" alerts now work. Sound: a single shared, gesture-unlocked
+  AudioContext (reused, await-resumed) replaces the per-call context that stayed
+  silent on iOS/Android; the customer page always shows an "Alert me" tap so
+  audio unlocks even on iOS Safari (no Notification API). Notifications: shown via
+  a minimal static service worker (`registration.showNotification` — the page-
+  level constructor is illegal on Android Chrome), fixing Android. The app is now
+  an installable PWA (`manifest.ts` `display: standalone` + generated icons), so
+  iOS notifications work once added to the home screen.
 - Vendor image uploads are resized + re-encoded to **WebP in the browser** before
   upload (banner ≤1600px, product ≤1000px) so storage and load stay fast; source
   cap raised to 15 MB since we compress. Accepted formats (JPEG/PNG/WebP) are now

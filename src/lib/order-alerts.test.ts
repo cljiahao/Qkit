@@ -5,7 +5,42 @@ import {
   notifyPermission,
   playReadyChime,
   requestNotifyPermission,
+  unlockAudio,
 } from "./order-alerts";
+
+// A mock AudioContext whose calls we can assert. `state` drives the resume path.
+function mockAudio(state: AudioContextState = "running") {
+  const make = () => {
+    const gain = {
+      gain: {
+        setValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+    };
+    const osc = {
+      type: "",
+      frequency: { value: 0 },
+      connect: vi.fn(() => gain),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+    return { osc, gain };
+  };
+  const ctx = {
+    state,
+    currentTime: 0,
+    destination: {},
+    resume: vi.fn(async () => {
+      ctx.state = "running";
+    }),
+    createOscillator: vi.fn(() => make().osc),
+    createGain: vi.fn(() => make().gain),
+  };
+  const Ctor = vi.fn(() => ctx);
+  vi.stubGlobal("window", { AudioContext: Ctor });
+  return { ctx, Ctor };
+}
 
 // Minimal Notification stub. The constructor records its args so we can assert
 // a popup was fired; static permission/requestPermission are configurable.
@@ -67,73 +102,73 @@ describe("notification support + permission", () => {
 });
 
 describe("fireReadyNotification", () => {
-  it("does nothing when permission is not granted", () => {
+  it("does nothing when permission is not granted", async () => {
     const ctor = installNotification("default");
-    fireReadyNotification("Booth", "0001");
+    await fireReadyNotification("Booth", "0001");
     expect(ctor).not.toHaveBeenCalled();
   });
 
-  it("constructs a notification when granted", () => {
+  it("constructs a notification when granted (no service worker)", async () => {
     const ctor = installNotification("granted");
-    fireReadyNotification("Mama's Kitchen", "0042");
+    await fireReadyNotification("Mama's Kitchen", "0042");
     expect(ctor).toHaveBeenCalledWith(
       "Order #0042 is ready",
       expect.objectContaining({ tag: "qkit-order-0042" }),
     );
   });
 
-  it("swallows constructor errors", () => {
+  it("swallows constructor errors", async () => {
     installNotification("granted", { throwOnNew: true });
-    expect(() => fireReadyNotification("Booth", "0001")).not.toThrow();
+    await expect(
+      fireReadyNotification("Booth", "0001"),
+    ).resolves.toBeUndefined();
   });
 
-  it("is a no-op when unsupported", () => {
+  it("is a no-op when unsupported", async () => {
     vi.stubGlobal("window", {});
-    expect(() => fireReadyNotification("Booth", "0001")).not.toThrow();
+    await expect(
+      fireReadyNotification("Booth", "0001"),
+    ).resolves.toBeUndefined();
   });
 });
 
-describe("playReadyChime", () => {
-  it("returns false when no AudioContext exists", () => {
+describe("playReadyChime + unlockAudio", () => {
+  it("returns false when no AudioContext exists", async () => {
     vi.stubGlobal("window", {});
-    expect(playReadyChime()).toBe(false);
+    expect(await playReadyChime()).toBe(false);
   });
 
-  it("schedules oscillators via AudioContext and returns true", () => {
-    const osc = {
-      type: "",
-      frequency: { value: 0 },
-      connect: vi.fn(() => gain),
-      start: vi.fn(),
-      stop: vi.fn(),
-    };
-    const gain = {
-      gain: {
-        setValueAtTime: vi.fn(),
-        exponentialRampToValueAtTime: vi.fn(),
-      },
-      connect: vi.fn(),
-    };
-    const ctx = {
-      currentTime: 0,
-      destination: {},
-      resume: vi.fn(),
-      createOscillator: vi.fn(() => osc),
-      createGain: vi.fn(() => gain),
-    };
-    const Ctor = vi.fn(() => ctx);
-    vi.stubGlobal("window", { AudioContext: Ctor });
-
-    expect(playReadyChime()).toBe(true);
+  it("schedules two oscillators and returns true", async () => {
+    const { ctx } = mockAudio("running");
+    expect(await playReadyChime()).toBe(true);
     expect(ctx.createOscillator).toHaveBeenCalledTimes(2);
-    expect(osc.start).toHaveBeenCalledTimes(2);
   });
 
-  it("returns false if the AudioContext throws", () => {
+  it("reuses one shared context across calls (singleton)", async () => {
+    const { ctx, Ctor } = mockAudio("running");
+    await playReadyChime();
+    await playReadyChime();
+    expect(Ctor).toHaveBeenCalledTimes(1); // not a fresh context per chime
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(4);
+  });
+
+  it("resumes a suspended context before scheduling", async () => {
+    const { ctx } = mockAudio("suspended");
+    await playReadyChime();
+    expect(ctx.resume).toHaveBeenCalled();
+  });
+
+  it("unlockAudio resumes a suspended context", () => {
+    const { ctx } = mockAudio("suspended");
+    unlockAudio();
+    expect(ctx.resume).toHaveBeenCalled();
+  });
+
+  it("returns false if the AudioContext throws", async () => {
     const Ctor = vi.fn(() => {
       throw new Error("audio blocked");
     });
     vi.stubGlobal("window", { AudioContext: Ctor });
-    expect(playReadyChime()).toBe(false);
+    expect(await playReadyChime()).toBe(false);
   });
 });

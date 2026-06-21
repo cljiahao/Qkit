@@ -9,7 +9,7 @@ import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { isTerminal, sortActiveOrders } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
-import { playReadyChime } from "@/lib/order-alerts";
+import { playReadyChime, unlockAudio } from "@/lib/order-alerts";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/lib/types";
 
@@ -57,7 +57,7 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
   }, [away]);
 
   function handleNewOrder(order: Order) {
-    if (soundOn) playReadyChime();
+    if (soundOn) void playReadyChime();
     toast(`New order #${order.order_number} · ${order.customer_name}`);
     if (document.hidden) setAway((n) => n + 1);
   }
@@ -66,7 +66,10 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
     setSoundOn((on) => {
       const next = !on;
       localStorage.setItem("qkit:sound", next ? "on" : "off");
-      if (next) playReadyChime(); // this tap unlocks the AudioContext
+      if (next) {
+        unlockAudio(); // this tap unlocks the shared AudioContext
+        void playReadyChime();
+      }
       return next;
     });
   }
