@@ -384,6 +384,17 @@ describe("waitSeries", () => {
     expect(s[0]).toEqual({ t: now - hour, avgWaitSeconds: null, orders: 1 });
     expect(s[1]).toEqual({ t: now, avgWaitSeconds: 180, orders: 2 });
   });
+
+  it("excludes cancelled orders from volume and wait", () => {
+    const now = Date.parse("2026-06-12T04:00:00Z");
+    const hour = 3_600_000;
+    const orders = [
+      waitOrder("2026-06-12T03:50:00Z", "2026-06-12T03:52:00Z", "cancelled"),
+      waitOrder("2026-06-12T03:55:00Z", null),
+    ];
+    const s = waitSeries(orders, now, 1, hour);
+    expect(s[0]).toEqual({ t: now, avgWaitSeconds: null, orders: 1 });
+  });
 });
 
 describe("peakThroughput", () => {
