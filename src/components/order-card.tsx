@@ -63,9 +63,17 @@ export function OrderCard({
   async function advanceStatus() {
     if (!advance) return;
     setUpdating(true);
+    const nowIso = new Date().toISOString();
+    const patch: {
+      status: OrderStatus;
+      ready_at?: string;
+      completed_at?: string;
+    } = { status: advance.next };
+    if (advance.next === "ready") patch.ready_at = nowIso;
+    if (advance.next === "completed") patch.completed_at = nowIso;
     const { error } = await supabase
       .from("orders")
-      .update({ status: advance.next })
+      .update(patch)
       .eq("id", order.id);
 
     if (error) {
