@@ -69,10 +69,11 @@ forward.
 - **Stamp on transition:** status advances happen client-side in
   `src/components/order-card.tsx` via `.update({ status })`. Extend that update to
   set the matching timestamp when entering each state (`status: "ready", ready_at:
-<now>`; `status: "completed", completed_at: <now>`). Also stamp `completed_at`
-  in the admin force-complete path (`admin/page.tsx`). `updated_at` keeps its
-  existing trigger behaviour. (The admin `actions.ts` `resolved` writes are
-  _feedback_, not orders — out of scope.)
+<now>`; `status: "completed", completed_at: <now>`). `updated_at` keeps its
+  existing trigger behaviour. (There is **no** admin order-status write to stamp:
+  `admin/page.tsx:153` `status: "completed"` is a synthetic `StatsOrder` built
+  from `payments` for the revenue trend, not an order update; and `actions.ts`
+  `resolved` writes are _feedback_, not orders.)
 - **Types:** add the three fields to `orders` Row/Insert/Update in
   `src/lib/types.ts` (mirror the migration).
 - RLS unchanged — a vendor already updates only their own booths' orders; we add

@@ -105,12 +105,16 @@ git commit -m "feat(stats): add ready_at/completed_at to orders for wait-time"
 **Files:**
 
 - Modify: `src/components/order-card.tsx:63-92` (`advanceStatus`)
-- Modify: `src/app/admin/page.tsx:153` (admin force-complete)
 
 **Interfaces:**
 
 - Consumes: `orders.ready_at` / `orders.completed_at` (Task 1).
-- Produces: on `preparing→ready` the row gets `ready_at = now`; on `ready→completed` it gets `completed_at = now`; admin force-complete sets `completed_at = now`.
+- Produces: on `preparing→ready` the row gets `ready_at = now`; on `ready→completed` it gets `completed_at = now`.
+
+> **Correction (execution):** an earlier draft listed an admin force-complete
+> path (`admin/page.tsx:153`) to stamp. That line is a synthetic `StatsOrder`
+> built from `payments` for the revenue trend, **not** an order-status write.
+> There is no admin order-status write — `order-card.tsx` is the only site.
 
 - [ ] **Step 1: Stamp the matching timestamp in `advanceStatus`**
 
@@ -131,16 +135,7 @@ const { error } = await supabase
 
 (`cancelOrder` is unchanged — cancelled orders are excluded from wait stats.)
 
-- [ ] **Step 2: Stamp `completed_at` in the admin force-complete**
-
-In `src/app/admin/page.tsx` around line 153, the update that sets `status: "completed"` must also set `completed_at`. Change the updated object to:
-
-```ts
-        status: "completed",
-        completed_at: new Date().toISOString(),
-```
-
-- [ ] **Step 3: Typecheck**
+- [ ] **Step 2: Typecheck**
 
 Run: `pnpm check`
 Expected: PASS — the `Update` type now accepts `ready_at`/`completed_at`.
