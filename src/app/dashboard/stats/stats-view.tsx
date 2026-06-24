@@ -90,7 +90,12 @@ export function StatsView({
 
       {pro ? (
         <>
-          <div className="flex justify-end">
+          {/* ── Financial ────────────────────────────────────────────────── */}
+          <div className="flex items-center gap-3">
+            <p className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Financial
+            </p>
+            <hr className="perforation flex-1" />
             <ExportButton summary={summary} range={range} boothId={boothId} />
           </div>
           {series && (
@@ -98,19 +103,6 @@ export function StatsView({
               <TrendChart series={series} range={range} />
             </Block>
           )}
-          {speed?.series &&
-            speed.series.some((p) => p.avgWaitSeconds !== null) && (
-              <Block delay={150}>
-                <ServiceSpeedChart
-                  series={speed.series}
-                  range={range}
-                  peakThroughput={speed.peakThroughput}
-                />
-              </Block>
-            )}
-          <Block delay={180}>
-            <BusyHeatmap summary={summary} />
-          </Block>
           <Block delay={240}>
             <TopItems items={summary.topItems} />
           </Block>
@@ -124,6 +116,27 @@ export function StatsView({
               <MarginTable summary={summary} />
             </Block>
           )}
+
+          {/* ── Operational ──────────────────────────────────────────────── */}
+          <div className="flex items-center gap-3 pt-2">
+            <p className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Operational
+            </p>
+            <hr className="perforation flex-1" />
+          </div>
+          {speed?.series &&
+            speed.series.some((p) => p.avgWaitSeconds !== null) && (
+              <Block delay={150}>
+                <ServiceSpeedChart
+                  series={speed.series}
+                  range={range}
+                  peakThroughput={speed.peakThroughput}
+                />
+              </Block>
+            )}
+          <Block delay={180}>
+            <BusyHeatmap summary={summary} />
+          </Block>
         </>
       ) : (
         <>
