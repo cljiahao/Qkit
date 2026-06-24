@@ -38,6 +38,17 @@ function hourLabel(h: number): string {
   return `${h12}${period}`;
 }
 
+/**
+ * Seconds → "4m 12s" (or "12s" under a minute). Floors minutes off the rounded
+ * total so it never shows over-rounded minutes or a "2m 60s" carry.
+ */
+function waitClock(seconds: number): string {
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 /** One reveal block — staggers in on load (see .fade-rise in globals.css). */
 function Block({
   delay,
@@ -135,8 +146,7 @@ export function StatsView({
                   Avg wait
                 </p>
                 <p className="mt-1 font-mono text-2xl font-bold">
-                  {Math.round(speed.avgWaitSeconds / 60)}m{" "}
-                  {Math.round(speed.avgWaitSeconds % 60)}s
+                  {waitClock(speed.avgWaitSeconds)}
                 </p>
               </div>
             </Block>
