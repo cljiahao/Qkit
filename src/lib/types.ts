@@ -361,6 +361,8 @@ export interface Database {
           status: OrderStatus;
           total_cents: number;
           created_at: string;
+          ready_at: string | null;
+          completed_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -372,6 +374,8 @@ export interface Database {
           status?: OrderStatus;
           total_cents: number;
           created_at?: string;
+          ready_at?: string | null;
+          completed_at?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -383,6 +387,8 @@ export interface Database {
           status?: OrderStatus;
           total_cents?: number;
           created_at?: string;
+          ready_at?: string | null;
+          completed_at?: string | null;
           updated_at?: string;
         };
         Relationships: [

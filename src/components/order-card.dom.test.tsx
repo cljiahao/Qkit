@@ -28,6 +28,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     status: "preparing",
     total_cents: 700,
     created_at: new Date(0).toISOString(),
+    ready_at: null,
+    completed_at: null,
     updated_at: new Date(0).toISOString(),
     ...overrides,
   };
