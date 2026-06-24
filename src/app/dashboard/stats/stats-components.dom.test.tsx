@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { KpiRow } from "./kpi-row";
 import { MarginTable } from "./margin-table";
+import { ServiceSpeedChart } from "./service-speed-chart";
 import type { StatsSummary } from "@/lib/stats";
 
 function summary(over: Partial<StatsSummary> = {}): StatsSummary {
@@ -95,5 +96,18 @@ describe("MarginTable", () => {
     const rows = screen.getAllByRole("row");
     expect(rows[1]).toHaveTextContent("Kopi");
     expect(rows[2]).toHaveTextContent("Teh");
+  });
+});
+
+describe("ServiceSpeedChart", () => {
+  const series = [
+    { t: 1, avgWaitSeconds: 120, orders: 3 },
+    { t: 2, avgWaitSeconds: 300, orders: 8 },
+  ];
+
+  it("renders the heading and peak throughput", () => {
+    render(<ServiceSpeedChart series={series} range="7d" peakThroughput={8} />);
+    expect(screen.getByText(/service speed/i)).toBeInTheDocument();
+    expect(screen.getByText(/8\s*\/\s*hr/i)).toBeInTheDocument();
   });
 });
