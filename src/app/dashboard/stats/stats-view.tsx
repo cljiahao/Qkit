@@ -103,22 +103,22 @@ export function StatsView({
               <TrendChart series={series} range={range} />
             </Block>
           )}
-          <Block delay={240}>
+          <Block delay={180}>
             <TopItems items={summary.topItems} />
           </Block>
           {summary.optionBreakdown.length > 0 && (
-            <Block delay={300}>
+            <Block delay={240}>
               <OptionsBreakdown options={summary.optionBreakdown} />
             </Block>
           )}
           {summary.grossMargin && (
-            <Block delay={360}>
+            <Block delay={300}>
               <MarginTable summary={summary} />
             </Block>
           )}
 
           {/* ── Operational ──────────────────────────────────────────────── */}
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3">
             <p className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
               Operational
             </p>
@@ -126,7 +126,7 @@ export function StatsView({
           </div>
           {speed?.series &&
             speed.series.some((p) => p.avgWaitSeconds !== null) && (
-              <Block delay={150}>
+              <Block delay={360}>
                 <ServiceSpeedChart
                   series={speed.series}
                   range={range}
@@ -134,7 +134,7 @@ export function StatsView({
                 />
               </Block>
             )}
-          <Block delay={180}>
+          <Block delay={420}>
             <BusyHeatmap summary={summary} />
           </Block>
         </>
