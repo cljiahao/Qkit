@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { KpiRow } from "./kpi-row";
 import { MarginTable } from "./margin-table";
 import { ServiceSpeedChart } from "./service-speed-chart";
-import { waitClock } from "./stats-view";
+import { fmtWait, waitClock } from "./chart-format";
 import type { StatsSummary } from "@/lib/stats";
 
 function summary(over: Partial<StatsSummary> = {}): StatsSummary {
@@ -141,5 +141,18 @@ describe("waitClock", () => {
 
   it("rounds fractional seconds without a 60s carry", () => {
     expect(waitClock(119.6)).toBe("2m 0s"); // rounds to 120, not "1m 60s"
+  });
+});
+
+describe("fmtWait", () => {
+  it("shows whole seconds under a minute", () => {
+    expect(fmtWait(0)).toBe("0s");
+    expect(fmtWait(45)).toBe("45s");
+    expect(fmtWait(59)).toBe("59s");
+  });
+
+  it("shows one-decimal minutes at/over a minute", () => {
+    expect(fmtWait(60)).toBe("1.0m");
+    expect(fmtWait(252)).toBe("4.2m");
   });
 });

@@ -1,6 +1,8 @@
+import { Children } from "react";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import type { SeriesPoint, StatsSummary, WaitPoint } from "@/lib/stats";
+import { waitClock } from "./chart-format";
 import { ServiceSpeedChart } from "./service-speed-chart";
 import { KpiRow } from "./kpi-row";
 import { ExportButton } from "./export-button";
@@ -39,29 +41,30 @@ function hourLabel(h: number): string {
 }
 
 /**
- * Seconds → "4m 12s" (or "12s" under a minute). Floors minutes off the rounded
- * total so it never shows over-rounded minutes or a "2m 60s" carry.
+ * Reveals each child with an auto-ascending fade-rise stagger (see .fade-rise in
+ * globals.css). Children render top-to-bottom, so delays stay monotonic no
+ * matter which optional cards are present or how the list is reordered — no
+ * hand-tuned per-card delays to keep in sync. Falsy children (omitted cards) are
+ * dropped by Children.toArray, so there are never gaps.
  */
-export function waitClock(seconds: number): string {
-  const total = Math.round(seconds);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
-
-/** One reveal block — staggers in on load (see .fade-rise in globals.css). */
-function Block({
-  delay,
+function Stagger({
   children,
+  base = 120,
+  step = 60,
 }: {
-  delay: number;
   children: React.ReactNode;
+  base?: number;
+  step?: number;
 }) {
-  return (
-    <div className="fade-rise" style={{ animationDelay: `${delay}ms` }}>
-      {children}
+  return Children.toArray(children).map((child, i) => (
+    <div
+      key={i}
+      className="fade-rise"
+      style={{ animationDelay: `${base + i * step}ms` }}
+    >
+      {child}
     </div>
-  );
+  ));
 }
 
 export function StatsView({
@@ -89,7 +92,7 @@ export function StatsView({
       <KpiRow summary={summary} deltas={deltas} pro={pro} />
 
       {pro ? (
-        <>
+        <Stagger>
           {/* ── Financial ────────────────────────────────────────────────── */}
           <div className="flex items-center gap-3">
             <p className="shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -98,24 +101,12 @@ export function StatsView({
             <hr className="perforation flex-1" />
             <ExportButton summary={summary} range={range} boothId={boothId} />
           </div>
-          {series && (
-            <Block delay={120}>
-              <TrendChart series={series} range={range} />
-            </Block>
-          )}
-          <Block delay={180}>
-            <TopItems items={summary.topItems} />
-          </Block>
+          {series && <TrendChart series={series} range={range} />}
+          <TopItems items={summary.topItems} />
           {summary.optionBreakdown.length > 0 && (
-            <Block delay={240}>
-              <OptionsBreakdown options={summary.optionBreakdown} />
-            </Block>
+            <OptionsBreakdown options={summary.optionBreakdown} />
           )}
-          {summary.grossMargin && (
-            <Block delay={300}>
-              <MarginTable summary={summary} />
-            </Block>
-          )}
+          {summary.grossMargin && <MarginTable summary={summary} />}
 
           {/* ── Operational ──────────────────────────────────────────────── */}
           <div className="flex items-center gap-3">
@@ -126,57 +117,45 @@ export function StatsView({
           </div>
           {speed?.series &&
             speed.series.some((p) => p.avgWaitSeconds !== null) && (
-              <Block delay={360}>
-                <ServiceSpeedChart
-                  series={speed.series}
-                  range={range}
-                  peakThroughput={speed.peakThroughput}
-                />
-              </Block>
+              <ServiceSpeedChart
+                series={speed.series}
+                range={range}
+                peakThroughput={speed.peakThroughput}
+              />
             )}
-          <Block delay={420}>
-            <BusyHeatmap summary={summary} />
-          </Block>
-        </>
+          <BusyHeatmap summary={summary} />
+        </Stagger>
       ) : (
-        <>
+        <Stagger>
           {summary.busiestHour !== null && (
-            <Block delay={180}>
-              <div className="rounded-xl border border-border bg-card p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Busiest hour
-                </p>
-                <p className="mt-1 font-mono text-2xl font-bold">
-                  {hourLabel(summary.busiestHour)}
-                </p>
-              </div>
-            </Block>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Busiest hour
+              </p>
+              <p className="mt-1 font-mono text-2xl font-bold">
+                {hourLabel(summary.busiestHour)}
+              </p>
+            </div>
           )}
           {speed?.avgWaitSeconds != null && (
-            <Block delay={210}>
-              <div className="rounded-xl border border-border bg-card p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Avg wait
-                </p>
-                <p className="mt-1 font-mono text-2xl font-bold">
-                  {waitClock(speed.avgWaitSeconds)}
-                </p>
-              </div>
-            </Block>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Avg wait
+              </p>
+              <p className="mt-1 font-mono text-2xl font-bold">
+                {waitClock(speed.avgWaitSeconds)}
+              </p>
+            </div>
           )}
-          <Block delay={240}>
-            <TopItems items={summary.topItems} limit={3} />
-          </Block>
-          <Block delay={300}>
-            <Link
-              href="/dashboard/plan"
-              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/[0.04] px-4 py-5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-            >
-              <Lock className="size-4" />
-              Upgrade for trends, busy-times heatmap, profit margins &amp; more
-            </Link>
-          </Block>
-        </>
+          <TopItems items={summary.topItems} limit={3} />
+          <Link
+            href="/dashboard/plan"
+            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/[0.04] px-4 py-5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+          >
+            <Lock className="size-4" />
+            Upgrade for trends, busy-times heatmap, profit margins &amp; more
+          </Link>
+        </Stagger>
       )}
     </div>
   );

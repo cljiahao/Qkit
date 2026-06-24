@@ -12,20 +12,7 @@ import {
 } from "recharts";
 import { shortDay } from "@/lib/tz";
 import type { WaitPoint } from "@/lib/stats";
-
-const RANGE_LABEL: Record<string, string> = {
-  "24h": "last 24 hours",
-  "7d": "last 7 days",
-  "30d": "last 30 days",
-  "90d": "last 90 days",
-};
-
-/** Seconds → "4.2m" / "45s" for axis + tooltip. */
-function fmtWait(seconds: number): string {
-  return seconds >= 60
-    ? `${(seconds / 60).toFixed(1)}m`
-    : `${Math.round(seconds)}s`;
-}
+import { RANGE_LABEL, fmtWait } from "./chart-format";
 
 export function ServiceSpeedChart({
   series,

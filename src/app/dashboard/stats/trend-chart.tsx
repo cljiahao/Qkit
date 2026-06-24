@@ -11,6 +11,7 @@ import {
 import { formatPrice } from "@/lib/utils";
 import { shortDay } from "@/lib/tz";
 import type { SeriesPoint } from "@/lib/stats";
+import { RANGE_LABEL } from "./chart-format";
 
 // Abbreviate the Y axis: "$8" / "$1.2k". Full precision lives in the tooltip.
 function shortMoney(cents: number): string {
@@ -19,13 +20,6 @@ function shortMoney(cents: number): string {
     ? `$${(dollars / 1000).toFixed(1)}k`
     : `$${Math.round(dollars)}`;
 }
-
-const RANGE_LABEL: Record<string, string> = {
-  "24h": "last 24 hours",
-  "7d": "last 7 days",
-  "30d": "last 30 days",
-  "90d": "last 90 days",
-};
 
 function ordersOf(payload: unknown): number {
   return (payload as { orders?: number } | null)?.orders ?? 0;
