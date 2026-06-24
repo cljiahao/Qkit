@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
-import type { SeriesPoint, StatsSummary } from "@/lib/stats";
+import type { SeriesPoint, StatsSummary, WaitPoint } from "@/lib/stats";
+import { ServiceSpeedChart } from "./service-speed-chart";
 import { KpiRow } from "./kpi-row";
 import { ExportButton } from "./export-button";
 import { TrendChart } from "./trend-chart";
@@ -15,6 +16,12 @@ type Deltas = {
   aov: number | null;
 } | null;
 
+type Speed = {
+  avgWaitSeconds: number | null;
+  series: WaitPoint[] | null;
+  peakThroughput: number;
+} | null;
+
 interface Props {
   summary: StatsSummary;
   deltas: Deltas;
@@ -22,6 +29,7 @@ interface Props {
   range: string;
   boothId: string;
   pro: boolean;
+  speed?: Speed;
 }
 
 function hourLabel(h: number): string {
@@ -52,6 +60,7 @@ export function StatsView({
   range,
   boothId,
   pro,
+  speed,
 }: Props) {
   if (summary.orderCount === 0) {
     return (
@@ -78,6 +87,16 @@ export function StatsView({
               <TrendChart series={series} range={range} />
             </Block>
           )}
+          {speed?.series &&
+            speed.series.some((p) => p.avgWaitSeconds !== null) && (
+              <Block delay={150}>
+                <ServiceSpeedChart
+                  series={speed.series}
+                  range={range}
+                  peakThroughput={speed.peakThroughput}
+                />
+              </Block>
+            )}
           <Block delay={180}>
             <BusyHeatmap summary={summary} />
           </Block>
@@ -105,6 +124,19 @@ export function StatsView({
                 </p>
                 <p className="mt-1 font-mono text-2xl font-bold">
                   {hourLabel(summary.busiestHour)}
+                </p>
+              </div>
+            </Block>
+          )}
+          {speed?.avgWaitSeconds != null && (
+            <Block delay={210}>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Avg wait
+                </p>
+                <p className="mt-1 font-mono text-2xl font-bold">
+                  {Math.round(speed.avgWaitSeconds / 60)}m{" "}
+                  {Math.round(speed.avgWaitSeconds % 60)}s
                 </p>
               </div>
             </Block>

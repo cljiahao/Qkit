@@ -7,8 +7,12 @@ import {
   computeStats,
   pctChange,
   windowSeries,
+  avgWaitSeconds,
+  waitSeries,
+  peakThroughput,
   type SeriesPoint,
   type StatsOrder,
+  type WaitPoint,
 } from "@/lib/stats";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -51,7 +55,7 @@ async function fetchOrders(
   if (!boothIds.length) return [];
   let query = supabase
     .from("orders")
-    .select("status, total_cents, items, created_at")
+    .select("status, total_cents, items, created_at, ready_at")
     .in("booth_id", boothIds)
     .gte("created_at", gte);
   if (lt) query = query.lt("created_at", lt);
@@ -61,6 +65,7 @@ async function fetchOrders(
     total_cents: row.total_cents,
     items: parseOrderItems(row.items),
     created_at: row.created_at,
+    ready_at: row.ready_at,
   }));
 }
 
@@ -230,6 +235,7 @@ export default async function StatsPage({ searchParams }: Props) {
 
   const orders = await fetchOrders(supabaseEarly, queryIds, cutoff);
   const summary = computeStats(orders);
+  const avgWait = avgWaitSeconds(orders);
 
   const reviewRows = await fetchReviewRows(supabaseEarly);
   const reviewGroups = groupReviewsByBooth(reviewRows, boothList);
@@ -242,6 +248,8 @@ export default async function StatsPage({ searchParams }: Props) {
     aov: number | null;
   } | null = null;
   let series: SeriesPoint[] | null = null;
+  let waitPoints: WaitPoint[] | null = null;
+  let peak = 0;
   if (pro && queryIds.length) {
     const priorCutoff = new Date(now - 2 * days * MS_PER_DAY).toISOString();
     const prior = computeStats(
@@ -256,6 +264,8 @@ export default async function StatsPage({ searchParams }: Props) {
     const buckets = days === 1 ? 24 : days;
     const bucketMs = days === 1 ? 3_600_000 : MS_PER_DAY;
     series = windowSeries(orders, now, buckets, bucketMs);
+    waitPoints = waitSeries(orders, now, buckets, bucketMs);
+    peak = peakThroughput(orders);
   }
 
   return (
@@ -283,6 +293,11 @@ export default async function StatsPage({ searchParams }: Props) {
         range={range}
         boothId={selectedBooth}
         pro={pro}
+        speed={{
+          avgWaitSeconds: avgWait,
+          series: waitPoints,
+          peakThroughput: peak,
+        }}
       />
 
       <ReviewsCard
