@@ -7,6 +7,7 @@ export type StatsOrder = {
   total_cents: number;
   items: OrderItem[];
   created_at: string;
+  ready_at?: string | null;
 };
 
 export type TopItem = {
@@ -103,6 +104,90 @@ export function windowSeries(
     series[idx].revenue_cents += o.total_cents;
   }
   return series;
+}
+
+export type WaitPoint = {
+  t: number;
+  avgWaitSeconds: number | null;
+  orders: number;
+};
+
+/** Seconds from placed→ready, per order. null if missing/invalid/negative. */
+function waitOf(o: StatsOrder): number | null {
+  if (!o.ready_at) return null;
+  const created = Date.parse(o.created_at);
+  const ready = Date.parse(o.ready_at);
+  if (!Number.isFinite(created) || !Number.isFinite(ready)) return null;
+  const wait = (ready - created) / 1000;
+  return wait >= 0 ? wait : null; // guard clock skew
+}
+
+/**
+ * Mean placed→ready wait (seconds) over non-cancelled orders that reached ready.
+ * null when none qualify — the UI shows "—", never a misleading 0.
+ */
+export function avgWaitSeconds(orders: StatsOrder[]): number | null {
+  let sum = 0;
+  let n = 0;
+  for (const o of orders) {
+    if (o.status === "cancelled") continue;
+    const w = waitOf(o);
+    if (w === null) continue;
+    sum += w;
+    n += 1;
+  }
+  return n ? sum / n : null;
+}
+
+/**
+ * Per-bucket average wait + order volume across a window ending nowMs. Mirrors
+ * windowSeries bucketing. A bucket with orders but none readied gets
+ * avgWaitSeconds: null (rendered as a gap, not 0). Cancelled excluded.
+ */
+export function waitSeries(
+  orders: StatsOrder[],
+  nowMs: number,
+  buckets: number,
+  bucketMs: number,
+): WaitPoint[] {
+  const sums = Array.from({ length: buckets }, () => 0);
+  const waited = Array.from({ length: buckets }, () => 0);
+  const counts = Array.from({ length: buckets }, () => 0);
+  for (const o of orders) {
+    if (o.status === "cancelled") continue;
+    const t = Date.parse(o.created_at);
+    if (!Number.isFinite(t)) continue;
+    const ago = Math.floor((nowMs - t) / bucketMs);
+    const idx = buckets - 1 - ago;
+    if (idx < 0 || idx >= buckets) continue;
+    counts[idx] += 1;
+    const w = waitOf(o);
+    if (w !== null) {
+      sums[idx] += w;
+      waited[idx] += 1;
+    }
+  }
+  return Array.from({ length: buckets }, (_, idx) => ({
+    t: nowMs - (buckets - 1 - idx) * bucketMs,
+    avgWaitSeconds: waited[idx] ? sums[idx] / waited[idx] : null,
+    orders: counts[idx],
+  }));
+}
+
+/** Busiest single clock-hour's order count (non-cancelled). 0 if none. */
+export function peakThroughput(orders: StatsOrder[]): number {
+  const byHour = new Map<number, number>();
+  let peak = 0;
+  for (const o of orders) {
+    if (o.status === "cancelled") continue;
+    const t = Date.parse(o.created_at);
+    if (!Number.isFinite(t)) continue;
+    const slot = Math.floor(t / 3_600_000);
+    const n = (byHour.get(slot) ?? 0) + 1;
+    byHour.set(slot, n);
+    if (n > peak) peak = n;
+  }
+  return peak;
 }
 
 /**
