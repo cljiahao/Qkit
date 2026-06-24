@@ -57,7 +57,11 @@ describe("OrderCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Mark Ready" }));
 
-    expect(updateMock).toHaveBeenCalledWith({ status: "ready" });
+    // Advancing to ready stamps ready_at (drives the wait-time stats).
+    expect(updateMock).toHaveBeenCalledWith({
+      status: "ready",
+      ready_at: expect.any(String),
+    });
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Mark Picked Up" }),
