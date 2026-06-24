@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { KpiRow } from "./kpi-row";
 import { MarginTable } from "./margin-table";
+import { ServiceSpeedChart } from "./service-speed-chart";
+import { fmtWait, waitClock } from "./chart-format";
 import type { StatsSummary } from "@/lib/stats";
 
 function summary(over: Partial<StatsSummary> = {}): StatsSummary {
@@ -95,5 +97,62 @@ describe("MarginTable", () => {
     const rows = screen.getAllByRole("row");
     expect(rows[1]).toHaveTextContent("Kopi");
     expect(rows[2]).toHaveTextContent("Teh");
+  });
+});
+
+describe("ServiceSpeedChart", () => {
+  const series = [
+    { t: 1, avgWaitSeconds: 120, orders: 3 },
+    { t: 2, avgWaitSeconds: 300, orders: 8 },
+  ];
+
+  it("renders the heading and peak throughput", () => {
+    render(<ServiceSpeedChart series={series} range="7d" peakThroughput={8} />);
+    expect(screen.getByText(/service speed/i)).toBeInTheDocument();
+    expect(screen.getByText(/8\s*\/\s*hr/i)).toBeInTheDocument();
+  });
+
+  it("renders without crashing when no order has a wait (empty / all-null)", () => {
+    const noWaits = [
+      { t: 1, avgWaitSeconds: null, orders: 2 },
+      { t: 2, avgWaitSeconds: null, orders: 5 },
+    ];
+    render(
+      <ServiceSpeedChart series={noWaits} range="7d" peakThroughput={5} />,
+    );
+    // Header still renders; the avg reference line is simply omitted (no crash,
+    // no misleading zero line).
+    expect(screen.getByText(/service speed/i)).toBeInTheDocument();
+    expect(screen.getByText(/5\s*\/\s*hr/i)).toBeInTheDocument();
+  });
+});
+
+describe("waitClock", () => {
+  it("shows bare seconds under a minute", () => {
+    expect(waitClock(0)).toBe("0s");
+    expect(waitClock(59)).toBe("59s");
+  });
+
+  it("floors minutes off the rounded total (no over-rounding)", () => {
+    expect(waitClock(60)).toBe("1m 0s");
+    expect(waitClock(110)).toBe("1m 50s"); // not "2m 50s"
+    expect(waitClock(119)).toBe("1m 59s");
+  });
+
+  it("rounds fractional seconds without a 60s carry", () => {
+    expect(waitClock(119.6)).toBe("2m 0s"); // rounds to 120, not "1m 60s"
+  });
+});
+
+describe("fmtWait", () => {
+  it("shows whole seconds under a minute", () => {
+    expect(fmtWait(0)).toBe("0s");
+    expect(fmtWait(45)).toBe("45s");
+    expect(fmtWait(59)).toBe("59s");
+  });
+
+  it("shows one-decimal minutes at/over a minute", () => {
+    expect(fmtWait(60)).toBe("1.0m");
+    expect(fmtWait(252)).toBe("4.2m");
   });
 });

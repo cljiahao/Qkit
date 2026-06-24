@@ -28,6 +28,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     status: "preparing",
     total_cents: 700,
     created_at: new Date(0).toISOString(),
+    ready_at: null,
+    completed_at: null,
     updated_at: new Date(0).toISOString(),
     ...overrides,
   };
@@ -55,12 +57,28 @@ describe("OrderCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Mark Ready" }));
 
-    expect(updateMock).toHaveBeenCalledWith({ status: "ready" });
+    // Advancing to ready stamps ready_at (drives the wait-time stats).
+    expect(updateMock).toHaveBeenCalledWith({
+      status: "ready",
+      ready_at: expect.any(String),
+    });
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Mark Picked Up" }),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("advances ready -> completed and stamps completed_at", async () => {
+    const user = userEvent.setup();
+    render(<OrderCard order={makeOrder({ status: "ready" })} />);
+
+    await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
+
+    expect(updateMock).toHaveBeenCalledWith({
+      status: "completed",
+      completed_at: expect.any(String),
+    });
   });
 
   it("cancels via the confirm dialog", async () => {

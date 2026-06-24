@@ -230,6 +230,8 @@ export const orderRowSchema = z.object({
   status: orderStatusSchema,
   total_cents: z.number().int().nonnegative(),
   created_at: z.string(),
+  ready_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
   updated_at: z.string(),
 });
 

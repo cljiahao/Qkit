@@ -19,6 +19,8 @@ function order(over: Partial<Order>): Order {
     total_cents: over.total_cents ?? 0,
     status: over.status ?? "preparing",
     created_at: over.created_at ?? "2026-06-12T10:00:00Z",
+    ready_at: over.ready_at ?? null,
+    completed_at: over.completed_at ?? null,
     updated_at: over.updated_at ?? "2026-06-12T10:00:00Z",
   };
 }

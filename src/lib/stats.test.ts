@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  avgWaitSeconds,
   computeStats,
   pctChange,
+  waitSeries,
+  peakThroughput,
   windowSeries,
   type StatsOrder,
 } from "./stats";
@@ -330,5 +333,81 @@ describe("computeStats — margins", () => {
     expect(s.grossMargin).not.toBeNull();
     expect(s.grossMargin!.cost_cents).toBe(50);
     expect(s.grossMargin!.revenue_cents).toBe(200);
+  });
+});
+
+function waitOrder(
+  created_at: string,
+  ready_at: string | null,
+  status: StatsOrder["status"] = "completed",
+): StatsOrder {
+  return { status, total_cents: 500, items: [], created_at, ready_at };
+}
+
+describe("avgWaitSeconds", () => {
+  it("returns null when no order has a ready_at", () => {
+    expect(
+      avgWaitSeconds([waitOrder("2026-06-12T04:00:00Z", null)]),
+    ).toBeNull();
+    expect(avgWaitSeconds([])).toBeNull();
+  });
+
+  it("averages ready_at - created_at in seconds, ignoring un-readied orders", () => {
+    const orders = [
+      waitOrder("2026-06-12T04:00:00Z", "2026-06-12T04:02:00Z"), // 120s
+      waitOrder("2026-06-12T04:00:00Z", "2026-06-12T04:08:00Z"), // 480s
+      waitOrder("2026-06-12T04:00:00Z", null), // excluded
+    ];
+    expect(avgWaitSeconds(orders)).toBe(300); // (120+480)/2
+  });
+
+  it("excludes cancelled and guards negative (clock-skew) intervals", () => {
+    const orders = [
+      waitOrder("2026-06-12T04:00:00Z", "2026-06-12T04:02:00Z", "cancelled"),
+      waitOrder("2026-06-12T04:05:00Z", "2026-06-12T04:00:00Z"), // negative → skip
+    ];
+    expect(avgWaitSeconds(orders)).toBeNull();
+  });
+});
+
+describe("waitSeries", () => {
+  it("buckets avg wait + order volume, null wait for buckets with no readied order", () => {
+    const now = Date.parse("2026-06-12T04:00:00Z");
+    const hour = 3_600_000;
+    const orders = [
+      waitOrder("2026-06-12T03:30:00Z", "2026-06-12T03:33:00Z"), // this bucket, 180s
+      waitOrder("2026-06-12T03:40:00Z", null), // this bucket, counts volume only
+      waitOrder("2026-06-12T02:30:00Z", null), // prior bucket, volume only
+    ];
+    const s = waitSeries(orders, now, 2, hour);
+    expect(s).toHaveLength(2);
+    expect(s[0]).toEqual({ t: now - hour, avgWaitSeconds: null, orders: 1 });
+    expect(s[1]).toEqual({ t: now, avgWaitSeconds: 180, orders: 2 });
+  });
+
+  it("excludes cancelled orders from volume and wait", () => {
+    const now = Date.parse("2026-06-12T04:00:00Z");
+    const hour = 3_600_000;
+    const orders = [
+      waitOrder("2026-06-12T03:50:00Z", "2026-06-12T03:52:00Z", "cancelled"),
+      waitOrder("2026-06-12T03:55:00Z", null),
+    ];
+    const s = waitSeries(orders, now, 1, hour);
+    expect(s[0]).toEqual({ t: now, avgWaitSeconds: null, orders: 1 });
+  });
+});
+
+describe("peakThroughput", () => {
+  it("returns the busiest single clock-hour's order count", () => {
+    const orders = [
+      waitOrder("2026-06-12T04:05:00Z", null),
+      waitOrder("2026-06-12T04:50:00Z", null),
+      waitOrder("2026-06-12T06:10:00Z", null), // different hour
+    ];
+    expect(peakThroughput(orders)).toBe(2);
+  });
+
+  it("returns 0 for no orders", () => {
+    expect(peakThroughput([])).toBe(0);
   });
 });
