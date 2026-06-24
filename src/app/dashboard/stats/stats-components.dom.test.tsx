@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { KpiRow } from "./kpi-row";
 import { MarginTable } from "./margin-table";
 import { ServiceSpeedChart } from "./service-speed-chart";
+import { waitClock } from "./stats-view";
 import type { StatsSummary } from "@/lib/stats";
 
 function summary(over: Partial<StatsSummary> = {}): StatsSummary {
@@ -123,5 +124,22 @@ describe("ServiceSpeedChart", () => {
     // no misleading zero line).
     expect(screen.getByText(/service speed/i)).toBeInTheDocument();
     expect(screen.getByText(/5\s*\/\s*hr/i)).toBeInTheDocument();
+  });
+});
+
+describe("waitClock", () => {
+  it("shows bare seconds under a minute", () => {
+    expect(waitClock(0)).toBe("0s");
+    expect(waitClock(59)).toBe("59s");
+  });
+
+  it("floors minutes off the rounded total (no over-rounding)", () => {
+    expect(waitClock(60)).toBe("1m 0s");
+    expect(waitClock(110)).toBe("1m 50s"); // not "2m 50s"
+    expect(waitClock(119)).toBe("1m 59s");
+  });
+
+  it("rounds fractional seconds without a 60s carry", () => {
+    expect(waitClock(119.6)).toBe("2m 0s"); // rounds to 120, not "1m 60s"
   });
 });

@@ -42,7 +42,7 @@ function hourLabel(h: number): string {
  * Seconds → "4m 12s" (or "12s" under a minute). Floors minutes off the rounded
  * total so it never shows over-rounded minutes or a "2m 60s" carry.
  */
-function waitClock(seconds: number): string {
+export function waitClock(seconds: number): string {
   const total = Math.round(seconds);
   const m = Math.floor(total / 60);
   const s = total % 60;

@@ -69,6 +69,18 @@ describe("OrderCard", () => {
     );
   });
 
+  it("advances ready -> completed and stamps completed_at", async () => {
+    const user = userEvent.setup();
+    render(<OrderCard order={makeOrder({ status: "ready" })} />);
+
+    await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
+
+    expect(updateMock).toHaveBeenCalledWith({
+      status: "completed",
+      completed_at: expect.any(String),
+    });
+  });
+
   it("cancels via the confirm dialog", async () => {
     const user = userEvent.setup();
     render(<OrderCard order={makeOrder({ status: "preparing" })} />);
