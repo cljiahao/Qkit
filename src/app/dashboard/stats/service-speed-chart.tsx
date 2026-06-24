@@ -39,9 +39,11 @@ export function ServiceSpeedChart({
   const waits = series
     .map((p) => p.avgWaitSeconds)
     .filter((w): w is number => w !== null);
+  // null (not 0) when no order has a wait — avoids a misleading dotted line at
+  // the zero baseline that would read as "average wait is 0s".
   const avg = waits.length
     ? waits.reduce((a, b) => a + b, 0) / waits.length
-    : 0;
+    : null;
 
   return (
     <section className="rounded-xl border border-border bg-card p-4">
@@ -98,12 +100,14 @@ export function ServiceSpeedChart({
             opacity={0.5}
             radius={[3, 3, 0, 0]}
           />
-          <ReferenceLine
-            yAxisId="wait"
-            y={avg}
-            stroke="var(--color-muted-foreground)"
-            strokeDasharray="4 4"
-          />
+          {avg !== null && (
+            <ReferenceLine
+              yAxisId="wait"
+              y={avg}
+              stroke="var(--color-muted-foreground)"
+              strokeDasharray="4 4"
+            />
+          )}
           <Line
             yAxisId="wait"
             type="monotone"

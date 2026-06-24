@@ -110,4 +110,18 @@ describe("ServiceSpeedChart", () => {
     expect(screen.getByText(/service speed/i)).toBeInTheDocument();
     expect(screen.getByText(/8\s*\/\s*hr/i)).toBeInTheDocument();
   });
+
+  it("renders without crashing when no order has a wait (empty / all-null)", () => {
+    const noWaits = [
+      { t: 1, avgWaitSeconds: null, orders: 2 },
+      { t: 2, avgWaitSeconds: null, orders: 5 },
+    ];
+    render(
+      <ServiceSpeedChart series={noWaits} range="7d" peakThroughput={5} />,
+    );
+    // Header still renders; the avg reference line is simply omitted (no crash,
+    // no misleading zero line).
+    expect(screen.getByText(/service speed/i)).toBeInTheDocument();
+    expect(screen.getByText(/5\s*\/\s*hr/i)).toBeInTheDocument();
+  });
 });
