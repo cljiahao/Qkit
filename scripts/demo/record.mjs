@@ -108,12 +108,16 @@ async function main() {
   });
   await context.addInitScript(CURSOR_SCRIPT);
   const page = await context.newPage();
+  // Turbopack dev keeps an HMR socket open, so "load"/"networkidle" can hang —
+  // navigations below use domcontentloaded. Be generous on first-compile waits.
+  page.setDefaultNavigationTimeout(60000);
+  page.setDefaultTimeout(45000);
 
   t0 = Date.now();
 
   // ── Beat 1: register + onboard ─────────────────────────────────────────────
   await step("Live in one step", async () => {
-    await page.goto(`${BASE}/login`);
+    await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
     await beat(600);
     await glideClick(
       page,
@@ -135,6 +139,29 @@ async function main() {
     await beat(900);
   });
 
+  // ── Beat 1.5: the built-in guided tour greets the new vendor ────────────────
+  // On first landing the dashboard tour auto-pops. Show it briefly (it's a
+  // selling point), then dismiss so the overlay stops intercepting clicks.
+  // Resilient: if it doesn't appear (e.g. already seen), just move on.
+  await step("A guided tour, built in", async () => {
+    const pop = page.locator(".driver-popover.qkit-tour");
+    try {
+      await pop.waitFor({ state: "visible", timeout: 8000 });
+    } catch {
+      return;
+    }
+    await beat(2300); // let the popover read on camera
+    await page.keyboard.press("Escape");
+    if (await pop.isVisible().catch(() => false)) {
+      await page
+        .locator(".driver-popover-close-btn")
+        .click()
+        .catch(() => {});
+    }
+    await pop.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    await beat(500);
+  });
+
   // ── Beat 2: create the booth + menu ────────────────────────────────────────
   let boothId;
   await step("Add your menu", async () => {
@@ -154,12 +181,13 @@ async function main() {
       await beat(150);
       const card = page.locator("div.bg-card", { hasText: "Available" }).last();
       await slowType(page, card.getByPlaceholder("Item name"), it.name, 45);
-      await slowType(
-        page,
-        card.getByPlaceholder("Price (optional)"),
-        it.price,
-        45,
-      );
+      // The price field is a controlled input that re-formats cents on every
+      // keystroke, so char-by-char typing fights it. Glide the cursor in, then
+      // set the whole value at once for a clean "5.50".
+      const priceField = card.getByPlaceholder("Price (optional)");
+      await glideClick(page, priceField);
+      await priceField.fill(it.price);
+      await beat(280);
     }
     await beat(300);
     await glideClick(page, page.getByRole("button", { name: /Save booth/ }));
@@ -179,14 +207,14 @@ async function main() {
 
   // ── Beat 3: the QR customers scan ──────────────────────────────────────────
   await step("Customers scan this", async () => {
-    await page.goto(`${BASE}/dashboard/booths/${boothId}/qr`);
-    await page.waitForLoadState("networkidle");
+    await page.goto(`${BASE}/dashboard/booths/${boothId}/qr`, { waitUntil: "domcontentloaded" });
+    await beat(600);
     await beat(2200);
   });
 
   // ── Beat 4: the customer orders from their phone ───────────────────────────
   await step("They order from their phone", async () => {
-    await page.goto(`${BASE}/order/${boothId}`);
+    await page.goto(`${BASE}/order/${boothId}`, { waitUntil: "domcontentloaded" });
     await beat(800);
     // Plain items (no option groups) → an "Add" button each.
     await glideClick(page, page.getByRole("button", { name: "Add" }).first());
@@ -201,15 +229,15 @@ async function main() {
 
   // ── Beat 5: the vendor sees it land live, then marks it ready ───────────────
   await step("You see every order live", async () => {
-    await page.goto(`${BASE}/dashboard`);
-    await page.waitForLoadState("networkidle");
+    await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
+    await beat(600);
     await beat(1500); // board settles, showing Priya's order
 
     // A walk-in orders from a second (un-recorded) phone — the ticket pops in
     // live on the board through the real realtime subscription.
     const bg = await browser.newContext({ viewport: VIEWPORT });
     const bgPage = await bg.newPage();
-    await bgPage.goto(`${BASE}/order/${boothId}`);
+    await bgPage.goto(`${BASE}/order/${boothId}`, { waitUntil: "domcontentloaded" });
     await bgPage.getByRole("button", { name: "Add" }).first().click();
     await bgPage.locator("#customerName").fill(WALK_IN);
     await bgPage.getByRole("button", { name: /Place order/ }).click();
@@ -218,7 +246,11 @@ async function main() {
     });
 
     // Wait for the second card to arrive on the recorded board, then advance it.
-    await page.getByText(WALK_IN).waitFor({ timeout: 15000 });
+    // Exact match avoids the toast ("New order #0002 · Marcus"); take the card.
+    await page
+      .getByText(WALK_IN, { exact: true })
+      .first()
+      .waitFor({ timeout: 15000 });
     await beat(1200);
     await glideClick(
       page,
