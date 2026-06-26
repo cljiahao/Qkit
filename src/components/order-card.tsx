@@ -20,6 +20,7 @@ import { parseOrderItems } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { boothColor } from "@/lib/booth-color";
 import { isTerminal, orderAgeTone, elapsedMinutes } from "@/lib/orders";
+import { sgtClock } from "@/lib/tz";
 import { ChevronDown, Clock } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
 
@@ -274,7 +275,7 @@ export function OrderCard({
         )}
 
         <p className="border-t border-border/60 px-4 py-2 text-right font-mono text-[0.7rem] text-muted-foreground">
-          {new Date(order.created_at).toLocaleTimeString()}
+          {sgtClock(order.created_at)}
         </p>
       </div>
     </div>

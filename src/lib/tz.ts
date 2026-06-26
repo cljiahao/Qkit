@@ -69,6 +69,24 @@ export function shortDay(ms: number): string {
   return SGT_DAY_FORMAT.format(new Date(ms));
 }
 
+// Cached: wall-clock time in SGT, e.g. "2:38:05 AM" — for the order-card stamp.
+const SGT_CLOCK_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: BOOTH_TZ,
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+});
+
+/**
+ * Wall-clock time of an ISO instant in SGT, e.g. "2:38:05 AM". Always formats in
+ * SGT (never the runtime's tz), so server and client agree — hydration-safe,
+ * unlike a bare `toLocaleTimeString()`.
+ */
+export function sgtClock(iso: string): string {
+  return SGT_CLOCK_FORMAT.format(new Date(iso));
+}
+
 // Cached: short date + time in SGT, e.g. "7 Jun, 2:30 pm" — for review timestamps.
 const SGT_DATETIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
   timeZone: BOOTH_TZ,
