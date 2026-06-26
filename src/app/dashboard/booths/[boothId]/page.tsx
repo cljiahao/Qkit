@@ -1,6 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
-import { loadEntitlement } from "@/lib/supabase/get-entitlement";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
 import { BoothForm } from "../booth-form";
 
@@ -12,9 +12,7 @@ interface Props {
 
 export default async function EditBoothPage({ params }: Props) {
   const { boothId } = await params;
-  const { user, vendor, entitlement } = await loadEntitlement();
-  if (!user) redirect("/login");
-  if (!vendor) redirect("/onboarding");
+  const { vendor, entitlement } = await requireEntitledVendor();
 
   const supabase = await createServerClient();
   // RLS scopes this to the vendor's own booths; a foreign id returns null.

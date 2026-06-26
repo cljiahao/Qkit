@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
-import { getVendor } from "@/lib/supabase/get-vendor";
+import { requireVendor } from "@/lib/supabase/get-vendor";
 import { parseBoothHours } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
 import { RealtimeOrderBoard } from "./realtime-order-board";
@@ -9,9 +8,7 @@ import type { Order } from "@/lib/types";
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  const { user, vendor } = await getVendor();
-  if (!user) redirect("/login");
-  if (!vendor) redirect("/onboarding");
+  const { vendor } = await requireVendor();
 
   const supabase = await createServerClient();
 

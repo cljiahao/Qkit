@@ -1,5 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { getVendor } from "@/lib/supabase/get-vendor";
+import { notFound } from "next/navigation";
+import { requireVendor } from "@/lib/supabase/get-vendor";
 import { createServerClient } from "@/lib/supabase/server";
 import { BoothQrPoster } from "./booth-qr-poster";
 
@@ -11,9 +11,7 @@ interface Props {
 
 export default async function BoothQrPage({ params }: Props) {
   const { boothId } = await params;
-  const { user, vendor } = await getVendor();
-  if (!user) redirect("/login");
-  if (!vendor) redirect("/onboarding");
+  await requireVendor();
 
   const supabase = await createServerClient();
   // RLS scopes this to the vendor's own booths; a foreign id returns null.

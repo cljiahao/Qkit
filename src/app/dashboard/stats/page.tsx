@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase/server";
-import { loadEntitlement } from "@/lib/supabase/get-entitlement";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { parseOrderItems } from "@/lib/schemas";
 import {
   computeStats,
@@ -16,7 +15,7 @@ import {
 } from "@/lib/stats";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { MS_PER_DAY } from "@/lib/utils";
+import { MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
 import { shortDay } from "@/lib/tz";
 import { eventLabel } from "@/lib/events";
 import {
@@ -31,8 +30,6 @@ import { EventsPanel } from "./events-panel";
 import { ReviewsCard } from "./reviews-card";
 
 export const revalidate = 0;
-
-const HOUR_MS = 3_600_000;
 
 const RANGE_DAYS: Record<string, number> = {
   "24h": 1,
@@ -119,9 +116,7 @@ export default async function StatsPage({ searchParams }: Props) {
     booth: boothParam,
     event: eventParam,
   } = await searchParams;
-  const { user, vendor, entitlement } = await loadEntitlement();
-  if (!user) redirect("/login");
-  if (!vendor) redirect("/onboarding");
+  const { vendor, entitlement } = await requireEntitledVendor();
 
   const supabaseEarly = await createServerClient();
 
@@ -162,7 +157,7 @@ export default async function StatsPage({ searchParams }: Props) {
       orders,
       Date.parse(to),
       spanDays === 1 ? 24 : spanDays,
-      spanDays === 1 ? HOUR_MS : MS_PER_DAY,
+      spanDays === 1 ? MS_PER_HOUR : MS_PER_DAY,
     );
     // Reviews for orders placed during this event — by order date, so late
     // reviews (written after the event ended) still belong to it.
@@ -262,7 +257,7 @@ export default async function StatsPage({ searchParams }: Props) {
     };
     // 24h → 24 hourly slots; multi-day → one slot per day.
     const buckets = days === 1 ? 24 : days;
-    const bucketMs = days === 1 ? 3_600_000 : MS_PER_DAY;
+    const bucketMs = days === 1 ? MS_PER_HOUR : MS_PER_DAY;
     series = windowSeries(orders, now, buckets, bucketMs);
     waitPoints = waitSeries(orders, now, buckets, bucketMs);
     peak = peakThroughput(orders);

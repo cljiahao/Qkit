@@ -10,7 +10,23 @@ import {
   type GrantPassInput,
   type PricingFormInput,
 } from "@/lib/schemas";
+import { MS_PER_DAY } from "@/lib/utils";
 import type { ActionResult } from "@/lib/action-result";
+import type { Database } from "@/lib/types";
+
+type AuditInsert = Database["public"]["Tables"]["admin_audit"]["Insert"];
+
+/**
+ * Append an admin-audit row. Best-effort: a hiccup here must not fail the
+ * action it records, but it's logged so a broken trail stays visible.
+ */
+async function recordAudit(
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
+  entry: AuditInsert,
+) {
+  const { error } = await supabase.from("admin_audit").insert(entry);
+  if (error) console.error("admin_audit insert failed", error.message);
+}
 
 const setPlanSchema = z.object({
   vendorId: z.string().uuid(),
@@ -60,16 +76,13 @@ export async function setVendorPlan(
     if (payError) console.error("payment insert failed", payError.message);
   }
 
-  // Audit trail of who changed what. Best-effort — don't fail the action if the
-  // audit insert hiccups, but log it so a broken trail is visible.
-  const { error: auditError } = await supabase.from("admin_audit").insert({
+  // Audit trail of who changed what.
+  await recordAudit(supabase, {
     admin_id: user.id,
     action: "set_plan",
     target_id: parsed.data.vendorId,
     detail: { to: parsed.data.plan, amount_cents: amount },
   });
-  if (auditError)
-    console.error("admin_audit insert failed", auditError.message);
 
   // Upgrading clears any pending request the vendor filed (best-effort).
   if (parsed.data.plan === "pro")
@@ -105,7 +118,6 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
   if (!parsed.success) return { success: false, error: "Invalid input" };
 
   // The pass is a window: starts at validFrom (or now) and runs `days`.
-  const MS_PER_DAY = 86_400_000;
   const validFrom = parsed.data.validFromIso ?? new Date().toISOString();
   const expiresAt = new Date(
     Date.parse(validFrom) + parsed.data.days * MS_PER_DAY,
@@ -142,7 +154,7 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
     if (payError) console.error("payment insert failed", payError.message);
   }
 
-  const { error: auditError } = await supabase.from("admin_audit").insert({
+  await recordAudit(supabase, {
     admin_id: user.id,
     action: "grant_pass",
     target_id: parsed.data.vendorId,
@@ -153,8 +165,6 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
       amount_cents: parsed.data.amountCents ?? 0,
     },
   });
-  if (auditError)
-    console.error("admin_audit insert failed", auditError.message);
 
   await resolveVendorRequests(supabase, parsed.data.vendorId);
 
@@ -214,14 +224,12 @@ export async function revokePass(
     return { success: false, error: "Could not revoke pass" };
   }
 
-  const { error: auditError } = await supabase.from("admin_audit").insert({
+  await recordAudit(supabase, {
     admin_id: user.id,
     action: "revoke_pass",
     target_id: parsed.data.vendorId,
     detail: { ended: ended?.length ?? 0 },
   });
-  if (auditError)
-    console.error("admin_audit insert failed", auditError.message);
 
   revalidatePath("/admin");
   return { success: true };
@@ -252,7 +260,7 @@ export async function setPricing(
     return { success: false, error: "Could not update pricing" };
   }
 
-  const { error: auditError } = await supabase.from("admin_audit").insert({
+  await recordAudit(supabase, {
     admin_id: user.id,
     action: "set_pricing",
     detail: {
@@ -260,8 +268,6 @@ export async function setPricing(
       monthly_cents: parsed.data.monthly_cents,
     },
   });
-  if (auditError)
-    console.error("admin_audit insert failed", auditError.message);
 
   revalidatePath("/admin");
   revalidatePath("/dashboard/plan");

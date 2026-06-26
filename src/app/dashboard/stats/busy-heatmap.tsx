@@ -1,12 +1,7 @@
 import type { StatsSummary } from "@/lib/stats";
+import { hourLabel } from "./chart-format";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-function hourLabel(h: number): string {
-  const period = h < 12 ? "a" : "p";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}${period}`;
-}
 
 /**
  * Day × hour busyness grid (SGT). Colour intensity = order volume, so the

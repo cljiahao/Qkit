@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { OrderStatusBadge } from "./order-status-badge";
+import { OrderStatusBadge } from "@/components/order-status-badge";
 import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
