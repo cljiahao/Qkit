@@ -9,6 +9,7 @@ import { ImageUploader } from "@/components/image-uploader";
 import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
+import { parseDollarsToCents } from "@/lib/utils";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { OptionGroup } from "@/lib/types";
 
@@ -41,26 +42,22 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
     onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
 
+  function setMoney(
+    index: number,
+    field: "price_cents" | "cost_cents",
+    dollars: string,
+  ) {
+    const parsed = parseDollarsToCents(dollars);
+    if (!parsed.ok) return; // reject NaN/negative, keep prior value
+    update(index, { [field]: parsed.cents });
+  }
+
   function setPrice(index: number, dollars: string) {
-    const trimmed = dollars.trim();
-    if (trimmed === "") {
-      update(index, { price_cents: undefined });
-      return;
-    }
-    const value = Number(trimmed);
-    if (Number.isNaN(value) || value < 0) return;
-    update(index, { price_cents: Math.round(value * 100) });
+    setMoney(index, "price_cents", dollars);
   }
 
   function setCost(index: number, dollars: string) {
-    const trimmed = dollars.trim();
-    if (trimmed === "") {
-      update(index, { cost_cents: undefined });
-      return;
-    }
-    const value = Number(trimmed);
-    if (Number.isNaN(value) || value < 0) return;
-    update(index, { cost_cents: Math.round(value * 100) });
+    setMoney(index, "cost_cents", dollars);
   }
 
   function setStock(index: number, raw: string) {

@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { orderRowSchema } from "@/lib/schemas";
+import {
+  applyRealtimeOrderEvent,
+  parseRealtimeOrderEvent,
+} from "@/lib/realtime-orders";
 import type { Order } from "@/lib/types";
 
 export function useRealtimeOrders(
@@ -35,26 +38,11 @@ export function useRealtimeOrders(
           filter: `booth_id=in.(${filterString})`,
         },
         (payload) => {
-          if (payload.eventType === "DELETE") {
-            const id = payload.old?.id;
-            if (typeof id !== "string") return;
-            setOrders((prev) => prev.filter((o) => o.id !== id));
-            return;
-          }
-
           // Realtime payloads are untrusted — validate before use.
-          const parsed = orderRowSchema.safeParse(payload.new);
-          if (!parsed.success) return;
-          const order: Order = parsed.data;
-
-          if (payload.eventType === "INSERT") {
-            setOrders((prev) => [order, ...prev]);
-            onInsertRef.current?.(order);
-          } else if (payload.eventType === "UPDATE") {
-            setOrders((prev) =>
-              prev.map((o) => (o.id === order.id ? order : o)),
-            );
-          }
+          const event = parseRealtimeOrderEvent(payload);
+          if (!event) return;
+          setOrders((prev) => applyRealtimeOrderEvent(prev, event));
+          if (event.type === "INSERT") onInsertRef.current?.(event.order);
         },
       )
       .subscribe();

@@ -10,6 +10,16 @@ export const RANGE_LABEL: Record<string, string> = {
   "90d": "last 90 days",
 };
 
+/**
+ * Hour-of-day label. `long` → "9am" / "12pm" (KPI/axis copy); compact default →
+ * "9a" / "12p" (tight heatmap cells).
+ */
+export function hourLabel(h: number, opts?: { long?: boolean }): string {
+  const period = (h < 12 ? "a" : "p") + (opts?.long ? "m" : "");
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}${period}`;
+}
+
 /** Compact wait — for chart axes + tooltips: "4.2m" / "45s". */
 export function fmtWait(seconds: number): string {
   return seconds >= 60

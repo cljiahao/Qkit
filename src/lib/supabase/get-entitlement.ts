@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { getEntitlement, type Entitlement } from "@/lib/plan";
 import type { User } from "@supabase/supabase-js";
@@ -57,4 +58,22 @@ export async function loadEntitlement(): Promise<{
     entitlement: getEntitlement(vendor?.plan ?? "free", licenseExpiresAt, now),
     licenseExpiresAt,
   };
+}
+
+/**
+ * Page guard variant of loadEntitlement: redirect when the gate fails
+ * (`/login` if not signed in, `/onboarding` if not yet onboarded), otherwise
+ * return the entitlement bundle with non-null user + vendor.
+ */
+export async function requireEntitledVendor(): Promise<{
+  user: User;
+  vendor: Vendor;
+  entitlement: Entitlement;
+  licenseExpiresAt: string | null;
+}> {
+  const { user, vendor, entitlement, licenseExpiresAt } =
+    await loadEntitlement();
+  if (!user) redirect("/login");
+  if (!vendor) redirect("/onboarding");
+  return { user, vendor, entitlement, licenseExpiresAt };
 }

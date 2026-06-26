@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createServerClient } from "@/lib/supabase/server";
-import { loadEntitlement } from "@/lib/supabase/get-entitlement";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { parseMenuItems } from "@/lib/schemas";
 import { canAddBooth } from "@/lib/plan";
 import { servableBoothIds, isBoothPaused } from "@/lib/booth-access";
@@ -13,9 +12,7 @@ import { BoothList } from "./booth-list";
 export const revalidate = 0;
 
 export default async function BoothsPage() {
-  const { user, vendor, entitlement } = await loadEntitlement();
-  if (!user) redirect("/login");
-  if (!vendor) redirect("/onboarding");
+  const { vendor, entitlement } = await requireEntitledVendor();
 
   const supabase = await createServerClient();
   const { data: booths } = await supabase

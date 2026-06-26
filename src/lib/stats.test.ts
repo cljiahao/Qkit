@@ -152,6 +152,14 @@ describe("computeStats", () => {
     expect(s.topItems).toHaveLength(10);
     expect(s.topItems[0].label).toBe("Item 14"); // highest quantity first
   });
+
+  it("breaks a busiest-hour tie toward the earlier hour (stable)", () => {
+    const s = computeStats([
+      order("completed", 100, [], "2026-06-12T01:00:00Z"), // 09:00 SGT
+      order("completed", 100, [], "2026-06-12T04:00:00Z"), // 12:00 SGT
+    ]);
+    expect(s.busiestHour).toBe(9); // 1 vs 1 tie -> earliest wins (strict >)
+  });
 });
 
 describe("pctChange", () => {
@@ -206,6 +214,20 @@ describe("windowSeries", () => {
     );
     expect(s[2]).toEqual({ t: now, orders: 1, revenue_cents: 100 });
     expect(s.reduce((n, p) => n + p.orders, 0)).toBe(1);
+  });
+
+  it("skips orders with an unparseable created_at", () => {
+    const s = windowSeries(
+      [
+        order("completed", 100, [], "not-a-timestamp"),
+        order("completed", 200, [], "2026-06-12T00:00:00Z"),
+      ],
+      now,
+      3,
+      DAY,
+    );
+    expect(s.reduce((n, p) => n + p.orders, 0)).toBe(1);
+    expect(s[2]).toEqual({ t: now, orders: 1, revenue_cents: 200 });
   });
 });
 
@@ -273,6 +295,17 @@ describe("computeStats — option breakdown", () => {
       choice: "Hot",
       count: 1,
     });
+  });
+
+  it("respects the topN limit on the option breakdown", () => {
+    const items = Array.from({ length: 5 }, (_, i) => ({
+      menuItemId: `m${i}`,
+      name: `Item ${i}`,
+      quantity: i + 1,
+      options: [{ group: "G", choice: `c${i}` }],
+    }));
+    const s = computeStats([order("completed", 0, items)], 3);
+    expect(s.optionBreakdown).toHaveLength(3); // 5 distinct choices, sliced to 3
   });
 });
 
@@ -368,6 +401,12 @@ describe("avgWaitSeconds", () => {
     ];
     expect(avgWaitSeconds(orders)).toBeNull();
   });
+
+  it("returns null for an unparseable ready_at (not a wait of 0)", () => {
+    expect(
+      avgWaitSeconds([waitOrder("2026-06-12T04:00:00Z", "not-a-date")]),
+    ).toBeNull();
+  });
 });
 
 describe("waitSeries", () => {
@@ -395,6 +434,17 @@ describe("waitSeries", () => {
     const s = waitSeries(orders, now, 1, hour);
     expect(s[0]).toEqual({ t: now, avgWaitSeconds: null, orders: 1 });
   });
+
+  it("skips orders with an unparseable created_at", () => {
+    const now = Date.parse("2026-06-12T04:00:00Z");
+    const hour = 3_600_000;
+    const orders = [
+      waitOrder("garbage", "2026-06-12T03:33:00Z"),
+      waitOrder("2026-06-12T03:30:00Z", "2026-06-12T03:33:00Z"), // 180s
+    ];
+    const s = waitSeries(orders, now, 1, hour);
+    expect(s[0]).toEqual({ t: now, avgWaitSeconds: 180, orders: 1 });
+  });
 });
 
 describe("peakThroughput", () => {
@@ -409,5 +459,23 @@ describe("peakThroughput", () => {
 
   it("returns 0 for no orders", () => {
     expect(peakThroughput([])).toBe(0);
+  });
+
+  it("returns 0 when every order is cancelled", () => {
+    expect(
+      peakThroughput([
+        waitOrder("2026-06-12T04:05:00Z", null, "cancelled"),
+        waitOrder("2026-06-12T04:50:00Z", null, "cancelled"),
+      ]),
+    ).toBe(0);
+  });
+
+  it("skips orders with an unparseable created_at", () => {
+    expect(
+      peakThroughput([
+        waitOrder("not-a-date", null),
+        waitOrder("2026-06-12T04:05:00Z", null),
+      ]),
+    ).toBe(1);
   });
 });
