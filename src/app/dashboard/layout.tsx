@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
 import { DashboardNav } from "./dashboard-nav";
+import { DashboardTour } from "@/components/tour/dashboard-tour";
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +22,7 @@ export default async function DashboardLayout({
 
   const { data: vendor } = await supabase
     .from("vendors")
-    .select("name")
+    .select("name, tour_seen_at")
     .eq("id", user.id)
     .single();
 
@@ -55,6 +56,7 @@ export default async function DashboardLayout({
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
         {children}
       </main>
+      <DashboardTour seen={!!vendor?.tour_seen_at} />
     </div>
   );
 }

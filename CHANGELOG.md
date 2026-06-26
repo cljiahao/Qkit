@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Guided onboarding tour**: a short, skippable dashboard tour (driver.js)
+  auto-runs once on a new vendor's first visit — spotlighting the live order
+  board and the Booths/Stats/Plan landmarks, ending on a "create your first
+  booth" nudge. A floating **?** button replays it anytime. Responsive (5 steps
+  desktop / 3 mobile). "Seen" is tracked server-side per vendor
+  (`vendors.tour_seen_at`, migration `0023`) so it doesn't re-nag across
+  devices.
 - One-tap **reorder**: customers can repeat a past order from the order-status
   page or their recent-orders list; the cart is rebuilt against the live menu
   (current prices, removed/changed items skipped). Recent-orders list collapses
