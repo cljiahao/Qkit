@@ -18,6 +18,11 @@ function isActive(path: string, href: string): boolean {
   return href === "/dashboard" ? path === "/dashboard" : path.startsWith(href);
 }
 
+/** Stable anchor id for the onboarding tour, e.g. "/dashboard/booths" → "nav-booths". */
+function tourAnchor(href: string): string {
+  return `nav-${href === "/dashboard" ? "orders" : href.split("/").pop()}`;
+}
+
 /**
  * Dashboard nav. On a phone the links collapse behind a burger so the bar never
  * overflows; from sm up they sit inline. Sign out runs the passed server action.
@@ -41,7 +46,9 @@ export function DashboardNav({ signOut }: { signOut: () => Promise<void> }) {
               isActive(path, l.href) && "bg-primary/10 text-primary",
             )}
           >
-            <Link href={l.href}>{l.label}</Link>
+            <Link href={l.href} data-tour={tourAnchor(l.href)}>
+              {l.label}
+            </Link>
           </Button>
         ))}
         <Button
@@ -71,6 +78,7 @@ export function DashboardNav({ signOut }: { signOut: () => Promise<void> }) {
       <Button
         variant="ghost"
         size="icon"
+        data-tour="nav-menu"
         className="rounded-lg sm:hidden"
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}

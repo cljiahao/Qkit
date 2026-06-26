@@ -123,7 +123,10 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
 
   return (
     <div>
-      <div className="mb-7 flex items-end justify-between gap-3">
+      <div
+        data-tour="order-board"
+        className="mb-7 flex items-end justify-between gap-3"
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             The pass

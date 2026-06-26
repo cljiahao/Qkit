@@ -65,18 +65,26 @@ export interface Database {
   public: {
     Tables: {
       vendors: {
-        Row: { id: string; name: string; plan: Plan; created_at: string };
+        Row: {
+          id: string;
+          name: string;
+          plan: Plan;
+          created_at: string;
+          tour_seen_at: string | null;
+        };
         Insert: {
           id: string;
           name: string;
           plan?: Plan;
           created_at?: string;
+          tour_seen_at?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
           plan?: Plan;
           created_at?: string;
+          tour_seen_at?: string | null;
         };
         Relationships: [];
       };
