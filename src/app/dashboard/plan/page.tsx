@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import { Check, Sparkles, Ticket } from "lucide-react";
 import { createServerClient } from "@/lib/supabase/server";
-import { loadEntitlement } from "@/lib/supabase/get-entitlement";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { DEFAULT_PRICING } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { UpgradeCta } from "./upgrade-cta";
@@ -50,10 +49,7 @@ function Cell({ on }: { on: boolean }) {
 }
 
 export default async function PlanPage() {
-  const { user, vendor, entitlement, licenseExpiresAt } =
-    await loadEntitlement();
-  if (!user) redirect("/login");
-  if (!vendor) redirect("/onboarding");
+  const { entitlement, licenseExpiresAt } = await requireEntitledVendor();
 
   const supabase = await createServerClient();
   const { data: pricingRow } = await supabase

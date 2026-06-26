@@ -1,6 +1,11 @@
 import type { OrderItem, OrderStatus } from "@/lib/types";
-import { formatOptions } from "@/lib/utils";
+import { formatOptions, MS_PER_HOUR } from "@/lib/utils";
 import { sgtHour, sgtWeekday, type WeekdayKey } from "@/lib/tz";
+
+// Empty-data convention across this module: rates and waits return `null` (the
+// UI renders "—", never a misleading 0), while money and counts return `0`.
+// e.g. avgWaitSeconds/waitSeries/pctChange → null; revenue_cents/aov_cents/
+// fulfilmentRate/peakThroughput → 0.
 
 export type StatsOrder = {
   status: OrderStatus;
@@ -74,6 +79,24 @@ export type SeriesPoint = {
 };
 
 /**
+ * Slot a created_at into a fixed-size window ending nowMs. Returns the bucket
+ * index (0 = oldest, buckets-1 = current) or null when the timestamp is
+ * unparseable or falls outside the window. Shared by windowSeries + waitSeries
+ * so the bucketing math lives (and is tested) in exactly one place.
+ */
+function bucketIndex(
+  createdAt: string,
+  nowMs: number,
+  buckets: number,
+  bucketMs: number,
+): number | null {
+  const t = Date.parse(createdAt);
+  if (!Number.isFinite(t)) return null;
+  const idx = buckets - 1 - Math.floor((nowMs - t) / bucketMs);
+  return idx < 0 || idx >= buckets ? null : idx;
+}
+
+/**
  * Bucket orders into a fixed-size time series ending "now" — the trend line.
  * `buckets` slots of `bucketMs` each; index 0 is the oldest slot, the last is
  * the current one. Orders outside the window are ignored. Cancelled excluded.
@@ -95,11 +118,8 @@ export function windowSeries(
   }));
   for (const o of orders) {
     if (o.status === "cancelled") continue;
-    const t = Date.parse(o.created_at);
-    if (!Number.isFinite(t)) continue;
-    const ago = Math.floor((nowMs - t) / bucketMs);
-    const idx = buckets - 1 - ago;
-    if (idx < 0 || idx >= buckets) continue;
+    const idx = bucketIndex(o.created_at, nowMs, buckets, bucketMs);
+    if (idx === null) continue;
     series[idx].orders += 1;
     series[idx].revenue_cents += o.total_cents;
   }
@@ -155,11 +175,8 @@ export function waitSeries(
   const counts = Array.from({ length: buckets }, () => 0);
   for (const o of orders) {
     if (o.status === "cancelled") continue;
-    const t = Date.parse(o.created_at);
-    if (!Number.isFinite(t)) continue;
-    const ago = Math.floor((nowMs - t) / bucketMs);
-    const idx = buckets - 1 - ago;
-    if (idx < 0 || idx >= buckets) continue;
+    const idx = bucketIndex(o.created_at, nowMs, buckets, bucketMs);
+    if (idx === null) continue;
     counts[idx] += 1;
     const w = waitOf(o);
     if (w !== null) {
@@ -174,7 +191,12 @@ export function waitSeries(
   }));
 }
 
-/** Busiest single clock-hour's order count (non-cancelled). 0 if none. */
+/**
+ * Busiest single clock-hour's order count (non-cancelled). 0 if none.
+ * Buckets on the absolute epoch-hour grid; since SGT is a whole-hour offset
+ * (UTC+8), these boundaries coincide with SGT :00 and the count is unaffected
+ * by timezone — only a *labelled* hour would shift, and this returns a count.
+ */
 export function peakThroughput(orders: StatsOrder[]): number {
   const byHour = new Map<number, number>();
   let peak = 0;
@@ -182,7 +204,7 @@ export function peakThroughput(orders: StatsOrder[]): number {
     if (o.status === "cancelled") continue;
     const t = Date.parse(o.created_at);
     if (!Number.isFinite(t)) continue;
-    const slot = Math.floor(t / 3_600_000);
+    const slot = Math.floor(t / MS_PER_HOUR);
     const n = (byHour.get(slot) ?? 0) + 1;
     byHour.set(slot, n);
     if (n > peak) peak = n;

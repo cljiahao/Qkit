@@ -5,6 +5,7 @@ import {
   formatPrice,
   genOrderNumber,
   orderHasPricing,
+  parseDollarsToCents,
 } from "./utils";
 
 describe("cn", () => {
@@ -82,5 +83,28 @@ describe("formatOptions", () => {
     expect(formatOptions([])).toBe("");
     expect(formatOptions(null)).toBe("");
     expect(formatOptions(undefined)).toBe("");
+  });
+});
+
+describe("parseDollarsToCents", () => {
+  it("rounds a dollar string to integer cents", () => {
+    expect(parseDollarsToCents("5.50")).toEqual({ ok: true, cents: 550 });
+    expect(parseDollarsToCents("0")).toEqual({ ok: true, cents: 0 });
+    expect(parseDollarsToCents("  6  ")).toEqual({ ok: true, cents: 600 });
+  });
+
+  it("rounds to the nearest cent", () => {
+    expect(parseDollarsToCents("0.125")).toEqual({ ok: true, cents: 13 }); // 12.5 → 13
+    expect(parseDollarsToCents("1.234")).toEqual({ ok: true, cents: 123 });
+  });
+
+  it("treats empty/whitespace as a cleared field (undefined cents)", () => {
+    expect(parseDollarsToCents("")).toEqual({ ok: true, cents: undefined });
+    expect(parseDollarsToCents("   ")).toEqual({ ok: true, cents: undefined });
+  });
+
+  it("rejects NaN and negative input", () => {
+    expect(parseDollarsToCents("abc")).toEqual({ ok: false });
+    expect(parseDollarsToCents("-3")).toEqual({ ok: false });
   });
 });

@@ -2,7 +2,7 @@ import { Children } from "react";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import type { SeriesPoint, StatsSummary, WaitPoint } from "@/lib/stats";
-import { waitClock } from "./chart-format";
+import { hourLabel, waitClock } from "./chart-format";
 import { ServiceSpeedChart } from "./service-speed-chart";
 import { KpiRow } from "./kpi-row";
 import { ExportButton } from "./export-button";
@@ -32,12 +32,6 @@ interface Props {
   boothId: string;
   pro: boolean;
   speed?: Speed;
-}
-
-function hourLabel(h: number): string {
-  const period = h < 12 ? "am" : "pm";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}${period}`;
 }
 
 /**
@@ -133,7 +127,7 @@ export function StatsView({
                 Busiest hour
               </p>
               <p className="mt-1 font-mono text-2xl font-bold">
-                {hourLabel(summary.busiestHour)}
+                {hourLabel(summary.busiestHour, { long: true })}
               </p>
             </div>
           )}

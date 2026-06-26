@@ -1,15 +1,13 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
-import { loadEntitlement } from "@/lib/supabase/get-entitlement";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { canAddBooth } from "@/lib/plan";
 import { BoothForm } from "../booth-form";
 
 export const revalidate = 0;
 
 export default async function NewBoothPage() {
-  const { user, vendor, entitlement } = await loadEntitlement();
-  if (!user) redirect("/login");
-  if (!vendor) redirect("/onboarding");
+  const { vendor, entitlement } = await requireEntitledVendor();
 
   // Plan gate: free vendors get one booth (an active pass/Pro lifts it). RLS is
   // the real backstop; this just sends them to the upgrade page instead of a

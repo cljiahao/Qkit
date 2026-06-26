@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import type { User } from "@supabase/supabase-js";
 import type { Vendor } from "@/lib/types";
@@ -25,4 +26,19 @@ export async function getVendor(): Promise<{
     .maybeSingle();
 
   return { user, vendor: vendor ?? null };
+}
+
+/**
+ * Page/layout guard: load the vendor and redirect when the gate fails —
+ * `/login` if not signed in, `/onboarding` if signed in but not yet onboarded.
+ * Returns non-null user + vendor so callers skip the repeated guard.
+ */
+export async function requireVendor(): Promise<{
+  user: User;
+  vendor: Vendor;
+}> {
+  const { user, vendor } = await getVendor();
+  if (!user) redirect("/login");
+  if (!vendor) redirect("/onboarding");
+  return { user, vendor };
 }
