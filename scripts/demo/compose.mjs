@@ -84,6 +84,10 @@ function main() {
   const popSec =
     meta.popMs && meta.popMs > 0 ? meta.popMs / 1000 : Math.max(0, dur - 5);
 
+  // A short outro card so the video resolves instead of cutting off abruptly.
+  const OUTRO_DUR = 2.8;
+  const total = dur + OUTRO_DUR;
+
   // ── Video chain: fit + pillarbox + per-beat captions ──────────────────────
   const vfilters = [
     "scale=1080:1920:force_original_aspect_ratio=decrease",
@@ -100,8 +104,19 @@ function main() {
     );
   }
 
-  // ── Audio chains ──────────────────────────────────────────────────────────
-  const graph = [`[0:v]${vfilters.join(",")}[v]`];
+  // ── Video: main (captions, fade to BG) → outro card, concatenated ─────────
+  const graph = [
+    `[0:v]${vfilters.join(",")},fps=30,format=yuv420p,` +
+      `fade=t=out:st=${(dur - 0.6).toFixed(2)}:d=0.6[vmain]`,
+    `color=c=${BG}:s=1080x1920:d=${OUTRO_DUR}:r=30,setsar=1,format=yuv420p,` +
+      `drawtext=fontfile='${fontPath}':text='QKit':fontsize=148:` +
+      `fontcolor=white:x=(w-text_w)/2:y=h/2-160,` +
+      `drawtext=fontfile='${fontPath}':` +
+      `text='Run your booth, watch orders land live':` +
+      `fontsize=44:fontcolor=0xCBBFB0:x=(w-text_w)/2:y=h/2+40,` +
+      `fade=t=in:st=0:d=0.7[vout]`,
+    `[vmain][vout]concat=n=2:v=1:a=0[v]`,
+  ];
 
   // Chime: one decaying note per tone, delayed onto the timeline.
   const noteLabels = [];
@@ -121,14 +136,15 @@ function main() {
     `${noteLabels.join("")}amix=inputs=${CHIME_NOTES.length}:normalize=0[chime]`,
   );
 
-  // Full-length silent base so the audio track spans the whole video.
-  graph.push(`anullsrc=r=44100:cl=stereo,atrim=0:${dur.toFixed(2)}[base]`);
+  // Full-length silent base so the audio track spans video + outro.
+  graph.push(`anullsrc=r=44100:cl=stereo,atrim=0:${total.toFixed(2)}[base]`);
 
   const mixIns = ["[base]", "[chime]"];
   if (music) {
+    // Music carries through the outro, fading out over its last 3s.
     graph.push(
-      `[1:a]atrim=0:${dur.toFixed(2)},aresample=44100,volume=0.3,` +
-        `afade=t=in:st=0:d=2,afade=t=out:st=${(dur - 3).toFixed(2)}:d=3[music]`,
+      `[1:a]atrim=0:${total.toFixed(2)},aresample=44100,volume=0.3,` +
+        `afade=t=in:st=0:d=2,afade=t=out:st=${(total - 3).toFixed(2)}:d=3[music]`,
     );
     mixIns.push("[music]");
   }
@@ -158,7 +174,8 @@ function main() {
     "160k",
     "-movflags",
     "+faststart",
-    "-shortest",
+    "-t",
+    total.toFixed(2),
     dst,
   ];
 

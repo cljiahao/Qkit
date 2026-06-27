@@ -151,7 +151,7 @@ async function main() {
     await slowType(page, page.locator("#name"), STALL);
     await glideClick(page, page.getByRole("button", { name: /Open my stall/ }));
     await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
-    await beat(900);
+    await beat(600);
   });
 
   // ── Beat 1.5: the built-in guided tour greets the new vendor ────────────────
@@ -169,7 +169,7 @@ async function main() {
     const nextBtn = page.locator(".driver-popover-next-btn");
     // Up to 5 steps (3 on the phone viewport); the final "Next" is "Done".
     for (let i = 0; i < 5; i++) {
-      await beat(780); // hold each step long enough to read (caption reinforces)
+      await beat(680); // hold each step long enough to read (caption reinforces)
       if (!(await nextBtn.isVisible().catch(() => false))) break;
       await glideClick(page, nextBtn);
     }
@@ -253,10 +253,15 @@ async function main() {
   });
 
   // ── Beat 3: the QR customers scan ──────────────────────────────────────────
+  // We're on the booths list — click the card's QR button so the cursor leads
+  // into the transition, rather than teleporting to the QR URL.
   await step("Customers scan this", async () => {
-    await page.goto(`${BASE}/dashboard/booths/${boothId}/qr`, { waitUntil: "domcontentloaded" });
-    await beat(600);
-    await beat(1300);
+    await beat(400);
+    await glideClick(page, page.getByRole("link", { name: /Booth QR code/i }));
+    await page.waitForURL(new RegExp(`/dashboard/booths/${boothId}/qr`), {
+      timeout: 15000,
+    });
+    await beat(1600);
   });
 
   // ── Beat 4: the customer customizes + orders from their phone ───────────────
