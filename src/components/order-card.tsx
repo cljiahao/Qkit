@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +19,14 @@ import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { boothColor } from "@/lib/booth-color";
-import { isTerminal, orderAgeTone, elapsedMinutes } from "@/lib/orders";
+import {
+  isTerminal,
+  orderAgeTone,
+  elapsedMinutes,
+  buildAdvancePatch,
+} from "@/lib/orders";
 import { sgtClock } from "@/lib/tz";
+import { useNow } from "@/hooks/use-now";
 import { ChevronDown, Clock } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
 
@@ -47,12 +53,7 @@ export function OrderCard({
 
   // Ticket aging: tick the clock each 30s (only while live) so the vendor sees
   // at a glance how long an order has waited against a ~10-min prep target.
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    if (isTerminal(status)) return;
-    const id = setInterval(() => setNowMs(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, [status]);
+  const nowMs = useNow(30_000, !isTerminal(status));
   const elapsedMs = nowMs - Date.parse(order.created_at);
   const tone = orderAgeTone(elapsedMs);
   const ageMins = elapsedMinutes(elapsedMs);
@@ -64,17 +65,9 @@ export function OrderCard({
   async function advanceStatus() {
     if (!advance) return;
     setUpdating(true);
-    const nowIso = new Date().toISOString();
-    const patch: {
-      status: OrderStatus;
-      ready_at?: string;
-      completed_at?: string;
-    } = { status: advance.next };
-    if (advance.next === "ready") patch.ready_at = nowIso;
-    if (advance.next === "completed") patch.completed_at = nowIso;
     const { error } = await supabase
       .from("orders")
-      .update(patch)
+      .update(buildAdvancePatch(advance.next, new Date().toISOString()))
       .eq("id", order.id);
 
     if (error) {
