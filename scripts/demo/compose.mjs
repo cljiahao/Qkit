@@ -54,10 +54,14 @@ function probeDuration(src) {
 
 function findMusic() {
   if (!fs.existsSync(ASSETS)) return null;
-  const hit = fs
+  const audio = fs
     .readdirSync(ASSETS)
-    .find((f) => /^music\.(mp3|m4a|wav|ogg|aac)$/i.test(f));
-  return hit ? path.join(ASSETS, hit) : null;
+    .filter((f) => /\.(mp3|m4a|wav|ogg|aac)$/i.test(f))
+    .sort();
+  if (!audio.length) return null;
+  // Prefer a file literally named music.*, else just take the first track found.
+  const named = audio.find((f) => /^music\.(mp3|m4a|wav|ogg|aac)$/i.test(f));
+  return path.join(ASSETS, named ?? audio[0]);
 }
 
 function main() {
@@ -123,7 +127,7 @@ function main() {
   const mixIns = ["[base]", "[chime]"];
   if (music) {
     graph.push(
-      `[1:a]atrim=0:${dur.toFixed(2)},aresample=44100,volume=0.18,` +
+      `[1:a]atrim=0:${dur.toFixed(2)},aresample=44100,volume=0.3,` +
         `afade=t=in:st=0:d=2,afade=t=out:st=${(dur - 3).toFixed(2)}:d=3[music]`,
     );
     mixIns.push("[music]");

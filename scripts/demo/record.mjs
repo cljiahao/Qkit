@@ -193,9 +193,12 @@ async function main() {
     await slowType(page, page.locator("#booth-name"), STALL);
 
     for (const it of ITEMS) {
+      // Use the *bottom* "Add item" button (present once there's ≥1 item) so the
+      // view stays put — clicking the top header button jumps it back up. With 0
+      // items there's only the top one, so .last() resolves to it.
       await glideClick(
         page,
-        page.getByRole("button", { name: /Add item/ }).first(),
+        page.getByRole("button", { name: /Add item/ }).last(),
       );
       await beat(150);
       const card = page.locator("div.bg-card", { hasText: "Available" }).last();

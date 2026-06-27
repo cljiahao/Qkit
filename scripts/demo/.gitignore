@@ -1,2 +1,10 @@
 # Generated recording artifacts (.webm / steps.json / demo.mp4)
 out/
+
+# Local drop-in background music (royalty-free track; the mp4 embeds it).
+# Keep the binary out of the repo — drop your own in to re-compose.
+assets/*.mp3
+assets/*.m4a
+assets/*.wav
+assets/*.ogg
+assets/*.aac
