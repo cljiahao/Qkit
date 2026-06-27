@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
 import { DashboardNav } from "./dashboard-nav";
-import { DashboardTour } from "@/components/tour/dashboard-tour";
+import { DashboardTour } from "@/components/dashboard-tour";
 
 export default async function DashboardLayout({
   children,

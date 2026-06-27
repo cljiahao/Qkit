@@ -22,7 +22,9 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("driver.js", () => ({ driver: mocks.driver }));
-vi.mock("./tour-actions", () => ({ markTourSeen: mocks.markTourSeen }));
+vi.mock("@/app/dashboard/tour-actions", () => ({
+  markTourSeen: mocks.markTourSeen,
+}));
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.state.pathname,
   useRouter: () => ({ push: mocks.push }),

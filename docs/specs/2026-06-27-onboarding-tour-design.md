@@ -29,13 +29,14 @@ the first time they land, plus an always-available replay affordance. Reduces
 
 ```
 src/app/dashboard/layout.tsx (RSC)
-  reads vendor.tour_seen_at  ──seen={bool}──▶  <DashboardTour seen={...}/>
+  reads vendor.tour_seen_at  ──seen={bool}──▶  <DashboardTour seen={...}/> (only when onboarded)
 
-src/components/tour/
-  tour-steps.ts        pure: (isMobile) => DriveStep[]   [unit-tested]
+Flat under src/components/ (matching the project convention):
   dashboard-tour.tsx   client: owns driver instance + ? FAB + auto-start + mark
-  tour-actions.ts      "use server": markTourSeen()  → stamps vendors.tour_seen_at
+  tour-steps.ts        pure: (isMobile) => DriveStep[]   [unit-tested]
   tour.css             popover theme (Kraft & Ember tokens)   [imported by controller]
+src/app/dashboard/tour-actions.ts
+  "use server": markTourSeen()  → stamps vendors.tour_seen_at
 ```
 
 `DashboardTour` is the single client component. It renders only the `?` FAB

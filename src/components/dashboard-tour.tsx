@@ -6,7 +6,7 @@ import { CircleHelp } from "lucide-react";
 import { driver, type Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { tourSteps } from "./tour-steps";
-import { markTourSeen } from "./tour-actions";
+import { markTourSeen } from "@/app/dashboard/tour-actions";
 import "./tour.css";
 
 function buildDriver(onDone: () => void): Driver {
