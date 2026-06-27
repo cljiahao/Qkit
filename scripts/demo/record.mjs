@@ -24,11 +24,15 @@ const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "out");
 const EMAIL = "demo-cart@qkit.local";
 const PASSWORD = "demo-password-123";
 const STALL = "Sunrise Coffee Cart";
+// Event vendors care about customization, not price — so the menu shows options
+// (Milk: Oat/Regular/Soy on the hero item) and no prices. The first item is the
+// customizable one; the rest are plain so the walk-in can one-tap "Add".
 const ITEMS = [
-  { name: "Flat White", price: "5.50" },
-  { name: "Cold Brew", price: "6.00" },
-  { name: "Mocha", price: "6.50" },
+  { name: "Flat White", group: "Milk", choices: ["Oat milk", "Regular", "Soy"] },
+  { name: "Cold Brew" },
+  { name: "Iced Mocha" },
 ];
+const CUSTOMIZE_PICK = "Soy"; // beat 4: a non-default choice, to show selection
 const CUSTOMER = "Priya"; // beat 4 (recorded, on-camera order)
 const WALK_IN = "Marcus"; // beat 5 (background order → live pop)
 
@@ -140,9 +144,10 @@ async function main() {
   });
 
   // ── Beat 1.5: the built-in guided tour greets the new vendor ────────────────
-  // On first landing the dashboard tour auto-pops. Show it briefly (it's a
-  // selling point), then dismiss so the overlay stops intercepting clicks.
-  // Resilient: if it doesn't appear (e.g. already seen), just move on.
+  // On first landing the dashboard tour auto-pops. Walk it through to its own
+  // conclusion (the last step says "go create your first booth →") instead of
+  // cutting it off — so the move to booth setup next feels motivated, not an
+  // abrupt jump. Resilient: if it never appears (already seen), just move on.
   await step("A guided tour, built in", async () => {
     const pop = page.locator(".driver-popover.qkit-tour");
     try {
@@ -150,21 +155,24 @@ async function main() {
     } catch {
       return;
     }
-    await beat(2300); // let the popover read on camera
-    await page.keyboard.press("Escape");
+    const nextBtn = page.locator(".driver-popover-next-btn");
+    // Up to 5 steps (3 on the phone viewport); the final "Next" is "Done".
+    for (let i = 0; i < 5; i++) {
+      await beat(950); // hold each step long enough to read (caption reinforces)
+      if (!(await nextBtn.isVisible().catch(() => false))) break;
+      await glideClick(page, nextBtn);
+    }
+    // In case a step had no Next (shouldn't happen), make sure it's closed.
     if (await pop.isVisible().catch(() => false)) {
-      await page
-        .locator(".driver-popover-close-btn")
-        .click()
-        .catch(() => {});
+      await page.keyboard.press("Escape");
     }
     await pop.waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
-    await beat(500);
+    await beat(450); // brief breath on the dashboard before heading to setup
   });
 
-  // ── Beat 2: create the booth + menu ────────────────────────────────────────
+  // ── Beat 2: create the booth + menu (names + customization, no prices) ──────
   let boothId;
-  await step("Add your menu", async () => {
+  await step("Add your menu & options", async () => {
     await glideClick(
       page,
       page.getByRole("link", { name: /Add your first booth/ }),
@@ -181,13 +189,34 @@ async function main() {
       await beat(150);
       const card = page.locator("div.bg-card", { hasText: "Available" }).last();
       await slowType(page, card.getByPlaceholder("Item name"), it.name, 45);
-      // The price field is a controlled input that re-formats cents on every
-      // keystroke, so char-by-char typing fights it. Glide the cursor in, then
-      // set the whole value at once for a clean "5.50".
-      const priceField = card.getByPlaceholder("Price (optional)");
-      await glideClick(page, priceField);
-      await priceField.fill(it.price);
-      await beat(280);
+
+      // The hero item shows off customization — the event-vendor selling point
+      // (size, milk, add-ons), not price.
+      if (it.group) {
+        await glideClick(
+          page,
+          card.getByRole("button", { name: /Customization/ }),
+        );
+        await beat(250);
+        await glideClick(
+          page,
+          card.getByRole("button", { name: /Add option group/ }),
+        );
+        await beat(200);
+        await slowType(page, card.getByPlaceholder(/Group name/), it.group, 40);
+        const choices = card.getByPlaceholder(/^Choice/);
+        await slowType(page, choices.first(), it.choices[0], 40);
+        for (let ci = 1; ci < it.choices.length; ci++) {
+          await glideClick(
+            page,
+            card.getByRole("button", { name: /Add choice/ }),
+          );
+          await beat(120);
+          await choices.nth(ci).fill(it.choices[ci]);
+          await beat(170);
+        }
+        await beat(300);
+      }
     }
     await beat(300);
     await glideClick(page, page.getByRole("button", { name: /Save booth/ }));
@@ -212,13 +241,20 @@ async function main() {
     await beat(2200);
   });
 
-  // ── Beat 4: the customer orders from their phone ───────────────────────────
-  await step("They order from their phone", async () => {
-    await page.goto(`${BASE}/order/${boothId}`, { waitUntil: "domcontentloaded" });
+  // ── Beat 4: the customer customizes + orders from their phone ───────────────
+  await step("They customize & order", async () => {
+    await page.goto(`${BASE}/order/${boothId}`, {
+      waitUntil: "domcontentloaded",
+    });
     await beat(800);
-    // Plain items (no option groups) → an "Add" button each.
-    await glideClick(page, page.getByRole("button", { name: "Add" }).first());
-    await beat(400);
+    // The customizable item shows "Customize" → opens the options sheet.
+    await glideClick(page, page.getByRole("button", { name: "Customize" }));
+    await beat(700); // sheet slides up
+    // Pick a non-default milk so the selection visibly changes, then add.
+    await glideClick(page, page.getByRole("button", { name: CUSTOMIZE_PICK }));
+    await beat(500);
+    await glideClick(page, page.getByRole("button", { name: /Add to order/ }));
+    await beat(600);
     await slowType(page, page.locator("#customerName"), CUSTOMER);
     await glideClick(page, page.getByRole("button", { name: /Place order/ }));
     await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
