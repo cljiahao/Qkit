@@ -87,6 +87,24 @@ export function sgtClock(iso: string): string {
   return SGT_CLOCK_FORMAT.format(new Date(iso));
 }
 
+// Cached: short weekday + time in SGT, e.g. "Mon, 02:30 pm" — for the pass
+// countdown's "Pro until …" label.
+const SGT_WEEKDAY_TIME_FORMAT = new Intl.DateTimeFormat("en-SG", {
+  timeZone: BOOTH_TZ,
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * Weekday + wall-clock time of an ISO instant in SGT, e.g. "Mon, 02:30 pm".
+ * Fixed to SGT (not the runtime tz), so server and client agree — hydration-safe
+ * unlike a bare `toLocaleString()`.
+ */
+export function sgtWeekdayTime(iso: string): string {
+  return SGT_WEEKDAY_TIME_FORMAT.format(new Date(iso));
+}
+
 // Cached: short date + time in SGT, e.g. "7 Jun, 2:30 pm" — for review timestamps.
 const SGT_DATETIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
   timeZone: BOOTH_TZ,

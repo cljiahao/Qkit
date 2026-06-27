@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Ticket } from "lucide-react";
+import { useNow } from "@/hooks/use-now";
+import { sgtWeekdayTime } from "@/lib/tz";
 
 function format(msLeft: number): string {
   const totalMin = Math.max(0, Math.floor(msLeft / 60_000));
@@ -15,20 +16,10 @@ function format(msLeft: number): string {
 
 /** Live countdown for an active pass. Ticks each minute. */
 export function PassCountdown({ expiresAt }: { expiresAt: string }) {
-  const expiryMs = Date.parse(expiresAt);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const left = expiryMs - now;
-  const until = new Date(expiryMs).toLocaleString("en-SG", {
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const left = Date.parse(expiresAt) - useNow(60_000);
+  // Fixed to SGT so the server and client render the same string (no hydration
+  // mismatch), unlike a runtime-tz toLocaleString.
+  const until = sgtWeekdayTime(expiresAt);
 
   return (
     <div className="ticket flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-5">

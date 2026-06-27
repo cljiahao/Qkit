@@ -45,6 +45,9 @@ export function DashboardTour({ seen }: { seen: boolean }) {
   // Mark-seen guard: flip once so a finished/skipped tour only stamps the DB
   // a single time, and a replay by an already-seen vendor never re-stamps.
   const seenRef = useRef(seen);
+  // Set when replay is tapped from another page; the tour then runs once we
+  // land back on the order board (step 1's anchor).
+  const pendingReplay = useRef(false);
 
   function start() {
     driverRef.current?.destroy();
@@ -73,11 +76,20 @@ export function DashboardTour({ seen }: { seen: boolean }) {
     return () => driverRef.current?.destroy();
   }, []);
 
+  // Run a cross-page replay once we've actually arrived on the order board —
+  // waits for the route + the anchor instead of guessing with a fixed delay.
+  useEffect(() => {
+    if (!pendingReplay.current || pathname !== "/dashboard") return;
+    pendingReplay.current = false;
+    const id = requestAnimationFrame(start);
+    return () => cancelAnimationFrame(id);
+  }, [pathname]);
+
   function onReplay() {
     if (pathname !== "/dashboard") {
       // Step 1 spotlights the order board, so get there first, then run.
+      pendingReplay.current = true;
       router.push("/dashboard");
-      window.setTimeout(start, 150);
       return;
     }
     start();
