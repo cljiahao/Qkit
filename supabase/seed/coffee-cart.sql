@@ -7,7 +7,7 @@ values (
   '6df824a1-9da2-4608-ad13-2400a9114ec0',
   'Kopitiam Cart',
   true,
-  '/seed/kopitiam-chart.svg',
+  '/seed/kopitiam-cart.svg',
   '[
     {
       "id":"kopi","name":"Kopi","description":"Local coffee","price_cents":140,

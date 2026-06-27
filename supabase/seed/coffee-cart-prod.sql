@@ -20,7 +20,7 @@ select
   v.vendor_id,
   'Kopitiam Cart',
   true,
-  '/seed/kopitiam-chart.svg',
+  '/seed/kopitiam-cart.svg',
   '[
     {
       "id":"kopi","name":"Kopi","description":"Local coffee","price_cents":140,

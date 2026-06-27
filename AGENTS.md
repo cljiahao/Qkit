@@ -52,7 +52,7 @@ unit logic by node tests (`*.test.ts`).
 
 ```
 src/app/                        — app router (pages, layouts, server actions)
-src/app/(auth)/                 — login + register (Supabase email/password)
+src/app/(auth)/                 — login page: email/password sign-in + sign-up; Google OAuth via src/app/auth/callback
 src/app/dashboard/              — vendor dashboard (realtime order board)
 src/app/order/[boothId]/        — customer menu + cart + placeOrder action
 src/app/order/[boothId]/[orderNumber]/ — live order status page
