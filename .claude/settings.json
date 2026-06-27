@@ -102,6 +102,16 @@
       "TodoWrite",
       "NotebookEdit"
     ],
+    "ask": [
+      "Edit(AGENTS.md)",
+      "Write(AGENTS.md)",
+      "Edit(CLAUDE.md)",
+      "Write(CLAUDE.md)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/settings.json)",
+      "Edit(.claude/settings.local.json)",
+      "Write(.claude/settings.local.json)"
+    ],
     "deny": [
       "Bash(rm -rf:*)",
       "Bash(rm -fr:*)",
