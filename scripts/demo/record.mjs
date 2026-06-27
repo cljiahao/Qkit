@@ -70,6 +70,7 @@ const CURSOR_SCRIPT = `
 
 // ── Pacing + timeline ────────────────────────────────────────────────────────
 const steps = [];
+let popMs = 0; // when the live order lands — compose drops the chime here
 let t0 = 0;
 const now = () => Date.now() - t0;
 const beat = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -99,6 +100,16 @@ async function slowType(page, locator, text, perCharMs = 55) {
   await glideClick(page, locator);
   await locator.pressSequentially(text, { delay: perCharMs });
   await beat(220);
+}
+
+/** Smooth-scroll a target to the vertical centre of the viewport, so the action
+ *  is the focus instead of stuck at the screen edge (matters on the long menu
+ *  form, where each new item card appears at the bottom). */
+async function center(page, locator) {
+  await locator
+    .evaluate((el) => el.scrollIntoView({ block: "center", behavior: "smooth" }))
+    .catch(() => {});
+  await beat(280); // let the scroll settle before measuring/typing
 }
 
 async function main() {
@@ -158,7 +169,7 @@ async function main() {
     const nextBtn = page.locator(".driver-popover-next-btn");
     // Up to 5 steps (3 on the phone viewport); the final "Next" is "Done".
     for (let i = 0; i < 5; i++) {
-      await beat(950); // hold each step long enough to read (caption reinforces)
+      await beat(780); // hold each step long enough to read (caption reinforces)
       if (!(await nextBtn.isVisible().catch(() => false))) break;
       await glideClick(page, nextBtn);
     }
@@ -188,6 +199,9 @@ async function main() {
       );
       await beat(150);
       const card = page.locator("div.bg-card", { hasText: "Available" }).last();
+      // New item cards append at the bottom of the form — pull the card up to
+      // the centre so the typing is the focus, not stuck at the screen edge.
+      await center(page, card.getByPlaceholder("Item name"));
       await slowType(page, card.getByPlaceholder("Item name"), it.name, 45);
 
       // The hero item shows off customization — the event-vendor selling point
@@ -203,6 +217,7 @@ async function main() {
           card.getByRole("button", { name: /Add option group/ }),
         );
         await beat(200);
+        await center(page, card.getByPlaceholder(/Group name/));
         await slowType(page, card.getByPlaceholder(/Group name/), it.group, 40);
         const choices = card.getByPlaceholder(/^Choice/);
         await slowType(page, choices.first(), it.choices[0], 40);
@@ -238,7 +253,7 @@ async function main() {
   await step("Customers scan this", async () => {
     await page.goto(`${BASE}/dashboard/booths/${boothId}/qr`, { waitUntil: "domcontentloaded" });
     await beat(600);
-    await beat(2200);
+    await beat(1300);
   });
 
   // ── Beat 4: the customer customizes + orders from their phone ───────────────
@@ -260,7 +275,7 @@ async function main() {
     await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
     });
-    await beat(1400);
+    await beat(1000);
   });
 
   // ── Beat 5: the vendor sees it land live, then marks it ready ───────────────
@@ -268,6 +283,12 @@ async function main() {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
     await beat(600);
     await beat(1500); // board settles, showing Priya's order
+
+    // Turn the new-order sound on — the bell goes active and the tap unlocks
+    // audio. (Playwright records no audio, so the chime itself is mixed in by
+    // compose.mjs at the moment the order lands.)
+    await glideClick(page, page.getByTitle(/New-order sound/));
+    await beat(300);
 
     // A walk-in orders from a second (un-recorded) phone — the ticket pops in
     // live on the board through the real realtime subscription.
@@ -287,12 +308,13 @@ async function main() {
       .getByText(WALK_IN, { exact: true })
       .first()
       .waitFor({ timeout: 15000 });
-    await beat(1200);
+    popMs = now(); // the live order just landed — chime goes here
+    await beat(900);
     await glideClick(
       page,
       page.getByRole("button", { name: "Mark Ready" }).first(),
     );
-    await beat(1800);
+    await beat(1100);
     await bg.close();
   });
 
@@ -308,7 +330,11 @@ async function main() {
 
   fs.writeFileSync(
     path.join(OUT, "steps.json"),
-    JSON.stringify({ video: videoFile, viewport: VIEWPORT, steps }, null, 2),
+    JSON.stringify(
+      { video: videoFile, viewport: VIEWPORT, popMs, steps },
+      null,
+      2,
+    ),
   );
 
   console.log(`\n✓ Recorded ${videoFile}`);
