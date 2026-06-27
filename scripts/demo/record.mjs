@@ -28,7 +28,11 @@ const STALL = "Sunrise Coffee Cart";
 // (Milk: Oat/Regular/Soy on the hero item) and no prices. The first item is the
 // customizable one; the rest are plain so the walk-in can one-tap "Add".
 const ITEMS = [
-  { name: "Flat White", group: "Milk", choices: ["Oat milk", "Regular", "Soy"] },
+  {
+    name: "Flat White",
+    group: "Milk",
+    choices: ["Oat milk", "Regular", "Soy"],
+  },
   { name: "Cold Brew" },
   { name: "Iced Mocha" },
 ];
@@ -107,7 +111,9 @@ async function slowType(page, locator, text, perCharMs = 55) {
  *  form, where each new item card appears at the bottom). */
 async function center(page, locator) {
   await locator
-    .evaluate((el) => el.scrollIntoView({ block: "center", behavior: "smooth" }))
+    .evaluate((el) =>
+      el.scrollIntoView({ block: "center", behavior: "smooth" }),
+    )
     .catch(() => {});
   await beat(280); // let the scroll settle before measuring/typing
 }
@@ -302,7 +308,9 @@ async function main() {
     // live on the board through the real realtime subscription.
     const bg = await browser.newContext({ viewport: VIEWPORT });
     const bgPage = await bg.newPage();
-    await bgPage.goto(`${BASE}/order/${boothId}`, { waitUntil: "domcontentloaded" });
+    await bgPage.goto(`${BASE}/order/${boothId}`, {
+      waitUntil: "domcontentloaded",
+    });
     await bgPage.getByRole("button", { name: "Add" }).first().click();
     await bgPage.locator("#customerName").fill(WALK_IN);
     await bgPage.getByRole("button", { name: /Place order/ }).click();

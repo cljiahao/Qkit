@@ -65,10 +65,14 @@ function findMusic() {
 }
 
 function main() {
-  const meta = JSON.parse(fs.readFileSync(path.join(OUT, "steps.json"), "utf8"));
+  const meta = JSON.parse(
+    fs.readFileSync(path.join(OUT, "steps.json"), "utf8"),
+  );
   const src = path.join(OUT, meta.video);
   if (!meta.video || !fs.existsSync(src)) {
-    throw new Error(`Recording not found (${meta.video}). Run record.mjs first.`);
+    throw new Error(
+      `Recording not found (${meta.video}). Run record.mjs first.`,
+    );
   }
   if (!fs.existsSync(FONT.replace(/\\:/g, ":"))) {
     console.warn(
@@ -181,7 +185,9 @@ function main() {
 
   console.log(
     `Running ffmpeg… chime @ ${popSec.toFixed(1)}s; ` +
-      (music ? `music: ${path.basename(music)}` : "no music track (chime only)"),
+      (music
+        ? `music: ${path.basename(music)}`
+        : "no music track (chime only)"),
   );
   const res = spawnSync("ffmpeg", args, { stdio: "inherit" });
   if (res.status !== 0) throw new Error("ffmpeg failed — see output above.");
