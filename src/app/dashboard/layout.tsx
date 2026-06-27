@@ -56,7 +56,9 @@ export default async function DashboardLayout({
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
         {children}
       </main>
-      <DashboardTour seen={!!vendor?.tour_seen_at} />
+      {/* Only once onboarded — a brand-new user briefly hits /dashboard before
+          the page redirects to /onboarding, and the tour must not flash there. */}
+      {vendor && <DashboardTour seen={!!vendor.tour_seen_at} />}
     </div>
   );
 }
