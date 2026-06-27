@@ -6,6 +6,7 @@ import {
   shortDay,
   shortDateTime,
   sgtClock,
+  sgtWeekdayTime,
 } from "./tz";
 
 // SGT is UTC+8, no DST. 2026-06-12 is a Friday.
@@ -65,5 +66,12 @@ describe("tz (Asia/Singapore)", () => {
     expect(sgtClock("2026-06-11T18:38:05Z")).toBe("2:38:05 AM");
     // 05:00:00Z -> 13:00:00 SGT -> "1:00:00 PM"
     expect(sgtClock("2026-06-12T05:00:00Z")).toBe("1:00:00 PM");
+  });
+
+  it("formats a deterministic SGT weekday + time (hydration-safe)", () => {
+    // 05:00Z Fri 12 Jun -> 13:00 SGT -> "Fri … 1:00 pm"
+    expect(sgtWeekdayTime("2026-06-12T05:00:00Z")).toMatch(/Fri.*1:00/i);
+    // 17:00Z Fri -> 01:00 SGT Sat (weekday rolls)
+    expect(sgtWeekdayTime("2026-06-12T17:00:00Z")).toMatch(/Sat.*1:00/i);
   });
 });

@@ -1,7 +1,7 @@
 ---
 name: changelog
 description: Append a Keep-a-Changelog entry under [Unreleased] in CHANGELOG.md.
-allowed-tools: "Read, Edit"
+allowed-tools: "Read(CHANGELOG.md), Edit(CHANGELOG.md)"
 argument-hint: "[Added|Changed|Fixed|Removed] <summary>"
 ---
 

@@ -50,7 +50,24 @@ describe("DashboardTour", () => {
   it("auto-runs on /dashboard for a vendor who hasn't seen it", async () => {
     render(<DashboardTour seen={false} />);
     await waitFor(() => expect(mocks.drive).toHaveBeenCalledTimes(1));
-    expect(config().steps.length).toBeGreaterThan(0);
+    expect(config().steps).toHaveLength(5); // desktop list (jsdom matchMedia absent)
+  });
+
+  it("uses the 3-step mobile list on a narrow viewport", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(<DashboardTour seen={false} />);
+      await waitFor(() => expect(mocks.drive).toHaveBeenCalled());
+      expect(config().steps).toHaveLength(3);
+    } finally {
+      window.matchMedia = original;
+    }
   });
 
   it("does not auto-run when already seen", async () => {

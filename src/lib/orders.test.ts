@@ -4,6 +4,7 @@ import {
   sortActiveOrders,
   orderAgeTone,
   elapsedMinutes,
+  buildAdvancePatch,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
 
@@ -128,5 +129,32 @@ describe("isTerminal", () => {
   it("is false for in-flight statuses", () => {
     const live: OrderStatus[] = ["pending", "confirmed", "preparing", "ready"];
     for (const s of live) expect(isTerminal(s)).toBe(false);
+  });
+});
+
+describe("buildAdvancePatch", () => {
+  const NOW = "2026-06-12T04:00:00Z";
+
+  it("stamps ready_at when advancing to ready", () => {
+    expect(buildAdvancePatch("ready", NOW)).toEqual({
+      status: "ready",
+      ready_at: NOW,
+    });
+  });
+
+  it("stamps completed_at when advancing to completed", () => {
+    expect(buildAdvancePatch("completed", NOW)).toEqual({
+      status: "completed",
+      completed_at: NOW,
+    });
+  });
+
+  it("stamps no timestamp for other transitions", () => {
+    expect(buildAdvancePatch("preparing", NOW)).toEqual({
+      status: "preparing",
+    });
+    expect(buildAdvancePatch("confirmed", NOW)).toEqual({
+      status: "confirmed",
+    });
   });
 });

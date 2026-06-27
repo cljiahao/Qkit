@@ -41,6 +41,20 @@ export function elapsedMinutes(elapsedMs: number): number {
 }
 
 /**
+ * The DB patch for advancing an order to `next`: the new status plus the
+ * transition timestamp it stamps — ready_at on entering "ready", completed_at on
+ * "completed", neither otherwise. Pure: `nowIso` is passed in (no Date here).
+ */
+export function buildAdvancePatch(
+  next: OrderStatus,
+  nowIso: string,
+): { status: OrderStatus; ready_at?: string; completed_at?: string } {
+  if (next === "ready") return { status: next, ready_at: nowIso };
+  if (next === "completed") return { status: next, completed_at: nowIso };
+  return { status: next };
+}
+
+/**
  * Sort active orders for the vendor board: in-progress (preparing) before
  * ready, then FIFO within a status by created_at (oldest first). created_at is
  * used rather than order_number because order numbers are per-booth and not
