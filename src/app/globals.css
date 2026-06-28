@@ -154,16 +154,34 @@ body {
   background-repeat: repeat-x;
 }
 
-/* "Customer says they've paid" — cool-blue wash + border so a busy vendor
-   spots it on the warm board. A plain class (not a Tailwind utility) so it
-   beats .ticket's own unlayered background, which would otherwise win. */
+/* Attention washes for the live board. Plain classes (not Tailwind utilities)
+   so they beat .ticket's own unlayered background — and a full-card background
+   (rather than a border) so the colour reaches up into the scalloped receipt
+   top edge instead of being broken by it. One wash at a time, by priority:
+   overdue (red) > says-paid (blue) > aging (amber). */
 .ticket-alert {
   background: oklch(0.93 0.045 245);
   border-color: oklch(0.62 0.13 245);
 }
+.ticket-aging {
+  background: oklch(0.95 0.04 80);
+  border-color: oklch(0.72 0.13 80);
+}
+.ticket-overdue {
+  background: oklch(0.94 0.055 27);
+  border-color: oklch(0.6 0.2 27);
+}
 .dark .ticket-alert {
   background: oklch(0.33 0.06 245);
   border-color: oklch(0.6 0.13 245);
+}
+.dark .ticket-aging {
+  background: oklch(0.32 0.05 80);
+  border-color: oklch(0.6 0.12 80);
+}
+.dark .ticket-overdue {
+  background: oklch(0.32 0.07 27);
+  border-color: oklch(0.58 0.2 27);
 }
 
 /* dashed perforation divider */
