@@ -144,12 +144,11 @@ export function OrderCard({
         "ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
         !closed && tone === "aging" && "border-l-4 border-l-amber-500",
         !closed && tone === "overdue" && "border-l-4 border-l-status-cancelled",
-        // Customer says they've paid — wash the whole card COOL BLUE. Time-
-        // urgency owns amber→red (the left stripe); payment owns blue, so the
-        // signals never collide. A cool card pops among the warm board, so a
-        // busy vendor spots a pending confirmation at a glance.
-        payStatus === "claimed" &&
-          "border-blue-500 bg-blue-400/20 ring-1 ring-blue-500/40",
+        // Customer says they've paid — cool-blue wash via .ticket-alert (a
+        // plain class, since .ticket's own background would beat a utility).
+        // Time-urgency owns amber→red (the left stripe); payment owns blue, so
+        // the two signals never collide and a cool card pops on the warm board.
+        payStatus === "claimed" && "ticket-alert ring-1 ring-blue-500/40",
       )}
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">

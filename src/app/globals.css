@@ -154,6 +154,18 @@ body {
   background-repeat: repeat-x;
 }
 
+/* "Customer says they've paid" — cool-blue wash + border so a busy vendor
+   spots it on the warm board. A plain class (not a Tailwind utility) so it
+   beats .ticket's own unlayered background, which would otherwise win. */
+.ticket-alert {
+  background: oklch(0.93 0.045 245);
+  border-color: oklch(0.62 0.13 245);
+}
+.dark .ticket-alert {
+  background: oklch(0.33 0.06 245);
+  border-color: oklch(0.6 0.13 245);
+}
+
 /* dashed perforation divider */
 .perforation {
   border: 0;
