@@ -1,5 +1,10 @@
 import { z } from "zod";
-import type { MenuItem, OptionGroup, OrderItem } from "@/lib/types";
+import type {
+  MenuItem,
+  OptionGroup,
+  OrderItem,
+  PaymentConfig,
+} from "@/lib/types";
 import type { BoothHours } from "@/lib/hours";
 
 export const loginSchema = z.object({
@@ -120,6 +125,81 @@ export const boothHoursSchema = z
   ])
   .nullable();
 
+// ── Payment seam ─────────────────────────────────────────────────────────────
+// booths.payment discriminated union. No secrets here — pointer URLs, static QR
+// images, and PayNow identifiers are all shown to the paying customer.
+
+const pointerConfigSchema = z.object({
+  kind: z.literal("pointer"),
+  label: z.string().min(1, "Label is required").max(60),
+  // Rendered as an <a href> on the public status page — restrict to http(s) so
+  // a vendor can't store a javascript:/data: link (stored XSS on the QKit origin).
+  url: z
+    .string()
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), "Must be an http(s) link")
+    .optional(),
+  qr_image_url: imageUrlString.optional(),
+});
+
+const paynowConfigSchema = z.object({
+  kind: z.literal("paynow"),
+  payee_name: z.string().min(1, "Payee name is required").max(100),
+  // SG UEN: alphanumeric, ~9–10 chars. Mobile: +65 followed by 8 digits.
+  uen: z
+    .string()
+    .regex(/^[0-9A-Za-z]{8,12}$/, "Invalid UEN")
+    .optional(),
+  mobile: z
+    .string()
+    .regex(/^\+65[0-9]{8}$/, "Use +65XXXXXXXX")
+    .optional(),
+});
+
+const stripeConfigSchema = z.object({
+  kind: z.literal("stripe"),
+  account_id: z.string().min(1),
+});
+
+// Discriminated union over plain objects, then cross-field rules applied to the
+// union (zod v3 discriminatedUnion rejects .refine()-wrapped members).
+export const paymentConfigSchema = z
+  .discriminatedUnion("kind", [
+    pointerConfigSchema,
+    paynowConfigSchema,
+    stripeConfigSchema,
+  ])
+  .superRefine((c, ctx) => {
+    if (c.kind === "pointer" && !c.url && !c.qr_image_url)
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add a payment link or a QR image",
+        path: ["url"],
+      });
+    // PayNow targets exactly one of UEN or mobile (xor).
+    if (c.kind === "paynow" && Boolean(c.uen) === Boolean(c.mobile))
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either a UEN or a mobile number, not both",
+        path: ["uen"],
+      });
+  });
+export type PaymentConfigInput = z.infer<typeof paymentConfigSchema>;
+
+export const paymentStatusSchema = z.enum([
+  "not_required",
+  "pending",
+  "claimed",
+  "confirmed",
+]);
+
+/** Parse a JSONB booths.payment value; any malformed shape degrades to null. */
+export function parsePaymentConfig(data: unknown): PaymentConfig | null {
+  if (data == null) return null;
+  const parsed = paymentConfigSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
+}
+
 export const boothFormSchema = z.object({
   boothId: z.string().uuid().optional(),
   name: z.string().min(1, "Booth name is required").max(100),
@@ -127,6 +207,8 @@ export const boothFormSchema = z.object({
   is_active: z.boolean(),
   hours: boothHoursSchema.default(null),
   menu_items: z.array(menuItemFormSchema),
+  // Optional BYO payment method; null = queue-only. Reuses paymentConfigSchema.
+  payment: paymentConfigSchema.nullable().default(null),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */
@@ -229,6 +311,14 @@ export const orderRowSchema = z.object({
   items: z.array(orderItemSchema),
   status: orderStatusSchema,
   total_cents: z.number().int().nonnegative(),
+  payment_status: paymentStatusSchema,
+  payment_method_kind: z
+    .enum(["pointer", "paynow", "stripe"])
+    .nullable()
+    // Tolerant read: an unknown kind from an old/foreign row degrades to null
+    // rather than dropping the whole realtime order.
+    .catch(null),
+  paid_at: z.string().nullable(),
   created_at: z.string(),
   ready_at: z.string().nullable(),
   completed_at: z.string().nullable(),

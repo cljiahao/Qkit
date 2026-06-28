@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(18);
+select plan(22);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -37,6 +37,15 @@ values
    '00000000-0000-0000-0000-00000000000a', 'A Booth', false),
   ('00000000-0000-0000-0000-0000000b0002',
    '00000000-0000-0000-0000-00000000000b', 'B Booth', false);
+
+-- One ACTIVE booth for A carrying a payment method — the public-read policy
+-- exposes active booths, so anon must be able to read its (secret-free) payment
+-- config to render the customer pay panel.
+insert into public.booths (id, vendor_id, name, is_active, payment)
+values
+  ('00000000-0000-0000-0000-0000000b0003',
+   '00000000-0000-0000-0000-00000000000a', 'A Active',
+   true, '{"kind":"paynow","payee_name":"A","uen":"53312345A"}'::jsonb);
 
 insert into public.orders
   (id, booth_id, order_number, customer_name, items, total_cents)
@@ -103,12 +112,27 @@ select isnt_empty(
 select is_empty(
   $$ select 1 from public.orders where id = '00000000-0000-0000-0000-00000000d002' $$,
   'A cannot read B order');
+-- A data-modifying CTE must attach to the TOP-LEVEL statement, so the WITH
+-- leads the `select is(...)` (it can't sit inside a scalar subquery).
+with upd as (
+  update public.orders set status = 'ready'
+  where id = '00000000-0000-0000-0000-00000000d002' returning 1)
+select is((select count(*)::int from upd), 0, 'A cannot update B order');
+
+-- Payment confirmation rides the same orders update policy: A confirms its own
+-- order's payment, but never B's.
+with upd as (
+  update public.orders set payment_status = 'confirmed', paid_at = now()
+  where id = '00000000-0000-0000-0000-00000000d001' returning 1)
 select is(
-  (with upd as (
-     update public.orders set status = 'ready'
-     where id = '00000000-0000-0000-0000-00000000d002' returning 1)
-   select count(*)::int from upd),
-  0, 'A cannot update B order');
+  (select count(*)::int from upd),
+  1, 'A can confirm payment on its own order');
+with upd as (
+  update public.orders set payment_status = 'confirmed'
+  where id = '00000000-0000-0000-0000-00000000d002' returning 1)
+select is(
+  (select count(*)::int from upd),
+  0, 'A cannot confirm payment on B order');
 
 -- Customer feedback: A sees only its own booths' reviews.
 select isnt_empty(
@@ -143,6 +167,30 @@ reset role; -- back to the superuser test role to verify B's row is untouched
 select is(
   (select label from public.licenses where id = '00000000-0000-0000-0000-0000000c0002'),
   null, 'B license label is unchanged by A');
+
+-- ── Act as an anonymous customer (anon role, no auth.uid()) ──────────────────
+set local role anon;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('role', 'anon')::text,
+  true);
+
+-- The active booth's payment config is publicly readable (drives the pay panel).
+select is(
+  (select payment->>'kind' from public.booths
+   where id = '00000000-0000-0000-0000-0000000b0003'),
+  'paynow', 'anon reads active booth payment config');
+
+-- But anon can never flip an order to a paid/confirmed state directly — only
+-- the owning vendor (via the authenticated update policy) can.
+with upd as (
+  update public.orders set payment_status = 'confirmed'
+  where id = '00000000-0000-0000-0000-00000000d001' returning 1)
+select is(
+  (select count(*)::int from upd),
+  0, 'anon cannot confirm payment on any order');
+
+reset role;
 
 select * from finish();
 rollback;

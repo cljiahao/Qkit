@@ -16,6 +16,22 @@ export type OrderStatus =
 
 export type Plan = "free" | "pro";
 
+export type PaymentStatus =
+  | "not_required"
+  | "pending"
+  | "claimed"
+  | "confirmed";
+
+export type PaymentKind = "pointer" | "paynow" | "stripe";
+
+// Discriminated union stored in booths.payment (JSONB). No secrets in any
+// active kind — a PayNow UEN/mobile, a payment link, and a static QR are all
+// public-by-design. `stripe` is reserved but dark (adapter throws).
+export type PaymentConfig =
+  | { kind: "pointer"; label: string; url?: string; qr_image_url?: string }
+  | { kind: "paynow"; payee_name: string; uen?: string; mobile?: string }
+  | { kind: "stripe"; account_id: string };
+
 export type OptionChoice = { id: string; label: string };
 export type OptionGroup = {
   id: string;
@@ -326,6 +342,7 @@ export interface Database {
           image_url: string | null;
           hours: Json | null;
           order_seq: number;
+          payment: Json | null;
           created_at: string;
         };
         Insert: {
@@ -337,6 +354,7 @@ export interface Database {
           image_url?: string | null;
           hours?: Json | null;
           order_seq?: number;
+          payment?: Json | null;
           created_at?: string;
         };
         Update: {
@@ -348,6 +366,7 @@ export interface Database {
           image_url?: string | null;
           hours?: Json | null;
           order_seq?: number;
+          payment?: Json | null;
           created_at?: string;
         };
         Relationships: [
@@ -368,6 +387,9 @@ export interface Database {
           items: Json;
           status: OrderStatus;
           total_cents: number;
+          payment_status: PaymentStatus;
+          payment_method_kind: PaymentKind | null;
+          paid_at: string | null;
           created_at: string;
           ready_at: string | null;
           completed_at: string | null;
@@ -381,6 +403,9 @@ export interface Database {
           items: Json;
           status?: OrderStatus;
           total_cents: number;
+          payment_status?: PaymentStatus;
+          payment_method_kind?: string | null;
+          paid_at?: string | null;
           created_at?: string;
           ready_at?: string | null;
           completed_at?: string | null;
@@ -394,6 +419,9 @@ export interface Database {
           items?: Json;
           status?: OrderStatus;
           total_cents?: number;
+          payment_status?: PaymentStatus;
+          payment_method_kind?: string | null;
+          paid_at?: string | null;
           created_at?: string;
           ready_at?: string | null;
           completed_at?: string | null;
@@ -436,6 +464,7 @@ export interface Database {
     };
     Enums: {
       order_status: OrderStatus;
+      payment_status: PaymentStatus;
     };
     CompositeTypes: {
       [_ in never]: never;
