@@ -40,8 +40,6 @@ export default async function OrderStatusPage({ params }: Props) {
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
 
-  // Show the pay panel only while payment is still outstanding for a booth that
-  // has a method configured.
   const paymentConfig = parsePaymentConfig(booth?.payment);
   // Show the pay panel for any payment-expected order (PayPanel renders the QR
   // while pending/claimed and a confirmation once paid, and polls for the flip).
