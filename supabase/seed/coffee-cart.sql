@@ -71,3 +71,10 @@ on conflict (id) do update
       is_active = excluded.is_active,
       image_url = excluded.image_url,
       menu_items = excluded.menu_items;
+
+-- Payment seam: give the Kopitiam Cart a PayNow method so the customer pay
+-- panel (and the payment-queue e2e) has something to render. No secrets — a
+-- UEN is public-by-design.
+update public.booths
+set payment = '{"kind":"paynow","payee_name":"Kopitiam Cart","uen":"53312345A"}'::jsonb
+where id = 'c0ffee01-0000-4000-8000-000000000001';

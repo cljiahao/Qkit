@@ -39,6 +39,29 @@ const ADVANCE: Partial<
   ready: { next: "completed", label: "Mark Picked Up" },
 };
 
+function PaymentBadge({ status }: { status: Order["payment_status"] }) {
+  if (status === "not_required") return null;
+  const map = {
+    pending: { label: "Unpaid", cls: "bg-secondary text-muted-foreground" },
+    claimed: {
+      label: "Payment claimed",
+      cls: "bg-amber-500/15 text-amber-600",
+    },
+    confirmed: { label: "Paid", cls: "bg-emerald-500/15 text-emerald-600" },
+  } as const;
+  const v = map[status];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider",
+        v.cls,
+      )}
+    >
+      {v.label}
+    </span>
+  );
+}
+
 export function OrderCard({
   order,
   boothName,
@@ -47,6 +70,7 @@ export function OrderCard({
   boothName?: string;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
+  const [payStatus, setPayStatus] = useState(order.payment_status);
   const [updating, setUpdating] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const supabase = useMemo(() => createClient(), []);
@@ -75,6 +99,22 @@ export function OrderCard({
     } else {
       setStatus(advance.next);
     }
+    setUpdating(false);
+  }
+
+  async function confirmPayment() {
+    setUpdating(true);
+    // Vendor is authenticated; RLS limits the update to their own booth's
+    // orders (same pattern as advanceStatus/cancelOrder).
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        payment_status: "confirmed",
+        paid_at: new Date().toISOString(),
+      })
+      .eq("id", order.id);
+    if (error) toast.error("Failed to confirm payment");
+    else setPayStatus("confirmed");
     setUpdating(false);
   }
 
@@ -114,6 +154,7 @@ export function OrderCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <OrderStatusBadge status={status} />
+          <PaymentBadge status={payStatus} />
           {!closed && (
             <span
               className={cn(
@@ -215,6 +256,20 @@ export function OrderCard({
               </span>
             </div>
           </>
+        )}
+
+        {payStatus === "claimed" && (
+          <div className="px-4 pb-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-11 w-full rounded-lg border-emerald-500/40 font-semibold text-emerald-700 hover:bg-emerald-500/10"
+              onClick={confirmPayment}
+              disabled={updating}
+            >
+              Confirm payment received
+            </Button>
+          </div>
         )}
 
         {!closed && (

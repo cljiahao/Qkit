@@ -11,6 +11,8 @@ import {
   parseBoothHours,
   parseMenuItems,
   parseOrderItems,
+  paymentConfigSchema,
+  parsePaymentConfig,
 } from "./schemas";
 
 describe("loginSchema", () => {
@@ -450,5 +452,65 @@ describe("parseOrderItems", () => {
     ]);
     expect(out.map((i) => i.menuItemId)).toEqual(["kopi"]);
     expect(out[0].quantity).toBe(2);
+  });
+});
+
+describe("paymentConfigSchema", () => {
+  it("accepts a pointer with a url", () => {
+    expect(
+      paymentConfigSchema.safeParse({
+        kind: "pointer",
+        label: "PayLah",
+        url: "https://pay.example/abc",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a pointer with neither url nor qr_image_url", () => {
+    expect(
+      paymentConfigSchema.safeParse({ kind: "pointer", label: "x" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a paynow with exactly a uen", () => {
+    expect(
+      paymentConfigSchema.safeParse({
+        kind: "paynow",
+        payee_name: "Kopitiam Cart",
+        uen: "53312345A",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a paynow with both uen and mobile", () => {
+    expect(
+      paymentConfigSchema.safeParse({
+        kind: "paynow",
+        payee_name: "x",
+        uen: "53312345A",
+        mobile: "+6591234567",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a paynow with neither uen nor mobile", () => {
+    expect(
+      paymentConfigSchema.safeParse({ kind: "paynow", payee_name: "x" })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("parsePaymentConfig", () => {
+  it("returns the config for a valid pointer", () => {
+    expect(
+      parsePaymentConfig({ kind: "pointer", label: "L", url: "https://a.b" }),
+    ).toEqual({ kind: "pointer", label: "L", url: "https://a.b" });
+  });
+
+  it("returns null for null, malformed, or unknown kind", () => {
+    expect(parsePaymentConfig(null)).toBeNull();
+    expect(parsePaymentConfig({ kind: "paypal" })).toBeNull();
+    expect(parsePaymentConfig({ kind: "paynow" })).toBeNull();
   });
 });

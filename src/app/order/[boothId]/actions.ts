@@ -7,6 +7,7 @@ import {
   placeOrderSchema,
   parseBoothHours,
   parseMenuItems,
+  parsePaymentConfig,
   type PlaceOrderInput,
 } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
@@ -62,7 +63,7 @@ export async function placeOrder(
     await Promise.all([
       supabase
         .from("booths")
-        .select("is_active, hours, menu_items")
+        .select("is_active, hours, menu_items, payment")
         .eq("id", boothId)
         .single(),
       supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
@@ -115,6 +116,11 @@ export async function placeOrder(
     return cost != null ? { ...it, cost_cents: cost } : it;
   });
 
+  // Snapshot the booth's payment method onto the order so the queue knows
+  // whether a payment is expected (and via which kind), frozen at order time.
+  const paymentConfig = parsePaymentConfig(booth.payment);
+  const paymentStatus = paymentConfig ? "pending" : "not_required";
+
   const { error } = await supabase.from("orders").insert({
     booth_id: boothId,
     order_number: orderNumber,
@@ -124,6 +130,8 @@ export async function placeOrder(
     // Orders land as "preparing" — no separate ack step; the booth starts
     // making it the moment it arrives.
     status: "preparing",
+    payment_status: paymentStatus,
+    payment_method_kind: paymentConfig?.kind ?? null,
   });
 
   if (error) {

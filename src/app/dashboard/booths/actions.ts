@@ -100,6 +100,7 @@ export async function saveBooth(
     is_active: data.is_active,
     hours,
     menu_items,
+    payment: data.payment,
   };
 
   if (data.boothId) {

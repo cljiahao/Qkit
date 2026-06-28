@@ -21,6 +21,7 @@ import {
 import { ImageUploader } from "@/components/image-uploader";
 import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
+import { PaymentSection } from "./payment-section";
 import { saveBooth, deleteBooth } from "./actions";
 import {
   boothFormSchema,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
+import type { PaymentConfig } from "@/lib/types";
 
 interface Props {
   vendorId: string;
@@ -40,6 +42,7 @@ interface Props {
     is_active: boolean;
     hours: BoothHours;
     menu_items: MenuItemFormInput[];
+    payment: PaymentConfig | null;
   };
 }
 
@@ -53,6 +56,9 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
   const [hours, setHours] = useState<BoothHours>(initial?.hours ?? null);
   const [items, setItems] = useState<MenuItemFormInput[]>(
     initial?.menu_items ?? [],
+  );
+  const [payment, setPayment] = useState<PaymentConfig | null>(
+    initial?.payment ?? null,
   );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -84,6 +90,7 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
         ...it,
         option_groups: sanitizeOptionGroups(it.option_groups),
       })),
+      payment,
     };
     const parsed = boothFormSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -160,6 +167,8 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
         onChange={setItems}
         entitlement={entitlement}
       />
+
+      <PaymentSection value={payment} onChange={setPayment} />
 
       <div className="flex gap-3">
         <Button

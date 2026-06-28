@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
-import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
+import {
+  parseMenuItems,
+  parseBoothHours,
+  parsePaymentConfig,
+} from "@/lib/schemas";
 import { BoothForm } from "../booth-form";
 
 export const revalidate = 0;
@@ -18,7 +22,7 @@ export default async function EditBoothPage({ params }: Props) {
   // RLS scopes this to the vendor's own booths; a foreign id returns null.
   const { data: booth } = await supabase
     .from("booths")
-    .select("id, name, image_url, is_active, hours, menu_items")
+    .select("id, name, image_url, is_active, hours, menu_items, payment")
     .eq("id", boothId)
     .maybeSingle();
 
@@ -49,6 +53,7 @@ export default async function EditBoothPage({ params }: Props) {
           is_active: booth.is_active,
           hours: parseBoothHours(booth.hours),
           menu_items: menuItems,
+          payment: parsePaymentConfig(booth.payment),
         }}
       />
     </div>

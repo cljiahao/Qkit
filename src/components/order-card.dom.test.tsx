@@ -27,6 +27,9 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     items: [{ menuItemId: "m1", name: "Kopi", price_cents: 350, quantity: 2 }],
     status: "preparing",
     total_cents: 700,
+    payment_status: "not_required",
+    payment_method_kind: null,
+    paid_at: null,
     created_at: new Date(0).toISOString(),
     ready_at: null,
     completed_at: null,
@@ -110,5 +113,36 @@ describe("OrderCard", () => {
   it("renders the booth pill when a name is given", () => {
     render(<OrderCard order={makeOrder()} boothName="Kopi Cart" />);
     expect(screen.getByText("Kopi Cart")).toBeInTheDocument();
+  });
+});
+
+describe("OrderCard payment", () => {
+  it("shows a Confirm payment button for a claimed order", () => {
+    render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />);
+    expect(
+      screen.getByRole("button", { name: /confirm payment/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms payment, stamping paid_at", async () => {
+    const user = userEvent.setup();
+    render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />);
+    await user.click(screen.getByRole("button", { name: /confirm payment/i }));
+    expect(updateMock).toHaveBeenCalledWith({
+      payment_status: "confirmed",
+      paid_at: expect.any(String),
+    });
+  });
+
+  it("shows a Paid badge for a confirmed order", () => {
+    render(<OrderCard order={makeOrder({ payment_status: "confirmed" })} />);
+    expect(screen.getByText(/^Paid$/i)).toBeInTheDocument();
+  });
+
+  it("shows no payment UI when payment is not required", () => {
+    render(<OrderCard order={makeOrder({ payment_status: "not_required" })} />);
+    expect(
+      screen.queryByRole("button", { name: /confirm payment/i }),
+    ).not.toBeInTheDocument();
   });
 });

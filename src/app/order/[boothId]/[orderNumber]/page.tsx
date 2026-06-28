@@ -3,16 +3,33 @@ import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
-import { parseOrderItems } from "@/lib/schemas";
+import { parseOrderItems, parsePaymentConfig } from "@/lib/schemas";
+import { renderCheckout } from "@/lib/payments/adapters";
+import type { PaymentConfig } from "@/lib/types";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
+import { PayPanel } from "./pay-panel";
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;
 }
 
 export const revalidate = 0;
+
+// A malformed or dark ('stripe') payment config must never crash the customer
+// page — degrade to no pay panel.
+function safeRenderCheckout(
+  config: PaymentConfig,
+  amountCents: number,
+  orderRef: string,
+) {
+  try {
+    return renderCheckout(config, { amountCents, orderRef });
+  } catch {
+    return null;
+  }
+}
 
 export default async function OrderStatusPage({ params }: Props) {
   const { boothId, orderNumber } = await params;
@@ -31,12 +48,21 @@ export default async function OrderStatusPage({ params }: Props) {
 
   const { data: booth } = await supabase
     .from("booths")
-    .select("name")
+    .select("name, payment")
     .eq("id", boothId)
     .single();
 
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
+
+  // Show the pay panel only while payment is still outstanding for a booth that
+  // has a method configured.
+  const paymentConfig = parsePaymentConfig(booth?.payment);
+  const checkout =
+    paymentConfig &&
+    (order.payment_status === "pending" || order.payment_status === "claimed")
+      ? safeRenderCheckout(paymentConfig, order.total_cents, order.order_number)
+      : null;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
@@ -66,6 +92,18 @@ export default async function OrderStatusPage({ params }: Props) {
         />
 
         <div className="perforation" />
+
+        {checkout && (
+          <>
+            <PayPanel
+              boothId={boothId}
+              orderNumber={orderNumber}
+              checkout={checkout}
+              initialStatus={order.payment_status}
+            />
+            <div className="perforation" />
+          </>
+        )}
 
         <section className="space-y-1.5 px-6 py-5">
           {items.map((item, i) => (
