@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" role="img" aria-label="Ice cream cart chart">
+  <rect width="800" height="240" fill="#4a2a30"/>
+  <text x="400" y="52" text-anchor="middle" font-family="monospace" font-size="34" font-weight="800" fill="#fdf2ef" letter-spacing="3">ICE CREAM CART</text>
+  <text x="400" y="80" text-anchor="middle" font-family="monospace" font-size="14" fill="#e6a6a0">vanilla · chocolate · strawberry · milo · affogato</text>
+  <g font-family="monospace" font-size="13" font-weight="700" fill="#fdf2ef" text-anchor="middle">
+    <g transform="translate(120,150)"><circle r="34" fill="#f2e2bd" stroke="#e6a6a0" stroke-width="3"/><text y="64" fill="#fdf2ef">VANILLA</text></g>
+    <g transform="translate(280,150)"><circle r="34" fill="#5a3a2a" stroke="#e6a6a0" stroke-width="3"/><text y="64">CHOCOLATE</text></g>
+    <g transform="translate(440,150)"><circle r="34" fill="#e69aa0" stroke="#e6a6a0" stroke-width="3"/><text y="64">STRAWBERRY</text></g>
+    <g transform="translate(600,150)"><circle r="34" fill="#6a4a2a" stroke="#e6a6a0" stroke-width="3"/><text y="64">MILO</text></g>
+    <g transform="translate(710,150)"><circle r="34" fill="#3a2a30" stroke="#e6a6a0" stroke-width="3"/><circle cy="-2" r="11" fill="#caa96f"/><text y="64">AFFOGATO</text></g>
+  </g>
+</svg>

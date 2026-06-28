@@ -2,6 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
 type Kind = "none" | "pointer" | "paynow";
@@ -11,6 +12,29 @@ function kindOf(v: PaymentConfig | null): Kind {
   // 'stripe' is reserved-but-dark — surface it as "none" in the editor.
   return v.kind === "stripe" ? "none" : v.kind;
 }
+
+// Each option carries a one-line, plain-language hint so a vendor can pick at a
+// glance without reading docs.
+const OPTIONS: { k: Kind; label: string; hint: string }[] = [
+  {
+    k: "none",
+    label: "No online payment",
+    hint: "Customers just join the queue — settle up at the counter.",
+  },
+  {
+    k: "paynow",
+    label: "PayNow QR",
+    hint: "We generate a QR with the order amount already filled in.",
+  },
+  {
+    k: "pointer",
+    label: "Payment link or QR image",
+    hint: "Use your own payment link, or upload a QR you already have.",
+  },
+];
+
+const labelClass =
+  "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 
 export function PaymentSection({
   value,
@@ -32,40 +56,59 @@ export function PaymentSection({
 
   return (
     <fieldset className="space-y-4">
-      <legend className="font-display text-lg font-semibold">Payments</legend>
-      <p className="text-sm text-muted-foreground">
-        Optional. Attach your own payment method — customers pay you directly;
-        QKit never touches the money.
-      </p>
+      <div className="space-y-1">
+        <legend className="font-display text-lg font-semibold">Payments</legend>
+        <p className="text-sm text-muted-foreground">
+          Optional. Attach your own payment method — customers pay you directly;
+          QKit never touches the money.
+        </p>
+      </div>
 
-      <div className="space-y-2">
-        {(
-          [
-            ["none", "No online payment"],
-            ["paynow", "PayNow QR"],
-            ["pointer", "Payment link / QR image"],
-          ] as [Kind, string][]
-        ).map(([k, label]) => (
-          <label key={k} className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="payment-kind"
-              checked={kind === k}
-              onChange={() => pick(k)}
-              aria-label={label}
-            />
-            {label}
-          </label>
-        ))}
+      {/* Radio cards: a small, comparable set, so show every option at once
+          (a dropdown would hide them and add a click). */}
+      <div className="space-y-2.5">
+        {OPTIONS.map(({ k, label, hint }) => {
+          const selected = kind === k;
+          return (
+            <label
+              key={k}
+              className={cn(
+                "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
+                selected
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                  : "border-border bg-card hover:bg-secondary/50",
+              )}
+            >
+              <input
+                type="radio"
+                name="payment-kind"
+                checked={selected}
+                onChange={() => pick(k)}
+                aria-label={label}
+                className="mt-0.5 size-4 accent-[var(--color-primary)]"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">{label}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {hint}
+                </span>
+              </span>
+            </label>
+          );
+        })}
       </div>
 
       {kind === "paynow" && (
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="pn-name">Payee name</Label>
+        <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4">
+          <div className="space-y-2">
+            <Label htmlFor="pn-name" className={labelClass}>
+              Payee name
+            </Label>
             <Input
               id="pn-name"
               value={paynow?.payee_name ?? ""}
+              placeholder="Kopitiam Cart"
+              className="h-12 rounded-xl"
               onChange={(e) =>
                 onChange({
                   kind: "paynow",
@@ -76,11 +119,15 @@ export function PaymentSection({
               }
             />
           </div>
-          <div>
-            <Label htmlFor="pn-uen">UEN</Label>
+          <div className="space-y-2">
+            <Label htmlFor="pn-uen" className={labelClass}>
+              UEN
+            </Label>
             <Input
               id="pn-uen"
               value={paynow?.uen ?? ""}
+              placeholder="53312345A"
+              className="h-12 rounded-xl"
               onChange={(e) =>
                 onChange({
                   kind: "paynow",
@@ -89,21 +136,25 @@ export function PaymentSection({
                 })
               }
             />
+            <p className="text-xs text-muted-foreground">
+              Your business PayNow UEN. Customers scan a QR with the order total
+              already filled in.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Your PayNow UEN — customers scan a QR with the order amount filled
-            in.
-          </p>
         </div>
       )}
 
       {kind === "pointer" && (
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="pt-label">Button label</Label>
+        <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4">
+          <div className="space-y-2">
+            <Label htmlFor="pt-label" className={labelClass}>
+              Button label
+            </Label>
             <Input
               id="pt-label"
               value={pointer?.label ?? ""}
+              placeholder="Pay with PayLah"
+              className="h-12 rounded-xl"
               onChange={(e) =>
                 onChange({
                   kind: "pointer",
@@ -114,11 +165,15 @@ export function PaymentSection({
               }
             />
           </div>
-          <div>
-            <Label htmlFor="pt-url">Payment link</Label>
+          <div className="space-y-2">
+            <Label htmlFor="pt-url" className={labelClass}>
+              Payment link
+            </Label>
             <Input
               id="pt-url"
               value={pointer?.url ?? ""}
+              placeholder="https://…"
+              className="h-12 rounded-xl"
               onChange={(e) =>
                 onChange({
                   kind: "pointer",
@@ -128,6 +183,9 @@ export function PaymentSection({
                 })
               }
             />
+            <p className="text-xs text-muted-foreground">
+              Any https link — your PayLah, bank, or Stripe payment page.
+            </p>
           </div>
         </div>
       )}
