@@ -112,26 +112,26 @@ select isnt_empty(
 select is_empty(
   $$ select 1 from public.orders where id = '00000000-0000-0000-0000-00000000d002' $$,
   'A cannot read B order');
-select is(
-  (with upd as (
-     update public.orders set status = 'ready'
-     where id = '00000000-0000-0000-0000-00000000d002' returning 1)
-   select count(*)::int from upd),
-  0, 'A cannot update B order');
+-- A data-modifying CTE must attach to the TOP-LEVEL statement, so the WITH
+-- leads the `select is(...)` (it can't sit inside a scalar subquery).
+with upd as (
+  update public.orders set status = 'ready'
+  where id = '00000000-0000-0000-0000-00000000d002' returning 1)
+select is((select count(*)::int from upd), 0, 'A cannot update B order');
 
 -- Payment confirmation rides the same orders update policy: A confirms its own
 -- order's payment, but never B's.
+with upd as (
+  update public.orders set payment_status = 'confirmed', paid_at = now()
+  where id = '00000000-0000-0000-0000-00000000d001' returning 1)
 select is(
-  (with upd as (
-     update public.orders set payment_status = 'confirmed', paid_at = now()
-     where id = '00000000-0000-0000-0000-00000000d001' returning 1)
-   select count(*)::int from upd),
+  (select count(*)::int from upd),
   1, 'A can confirm payment on its own order');
+with upd as (
+  update public.orders set payment_status = 'confirmed'
+  where id = '00000000-0000-0000-0000-00000000d002' returning 1)
 select is(
-  (with upd as (
-     update public.orders set payment_status = 'confirmed'
-     where id = '00000000-0000-0000-0000-00000000d002' returning 1)
-   select count(*)::int from upd),
+  (select count(*)::int from upd),
   0, 'A cannot confirm payment on B order');
 
 -- Customer feedback: A sees only its own booths' reviews.
@@ -183,11 +183,11 @@ select is(
 
 -- But anon can never flip an order to a paid/confirmed state directly — only
 -- the owning vendor (via the authenticated update policy) can.
+with upd as (
+  update public.orders set payment_status = 'confirmed'
+  where id = '00000000-0000-0000-0000-00000000d001' returning 1)
 select is(
-  (with upd as (
-     update public.orders set payment_status = 'confirmed'
-     where id = '00000000-0000-0000-0000-00000000d001' returning 1)
-   select count(*)::int from upd),
+  (select count(*)::int from upd),
   0, 'anon cannot confirm payment on any order');
 
 reset role;
