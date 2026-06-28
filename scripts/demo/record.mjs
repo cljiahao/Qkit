@@ -39,6 +39,7 @@ const ITEMS = [
 const CUSTOMIZE_PICK = "Soy"; // beat 4: a non-default choice, to show selection
 const CUSTOMER = "Priya"; // beat 4 (recorded, on-camera order)
 const WALK_IN = "Marcus"; // beat 5 (background order → live pop)
+const PAYING_CUSTOMER = "Hana"; // beat 7 (orders after PayNow is enabled → pays)
 
 const VIEWPORT = { width: 390, height: 844 }; // ~9:16, iPhone-ish
 
@@ -121,7 +122,11 @@ async function center(page, locator) {
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
 
-  const browser = await chromium.launch({ headless: false });
+  // Headed by default (crisp cursor + real rendering); DEMO_HEADLESS=1 runs it
+  // headless for validation/CI — recordVideo still captures either way.
+  const browser = await chromium.launch({
+    headless: process.env.DEMO_HEADLESS === "1",
+  });
   const context = await browser.newContext({
     viewport: VIEWPORT,
     deviceScaleFactor: 2,
@@ -293,7 +298,9 @@ async function main() {
   });
 
   // ── Beat 5: the vendor sees it land live, then marks it ready ───────────────
-  await step("You see every order live", async () => {
+  // This whole order ran with NO payment configured — the pure-queue flow. The
+  // payment beats below then show the same booth upgraded to a payment queue.
+  await step("Orders land live — a pure queue", async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
     await beat(600);
     await beat(1500); // board settles, showing Priya's order
@@ -332,6 +339,63 @@ async function main() {
     );
     await beat(1100);
     await bg.close();
+  });
+
+  // ── Beat 6: turn the queue into a payment queue (add PayNow) ────────────────
+  // Same booth, edited: pick PayNow and drop in a UEN. No money ever flows
+  // through QKit — the customer pays the vendor directly.
+  await step("Want to get paid? Add PayNow", async () => {
+    await page.goto(`${BASE}/dashboard/booths/${boothId}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await beat(700);
+    const paynow = page.getByRole("radio", { name: /PayNow QR/i });
+    await center(page, paynow);
+    await glideClick(page, paynow);
+    await beat(350);
+    await slowType(page, page.locator("#pn-name"), STALL, 40);
+    await slowType(page, page.locator("#pn-uen"), "53312345A", 45);
+    await beat(350);
+    await glideClick(page, page.getByRole("button", { name: /Save booth/ }));
+    await page.waitForURL(/\/dashboard\/booths$/, { timeout: 15000 });
+    await beat(700);
+  });
+
+  // ── Beat 7: the customer pays from their phone (PayNow QR → "I've paid") ────
+  await step("Customers pay you — you keep it all", async () => {
+    await page.goto(`${BASE}/order/${boothId}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await beat(700);
+    // A plain (non-customizable) item one-taps onto the order.
+    await glideClick(page, page.getByRole("button", { name: "Add" }).first());
+    await beat(400);
+    await slowType(page, page.locator("#customerName"), PAYING_CUSTOMER);
+    await glideClick(page, page.getByRole("button", { name: /Place order/ }));
+    await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
+      timeout: 15000,
+    });
+    await beat(900);
+    // The pay panel renders a per-order PayNow QR (amount baked in).
+    await page.getByText(/scan to pay/i).waitFor({ timeout: 10000 });
+    await beat(1400); // hold on the QR so it reads
+    await glideClick(page, page.getByRole("button", { name: /I.?ve paid/i }));
+    await page.getByText(/payment sent/i).waitFor({ timeout: 10000 });
+    await beat(900);
+  });
+
+  // ── Beat 8: the vendor confirms — the card glows blue, one tap to settle ────
+  await step("One tap to confirm payment", async () => {
+    await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
+    await beat(900); // board settles; the "says paid" card washes blue
+    const confirm = page.getByRole("button", {
+      name: /Confirm payment received/i,
+    });
+    await confirm.waitFor({ timeout: 15000 });
+    await center(page, confirm);
+    await beat(900); // let the blue card register before the tap
+    await glideClick(page, confirm);
+    await beat(1300);
   });
 
   // Finish — flush the video + timeline.

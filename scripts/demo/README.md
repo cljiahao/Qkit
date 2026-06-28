@@ -1,8 +1,15 @@
 # Demo video generator
 
-Produces a vertical (9:16) ~under-a-minute screen-capture of QKit for sending to
-a prospect: **register → name your stall → add menu → QR → customer orders →
-order lands live on the board**. Captions burned per beat, no audio.
+Produces a vertical (9:16) screen-capture of QKit for sending to a prospect:
+**register → name your stall → add menu → QR → customer orders → order lands
+live on the board (pure queue) → add PayNow → customer pays → vendor confirms
+(payment queue)**. Shows both the unpaid (queue-only) and paid flows on one
+booth — payment is the optional upgrade. Captions burned per beat, no audio.
+
+> Runs against `DEMO_BASE_URL` (default `http://localhost:3000`). If port 3000
+> is taken, start `pnpm dev` on another port and set `DEMO_BASE_URL` to match.
+> The booth gains its payment method through the UI in the recording — no seed
+> change needed.
 
 Spec: [`docs/specs/2026-06-24-demo-video-generator-design.md`](../../docs/specs/2026-06-24-demo-video-generator-design.md).
 
