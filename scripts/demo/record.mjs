@@ -74,11 +74,16 @@ const CURSOR_SCRIPT = `
 `;
 
 // ── Pacing + timeline ────────────────────────────────────────────────────────
+// Global tempo. <1 = faster: every cosmetic wait (beat) and the typing cadence
+// scale by it, so the whole walkthrough speeds up uniformly without retuning
+// each beat. Real waits (waitForURL / waitFor) are unaffected, so it stays
+// robust. Override with DEMO_SPEED (e.g. 1 = original, 0.6 = snappier).
+const SPEED = Number(process.env.DEMO_SPEED ?? 0.75);
 const steps = [];
 let popMs = 0; // when the live order lands — compose drops the chime here
 let t0 = 0;
 const now = () => Date.now() - t0;
-const beat = (ms) => new Promise((r) => setTimeout(r, ms));
+const beat = (ms) => new Promise((r) => setTimeout(r, ms * SPEED));
 
 /** Wrap a narrative beat: records {caption, startMs, endMs} for compose.mjs. */
 async function step(caption, fn) {
@@ -93,7 +98,7 @@ async function glideClick(page, locator) {
   const box = await locator.boundingBox();
   if (box) {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {
-      steps: 24,
+      steps: 18,
     });
     await beat(180);
   }
@@ -103,7 +108,7 @@ async function glideClick(page, locator) {
 /** Click a field, then type it character-by-character for a human cadence. */
 async function slowType(page, locator, text, perCharMs = 55) {
   await glideClick(page, locator);
-  await locator.pressSequentially(text, { delay: perCharMs });
+  await locator.pressSequentially(text, { delay: perCharMs * SPEED });
   await beat(220);
 }
 
