@@ -43,14 +43,16 @@ export default async function OrderStatusPage({ params }: Props) {
   // Show the pay panel only while payment is still outstanding for a booth that
   // has a method configured.
   const paymentConfig = parsePaymentConfig(booth?.payment);
-  const checkout =
-    paymentConfig &&
-    (order.payment_status === "pending" || order.payment_status === "claimed")
-      ? renderCheckout(paymentConfig, {
-          amountCents: order.total_cents,
-          orderRef: order.order_number,
-        })
-      : null;
+  // Show the pay panel for any payment-expected order (PayPanel renders the QR
+  // while pending/claimed and a confirmation once paid, and polls for the flip).
+  const showPay =
+    paymentConfig != null && order.payment_status !== "not_required";
+  const checkout = showPay
+    ? renderCheckout(paymentConfig, {
+        amountCents: order.total_cents,
+        orderRef: order.order_number,
+      })
+    : null;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
@@ -81,7 +83,7 @@ export default async function OrderStatusPage({ params }: Props) {
 
         <div className="perforation" />
 
-        {checkout && (
+        {showPay && (
           <>
             <PayPanel
               boothId={boothId}

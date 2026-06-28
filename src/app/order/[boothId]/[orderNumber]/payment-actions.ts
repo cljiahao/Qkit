@@ -4,8 +4,32 @@ import { z } from "zod";
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/action-result";
+import type { PaymentStatus } from "@/lib/types";
 
 const boothIdSchema = z.string().uuid();
+
+/**
+ * Read one order's payment status. Polling companion to getOrderStatus so the
+ * customer's status page reflects the vendor's "Confirm payment" the same way
+ * it reflects order progress (realtime is unreliable on customer devices).
+ * Service client bypasses RLS — only the single field leaks.
+ */
+export async function getPaymentStatus(
+  boothId: string,
+  orderNumber: string,
+): Promise<PaymentStatus | null> {
+  if (!boothIdSchema.safeParse(boothId).success) return null;
+
+  const supabase = await createServiceClient();
+  const { data } = await supabase
+    .from("orders")
+    .select("payment_status")
+    .eq("booth_id", boothId)
+    .eq("order_number", orderNumber)
+    .single();
+
+  return data?.payment_status ?? null;
+}
 // Order numbers are short sequential per-booth strings — validate to reject
 // junk and bound the value used in the query.
 const orderNumberSchema = z.string().min(1).max(40);

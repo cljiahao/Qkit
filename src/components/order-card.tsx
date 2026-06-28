@@ -146,6 +146,10 @@ export function OrderCard({
         "ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
         !closed && tone === "aging" && "border-l-4 border-l-amber-500",
         !closed && tone === "overdue" && "border-l-4 border-l-status-cancelled",
+        // Customer says they've paid — tint the whole card so the vendor can't
+        // miss that this order is waiting on a payment confirmation.
+        payStatus === "claimed" &&
+          "bg-amber-500/[0.07] ring-2 ring-inset ring-amber-500/50",
       )}
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">

@@ -5,6 +5,8 @@ import { PayPanel } from "./pay-panel";
 
 vi.mock("./payment-actions", () => ({
   claimPayment: vi.fn().mockResolvedValue({ success: true }),
+  // Poll returns the same status so the effect is a no-op in tests.
+  getPaymentStatus: vi.fn().mockResolvedValue("pending"),
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -41,13 +43,25 @@ describe("PayPanel", () => {
     );
   });
 
-  it("renders nothing once confirmed", () => {
-    const { container } = render(
+  it("shows a confirmed state once the vendor confirms", () => {
+    render(
       <PayPanel
         boothId="b"
         orderNumber="12"
         checkout={{ type: "qr", payload: "x" }}
         initialStatus="confirmed"
+      />,
+    );
+    expect(screen.getByText(/payment confirmed/i)).toBeInTheDocument();
+  });
+
+  it("renders nothing when payment is not required", () => {
+    const { container } = render(
+      <PayPanel
+        boothId="b"
+        orderNumber="12"
+        checkout={null}
+        initialStatus="not_required"
       />,
     );
     expect(container).toBeEmptyDOMElement();
