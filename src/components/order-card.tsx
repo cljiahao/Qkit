@@ -44,7 +44,7 @@ function PaymentBadge({ status }: { status: Order["payment_status"] }) {
   const map = {
     pending: { label: "Unpaid", cls: "bg-secondary text-muted-foreground" },
     // Filled, high-contrast — the actionable state.
-    claimed: { label: "Says paid", cls: "bg-amber-500 text-white" },
+    claimed: { label: "Says paid", cls: "bg-blue-600 text-white" },
     confirmed: { label: "Paid", cls: "bg-emerald-600 text-white" },
   } as const;
   const v = map[status];
@@ -144,11 +144,12 @@ export function OrderCard({
         "ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
         !closed && tone === "aging" && "border-l-4 border-l-amber-500",
         !closed && tone === "overdue" && "border-l-4 border-l-status-cancelled",
-        // Customer says they've paid — wash the whole card amber so a busy
-        // vendor glancing at the board can't miss that it's waiting on a
-        // payment confirmation. Loud on purpose.
+        // Customer says they've paid — wash the whole card COOL BLUE. Time-
+        // urgency owns amber→red (the left stripe); payment owns blue, so the
+        // signals never collide. A cool card pops among the warm board, so a
+        // busy vendor spots a pending confirmation at a glance.
         payStatus === "claimed" &&
-          "border-amber-500 bg-amber-400/20 ring-1 ring-amber-500/40",
+          "border-blue-500 bg-blue-400/20 ring-1 ring-blue-500/40",
       )}
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
@@ -269,7 +270,7 @@ export function OrderCard({
         {payStatus === "claimed" && (
           <div className="px-4 pb-3">
             <Button
-              className="h-12 w-full rounded-lg bg-amber-500 text-base font-bold text-white hover:bg-amber-600"
+              className="h-12 w-full rounded-lg bg-blue-600 text-base font-bold text-white hover:bg-blue-700"
               onClick={confirmPayment}
               disabled={updating}
             >
