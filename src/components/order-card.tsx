@@ -27,7 +27,7 @@ import {
 } from "@/lib/orders";
 import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
-import { ChevronDown, Clock } from "lucide-react";
+import { Banknote, ChevronDown, Clock } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
 
 // Forward transition keyed by the order's CURRENT status: where the advance
@@ -43,11 +43,9 @@ function PaymentBadge({ status }: { status: Order["payment_status"] }) {
   if (status === "not_required") return null;
   const map = {
     pending: { label: "Unpaid", cls: "bg-secondary text-muted-foreground" },
-    claimed: {
-      label: "Payment claimed",
-      cls: "bg-amber-500/15 text-amber-600",
-    },
-    confirmed: { label: "Paid", cls: "bg-emerald-500/15 text-emerald-600" },
+    // Filled, high-contrast — the actionable state.
+    claimed: { label: "Says paid", cls: "bg-amber-500 text-white" },
+    confirmed: { label: "Paid", cls: "bg-emerald-600 text-white" },
   } as const;
   const v = map[status];
   return (
@@ -146,10 +144,11 @@ export function OrderCard({
         "ticket flex w-full flex-col overflow-hidden rounded-xl border border-border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
         !closed && tone === "aging" && "border-l-4 border-l-amber-500",
         !closed && tone === "overdue" && "border-l-4 border-l-status-cancelled",
-        // Customer says they've paid — tint the whole card so the vendor can't
-        // miss that this order is waiting on a payment confirmation.
+        // Customer says they've paid — wash the whole card amber so a busy
+        // vendor glancing at the board can't miss that it's waiting on a
+        // payment confirmation. Loud on purpose.
         payStatus === "claimed" &&
-          "bg-amber-500/[0.07] ring-2 ring-inset ring-amber-500/50",
+          "border-amber-500 bg-amber-400/20 ring-1 ring-amber-500/40",
       )}
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
@@ -267,16 +266,27 @@ export function OrderCard({
           </>
         )}
 
-        {(payStatus === "claimed" || payStatus === "pending") && (
+        {payStatus === "claimed" && (
+          <div className="px-4 pb-3">
+            <Button
+              className="h-12 w-full rounded-lg bg-amber-500 text-base font-bold text-white hover:bg-amber-600"
+              onClick={confirmPayment}
+              disabled={updating}
+            >
+              <Banknote className="size-5" /> Confirm payment received
+            </Button>
+          </div>
+        )}
+        {payStatus === "pending" && (
           <div className="px-4 pb-3">
             <Button
               size="sm"
               variant="outline"
-              className="h-11 w-full rounded-lg border-emerald-500/40 font-semibold text-emerald-700 hover:bg-emerald-500/10"
+              className="h-10 w-full rounded-lg text-muted-foreground"
               onClick={confirmPayment}
               disabled={updating}
             >
-              Confirm payment received
+              Mark as paid
             </Button>
           </div>
         )}
