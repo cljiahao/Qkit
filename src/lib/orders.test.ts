@@ -160,4 +160,38 @@ describe("buildAdvancePatch", () => {
       status: "confirmed",
     });
   });
+
+  it("auto-confirms an outstanding payment when completing", () => {
+    for (const p of ["pending", "claimed"] as const) {
+      expect(buildAdvancePatch("completed", NOW, p)).toEqual({
+        status: "completed",
+        completed_at: NOW,
+        payment_status: "confirmed",
+        paid_at: NOW,
+      });
+    }
+  });
+
+  it("leaves payment untouched when completing an already-settled order", () => {
+    // not_required / confirmed (or no payment arg) → no payment fields written.
+    expect(buildAdvancePatch("completed", NOW, "not_required")).toEqual({
+      status: "completed",
+      completed_at: NOW,
+    });
+    expect(buildAdvancePatch("completed", NOW, "confirmed")).toEqual({
+      status: "completed",
+      completed_at: NOW,
+    });
+    expect(buildAdvancePatch("completed", NOW)).toEqual({
+      status: "completed",
+      completed_at: NOW,
+    });
+  });
+
+  it("does not auto-confirm payment when only advancing to ready", () => {
+    expect(buildAdvancePatch("ready", NOW, "claimed")).toEqual({
+      status: "ready",
+      ready_at: NOW,
+    });
+  });
 });

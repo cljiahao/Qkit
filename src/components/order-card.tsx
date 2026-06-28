@@ -94,13 +94,17 @@ export function OrderCard({
     setUpdating(true);
     const { error } = await supabase
       .from("orders")
-      .update(buildAdvancePatch(advance.next, new Date().toISOString()))
+      .update(
+        buildAdvancePatch(advance.next, new Date().toISOString(), payStatus),
+      )
       .eq("id", order.id);
 
     if (error) {
       toast.error("Failed to update order");
     } else {
       setStatus(advance.next);
+      // Completing auto-confirms an outstanding payment (see buildAdvancePatch).
+      if (advance.next === "completed") setConfirmedLocally(true);
     }
     setUpdating(false);
   }
