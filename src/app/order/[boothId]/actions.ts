@@ -118,8 +118,11 @@ export async function placeOrder(
 
   // Snapshot the booth's payment method onto the order so the queue knows
   // whether a payment is expected (and via which kind), frozen at order time.
+  // 'stripe' is reserved-but-dark (no customer checkout path), so an order
+  // under it expects no online payment — never leave it stuck at 'pending'.
   const paymentConfig = parsePaymentConfig(booth.payment);
-  const paymentStatus = paymentConfig ? "pending" : "not_required";
+  const expectsPayment = !!paymentConfig && paymentConfig.kind !== "stripe";
+  const paymentStatus = expectsPayment ? "pending" : "not_required";
 
   const { error } = await supabase.from("orders").insert({
     booth_id: boothId,
@@ -131,7 +134,7 @@ export async function placeOrder(
     // making it the moment it arrives.
     status: "preparing",
     payment_status: paymentStatus,
-    payment_method_kind: paymentConfig?.kind ?? null,
+    payment_method_kind: expectsPayment ? paymentConfig.kind : null,
   });
 
   if (error) {

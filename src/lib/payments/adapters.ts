@@ -8,16 +8,20 @@ export type CheckoutView =
   | { type: "link"; url: string; label: string }
   | { type: "image"; url: string };
 
+// Returns null for kinds that can't render a customer checkout (the reserved-
+// but-dark 'stripe', or a pointer missing both destinations) — callers treat
+// null as "no pay panel". No throw, so no try/catch at the call site.
 export function renderCheckout(
   config: PaymentConfig,
   ctx: { amountCents: number; orderRef: string },
-): CheckoutView {
+): CheckoutView | null {
   switch (config.kind) {
     case "pointer":
       if (config.url)
         return { type: "link", url: config.url, label: config.label };
-      // Schema guarantees one of url / qr_image_url is present.
-      return { type: "image", url: config.qr_image_url! };
+      if (config.qr_image_url)
+        return { type: "image", url: config.qr_image_url };
+      return null;
     case "paynow":
       return {
         type: "qr",
@@ -30,6 +34,6 @@ export function renderCheckout(
         }),
       };
     case "stripe":
-      throw new Error("stripe payments not enabled");
+      return null;
   }
 }

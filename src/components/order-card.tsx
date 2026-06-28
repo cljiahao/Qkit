@@ -70,7 +70,12 @@ export function OrderCard({
   boothName?: string;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
-  const [payStatus, setPayStatus] = useState(order.payment_status);
+  // Payment status is driven by the (realtime-updated) prop so a customer's
+  // remote "I've paid" claim appears live on the board. A local flag only
+  // covers the vendor's own confirm tap for instant feedback before the
+  // realtime echo arrives.
+  const [confirmedLocally, setConfirmedLocally] = useState(false);
+  const payStatus = confirmedLocally ? "confirmed" : order.payment_status;
   const [updating, setUpdating] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const supabase = useMemo(() => createClient(), []);
@@ -114,7 +119,7 @@ export function OrderCard({
       })
       .eq("id", order.id);
     if (error) toast.error("Failed to confirm payment");
-    else setPayStatus("confirmed");
+    else setConfirmedLocally(true);
     setUpdating(false);
   }
 
@@ -258,7 +263,7 @@ export function OrderCard({
           </>
         )}
 
-        {payStatus === "claimed" && (
+        {(payStatus === "claimed" || payStatus === "pending") && (
           <div className="px-4 pb-3">
             <Button
               size="sm"

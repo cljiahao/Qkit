@@ -25,13 +25,17 @@ describe("renderCheckout", () => {
       { kind: "paynow", payee_name: "Cart", uen: "53312345A" },
       ctx,
     );
-    expect(v.type).toBe("qr");
-    if (v.type === "qr") expect(v.payload).toContain("54044.50");
+    expect(v?.type).toBe("qr");
+    if (v?.type === "qr") expect(v.payload).toContain("54044.50");
   });
 
-  it("stripe → throws (reserved but dark)", () => {
-    expect(() =>
-      renderCheckout({ kind: "stripe", account_id: "acct_1" }, ctx),
-    ).toThrow(/not enabled/i);
+  it("stripe → null (reserved but dark)", () => {
+    expect(renderCheckout({ kind: "stripe", account_id: "acct_1" }, ctx)).toBe(
+      null,
+    );
+  });
+
+  it("pointer with neither url nor image → null", () => {
+    expect(renderCheckout({ kind: "pointer", label: "x" }, ctx)).toBe(null);
   });
 });

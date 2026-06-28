@@ -1,11 +1,16 @@
 // EMVCo-compliant PayNow QR payload builder. Pure — no I/O. QKit never touches
 // funds; this only renders a QR the customer scans in their own bank app.
 
-/** CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF) over the ASCII of `s`. */
+/**
+ * CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF) over the UTF-8 bytes of `s`.
+ * Byte semantics (not charCodeAt) so a multibyte payee name produces the same
+ * CRC a scanner computes over the QR's byte stream. ASCII is unaffected.
+ */
 export function crc16(s: string): number {
+  const bytes = new TextEncoder().encode(s);
   let crc = 0xffff;
-  for (let i = 0; i < s.length; i++) {
-    crc ^= s.charCodeAt(i) << 8;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i] << 8;
     for (let b = 0; b < 8; b++) {
       crc = crc & 0x8000 ? (crc << 1) ^ 0x1021 : crc << 1;
       crc &= 0xffff;
@@ -14,9 +19,14 @@ export function crc16(s: string): number {
   return crc;
 }
 
-/** One EMVCo TLV field: 2-char id + 2-char zero-padded length + value. */
+/**
+ * One EMVCo TLV field: 2-char id + 2-char zero-padded length + value. The
+ * length counts UTF-8 BYTES (not UTF-16 code units), so a multibyte payee name
+ * (e.g. a CJK stall name) declares the length the banking app actually parses.
+ */
 function tlv(id: string, value: string): string {
-  return id + value.length.toString().padStart(2, "0") + value;
+  const byteLen = new TextEncoder().encode(value).length;
+  return id + byteLen.toString().padStart(2, "0") + value;
 }
 
 export function buildPayNowPayload(args: {
@@ -25,19 +35,19 @@ export function buildPayNowPayload(args: {
   payeeName: string;
   amountCents: number;
   reference: string;
-  editable?: boolean;
 }): string {
   const isUen = Boolean(args.uen);
   const proxyType = isUen ? "2" : "0";
   const proxyValue = (args.uen ?? args.mobile ?? "").trim();
 
-  // Merchant account information template (ID 26) for PayNow.
+  // Merchant account information template (ID 26) for PayNow. Amount is fixed
+  // (editable flag "0") — every QR is a single-use, per-order dynamic code.
   const merchant = tlv(
     "26",
     tlv("00", "SG.PAYNOW") +
       tlv("01", proxyType) +
       tlv("02", proxyValue) +
-      tlv("03", args.editable ? "1" : "0"),
+      tlv("03", "0"),
   );
 
   const amount = (args.amountCents / 100).toFixed(2);

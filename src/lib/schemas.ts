@@ -132,7 +132,13 @@ export const boothHoursSchema = z
 const pointerConfigSchema = z.object({
   kind: z.literal("pointer"),
   label: z.string().min(1, "Label is required").max(60),
-  url: z.string().url().optional(),
+  // Rendered as an <a href> on the public status page — restrict to http(s) so
+  // a vendor can't store a javascript:/data: link (stored XSS on the QKit origin).
+  url: z
+    .string()
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), "Must be an http(s) link")
+    .optional(),
   qr_image_url: imageUrlString.optional(),
 });
 
@@ -306,7 +312,12 @@ export const orderRowSchema = z.object({
   status: orderStatusSchema,
   total_cents: z.number().int().nonnegative(),
   payment_status: paymentStatusSchema,
-  payment_method_kind: z.string().nullable(),
+  payment_method_kind: z
+    .enum(["pointer", "paynow", "stripe"])
+    .nullable()
+    // Tolerant read: an unknown kind from an old/foreign row degrades to null
+    // rather than dropping the whole realtime order.
+    .catch(null),
   paid_at: z.string().nullable(),
   created_at: z.string(),
   ready_at: z.string().nullable(),

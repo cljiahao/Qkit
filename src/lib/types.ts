@@ -388,7 +388,7 @@ export interface Database {
           status: OrderStatus;
           total_cents: number;
           payment_status: PaymentStatus;
-          payment_method_kind: string | null;
+          payment_method_kind: PaymentKind | null;
           paid_at: string | null;
           created_at: string;
           ready_at: string | null;

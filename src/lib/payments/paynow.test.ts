@@ -45,6 +45,17 @@ describe("buildPayNowPayload", () => {
     ).toContain("SG.PAYNOW0101" + "2");
   });
 
+  it("declares EMVCo lengths in UTF-8 bytes for a non-ASCII payee", () => {
+    // "珍珠" is 2 UTF-16 units but 6 UTF-8 bytes → tag 59 length must be 06.
+    const s = buildPayNowPayload({
+      uen: "53312345A",
+      payeeName: "珍珠",
+      amountCents: 100,
+      reference: "1",
+    });
+    expect(s).toContain("5906珍珠");
+  });
+
   it("round-trips its own CRC (recomputing over the body matches the suffix)", () => {
     const s = buildPayNowPayload({
       uen: "53312345A",

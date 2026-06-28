@@ -5,7 +5,6 @@ import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { parseOrderItems, parsePaymentConfig } from "@/lib/schemas";
 import { renderCheckout } from "@/lib/payments/adapters";
-import type { PaymentConfig } from "@/lib/types";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
@@ -16,20 +15,6 @@ interface Props {
 }
 
 export const revalidate = 0;
-
-// A malformed or dark ('stripe') payment config must never crash the customer
-// page — degrade to no pay panel.
-function safeRenderCheckout(
-  config: PaymentConfig,
-  amountCents: number,
-  orderRef: string,
-) {
-  try {
-    return renderCheckout(config, { amountCents, orderRef });
-  } catch {
-    return null;
-  }
-}
 
 export default async function OrderStatusPage({ params }: Props) {
   const { boothId, orderNumber } = await params;
@@ -61,7 +46,10 @@ export default async function OrderStatusPage({ params }: Props) {
   const checkout =
     paymentConfig &&
     (order.payment_status === "pending" || order.payment_status === "claimed")
-      ? safeRenderCheckout(paymentConfig, order.total_cents, order.order_number)
+      ? renderCheckout(paymentConfig, {
+          amountCents: order.total_cents,
+          orderRef: order.order_number,
+        })
       : null;
 
   return (
