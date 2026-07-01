@@ -1,13 +1,17 @@
 -- Kopitiam Cart: 3 base drinks under the existing "Test" vendor, each with
 -- single-choice option groups. vendors.id is FK to auth.users.id, so we reuse
 -- the real Test vendor. Run manually (Step 2); never via `db reset`.
-insert into public.booths (id, vendor_id, name, is_active, image_url, menu_items)
+insert into public.booths (id, vendor_id, name, is_active, image_url, access_token, menu_items)
 values (
   'c0ffee01-0000-4000-8000-000000000001',
   '6df824a1-9da2-4608-ad13-2400a9114ec0',
   'Kopitiam Cart',
   true,
   '/seed/kopitiam-cart.svg',
+  -- Fixed test-only token (>=22 URL-safe base64 chars) overriding the random
+  -- gen_booth_token() default, so e2e specs can navigate to
+  -- /order/<booth>?k=... deterministically. See e2e/qr-token.spec.ts.
+  'e2eKopitiamToken00000000',
   '[
     {
       "id":"kopi","name":"Kopi","description":"Local coffee","price_cents":140,
@@ -70,6 +74,7 @@ on conflict (id) do update
   set name = excluded.name,
       is_active = excluded.is_active,
       image_url = excluded.image_url,
+      access_token = excluded.access_token,
       menu_items = excluded.menu_items;
 
 -- Payment seam: give the Kopitiam Cart a PayNow method so the customer pay
