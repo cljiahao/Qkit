@@ -12,10 +12,10 @@ export function ExpiredCode() {
         <QrCode className="size-6 text-muted-foreground" />
       </div>
       <h1 className="font-display text-2xl font-semibold leading-tight">
-        This code expired
+        QR expired
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Ask the booth for the current QR.
+        This code expired — ask the booth for the current QR.
       </p>
     </div>
   );

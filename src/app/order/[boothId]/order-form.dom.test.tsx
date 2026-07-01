@@ -172,6 +172,26 @@ describe("OrderForm cart", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it("retries once on a transient failure, passing the token again", async () => {
+    placeOrder
+      .mockRejectedValueOnce(new Error("network blip"))
+      .mockResolvedValueOnce({ success: true, orderNumber: "0042" });
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Place order/ }));
+
+    await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
+    expect(placeOrder).toHaveBeenNthCalledWith(
+      2,
+      "b1",
+      "test-token",
+      expect.objectContaining({ customerName: "Ada" }),
+    );
+    expect(push).toHaveBeenCalledWith("/order/b1/0042");
+  });
+
   it("disables ordering when the booth is closed", () => {
     renderForm(true);
     expect(screen.getByRole("button", { name: "Booth closed" })).toBeDisabled();
