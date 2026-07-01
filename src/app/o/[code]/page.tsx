@@ -36,7 +36,7 @@ export default async function OrderEntryPage({ params }: Props) {
   if (!parsed.success) return <ExpiredCode />; // null/unresolved code → hard block
   const booth = parsed.data;
 
-  const available = parseMenuItems(booth.menu_items).filter((m) => m.available);
+  const available = parseMenuItems(booth.menu_items);
   const nowIso = new Date().toISOString();
   const hours = parseBoothHours(booth.hours);
   const open = isBoothOpen({ is_active: booth.is_active, hours }, nowIso);

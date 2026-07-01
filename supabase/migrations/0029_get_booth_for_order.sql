@@ -36,6 +36,7 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.get_booth_for_order(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_booth_for_order(text) TO anon, authenticated;
 
 -- Close the column-leak: anon must not read booths directly anymore (this was how

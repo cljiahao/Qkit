@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(34);
+select plan(35);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -319,6 +319,26 @@ select throws_like(
        gen_random_uuid()) $$,
   '%ORDER_SOLD_OUT%',
   'place_order clamps a negative line instead of letting it mask an oversell');
+
+-- Non-servable booth: flip is_active off (booth_servable gates on it) and
+-- confirm place_order refuses with ORDER_UNSERVABLE. Flipped as the superuser
+-- test role — anon has no update policy on booths — then re-entered as anon to
+-- call place_order, matching the customer-facing path under test.
+reset role;
+update public.booths set is_active = false
+where id = '00000000-0000-0000-0000-0000000b0004';
+set local role anon;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('role', 'anon')::text,
+  true);
+select throws_like(
+  $$ select public.place_order(
+       'orderv2test01', 'Fay',
+       '[{"menuItemId":"free1","name":"Unlimited Tea","quantity":1}]'::jsonb,
+       gen_random_uuid()) $$,
+  '%ORDER_UNSERVABLE%',
+  'place_order raises ORDER_UNSERVABLE for a non-servable booth');
 
 reset role;
 

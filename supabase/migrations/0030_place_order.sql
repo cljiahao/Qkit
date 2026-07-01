@@ -151,6 +151,7 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.place_order(text, text, jsonb, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_order(text, text, jsonb, uuid) TO anon, authenticated;
 
 -- The RPC is now the only write path. Close the direct routes.
