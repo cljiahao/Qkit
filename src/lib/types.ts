@@ -492,6 +492,12 @@ export interface Database {
         };
         Returns: Json;
       };
+      regenerate_short_code: {
+        Args: {
+          p_booth_id: string;
+        };
+        Returns: number;
+      };
     };
     Enums: {
       order_status: OrderStatus;
