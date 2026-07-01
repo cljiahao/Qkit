@@ -28,9 +28,10 @@ $$;
 -- a distinct code — Postgres evaluates a VOLATILE default per row for this DDL).
 ALTER TABLE public.booths
   ADD COLUMN short_code TEXT NOT NULL DEFAULT public.gen_short_code();
+-- UNIQUE creates its own backing btree index — that index also serves the
+-- short_code lookups (get_booth_for_order / place_order), so no separate index.
 ALTER TABLE public.booths
   ADD CONSTRAINT booths_short_code_key UNIQUE (short_code);
-CREATE INDEX booths_short_code_idx ON public.booths (short_code);
 
 -- Remove the superseded access_token model (regenerate_booth_token is replaced
 -- in task 5; drop it here so the column can go).
