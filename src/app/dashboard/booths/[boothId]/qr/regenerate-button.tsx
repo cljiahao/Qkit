@@ -51,7 +51,7 @@ export function RegenerateButton({
       <Button
         variant="outline"
         size="lg"
-        className="h-12 w-full rounded-xl text-base font-semibold print:hidden"
+        className="h-12 w-full rounded-xl text-base font-semibold"
         onClick={() => setOpen(true)}
       >
         <RefreshCw className="size-4" /> Regenerate QR

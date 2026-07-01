@@ -36,7 +36,7 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
 }
 
 /**
- * Rotate a booth's QR access token. RLS (booths_vendor_all) scopes the update to
+ * Rotate a booth's QR access token. RLS (booths_vendor_update) scopes the update to
  * the caller's own booths, so a non-owner updates zero rows and gets "not found"
  * — no cross-vendor leak. Invalidates every previously printed/saved QR link.
  */

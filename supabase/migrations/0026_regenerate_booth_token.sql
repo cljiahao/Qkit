@@ -1,6 +1,7 @@
 -- Rotate a booth's token to a fresh server-generated value. SECURITY INVOKER
--- (default) so the caller's RLS on booths still applies — a vendor can only
--- rotate their own booth. Returns the number of rows touched (0 = not yours).
+-- (default) so the caller's RLS (booths_vendor_update) on booths still
+-- applies — a vendor can only rotate their own booth. Returns the number of
+-- rows touched (0 = not yours).
 CREATE OR REPLACE FUNCTION public.regenerate_booth_token(p_booth_id uuid)
 RETURNS integer
 LANGUAGE plpgsql
@@ -15,3 +16,6 @@ BEGIN
   RETURN n;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.regenerate_booth_token(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.regenerate_booth_token(uuid) TO authenticated;
