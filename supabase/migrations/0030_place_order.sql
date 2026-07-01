@@ -39,6 +39,10 @@ BEGIN
     RAISE EXCEPTION 'ORDER_INVALID: name required';
   END IF;
 
+  IF length(p_customer_name) > 100 THEN
+    RAISE EXCEPTION 'ORDER_INVALID: name too long';
+  END IF;
+
   SELECT * INTO b FROM public.booths WHERE short_code = p_short_code;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ORDER_EXPIRED: unknown code';
@@ -64,9 +68,27 @@ BEGIN
 
   v_remaining := public.booth_remaining_stock(b.id);
 
+  -- Stock is pooled per menu item across lines (option variants share a cap).
+  -- Gated once, aggregated, before pricing — a per-line check would let two
+  -- lines of the same capped item each pass individually while their sum
+  -- oversells the cap.
+  DECLARE
+    r record;
+  BEGIN
+    FOR r IN
+      SELECT it->>'menuItemId' AS id, sum((it->>'quantity')::int) AS want
+      FROM jsonb_array_elements(p_items) AS it
+      GROUP BY it->>'menuItemId'
+    LOOP
+      IF v_remaining ? r.id AND r.want > (v_remaining->>r.id)::int THEN
+        RAISE EXCEPTION 'ORDER_SOLD_OUT: %', r.id;
+      END IF;
+    END LOOP;
+  END;
+
   -- Re-price every line from the STORED menu (never trust client price/cost) and
-  -- enforce stock. Build the persisted items array with server-authoritative
-  -- price_cents + cost_cents.
+  -- enforce per-line availability. Build the persisted items array with
+  -- server-authoritative price_cents + cost_cents.
   FOR line IN SELECT * FROM jsonb_array_elements(p_items) LOOP
     SELECT mi INTO menu_item
     FROM jsonb_array_elements(b.menu_items) AS mi
@@ -79,11 +101,8 @@ BEGIN
     v_qty := GREATEST((line->>'quantity')::int, 0);
     IF v_qty = 0 THEN CONTINUE; END IF;
 
-    -- Stock gate (only for capped items present in remaining).
-    IF v_remaining ? (line->>'menuItemId') THEN
-      IF v_qty > (v_remaining->>(line->>'menuItemId'))::int THEN
-        RAISE EXCEPTION 'ORDER_SOLD_OUT: %', line->>'menuItemId';
-      END IF;
+    IF v_qty > 20 THEN
+      RAISE EXCEPTION 'ORDER_INVALID: quantity';
     END IF;
 
     v_price := COALESCE((menu_item->>'price_cents')::int, 0);
@@ -116,7 +135,7 @@ BEGIN
     CASE WHEN v_expects_payment THEN v_payment_kind ELSE NULL END,
     p_idempotency_key
   )
-  ON CONFLICT (booth_id, idempotency_key) DO NOTHING;
+  ON CONFLICT (booth_id, idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING;
 
   -- Lost an idempotency race: return the winner's number (the wasted order_seq is
   -- an acceptable rare gap — matches the project's existing stance on gaps).
