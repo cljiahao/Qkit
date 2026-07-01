@@ -1,4 +1,8 @@
-# Customer Order Path v2 — Design (Phase A)
+# Order Path Hardening — DB-Enforced Ordering + Short Code — Design (Phase A)
+
+<!-- Internal codename in git history / commit scope: "order-v2" (feat/order-path-v2).
+     Renamed to "order-path hardening" in docs to avoid implying a product version —
+     the product is still v0/beta. History is intentionally left as-is. -->
 
 **Date:** 2026-07-01
 **Status:** Approved (design), pending implementation plan

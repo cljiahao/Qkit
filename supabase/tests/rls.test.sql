@@ -38,7 +38,7 @@ values
   ('00000000-0000-0000-0000-0000000b0002',
    '00000000-0000-0000-0000-00000000000b', 'B Booth', false);
 
--- One ACTIVE booth for A carrying a payment method. Pre-order-v2 this was
+-- One ACTIVE booth for A carrying a payment method. Before the order-path hardening this was
 -- directly readable by anon; as of 0029 anon's direct booths SELECT is
 -- revoked, so this fixture now exists only as an active-but-otherwise-unread
 -- booth (kept for column stability / minimal diff — not asserted on directly).
@@ -83,7 +83,7 @@ values
    now() + interval '1 day');
 
 -- Vendor C: its OWN single active booth with a known short_code and a
--- stock-capped menu item — used by the order-v2 RPC tests below
+-- stock-capped menu item — used by the order-path RPC tests below
 -- (get_booth_for_order / place_order). Being the vendor's only (hence oldest)
 -- active booth makes booth_servable() trivially true under the free-plan rule,
 -- so these tests don't depend on plan/license fixtures.
@@ -100,7 +100,7 @@ insert into public.booths (id, vendor_id, name, is_active, short_code, menu_item
 values (
   '00000000-0000-0000-0000-0000000b0004',
   '00000000-0000-0000-0000-00000000000c',
-  'C Order Booth', true, 'orderv2test01',
+  'C Order Booth', true, 'rlstestcode1',
   '[
      {"id":"cap1","name":"Capped Bun","description":"","price_cents":500,
       "cost_cents":200,"available":true,"stock":2},
@@ -205,7 +205,7 @@ select set_config(
 
 -- Direct SELECT on booths is closed (0029 — get_booth_for_order is the only
 -- public read; it strips cost_cents/short_code and never exposes payment
--- internals). This also supersedes the pre-order-v2 "anon reads active booth
+-- internals). This also supersedes the pre-hardening "anon reads active booth
 -- payment config" direct-select test, which the 0029 REVOKE now makes throw.
 select throws_ok(
   $$ select 1 from public.booths limit 1 $$,
@@ -221,7 +221,7 @@ select is(
   (select count(*)::int from upd),
   0, 'anon cannot confirm payment on any order');
 
--- ── Order-v2 write path (anon) — migrations 0027–0031 ────────────────────────
+-- ── Order-path write path (anon) — migrations 0027–0031 ─────────────────────
 
 -- Direct INSERT into orders is closed (0030); place_order is the only path.
 select throws_ok(
@@ -243,17 +243,17 @@ select throws_ok(
 select ok(
   (select bool_and(not (mi ? 'cost_cents'))
    from jsonb_array_elements(
-     public.get_booth_for_order('orderv2test01') -> 'menu_items'
+     public.get_booth_for_order('rlstestcode1') -> 'menu_items'
    ) as mi),
   'get_booth_for_order strips cost_cents from every menu item');
 select ok(
-  not (public.get_booth_for_order('orderv2test01') ? 'short_code'),
+  not (public.get_booth_for_order('rlstestcode1') ? 'short_code'),
   'get_booth_for_order never exposes short_code');
 
 -- place_order: happy path succeeds and inserts exactly one row.
 select lives_ok(
   $$ select public.place_order(
-       'orderv2test01', 'Ada',
+       'rlstestcode1', 'Ada',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
        '11111111-1111-1111-1111-111111111111'::uuid) $$,
   'place_order succeeds for a valid cart');
@@ -267,7 +267,7 @@ select is(
 -- must not insert a second row.
 select is(
   (select public.place_order(
-     'orderv2test01', 'Ada',
+     'rlstestcode1', 'Ada',
      '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
      '11111111-1111-1111-1111-111111111111'::uuid) ->> 'order_number'),
   (select order_number from public.orders
@@ -290,7 +290,7 @@ select throws_like(
 -- Over-cap single line: cap1 has stock 2, 1 already sold above (remaining 1).
 select throws_like(
   $$ select public.place_order(
-       'orderv2test01', 'Bob',
+       'rlstestcode1', 'Bob',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":5}]'::jsonb,
        gen_random_uuid()) $$,
   '%ORDER_SOLD_OUT%',
@@ -301,7 +301,7 @@ select throws_like(
 -- aggregate lines by menu item, not check each line in isolation.
 select throws_like(
   $$ select public.place_order(
-       'orderv2test01', 'Cara',
+       'rlstestcode1', 'Cara',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1},
          {"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
        gen_random_uuid()) $$,
@@ -313,7 +313,7 @@ select throws_like(
 -- remaining cap (qty -10 clamps to 0, so the sum is 5, not -5).
 select throws_like(
   $$ select public.place_order(
-       'orderv2test01', 'Dev',
+       'rlstestcode1', 'Dev',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":-10},
          {"menuItemId":"cap1","name":"Capped Bun","quantity":5}]'::jsonb,
        gen_random_uuid()) $$,
@@ -334,7 +334,7 @@ select set_config(
   true);
 select throws_like(
   $$ select public.place_order(
-       'orderv2test01', 'Fay',
+       'rlstestcode1', 'Fay',
        '[{"menuItemId":"free1","name":"Unlimited Tea","quantity":1}]'::jsonb,
        gen_random_uuid()) $$,
   '%ORDER_UNSERVABLE%',

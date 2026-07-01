@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Short-code order entry (feat/order-path-v2). REQUIRES the coffee-cart seed
+// Short-code order entry (order-path hardening). REQUIRES the coffee-cart seed
 // (supabase/seed/coffee-cart.sql) — this is the "Kopitiam Cart" booth's
 // short_code, same as customer-order.spec.ts.
 const CODE = "e2eKopitiam01";

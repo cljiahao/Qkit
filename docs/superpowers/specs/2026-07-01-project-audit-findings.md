@@ -86,7 +86,7 @@
 
 ## Proposed phased remediation
 
-**Phase A — Customer order path v2 (security + dynamic-QR + hot-path latency).** The flagship; merges Stream 2 (dynamic QR short code) with the P0 security rebuild because they are the same code path:
+**Phase A — Order path hardening (DB-enforced ordering + dynamic-QR short code + hot-path latency).** The flagship; merges Stream 2 (dynamic QR short code) with the P0 security rebuild because they are the same code path:
 
 - Rotating **short code** becomes the sole public capability (`/order/{shortCode}`), resolved server-side. QR shrinks to ~30 chars (best practice) and the `access_token`/UUID never appear in the client URL.
 - A single **`SECURITY DEFINER place_order(...)` RPC** does token/servable/hours/stock/rate-limit/number-allocation/insert **atomically in the DB**; revoke direct anon `INSERT` on `orders` and anon `EXECUTE` on `next_order_number`. Fixes S1, S3, B1 (idempotency key), L4/L5.

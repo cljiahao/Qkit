@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
 // "Kopitiam Cart" booth it creates.
 const BOOTH = "c0ffee01-0000-4000-8000-000000000001";
 
-// Order entry is reached via the booth's short_code (feat/order-path-v2).
+// Order entry is reached via the booth's short_code (order-path hardening).
 // Fixed test-only code the seed pins on the booth's short_code column. Keep
 // in sync with the `short_code` value in supabase/seed/coffee-cart.sql and
 // with e2e/order-code.spec.ts (no shared fixtures module exists yet for e2e/).

@@ -1,4 +1,8 @@
-# Customer Order Path v2 — Implementation Plan (Phase A)
+# Order Path Hardening — Implementation Plan (Phase A)
+
+<!-- Internal codename in git history / commit scope: "order-v2". The example
+     commit messages below intentionally keep the `feat(order-v2)` scope to match
+     the actual (kept) history; docs use "order-path hardening" going forward. -->
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
