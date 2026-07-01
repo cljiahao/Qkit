@@ -6,16 +6,16 @@ import { test, expect } from "@playwright/test";
 // "Kopitiam Cart" booth it creates.
 const BOOTH = "c0ffee01-0000-4000-8000-000000000001";
 
-// Order entry is gated by a QR access token (feat/booth-qr-token). Fixed
-// test-only token the seed pins on the booth's access_token column. Keep in
-// sync with the `access_token` value in supabase/seed/coffee-cart.sql and
-// with e2e/qr-token.spec.ts (no shared fixtures module exists yet for e2e/).
-const TOKEN = "e2eKopitiamToken00000000";
+// Order entry is reached via the booth's short_code (feat/order-path-v2).
+// Fixed test-only code the seed pins on the booth's short_code column. Keep
+// in sync with the `short_code` value in supabase/seed/coffee-cart.sql and
+// with e2e/order-code.spec.ts (no shared fixtures module exists yet for e2e/).
+const CODE = "e2eKopitiam01";
 
 test("customer places an order and reaches the live status page", async ({
   page,
 }) => {
-  await page.goto(`/order/${BOOTH}?k=${TOKEN}`);
+  await page.goto(`/o/${CODE}`);
 
   // Menu rendered (seed drinks all carry option groups → "Customize").
   const customize = page.getByRole("button", { name: "Customize" }).first();

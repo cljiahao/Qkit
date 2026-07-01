@@ -36,11 +36,11 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
 }
 
 /**
- * Rotate a booth's QR access token. RLS (booths_vendor_update) scopes the update to
+ * Rotate a booth's QR short code. RLS (booths_vendor_update) scopes the update to
  * the caller's own booths, so a non-owner updates zero rows and gets "not found"
  * — no cross-vendor leak. Invalidates every previously printed/saved QR link.
  */
-export async function regenerateBoothToken(
+export async function regenerateShortCode(
   boothId: string,
 ): Promise<ActionResult> {
   if (!z.string().uuid().safeParse(boothId).success)
@@ -52,7 +52,7 @@ export async function regenerateBoothToken(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  const { data: rows, error } = await supabase.rpc("regenerate_booth_token", {
+  const { data: rows, error } = await supabase.rpc("regenerate_short_code", {
     p_booth_id: boothId,
   });
   if (error) return { success: false, error: "Could not regenerate QR" };

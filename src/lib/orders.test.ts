@@ -26,6 +26,7 @@ function order(over: Partial<Order>): Order {
     ready_at: over.ready_at ?? null,
     completed_at: over.completed_at ?? null,
     updated_at: over.updated_at ?? "2026-06-12T10:00:00Z",
+    idempotency_key: over.idempotency_key ?? null,
   };
 }
 

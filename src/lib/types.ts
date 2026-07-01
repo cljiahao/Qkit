@@ -344,7 +344,7 @@ export interface Database {
           order_seq: number;
           payment: Json | null;
           created_at: string;
-          access_token: string;
+          short_code: string;
         };
         Insert: {
           id?: string;
@@ -357,7 +357,7 @@ export interface Database {
           order_seq?: number;
           payment?: Json | null;
           created_at?: string;
-          access_token?: string;
+          short_code?: string;
         };
         Update: {
           id?: string;
@@ -370,7 +370,7 @@ export interface Database {
           order_seq?: number;
           payment?: Json | null;
           created_at?: string;
-          access_token?: string;
+          short_code?: string;
         };
         Relationships: [
           {
@@ -397,6 +397,7 @@ export interface Database {
           ready_at: string | null;
           completed_at: string | null;
           updated_at: string;
+          idempotency_key: string | null;
         };
         Insert: {
           id?: string;
@@ -413,6 +414,7 @@ export interface Database {
           ready_at?: string | null;
           completed_at?: string | null;
           updated_at?: string;
+          idempotency_key?: string | null;
         };
         Update: {
           id?: string;
@@ -429,6 +431,7 @@ export interface Database {
           ready_at?: string | null;
           completed_at?: string | null;
           updated_at?: string;
+          idempotency_key?: string | null;
         };
         Relationships: [
           {
@@ -438,6 +441,12 @@ export interface Database {
             referencedColumns: ["id"];
           },
         ];
+      };
+      booth_item_sold: {
+        Row: { booth_id: string; menu_item_id: string; qty: number };
+        Insert: { booth_id: string; menu_item_id: string; qty?: number };
+        Update: { booth_id?: string; menu_item_id?: string; qty?: number };
+        Relationships: [];
       };
     };
     Views: {
@@ -464,8 +473,29 @@ export interface Database {
         Args: { p_license_id: string; p_label: string | null };
         Returns: undefined;
       };
-      regenerate_booth_token: {
-        Args: { p_booth_id: string };
+      gen_short_code: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      get_booth_for_order: {
+        Args: {
+          p_short_code: string;
+        };
+        Returns: Json;
+      };
+      place_order: {
+        Args: {
+          p_short_code: string;
+          p_customer_name: string;
+          p_items: Json;
+          p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
+      regenerate_short_code: {
+        Args: {
+          p_booth_id: string;
+        };
         Returns: number;
       };
     };

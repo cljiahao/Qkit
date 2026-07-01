@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import QRCode from "react-qr-code";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { orderPath } from "@/lib/booth-token";
+import { orderPath } from "@/lib/booth-code";
 import { RegenerateButton } from "./regenerate-button";
 
 interface Props {
   boothId: string;
   name: string;
   isActive: boolean;
-  token: string;
+  code: string;
 }
 
 function slugify(value: string): string {
@@ -24,7 +24,7 @@ function slugify(value: string): string {
   );
 }
 
-export function BoothQrPoster({ boothId, name, isActive, token }: Props) {
+export function BoothQrPoster({ boothId, name, isActive, code }: Props) {
   const router = useRouter();
   const qrRef = useRef<HTMLDivElement>(null);
   // origin is only known on the client. useSyncExternalStore returns the server
@@ -36,7 +36,7 @@ export function BoothQrPoster({ boothId, name, isActive, token }: Props) {
     () => null,
   );
 
-  const url = origin ? `${origin}${orderPath(boothId, token)}` : null;
+  const url = origin ? `${origin}${orderPath(code)}` : null;
 
   function downloadPng() {
     const svg = qrRef.current?.querySelector("svg");

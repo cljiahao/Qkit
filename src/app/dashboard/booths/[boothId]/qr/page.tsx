@@ -17,7 +17,7 @@ export default async function BoothQrPage({ params }: Props) {
   // RLS scopes this to the vendor's own booths; a foreign id returns null.
   const { data: booth } = await supabase
     .from("booths")
-    .select("id, name, is_active, access_token")
+    .select("id, name, is_active, short_code")
     .eq("id", boothId)
     .maybeSingle();
 
@@ -28,7 +28,7 @@ export default async function BoothQrPage({ params }: Props) {
       boothId={booth.id}
       name={booth.name}
       isActive={booth.is_active}
-      token={booth.access_token}
+      code={booth.short_code}
     />
   );
 }

@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { regenerateBoothToken } from "../../actions";
+import { regenerateShortCode } from "../../actions";
 
 /**
  * Vendor-only "Regenerate QR" control. Rotating the token invalidates every
@@ -35,7 +35,7 @@ export function RegenerateButton({
 
   function confirm() {
     startTransition(async () => {
-      const res = await regenerateBoothToken(boothId);
+      const res = await regenerateShortCode(boothId);
       if (!res.success) {
         toast.error(res.error ?? "Could not regenerate QR");
         return;

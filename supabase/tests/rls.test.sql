@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(22);
+select plan(35);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -38,9 +38,10 @@ values
   ('00000000-0000-0000-0000-0000000b0002',
    '00000000-0000-0000-0000-00000000000b', 'B Booth', false);
 
--- One ACTIVE booth for A carrying a payment method — the public-read policy
--- exposes active booths, so anon must be able to read its (secret-free) payment
--- config to render the customer pay panel.
+-- One ACTIVE booth for A carrying a payment method. Pre-order-v2 this was
+-- directly readable by anon; as of 0029 anon's direct booths SELECT is
+-- revoked, so this fixture now exists only as an active-but-otherwise-unread
+-- booth (kept for column stability / minimal diff — not asserted on directly).
 insert into public.booths (id, vendor_id, name, is_active, payment)
 values
   ('00000000-0000-0000-0000-0000000b0003',
@@ -80,6 +81,33 @@ values
   ('00000000-0000-0000-0000-0000000c0002',
    '00000000-0000-0000-0000-00000000000b', now() - interval '1 day',
    now() + interval '1 day');
+
+-- Vendor C: its OWN single active booth with a known short_code and a
+-- stock-capped menu item — used by the order-v2 RPC tests below
+-- (get_booth_for_order / place_order). Being the vendor's only (hence oldest)
+-- active booth makes booth_servable() trivially true under the free-plan rule,
+-- so these tests don't depend on plan/license fixtures.
+insert into auth.users (id, instance_id, aud, role, email)
+values
+  ('00000000-0000-0000-0000-00000000000c',
+   '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'vendor-c@test.local');
+
+insert into public.vendors (id, name)
+values ('00000000-0000-0000-0000-00000000000c', 'Vendor C');
+
+insert into public.booths (id, vendor_id, name, is_active, short_code, menu_items)
+values (
+  '00000000-0000-0000-0000-0000000b0004',
+  '00000000-0000-0000-0000-00000000000c',
+  'C Order Booth', true, 'orderv2test01',
+  '[
+     {"id":"cap1","name":"Capped Bun","description":"","price_cents":500,
+      "cost_cents":200,"available":true,"stock":2},
+     {"id":"free1","name":"Unlimited Tea","description":"","price_cents":300,
+      "cost_cents":100,"available":true}
+   ]'::jsonb
+);
 
 -- ── RLS is actually enabled on every protected table ─────────────────────────
 select ok((select relrowsecurity from pg_class where oid = 'public.vendors'::regclass), 'RLS on vendors');
@@ -175,11 +203,14 @@ select set_config(
   json_build_object('role', 'anon')::text,
   true);
 
--- The active booth's payment config is publicly readable (drives the pay panel).
-select is(
-  (select payment->>'kind' from public.booths
-   where id = '00000000-0000-0000-0000-0000000b0003'),
-  'paynow', 'anon reads active booth payment config');
+-- Direct SELECT on booths is closed (0029 — get_booth_for_order is the only
+-- public read; it strips cost_cents/short_code and never exposes payment
+-- internals). This also supersedes the pre-order-v2 "anon reads active booth
+-- payment config" direct-select test, which the 0029 REVOKE now makes throw.
+select throws_ok(
+  $$ select 1 from public.booths limit 1 $$,
+  null,
+  'anon cannot SELECT booths directly');
 
 -- But anon can never flip an order to a paid/confirmed state directly — only
 -- the owning vendor (via the authenticated update policy) can.
@@ -189,6 +220,125 @@ with upd as (
 select is(
   (select count(*)::int from upd),
   0, 'anon cannot confirm payment on any order');
+
+-- ── Order-v2 write path (anon) — migrations 0027–0031 ────────────────────────
+
+-- Direct INSERT into orders is closed (0030); place_order is the only path.
+select throws_ok(
+  $$ insert into public.orders
+       (booth_id, order_number, customer_name, items, total_cents)
+     values
+       ('00000000-0000-0000-0000-0000000b0004', 'X-999', 'Eve', '[]'::jsonb, 0) $$,
+  null,
+  'anon cannot INSERT into orders directly');
+
+-- next_order_number is superseded by place_order's own numbering; EXECUTE
+-- was revoked from anon in 0030.
+select throws_ok(
+  $$ select public.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
+  null,
+  'anon cannot EXECUTE next_order_number');
+
+-- get_booth_for_order: the only public read — public-safe projection only.
+select ok(
+  (select bool_and(not (mi ? 'cost_cents'))
+   from jsonb_array_elements(
+     public.get_booth_for_order('orderv2test01') -> 'menu_items'
+   ) as mi),
+  'get_booth_for_order strips cost_cents from every menu item');
+select ok(
+  not (public.get_booth_for_order('orderv2test01') ? 'short_code'),
+  'get_booth_for_order never exposes short_code');
+
+-- place_order: happy path succeeds and inserts exactly one row.
+select lives_ok(
+  $$ select public.place_order(
+       'orderv2test01', 'Ada',
+       '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
+       '11111111-1111-1111-1111-111111111111'::uuid) $$,
+  'place_order succeeds for a valid cart');
+select is(
+  (select count(*)::int from public.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '11111111-1111-1111-1111-111111111111'),
+  1, 'place_order inserted exactly one row');
+
+-- Replay with the SAME idempotency key must return the SAME order_number and
+-- must not insert a second row.
+select is(
+  (select public.place_order(
+     'orderv2test01', 'Ada',
+     '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
+     '11111111-1111-1111-1111-111111111111'::uuid) ->> 'order_number'),
+  (select order_number from public.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '11111111-1111-1111-1111-111111111111'),
+  'place_order replay returns the same order_number');
+select is(
+  (select count(*)::int from public.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '11111111-1111-1111-1111-111111111111'),
+  1, 'place_order replay does not insert a second row');
+
+-- Unknown / rotated-away short_code.
+select throws_like(
+  $$ select public.place_order(
+       'no-such-code', 'Eve', '[]'::jsonb, gen_random_uuid()) $$,
+  '%ORDER_EXPIRED%',
+  'place_order raises ORDER_EXPIRED for an unknown code');
+
+-- Over-cap single line: cap1 has stock 2, 1 already sold above (remaining 1).
+select throws_like(
+  $$ select public.place_order(
+       'orderv2test01', 'Bob',
+       '[{"menuItemId":"cap1","name":"Capped Bun","quantity":5}]'::jsonb,
+       gen_random_uuid()) $$,
+  '%ORDER_SOLD_OUT%',
+  'place_order raises ORDER_SOLD_OUT for an over-cap single line');
+
+-- Two SEPARATE line entries for the SAME capped item, each individually within
+-- the remaining cap (1 each) but SUMMING over it (2 > 1) — the stock gate must
+-- aggregate lines by menu item, not check each line in isolation.
+select throws_like(
+  $$ select public.place_order(
+       'orderv2test01', 'Cara',
+       '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1},
+         {"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
+       gen_random_uuid()) $$,
+  '%ORDER_SOLD_OUT%',
+  'place_order aggregates duplicate lines for the same item before the stock gate');
+
+-- A negative-quantity line must not net against a positive line to mask an
+-- oversell — the aggregate clamps each line to >= 0 before comparing to the
+-- remaining cap (qty -10 clamps to 0, so the sum is 5, not -5).
+select throws_like(
+  $$ select public.place_order(
+       'orderv2test01', 'Dev',
+       '[{"menuItemId":"cap1","name":"Capped Bun","quantity":-10},
+         {"menuItemId":"cap1","name":"Capped Bun","quantity":5}]'::jsonb,
+       gen_random_uuid()) $$,
+  '%ORDER_SOLD_OUT%',
+  'place_order clamps a negative line instead of letting it mask an oversell');
+
+-- Non-servable booth: flip is_active off (booth_servable gates on it) and
+-- confirm place_order refuses with ORDER_UNSERVABLE. Flipped as the superuser
+-- test role — anon has no update policy on booths — then re-entered as anon to
+-- call place_order, matching the customer-facing path under test.
+reset role;
+update public.booths set is_active = false
+where id = '00000000-0000-0000-0000-0000000b0004';
+set local role anon;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('role', 'anon')::text,
+  true);
+select throws_like(
+  $$ select public.place_order(
+       'orderv2test01', 'Fay',
+       '[{"menuItemId":"free1","name":"Unlimited Tea","quantity":1}]'::jsonb,
+       gen_random_uuid()) $$,
+  '%ORDER_UNSERVABLE%',
+  'place_order raises ORDER_UNSERVABLE for a non-servable booth');
 
 reset role;
 
