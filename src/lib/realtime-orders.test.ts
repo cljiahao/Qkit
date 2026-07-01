@@ -22,6 +22,7 @@ function row(overrides: Partial<Order> = {}): Order {
     ready_at: null,
     completed_at: null,
     updated_at: "2026-06-12T04:00:00Z",
+    idempotency_key: null,
     ...overrides,
   };
 }

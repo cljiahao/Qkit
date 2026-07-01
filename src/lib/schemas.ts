@@ -323,6 +323,7 @@ export const orderRowSchema = z.object({
   ready_at: z.string().nullable(),
   completed_at: z.string().nullable(),
   updated_at: z.string(),
+  idempotency_key: z.string().nullable(),
 });
 
 /** Parse a JSONB menu_items value, dropping any malformed entries. */

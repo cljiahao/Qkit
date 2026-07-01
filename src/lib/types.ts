@@ -397,6 +397,7 @@ export interface Database {
           ready_at: string | null;
           completed_at: string | null;
           updated_at: string;
+          idempotency_key: string | null;
         };
         Insert: {
           id?: string;
@@ -413,6 +414,7 @@ export interface Database {
           ready_at?: string | null;
           completed_at?: string | null;
           updated_at?: string;
+          idempotency_key?: string | null;
         };
         Update: {
           id?: string;
@@ -429,6 +431,7 @@ export interface Database {
           ready_at?: string | null;
           completed_at?: string | null;
           updated_at?: string;
+          idempotency_key?: string | null;
         };
         Relationships: [
           {
@@ -477,6 +480,15 @@ export interface Database {
       get_booth_for_order: {
         Args: {
           p_short_code: string;
+        };
+        Returns: Json;
+      };
+      place_order: {
+        Args: {
+          p_short_code: string;
+          p_customer_name: string;
+          p_items: Json;
+          p_idempotency_key: string;
         };
         Returns: Json;
       };
