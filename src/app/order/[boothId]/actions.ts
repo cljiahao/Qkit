@@ -20,6 +20,11 @@ type PlaceOrderResult = ActionResult<{ orderNumber: string }>;
 
 const boothIdSchema = z.string().uuid();
 
+// Toast copy for a missing/rejected QR token. Deliberately shorter than the
+// block-screen copy ("...ask the booth for the current QR.") — don't
+// "reconcile" the two, they're different surfaces with different space.
+const TOKEN_REJECTED_ERROR = "This code expired — please rescan.";
+
 export async function placeOrder(
   boothId: string,
   token: string,
@@ -32,8 +37,7 @@ export async function placeOrder(
 
   // Cheap, no-DB guard for an empty/absent token. A wrong-but-present token can
   // only be judged against the booth row, so it's checked after the fetch below.
-  if (!token)
-    return { success: false, error: "This code expired — please rescan." };
+  if (!token) return { success: false, error: TOKEN_REJECTED_ERROR };
 
   const parsed = placeOrderSchema.safeParse(input);
   if (!parsed.success)
@@ -78,7 +82,7 @@ export async function placeOrder(
     ]);
   if (!booth) return { success: false, error: "Booth not found" };
   if (!isTokenValid(booth.access_token, token))
-    return { success: false, error: "This code expired — please rescan." };
+    return { success: false, error: TOKEN_REJECTED_ERROR };
   if (servable === false)
     return {
       success: false,
