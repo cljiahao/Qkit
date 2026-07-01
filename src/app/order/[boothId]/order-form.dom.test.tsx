@@ -57,7 +57,12 @@ const TEH: MenuItem = {
 
 function renderForm(closed = false) {
   return render(
-    <OrderForm boothId="b1" menuItems={[KOPI, TEH]} closed={closed} />,
+    <OrderForm
+      boothId="b1"
+      token="test-token"
+      menuItems={[KOPI, TEH]}
+      closed={closed}
+    />,
   );
 }
 
@@ -119,7 +124,7 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: /Place order/ }));
 
     await waitFor(() =>
-      expect(placeOrder).toHaveBeenCalledWith("b1", {
+      expect(placeOrder).toHaveBeenCalledWith("b1", "test-token", {
         customerName: "Ada",
         items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
       }),
@@ -165,6 +170,26 @@ describe("OrderForm cart", () => {
       expect(toast.error).toHaveBeenCalledWith("Booth not found"),
     );
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("retries once on a transient failure, passing the token again", async () => {
+    placeOrder
+      .mockRejectedValueOnce(new Error("network blip"))
+      .mockResolvedValueOnce({ success: true, orderNumber: "0042" });
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Place order/ }));
+
+    await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
+    expect(placeOrder).toHaveBeenNthCalledWith(
+      2,
+      "b1",
+      "test-token",
+      expect.objectContaining({ customerName: "Ada" }),
+    );
+    expect(push).toHaveBeenCalledWith("/order/b1/0042");
   });
 
   it("disables ordering when the booth is closed", () => {

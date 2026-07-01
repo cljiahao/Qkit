@@ -4,17 +4,21 @@ import { createServerClient } from "@/lib/supabase/server";
 import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
 import { isBoothOpen, nextOpenLabel } from "@/lib/hours";
 import { parseRemaining } from "@/lib/stock";
+import { isTokenValid } from "@/lib/booth-token";
 import { OrderForm } from "./order-form";
 import { RecentOrders } from "./recent-orders";
+import { ExpiredCode } from "./expired-code";
 
 export const revalidate = 0;
 
 interface Props {
   params: Promise<{ boothId: string }>;
+  searchParams: Promise<{ k?: string }>;
 }
 
-export default async function OrderPage({ params }: Props) {
+export default async function OrderPage({ params, searchParams }: Props) {
   const { boothId } = await params;
+  const { k } = await searchParams;
   const supabase = await createServerClient();
 
   // Booth row and live stock both key only on boothId and are independent, so
@@ -23,7 +27,7 @@ export default async function OrderPage({ params }: Props) {
     await Promise.all([
       supabase
         .from("booths")
-        .select("id, name, image_url, hours, menu_items")
+        .select("id, name, image_url, hours, menu_items, access_token")
         .eq("id", boothId)
         .eq("is_active", true)
         .single(),
@@ -32,6 +36,11 @@ export default async function OrderPage({ params }: Props) {
     ]);
 
   if (!booth) notFound();
+
+  // Hard-block a stale/absent QR token. Checked after the booth exists so we
+  // never confirm-or-deny a booth's existence via the token path any differently
+  // than the normal not-found path. Status page is intentionally NOT gated.
+  if (!isTokenValid(booth.access_token, k)) return <ExpiredCode />;
 
   // Authoritative serveability (SECURITY DEFINER): a free vendor's over-limit
   // "paused" booth isn't orderable even though the signed-in owner's own-row RLS
@@ -100,6 +109,7 @@ export default async function OrderPage({ params }: Props) {
 
       <OrderForm
         boothId={booth.id}
+        token={booth.access_token}
         menuItems={available}
         closed={closed}
         remaining={remaining}

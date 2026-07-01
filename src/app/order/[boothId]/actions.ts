@@ -11,6 +11,7 @@ import {
   type PlaceOrderInput,
 } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
+import { isTokenValid } from "@/lib/booth-token";
 import { cartTotal } from "@/lib/cart";
 import { overStockLines, parseRemaining } from "@/lib/stock";
 import type { ActionResult } from "@/lib/action-result";
@@ -19,14 +20,24 @@ type PlaceOrderResult = ActionResult<{ orderNumber: string }>;
 
 const boothIdSchema = z.string().uuid();
 
+// Toast copy for a missing/rejected QR token. Deliberately shorter than the
+// block-screen copy ("...ask the booth for the current QR.") — don't
+// "reconcile" the two, they're different surfaces with different space.
+const TOKEN_REJECTED_ERROR = "This code expired — please rescan.";
+
 export async function placeOrder(
   boothId: string,
+  token: string,
   input: PlaceOrderInput,
 ): Promise<PlaceOrderResult> {
   // Server-side validation — the client form only validates customerName,
   // so items arrive here untrusted. Never trust client validation.
   if (!boothIdSchema.safeParse(boothId).success)
     return { success: false, error: "Invalid booth" };
+
+  // Cheap, no-DB guard for an empty/absent token. A wrong-but-present token can
+  // only be judged against the booth row, so it's checked after the fetch below.
+  if (!token) return { success: false, error: TOKEN_REJECTED_ERROR };
 
   const parsed = placeOrderSchema.safeParse(input);
   if (!parsed.success)
@@ -63,13 +74,15 @@ export async function placeOrder(
     await Promise.all([
       supabase
         .from("booths")
-        .select("is_active, hours, menu_items, payment")
+        .select("is_active, hours, menu_items, payment, access_token")
         .eq("id", boothId)
         .single(),
       supabase.rpc("booth_remaining_stock", { p_booth_id: boothId }),
       supabase.rpc("booth_servable", { p_booth_id: boothId }),
     ]);
   if (!booth) return { success: false, error: "Booth not found" };
+  if (!isTokenValid(booth.access_token, token))
+    return { success: false, error: TOKEN_REJECTED_ERROR };
   if (servable === false)
     return {
       success: false,

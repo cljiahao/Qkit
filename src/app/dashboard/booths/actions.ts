@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
@@ -31,6 +32,33 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
     .eq("id", boothId);
   if (error) return { success: false, error: "Could not delete booth" };
   if (!count) return { success: false, error: "Booth not found" };
+  return { success: true };
+}
+
+/**
+ * Rotate a booth's QR access token. RLS (booths_vendor_update) scopes the update to
+ * the caller's own booths, so a non-owner updates zero rows and gets "not found"
+ * — no cross-vendor leak. Invalidates every previously printed/saved QR link.
+ */
+export async function regenerateBoothToken(
+  boothId: string,
+): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const { data: rows, error } = await supabase.rpc("regenerate_booth_token", {
+    p_booth_id: boothId,
+  });
+  if (error) return { success: false, error: "Could not regenerate QR" };
+  if (!rows) return { success: false, error: "Booth not found" };
+
+  revalidatePath(`/dashboard/booths/${boothId}/qr`);
   return { success: true };
 }
 
