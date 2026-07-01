@@ -11,7 +11,7 @@ const { placeOrder, addRecentOrder, push } = vi.hoisted(() => ({
   push: vi.fn(),
 }));
 
-vi.mock("./actions", () => ({ placeOrder }));
+vi.mock("@/app/o/[code]/actions", () => ({ placeOrder }));
 vi.mock("@/lib/recent-orders", () => ({ addRecentOrder }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -58,8 +58,8 @@ const TEH: MenuItem = {
 function renderForm(closed = false) {
   return render(
     <OrderForm
+      code="code123"
       boothId="b1"
-      token="test-token"
       menuItems={[KOPI, TEH]}
       closed={closed}
     />,
@@ -69,7 +69,11 @@ function renderForm(closed = false) {
 beforeEach(() => {
   vi.clearAllMocks();
   window.sessionStorage.clear(); // no stale reorder seed leaking between tests
-  placeOrder.mockResolvedValue({ success: true, orderNumber: "0042" });
+  placeOrder.mockResolvedValue({
+    success: true,
+    orderNumber: "0042",
+    boothId: "b1",
+  });
 });
 
 describe("OrderForm cart", () => {
@@ -124,10 +128,14 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: /Place order/ }));
 
     await waitFor(() =>
-      expect(placeOrder).toHaveBeenCalledWith("b1", "test-token", {
-        customerName: "Ada",
-        items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
-      }),
+      expect(placeOrder).toHaveBeenCalledWith(
+        "code123",
+        {
+          customerName: "Ada",
+          items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
+        },
+        expect.stringMatching(/^[0-9a-f-]{36}$/),
+      ),
     );
     expect(addRecentOrder).toHaveBeenCalledWith({
       boothId: "b1",
@@ -172,10 +180,14 @@ describe("OrderForm cart", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("retries once on a transient failure, passing the token again", async () => {
+  it("retries once on a transient failure, reusing the same idempotency key", async () => {
     placeOrder
       .mockRejectedValueOnce(new Error("network blip"))
-      .mockResolvedValueOnce({ success: true, orderNumber: "0042" });
+      .mockResolvedValueOnce({
+        success: true,
+        orderNumber: "0042",
+        boothId: "b1",
+      });
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -183,11 +195,16 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: /Place order/ }));
 
     await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
+    const [firstCallCode, , firstIdem] = placeOrder.mock.calls[0];
+    const [secondCallCode, , secondIdem] = placeOrder.mock.calls[1];
+    expect(firstCallCode).toBe("code123");
+    expect(secondCallCode).toBe("code123");
+    expect(secondIdem).toBe(firstIdem); // stable across the retry
     expect(placeOrder).toHaveBeenNthCalledWith(
       2,
-      "b1",
-      "test-token",
+      "code123",
       expect.objectContaining({ customerName: "Ada" }),
+      secondIdem,
     );
     expect(push).toHaveBeenCalledWith("/order/b1/0042");
   });

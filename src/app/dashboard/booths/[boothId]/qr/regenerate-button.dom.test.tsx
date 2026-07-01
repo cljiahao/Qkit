@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 
 const regenerate = vi.fn();
 vi.mock("../../actions", () => ({
-  regenerateBoothToken: (...args: unknown[]) => regenerate(...args),
+  regenerateShortCode: (...args: unknown[]) => regenerate(...args),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 

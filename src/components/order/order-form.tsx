@@ -18,12 +18,12 @@ import { addRecentOrder } from "@/lib/recent-orders";
 import { reconcileReorder } from "@/lib/reorder";
 import { takeReorder } from "@/lib/reorder-handoff";
 import { remainingFor, type Remaining } from "@/lib/stock";
-import { placeOrder } from "./actions";
+import { placeOrder } from "@/app/o/[code]/actions";
 import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
 
 interface Props {
+  code: string;
   boothId: string;
-  token: string;
   menuItems: MenuItem[];
   closed?: boolean;
   // Live remaining per capped item (id → count). Absent id = unlimited.
@@ -31,8 +31,8 @@ interface Props {
 }
 
 export function OrderForm({
+  code,
   boothId,
-  token,
   menuItems,
   closed = false,
   remaining = {},
@@ -176,15 +176,19 @@ export function OrderForm({
       customerName: formData.customerName,
       items: cartItems,
     };
+    // One idempotency key for this submit, generated BEFORE the try so it stays
+    // stable across the one retry below — a dropped-then-resent request can't
+    // create a second order (place_order replays the prior result for the key).
+    const idem = crypto.randomUUID();
     // One retry on a transient network failure (patchy event-site signal) so a
     // dropped request doesn't lose the order. The DB order number is atomic, so
     // a retried submit can't duplicate.
     let result: Awaited<ReturnType<typeof placeOrder>>;
     try {
-      result = await placeOrder(boothId, token, input);
+      result = await placeOrder(code, input, idem);
     } catch {
       try {
-        result = await placeOrder(boothId, token, input);
+        result = await placeOrder(code, input, idem);
       } catch {
         toast.error("Network issue — please try again.");
         setSubmitting(false);
@@ -212,7 +216,7 @@ export function OrderForm({
       })),
     });
 
-    router.push(`/order/${boothId}/${result.orderNumber}`);
+    router.push(`/order/${result.boothId}/${result.orderNumber}`);
   }
 
   const hasItems = cartItems.length > 0;
