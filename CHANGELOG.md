@@ -8,14 +8,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Rotatable booth QR token**: each booth's QR now carries a vendor-rotatable
-  access token (`/order/{boothId}?k=…`), so a **Regenerate QR** button (behind a
-  booth-naming confirmation) instantly invalidates every previously printed or
-  saved link — shutting out stale/malicious repeat orders from past events. A
-  stale or missing token shows a "code expired" screen; the live order-status
-  page stays valid mid-session. Enforced server-side in `placeOrder`, not just
-  the page. Migrations `0025` (`access_token` + `gen_booth_token()`) and `0026`
-  (`regenerate_booth_token` RPC, `SECURITY INVOKER`, `authenticated`-only).
+- **Rotatable booth QR short code**: each booth's QR encodes a short
+  `/o/{code}` URL backed by a vendor-rotatable 12-char code. A **Regenerate QR**
+  button (behind a booth-naming confirmation) mints a new code, instantly
+  invalidating every previously printed/saved link — shutting out stale or
+  malicious repeat orders from past events. An unresolved code shows a
+  "code expired" screen; the live order-status page stays valid mid-session.
+  The short URL (~34 chars vs ~95) scans faster and prints smaller.
+  (Supersedes the interim `access_token`/`?k=` model within this unreleased
+  cycle — migrations `0027`–`0031`.)
 - **Guided onboarding tour**: a short, skippable dashboard tour (driver.js)
   auto-runs once on a new vendor's first visit — spotlighting the live order
   board and the Booths/Stats/Plan landmarks, ending on a "create your first
@@ -44,6 +45,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- **Customer order path enforced in Postgres, not just the app.** Previously the
+  public anon key could POST directly to PostgREST and bypass every app-layer
+  guard (rate limit, servability, stock, cost snapshot) and read private booth
+  columns (`cost_cents`, the QR token). Now two `SECURITY DEFINER` RPCs are the
+  only public surface — `get_booth_for_order` (returns a public-safe projection,
+  never `cost_cents`/`short_code`) and `place_order` (atomic, server-priced,
+  idempotent) — and direct anon `SELECT booths` / `INSERT orders` /
+  `EXECUTE next_order_number` are revoked. `place_order` re-prices from the
+  stored menu (forged client prices can't survive) and dedupes on an idempotency
+  key (no double-order on flaky Wi-Fi). pgTAP encodes the contract.
 - CI security scanning (`.github/workflows/security.yml`): gitleaks v3 secret
   scan, CodeQL (javascript-typescript, security-extended), and a `pnpm audit`
   high/critical gate.
