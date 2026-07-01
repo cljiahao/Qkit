@@ -57,7 +57,12 @@ const TEH: MenuItem = {
 
 function renderForm(closed = false) {
   return render(
-    <OrderForm boothId="b1" menuItems={[KOPI, TEH]} closed={closed} />,
+    <OrderForm
+      boothId="b1"
+      token="test-token"
+      menuItems={[KOPI, TEH]}
+      closed={closed}
+    />,
   );
 }
 
@@ -119,7 +124,7 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: /Place order/ }));
 
     await waitFor(() =>
-      expect(placeOrder).toHaveBeenCalledWith("b1", {
+      expect(placeOrder).toHaveBeenCalledWith("b1", "test-token", {
         customerName: "Ada",
         items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
       }),

@@ -23,6 +23,7 @@ import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
 
 interface Props {
   boothId: string;
+  token: string;
   menuItems: MenuItem[];
   closed?: boolean;
   // Live remaining per capped item (id → count). Absent id = unlimited.
@@ -31,6 +32,7 @@ interface Props {
 
 export function OrderForm({
   boothId,
+  token,
   menuItems,
   closed = false,
   remaining = {},
@@ -179,10 +181,10 @@ export function OrderForm({
     // a retried submit can't duplicate.
     let result: Awaited<ReturnType<typeof placeOrder>>;
     try {
-      result = await placeOrder(boothId, input);
+      result = await placeOrder(boothId, token, input);
     } catch {
       try {
-        result = await placeOrder(boothId, input);
+        result = await placeOrder(boothId, token, input);
       } catch {
         toast.error("Network issue — please try again.");
         setSubmitting(false);
