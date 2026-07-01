@@ -27,4 +27,9 @@ describe("orderPath", () => {
   it("url-encodes the token", () => {
     expect(orderPath("b", "a b")).toBe("/order/b?k=a%20b");
   });
+  it("url-encodes query-significant characters so a token can't break the URL", () => {
+    // Real tokens are base64url (no special chars), but the encode must hold
+    // regardless — pins encodeURIComponent against a weakened/no-op mutant.
+    expect(orderPath("b", "a&b=c#d")).toBe("/order/b?k=a%26b%3Dc%23d");
+  });
 });
