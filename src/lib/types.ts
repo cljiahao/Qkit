@@ -344,6 +344,7 @@ export interface Database {
           order_seq: number;
           payment: Json | null;
           created_at: string;
+          access_token: string;
         };
         Insert: {
           id?: string;
@@ -356,6 +357,7 @@ export interface Database {
           order_seq?: number;
           payment?: Json | null;
           created_at?: string;
+          access_token?: string;
         };
         Update: {
           id?: string;
@@ -368,6 +370,7 @@ export interface Database {
           order_seq?: number;
           payment?: Json | null;
           created_at?: string;
+          access_token?: string;
         };
         Relationships: [
           {
