@@ -1,4 +1,5 @@
 import type { ReorderLine } from "@/lib/reorder";
+import type { SelectedOption } from "@/lib/types";
 
 // Hand a reorder from one route (status page / recent-orders list) to the booth
 // menu. sessionStorage (not localStorage): a reorder is a one-trip intent, not
@@ -23,6 +24,31 @@ export function stashReorder(boothId: string, seed: ReorderSeed): boolean {
   }
 }
 
+// A line survives only if it carries a string menuItemId, a numeric quantity,
+// and (when present) a well-formed options array — mirrors the per-field
+// rigor recent-orders.ts applies to its own sessionStorage/localStorage reads,
+// rather than trusting the cast.
+function isValidLine(value: unknown): value is ReorderLine {
+  if (!value || typeof value !== "object") return false;
+  const line = value as Record<string, unknown>;
+  if (typeof line.menuItemId !== "string") return false;
+  if (typeof line.quantity !== "number" || !Number.isFinite(line.quantity)) {
+    return false;
+  }
+  if (line.options !== undefined) {
+    if (!Array.isArray(line.options)) return false;
+    const validOptions = line.options.every(
+      (o): o is SelectedOption =>
+        !!o &&
+        typeof o === "object" &&
+        typeof (o as SelectedOption).group === "string" &&
+        typeof (o as SelectedOption).choice === "string",
+    );
+    if (!validOptions) return false;
+  }
+  return true;
+}
+
 export function takeReorder(boothId: string): ReorderSeed | null {
   if (typeof window === "undefined") return null;
   try {
@@ -38,7 +64,11 @@ export function takeReorder(boothId: string): ReorderSeed | null {
     ) {
       return null;
     }
-    return parsed as ReorderSeed;
+    const candidate = parsed as ReorderSeed;
+    const validLines = candidate.lines.filter(isValidLine);
+    return typeof candidate.customerName === "string"
+      ? { lines: validLines, customerName: candidate.customerName }
+      : { lines: validLines };
   } catch {
     return null;
   }

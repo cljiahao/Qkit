@@ -10,6 +10,9 @@ const eslintConfig = [
       "coverage/**",
       ".stryker-tmp/**",
       "reports/**",
+      "test-results/**",
+      "playwright-report/**",
+      "scripts/demo/out/**",
     ],
   },
 ];

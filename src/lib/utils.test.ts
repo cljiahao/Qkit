@@ -107,4 +107,10 @@ describe("parseDollarsToCents", () => {
     expect(parseDollarsToCents("abc")).toEqual({ ok: false });
     expect(parseDollarsToCents("-3")).toEqual({ ok: false });
   });
+
+  it("rejects non-finite input", () => {
+    expect(parseDollarsToCents("Infinity")).toEqual({ ok: false });
+    expect(parseDollarsToCents("-Infinity")).toEqual({ ok: false });
+    expect(parseDollarsToCents("1e400")).toEqual({ ok: false });
+  });
 });

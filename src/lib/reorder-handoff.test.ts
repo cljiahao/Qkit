@@ -76,4 +76,44 @@ describe("reorder-handoff", () => {
     expect(stashReorder("b1", { lines })).toBe(false);
     expect(takeReorder("b1")).toBeNull();
   });
+
+  it("drops malformed lines (bad menuItemId / quantity), keeping valid ones", () => {
+    sessionStorage.setItem(
+      "qkit:reorder:b1",
+      JSON.stringify({
+        lines: [
+          { menuItemId: "cookie", quantity: 2 },
+          { menuItemId: 123, quantity: 2 }, // menuItemId not a string
+          { menuItemId: "tea", quantity: "two" }, // quantity not a number
+          { quantity: 1 }, // missing menuItemId
+          null,
+          "garbage",
+        ],
+      }),
+    );
+    expect(takeReorder("b1")).toEqual({
+      lines: [{ menuItemId: "cookie", quantity: 2 }],
+    });
+  });
+
+  it("drops a non-string customerName rather than trusting it", () => {
+    sessionStorage.setItem(
+      "qkit:reorder:b1",
+      JSON.stringify({ lines, customerName: 12345 }),
+    );
+    expect(takeReorder("b1")).toEqual({ lines });
+  });
+
+  it("drops lines whose options entries are malformed", () => {
+    sessionStorage.setItem(
+      "qkit:reorder:b1",
+      JSON.stringify({
+        lines: [
+          { menuItemId: "cookie", quantity: 1, options: [{ group: "Size" }] }, // missing choice
+          { menuItemId: "tea", quantity: 1, options: "not-an-array" },
+        ],
+      }),
+    );
+    expect(takeReorder("b1")).toEqual({ lines: [] });
+  });
 });
