@@ -474,6 +474,12 @@ export interface Database {
         Args: Record<string, never>;
         Returns: string;
       };
+      get_booth_for_order: {
+        Args: {
+          p_short_code: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       order_status: OrderStatus;
