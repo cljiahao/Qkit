@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,29 +15,24 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { OrderStatusBadge } from "@/components/order-status-badge";
-import { createClient } from "@/lib/supabase/client";
 import { parseOrderItems } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { boothColor } from "@/lib/booth-color";
 import {
+  ADVANCE,
   isTerminal,
   orderAgeTone,
   elapsedMinutes,
-  buildAdvancePatch,
 } from "@/lib/orders";
+import {
+  advanceOrder,
+  cancelOrder as cancelOrderAction,
+  confirmOrderPayment,
+} from "@/app/dashboard/order-actions";
 import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { Banknote, ChevronDown, Clock } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
-
-// Forward transition keyed by the order's CURRENT status: where the advance
-// button takes it (next) and what it says (label = intent, not the raw name).
-const ADVANCE: Partial<
-  Record<OrderStatus, { next: OrderStatus; label: string }>
-> = {
-  preparing: { next: "ready", label: "Mark Ready" },
-  ready: { next: "completed", label: "Mark Picked Up" },
-};
 
 function PaymentBadge({ status }: { status: Order["payment_status"] }) {
   if (status === "not_required") return null;
@@ -76,7 +71,6 @@ export function OrderCard({
   const payStatus = confirmedLocally ? "confirmed" : order.payment_status;
   const [updating, setUpdating] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const supabase = useMemo(() => createClient(), []);
 
   // Ticket aging: tick the clock each 30s (only while live) so the vendor sees
   // at a glance how long an order has waited against a ~10-min prep target.
@@ -89,51 +83,35 @@ export function OrderCard({
   const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
 
+  // All three mutations go through validated server actions (order-actions.ts);
+  // the DB enforces ownership (RLS) and column integrity (0032 freeze trigger).
   async function advanceStatus() {
     if (!advance) return;
     setUpdating(true);
-    const { error } = await supabase
-      .from("orders")
-      .update(
-        buildAdvancePatch(advance.next, new Date().toISOString(), payStatus),
-      )
-      .eq("id", order.id);
-
-    if (error) {
-      toast.error("Failed to update order");
+    const res = await advanceOrder(order.id);
+    if (!res.success) {
+      toast.error(res.error);
     } else {
-      setStatus(advance.next);
+      setStatus(res.status);
       // Completing auto-confirms an outstanding payment (see buildAdvancePatch).
-      if (advance.next === "completed") setConfirmedLocally(true);
+      if (res.status === "completed") setConfirmedLocally(true);
     }
     setUpdating(false);
   }
 
   async function confirmPayment() {
     setUpdating(true);
-    // Vendor is authenticated; RLS limits the update to their own booth's
-    // orders (same pattern as advanceStatus/cancelOrder).
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        payment_status: "confirmed",
-        paid_at: new Date().toISOString(),
-      })
-      .eq("id", order.id);
-    if (error) toast.error("Failed to confirm payment");
+    const res = await confirmOrderPayment(order.id);
+    if (!res.success) toast.error(res.error);
     else setConfirmedLocally(true);
     setUpdating(false);
   }
 
   async function cancelOrder() {
     setUpdating(true);
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "cancelled" })
-      .eq("id", order.id);
-
-    if (error) {
-      toast.error("Failed to cancel order");
+    const res = await cancelOrderAction(order.id);
+    if (!res.success) {
+      toast.error(res.error);
     } else {
       setStatus("cancelled");
     }

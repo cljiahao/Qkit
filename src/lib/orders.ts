@@ -8,6 +8,20 @@ export function isTerminal(status: OrderStatus): boolean {
   return TERMINAL_STATUSES.includes(status);
 }
 
+/**
+ * Forward transition keyed by an order's CURRENT status: where the advance
+ * button takes it (`next`) and what the button says (`label` = intent, not the
+ * raw status name). A status with no entry has no legal forward move. Shared by
+ * the order board (button) and the `advanceOrder` server action (patch) so both
+ * derive the next state from one source.
+ */
+export const ADVANCE: Partial<
+  Record<OrderStatus, { next: OrderStatus; label: string }>
+> = {
+  preparing: { next: "ready", label: "Mark Ready" },
+  ready: { next: "completed", label: "Mark Picked Up" },
+};
+
 // Active-board ordering. Lower rank = higher on the board. Only the statuses
 // that appear on the active board are ranked meaningfully; terminal/legacy
 // statuses fall to the end so a stray order never sorts above live work.

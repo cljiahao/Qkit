@@ -5,15 +5,19 @@ import userEvent from "@testing-library/user-event";
 import { OrderCard } from "./order-card";
 import type { Order } from "@/lib/types";
 
-// Capture the supabase update chain so we can assert what status was written.
-const { updateMock, eqMock } = vi.hoisted(() => {
-  const eqMock = vi.fn(() => Promise.resolve({ error: null }));
-  const updateMock = vi.fn(() => ({ eq: eqMock }));
-  return { updateMock, eqMock };
-});
+// The card delegates mutations to server actions (order-actions.ts). We mock
+// those and assert the card calls the right one with the order id; the patch
+// content is the server action's job (covered in order-actions.test.ts).
+const { advanceOrder, confirmOrderPayment, cancelOrder } = vi.hoisted(() => ({
+  advanceOrder: vi.fn(),
+  confirmOrderPayment: vi.fn(),
+  cancelOrder: vi.fn(),
+}));
 
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ from: () => ({ update: updateMock }) }),
+vi.mock("@/app/dashboard/order-actions", () => ({
+  advanceOrder,
+  confirmOrderPayment,
+  cancelOrder,
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -40,8 +44,12 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
 }
 
 beforeEach(() => {
-  updateMock.mockClear();
-  eqMock.mockClear();
+  advanceOrder.mockReset();
+  confirmOrderPayment.mockReset();
+  cancelOrder.mockReset();
+  advanceOrder.mockResolvedValue({ success: true, status: "ready" });
+  confirmOrderPayment.mockResolvedValue({ success: true });
+  cancelOrder.mockResolvedValue({ success: true });
 });
 
 describe("OrderCard", () => {
@@ -57,15 +65,13 @@ describe("OrderCard", () => {
 
   it("advances preparing -> ready and relabels the button", async () => {
     const user = userEvent.setup();
+    advanceOrder.mockResolvedValue({ success: true, status: "ready" });
     render(<OrderCard order={makeOrder({ status: "preparing" })} />);
 
     await user.click(screen.getByRole("button", { name: "Mark Ready" }));
 
-    // Advancing to ready stamps ready_at (drives the wait-time stats).
-    expect(updateMock).toHaveBeenCalledWith({
-      status: "ready",
-      ready_at: expect.any(String),
-    });
+    expect(advanceOrder).toHaveBeenCalledWith("o1");
+    // The card relabels off the status the action returns.
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Mark Picked Up" }),
@@ -73,16 +79,14 @@ describe("OrderCard", () => {
     );
   });
 
-  it("advances ready -> completed and stamps completed_at", async () => {
+  it("advances ready -> completed via the action", async () => {
     const user = userEvent.setup();
+    advanceOrder.mockResolvedValue({ success: true, status: "completed" });
     render(<OrderCard order={makeOrder({ status: "ready" })} />);
 
     await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
 
-    expect(updateMock).toHaveBeenCalledWith({
-      status: "completed",
-      completed_at: expect.any(String),
-    });
+    expect(advanceOrder).toHaveBeenCalledWith("o1");
   });
 
   it("cancels via the confirm dialog", async () => {
@@ -93,7 +97,7 @@ describe("OrderCard", () => {
     // Dialog action (distinct from the trigger / "Keep order").
     await user.click(screen.getByRole("button", { name: "Cancel order" }));
 
-    expect(updateMock).toHaveBeenCalledWith({ status: "cancelled" });
+    expect(cancelOrder).toHaveBeenCalledWith("o1");
     await waitFor(() =>
       expect(
         screen.queryByRole("button", { name: "Mark Ready" }),
@@ -125,14 +129,11 @@ describe("OrderCard payment", () => {
     ).toBeInTheDocument();
   });
 
-  it("confirms payment, stamping paid_at", async () => {
+  it("confirms payment via the action", async () => {
     const user = userEvent.setup();
     render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />);
     await user.click(screen.getByRole("button", { name: /confirm payment/i }));
-    expect(updateMock).toHaveBeenCalledWith({
-      payment_status: "confirmed",
-      paid_at: expect.any(String),
-    });
+    expect(confirmOrderPayment).toHaveBeenCalledWith("o1");
   });
 
   it("shows a Paid badge for a confirmed order", () => {

@@ -55,6 +55,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `EXECUTE next_order_number` are revoked. `place_order` re-prices from the
   stored menu (forged client prices can't survive) and dedupes on an idempotency
   key (no double-order on flaky Wi-Fi). pgTAP encodes the contract.
+- **Vendor order path enforced in Postgres too.** The order board mutated orders
+  directly from the browser, guarded only by an `orders_vendor_update` policy
+  that had `USING` but no `WITH CHECK` and no column restriction — so a tampered
+  vendor session (or a direct PostgREST call with the vendor JWT) could forge
+  `total_cents`/`items`, rewrite `order_number`/`customer_name`, or re-point an
+  order to another booth. Now the three mutations go through validated server
+  actions (`advanceOrder`/`confirmOrderPayment`/`cancelOrder`), the update policy
+  carries a `WITH CHECK` (result row must still be the vendor's), and a
+  `BEFORE UPDATE` trigger freezes the financial/identity columns (`booth_id`,
+  `order_number`, `customer_name`, `items`, `total_cents`, `created_at`,
+  `idempotency_key`, `payment_method_kind`) — a vendor UPDATE may only move the
+  state machine. Migration `0032`; pgTAP encodes the freeze + `WITH CHECK`.
 - CI security scanning (`.github/workflows/security.yml`): gitleaks v3 secret
   scan, CodeQL (javascript-typescript, security-extended), and a `pnpm audit`
   high/critical gate.

@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(35);
+select plan(40);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -161,6 +161,40 @@ with upd as (
 select is(
   (select count(*)::int from upd),
   0, 'A cannot confirm payment on B order');
+
+-- ── Order integrity (0032) ───────────────────────────────────────────────────
+-- Financial/identity columns are frozen after creation (BEFORE UPDATE trigger),
+-- and the vendor UPDATE policy now carries a WITH CHECK. A owns order d001;
+-- these updates pass the USING filter and reach the freeze trigger, which
+-- throws. pgTAP wraps each throws_like in a savepoint, so the outer txn
+-- survives and later tests still run.
+select throws_like(
+  $$ update public.orders set total_cents = 1
+     where id = '00000000-0000-0000-0000-00000000d001' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'vendor cannot change total_cents on its own order');
+select throws_like(
+  $$ update public.orders
+       set items = '[{"menuItemId":"x","name":"Forged","quantity":1}]'::jsonb
+     where id = '00000000-0000-0000-0000-00000000d001' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'vendor cannot change items on its own order');
+select throws_like(
+  $$ update public.orders set booth_id = '00000000-0000-0000-0000-0000000b0003'
+     where id = '00000000-0000-0000-0000-00000000d001' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'vendor cannot re-point booth_id (frozen; WITH CHECK also guards ownership)');
+-- The state machine stays writable: a status advance on the own order succeeds.
+with upd as (
+  update public.orders set status = 'ready', ready_at = now()
+  where id = '00000000-0000-0000-0000-00000000d001' returning 1)
+select is((select count(*)::int from upd), 1,
+  'vendor can still advance status on its own order');
+-- The UPDATE policy actually carries a WITH CHECK (ownership on the result row).
+select isnt(
+  (select with_check from pg_policies
+   where tablename = 'orders' and policyname = 'orders_vendor_update'),
+  null, 'orders_vendor_update has a WITH CHECK clause');
 
 -- Customer feedback: A sees only its own booths' reviews.
 select isnt_empty(
