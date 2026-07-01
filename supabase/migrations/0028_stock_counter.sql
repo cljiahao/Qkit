@@ -29,9 +29,15 @@ AS $$
   DO UPDATE SET qty = GREATEST(public.booth_item_sold.qty + EXCLUDED.qty, 0);
 $$;
 
+-- SECURITY DEFINER: the triggering statement runs as anon (customer INSERT) or
+-- authenticated (vendor cancel), but booth_item_sold is RLS deny-all — so the
+-- nested write must run as the function owner or the whole order INSERT/UPDATE
+-- rolls back. The nested apply_order_stock_delta inherits this definer context.
+-- Safe: a RETURNS trigger function can't be called directly outside trigger context.
 CREATE OR REPLACE FUNCTION public.orders_stock_sync()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
