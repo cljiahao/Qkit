@@ -439,6 +439,12 @@ export interface Database {
           },
         ];
       };
+      booth_item_sold: {
+        Row: { booth_id: string; menu_item_id: string; qty: number };
+        Insert: { booth_id: string; menu_item_id: string; qty?: number };
+        Update: { booth_id?: string; menu_item_id?: string; qty?: number };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
