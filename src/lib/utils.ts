@@ -34,7 +34,7 @@ export function parseDollarsToCents(
   const trimmed = raw.trim();
   if (trimmed === "") return { ok: true, cents: undefined };
   const value = Number(trimmed);
-  if (Number.isNaN(value) || value < 0) return { ok: false };
+  if (!Number.isFinite(value) || value < 0) return { ok: false };
   return { ok: true, cents: Math.round(value * 100) };
 }
 
