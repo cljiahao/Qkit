@@ -6,6 +6,7 @@ import QRCode from "react-qr-code";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { orderPath } from "@/lib/booth-token";
+import { RegenerateButton } from "./regenerate-button";
 
 interface Props {
   boothId: string;
@@ -144,6 +145,10 @@ export function BoothQrPoster({ boothId, name, isActive, token }: Props) {
         >
           <Download className="size-4" /> Download PNG
         </Button>
+      </div>
+
+      <div className="mt-3 print:hidden">
+        <RegenerateButton boothId={boothId} boothName={name} />
       </div>
     </div>
   );

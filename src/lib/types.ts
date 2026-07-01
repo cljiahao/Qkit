@@ -464,6 +464,10 @@ export interface Database {
         Args: { p_license_id: string; p_label: string | null };
         Returns: undefined;
       };
+      regenerate_booth_token: {
+        Args: { p_booth_id: string };
+        Returns: number;
+      };
     };
     Enums: {
       order_status: OrderStatus;
