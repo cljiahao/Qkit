@@ -76,7 +76,9 @@ BEGIN
     r record;
   BEGIN
     FOR r IN
-      SELECT it->>'menuItemId' AS id, sum((it->>'quantity')::int) AS want
+      -- Clamp per line to match the pricing loop (which skips qty<=0); an
+      -- unclamped negative line on the direct-RPC path could mask an oversell.
+      SELECT it->>'menuItemId' AS id, sum(GREATEST((it->>'quantity')::int, 0)) AS want
       FROM jsonb_array_elements(p_items) AS it
       GROUP BY it->>'menuItemId'
     LOOP
