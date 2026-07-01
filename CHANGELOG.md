@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Rotatable booth QR token**: each booth's QR now carries a vendor-rotatable
+  access token (`/order/{boothId}?k=…`), so a **Regenerate QR** button (behind a
+  booth-naming confirmation) instantly invalidates every previously printed or
+  saved link — shutting out stale/malicious repeat orders from past events. A
+  stale or missing token shows a "code expired" screen; the live order-status
+  page stays valid mid-session. Enforced server-side in `placeOrder`, not just
+  the page. Migrations `0025` (`access_token` + `gen_booth_token()`) and `0026`
+  (`regenerate_booth_token` RPC, `SECURITY INVOKER`, `authenticated`-only).
 - **Guided onboarding tour**: a short, skippable dashboard tour (driver.js)
   auto-runs once on a new vendor's first visit — spotlighting the live order
   board and the Booths/Stats/Plan landmarks, ending on a "create your first
