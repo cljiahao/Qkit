@@ -344,7 +344,7 @@ export interface Database {
           order_seq: number;
           payment: Json | null;
           created_at: string;
-          access_token: string;
+          short_code: string;
         };
         Insert: {
           id?: string;
@@ -357,7 +357,7 @@ export interface Database {
           order_seq?: number;
           payment?: Json | null;
           created_at?: string;
-          access_token?: string;
+          short_code?: string;
         };
         Update: {
           id?: string;
@@ -370,7 +370,7 @@ export interface Database {
           order_seq?: number;
           payment?: Json | null;
           created_at?: string;
-          access_token?: string;
+          short_code?: string;
         };
         Relationships: [
           {
@@ -464,9 +464,9 @@ export interface Database {
         Args: { p_license_id: string; p_label: string | null };
         Returns: undefined;
       };
-      regenerate_booth_token: {
-        Args: { p_booth_id: string };
-        Returns: number;
+      gen_short_code: {
+        Args: Record<string, never>;
+        Returns: string;
       };
     };
     Enums: {
