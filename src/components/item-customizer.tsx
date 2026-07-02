@@ -130,13 +130,23 @@ function CustomizerBody({
                 </span>
               )}
             </p>
-            <div className="flex flex-wrap gap-2">
+            {/* Selection state is conveyed by colour alone otherwise (fails WCAG
+                1.4.1 / 4.1.2); expose it via radio/checkbox semantics like the
+                feedback form does. Single-select = radiogroup, multi = group of
+                checkboxes. */}
+            <div
+              className="flex flex-wrap gap-2"
+              role={g.multiple ? "group" : "radiogroup"}
+              aria-label={g.label}
+            >
               {g.choices.map((c) => {
                 const active = (selected[g.id] ?? []).includes(c.id);
                 return (
                   <button
                     key={c.id}
                     type="button"
+                    role={g.multiple ? "checkbox" : "radio"}
+                    aria-checked={active}
                     onClick={() => toggle(g, c.id)}
                     className={`rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
                       active

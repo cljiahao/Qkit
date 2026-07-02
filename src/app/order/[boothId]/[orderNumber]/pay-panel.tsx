@@ -72,7 +72,11 @@ export function PayPanel({
   // Vendor confirmed receipt — show a clear, persistent paid state.
   if (status === "confirmed") {
     return (
-      <section className="flex flex-col items-center gap-2 px-6 py-6 text-center">
+      <section
+        role="status"
+        aria-live="polite"
+        className="flex flex-col items-center gap-2 px-6 py-6 text-center"
+      >
         <span className="flex size-11 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
           <Check className="size-6" />
         </span>
@@ -124,7 +128,11 @@ export function PayPanel({
       )}
 
       {claimed ? (
-        <p className="text-center text-sm font-semibold text-amber-600">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-center text-sm font-semibold text-amber-600"
+        >
           Payment sent — waiting for the stall to confirm.
         </p>
       ) : (

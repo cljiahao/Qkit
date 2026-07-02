@@ -198,7 +198,12 @@ export function OrderStatusPoller({
         </div>
       )}
 
+      {/* Live region: the status text is always mounted and only its text
+          changes on poll, so a screen reader announces the transition (e.g.
+          "ready for pickup") without a visual cue (SC 4.1.3). */}
       <p
+        role="status"
+        aria-live="polite"
         className={`font-display text-xl font-semibold ${
           status === "ready" ? "text-status-ready" : ""
         }`}
