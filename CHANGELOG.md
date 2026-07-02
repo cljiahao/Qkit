@@ -45,6 +45,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Entitlement drift closed.** The booth-create gate (`can_create_booth`)
+  checked a license's `expires_at` but not `valid_from`, while serveability
+  (`booth_servable`) checked both — so a vendor with a **future-dated** pass
+  could create extra booths that then couldn't serve. Both now share one
+  `vendor_entitled()` predicate. (Migration 0038.)
+- **The anonymous ordering funnel survives an auth outage.** The session
+  middleware resolved the user on every request, so a Supabase auth hiccup could
+  500 the public `/o` / `/order` pages that need no login. It now resolves the
+  user only on protected routes (and degrades to a `/login` redirect instead of
+  a 500 if auth is unreachable) — the customer funnel skips the auth round-trip
+  entirely.
+- **The payment QR now has a fallback** when the image can't load (flaky wifi)
+  instead of leaving the customer stuck with no way to pay.
+- **Input bounds:** menu prices/costs are capped (a forged price can't overflow
+  the order total), the cart is capped at 50 lines, and the status page
+  validates its route params — matching the database-side guards.
 - **Backend read errors no longer masquerade as empty/expired states.** A DB
   error while placing an order, resolving a booth code, or loading the vendor
   board is now logged and shown honestly — a distinct "try again" screen for a

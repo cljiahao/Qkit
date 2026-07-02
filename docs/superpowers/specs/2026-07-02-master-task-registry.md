@@ -64,6 +64,23 @@ React.cache, rate-limit index + probabilistic sweep migration `0036`); **T11/D7/
   **Phase B deferred:** T12 (o/[code] revalidate=0 → cache static catalog; risky caching,
   needs careful stock/servable-live split) + the T19 seeded order-e2e job.
 
+**Phase C (partial) SHIPPED** (2026-07-03, direct to main, pushed): **T25/R2+T23+T39**
+(migration `0038` — shared `vendor_entitled()` closes the can_create_booth/booth_servable
+valid_from drift; payment_method_kind CHECK; revoke apply_order_stock_delta PUBLIC;
+pgTAP 59→62); **T27** (V4/V5/V7/V8 input bounds — money/cart caps `MAX_MONEY_CENTS`/
+`MAX_CART_LINES`, logEvent metadata size cap, status-page param validation; +2 tests);
+**T33** (proxy skips auth on the public funnel + try/catch — auth outage no longer 500s
+/o); **T35** (payment QR onError fallback); **T36** (menu qty +/- aria-labels); **T30/T34**
+(rate-limiter + saveBooth cap-count error logging). unit 431; migration 0038.
+**Phase C remaining:** T26 (admin double-payment idempotency), T28+R5 (RLS `(select
+auth.uid())` + owns_booth — broad migration, do carefully w/ pgTAP), T29 (admin scans),
+T31/T32 (resilience logging), T37 (types mirror — low value; prefer `supabase gen types`),
+T38 (dead order_status pending/confirmed — enum, risky), T40 (config hygiene batch),
+T41 (coverage). Dedupe: R1 ok/err/fail, D3 uuidSchema, D4 cents, R6 WEEKDAYS.
+**Needs USER decision:** **T24** (cancel-then-refund semantics: does a confirmed-paid
+order that's cancelled stay in revenue / show a refund trail / go negative?).
+**Own cycle:** T42/T43 (templateCentral 5.0→5.6 + checked-in skills refresh).
+
 ## P1 — do first
 
 ### T1. Complete the DB enforcement for the `authenticated` role + lock the RPC (SECURITY) — effort M
