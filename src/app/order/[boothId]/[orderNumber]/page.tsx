@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { z } from "zod";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
@@ -18,6 +19,15 @@ export const revalidate = 0;
 
 export default async function OrderStatusPage({ params }: Props) {
   const { boothId, orderNumber } = await params;
+
+  // Validate the route params before they reach the query (V8). A bad boothId
+  // would degrade safe on .eq anyway, but rejecting junk up front avoids a
+  // pointless service-role round-trip and keeps the bound explicit.
+  if (
+    !z.string().uuid().safeParse(boothId).success ||
+    !z.string().min(1).max(40).safeParse(orderNumber).success
+  )
+    notFound();
 
   // Service client bypasses RLS — customers are unauthenticated
   const supabase = await createServiceClient();

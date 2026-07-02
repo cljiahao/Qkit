@@ -23,10 +23,16 @@ export async function logEvent(
 ): Promise<void> {
   const parsed = eventTypeSchema.safeParse(type);
   if (!parsed.success) return;
-  const safeMeta =
-    metadata && typeof metadata === "object" && !Array.isArray(metadata)
-      ? metadata
-      : undefined;
+  // Drop a non-object OR an oversized/unserializable metadata blob (the comment
+  // promised this; now enforced) so a caller can't stuff the events table.
+  let safeMeta: Record<string, unknown> | undefined;
+  if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+    try {
+      if (JSON.stringify(metadata).length <= 1000) safeMeta = metadata;
+    } catch {
+      // unserializable (e.g. circular) — drop it
+    }
+  }
   try {
     const supabase = await createServerClient();
     await supabase.from("events").insert({

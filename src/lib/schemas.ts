@@ -68,35 +68,49 @@ export const selectedOptionSchema = z.object({
   choice: z.string().min(1).max(100),
 });
 
+// Upper bound for any money field (cents). $10k — matches the admin pricing cap
+// and keeps totals well inside a signed INTEGER even at max quantity/line count.
+export const MAX_MONEY_CENTS = 10_000_00;
+// Cart line cap — mirrors the DB guard inside place_order (jsonb_array_length).
+export const MAX_CART_LINES = 50;
+
 export const placeOrderSchema = z.object({
   customerName: z.string().min(1, "Your name is required").max(100),
   items: z
     .array(
       z.object({
-        menuItemId: z.string().min(1),
-        name: z.string(),
-        price_cents: z.number().int().nonnegative().optional(),
+        menuItemId: z.string().min(1).max(200),
+        name: z.string().max(200),
+        price_cents: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(MAX_MONEY_CENTS)
+          .optional(),
         quantity: z.number().int().min(1).max(20),
         options: z.array(selectedOptionSchema).max(20).optional(),
       }),
     )
-    .min(1, "Add at least one item"),
+    .min(1, "Add at least one item")
+    .max(MAX_CART_LINES, "Too many items"),
 });
 
 export const menuItemFormSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1, "Item name is required").max(100),
   description: z.string().max(500).default(""),
-  price_cents: z.number().int().nonnegative().optional(),
+  // Bounded so a forged price can't overflow total_cents (INTEGER) once summed
+  // across a full cart at max quantity.
+  price_cents: z.number().int().nonnegative().max(MAX_MONEY_CENTS).optional(),
   // Vendor's unit cost — drives margin stats. Never sent to customers.
-  cost_cents: z.number().int().nonnegative().optional(),
+  cost_cents: z.number().int().nonnegative().max(MAX_MONEY_CENTS).optional(),
   image_url: menuImageUrl,
   // The menu editor builds these; sanitizeOptionGroups runs before save so a
   // half-filled group never reaches optionGroupSchema (choices.min(1)).
   option_groups: z.array(optionGroupSchema).optional(),
   available: z.boolean(),
   // Optional sold-out cap (Pro). null/absent = unlimited.
-  stock: z.number().int().nonnegative().nullable().optional(),
+  stock: z.number().int().nonnegative().max(1_000_000).nullable().optional(),
 });
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");

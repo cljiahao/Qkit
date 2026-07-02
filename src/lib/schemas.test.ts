@@ -175,6 +175,24 @@ describe("placeOrderSchema", () => {
     ).toBe(false);
   });
 
+  it("rejects a cart over the 50-line cap (V5)", () => {
+    const items = Array.from({ length: 51 }, (_, i) =>
+      item({ menuItemId: `${i}` }),
+    );
+    expect(
+      placeOrderSchema.safeParse({ customerName: "Sam", items }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a price_cents beyond the money cap (V4 overflow guard)", () => {
+    expect(
+      placeOrderSchema.safeParse({
+        customerName: "Sam",
+        items: [item({ price_cents: 10_000_00 + 1 })],
+      }).success,
+    ).toBe(false);
+  });
+
   it.each([
     ["zero", 0],
     ["negative", -1],
