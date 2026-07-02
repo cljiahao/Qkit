@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(59);
+select plan(62);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -96,6 +96,14 @@ values
 insert into public.vendors (id, name)
 values ('00000000-0000-0000-0000-00000000000c', 'Vendor C');
 
+-- Vendor C also holds a FUTURE-dated pass (starts tomorrow) — used to prove the
+-- entitlement predicate honours valid_from (0038): it must NOT count yet.
+insert into public.licenses (id, vendor_id, valid_from, expires_at)
+values (
+  '00000000-0000-0000-0000-0000000c0003',
+  '00000000-0000-0000-0000-00000000000c',
+  now() + interval '1 day', now() + interval '2 day');
+
 insert into public.booths (id, vendor_id, name, is_active, short_code, menu_items)
 values (
   '00000000-0000-0000-0000-0000000b0004',
@@ -134,6 +142,22 @@ select is_empty(
        '[{"menuItemId":"y","quantity":0},
          {"menuItemId":"y","quantity":-3}]'::jsonb) $$,
   'order_item_quantities drops an item whose lines net to 0');
+
+-- ── Shared entitlement predicate honours valid_from (0038 / T25) ─────────────
+-- A holds an active license (valid_from past, expires future) → entitled.
+select ok(
+  public.vendor_entitled('00000000-0000-0000-0000-00000000000a'),
+  'vendor_entitled true for an active license');
+-- C holds only a FUTURE-dated pass → not entitled yet (the valid_from fix; the
+-- old expires-only predicate would have counted it).
+select ok(
+  NOT public.vendor_entitled('00000000-0000-0000-0000-00000000000c'),
+  'vendor_entitled false for a future-dated license');
+-- …and the create-cap agrees: C already has a booth and isn't entitled, so it
+-- cannot create another (the old can_create_booth would have allowed it).
+select ok(
+  NOT public.can_create_booth('00000000-0000-0000-0000-00000000000c'),
+  'can_create_booth false for a future-dated pass holder with a booth');
 
 -- ── Act as Vendor A (authenticated role + JWT claims so auth.uid() = A) ───────
 set local role authenticated;
