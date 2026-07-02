@@ -351,14 +351,14 @@ select throws_ok(
   null,
   'anon cannot SELECT booths directly');
 
--- But anon can never flip an order to a paid/confirmed state directly — only
--- the owning vendor (via the authenticated update policy) can.
-with upd as (
-  update public.orders set payment_status = 'confirmed'
-  where id = '00000000-0000-0000-0000-00000000d001' returning 1)
-select is(
-  (select count(*)::int from upd),
-  0, 'anon cannot confirm payment on any order');
+-- But anon can never flip an order to a paid/confirmed state directly — only the
+-- owning vendor can. anon has NO grant on orders (0041; customer flows go through
+-- the service client / RPCs), so a direct update is denied outright.
+select throws_ok(
+  $$ update public.orders set payment_status = 'confirmed'
+     where id = '00000000-0000-0000-0000-00000000d001' $$,
+  null,
+  'anon cannot confirm payment on any order');
 
 -- ── Order-path write path (anon) — migrations 0027–0031 ─────────────────────
 

@@ -16,17 +16,13 @@ extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
 # for accidental or malicious requests.
 max_rows = 1000
-# Controls whether new tables, views, sequences and functions created in the `public` schema by
-# `postgres` are reachable through the Data API roles (`anon`, `authenticated`, `service_role`)
-# without explicit GRANTs. The implicit default flipped to `false` on 2026-05-30, but QKit's whole
-# migration history is written against the auto-expose model: base grants at table-creation time,
-# then SELECTIVE REVOKEs (anon booth SELECT in 0029, INSERT on orders/feedback in 0033, etc.). RLS
-# is still the authorization layer — auto-expose only provides the base table privilege the RLS
-# policies then gate. Set `true` explicitly so a fresh `supabase start`/`db reset` (CI) reproduces
-# the production grant model; without it, `authenticated` has no base SELECT on booths and every
-# vendor read 500s. NOTE: this field is removed in 2026-10-30 — before then, add an explicit-GRANT
-# migration and drop this line.
-auto_expose_new_tables = true
+# Controls whether new tables/functions in `public` are auto-granted to the Data API roles
+# (`anon`, `authenticated`, `service_role`) without explicit GRANTs. Kept OFF (deterministic):
+# auto-expose on a current CLI re-grants `authenticated` broadly and fights QKit's selective
+# REVOKEs (it undid the next_order_number EXECUTE + vendors.plan UPDATE revokes in CI). The Data
+# API grants are instead made EXPLICIT in migration `0041_data_api_grants.sql`, so the end state is
+# identical across every CLI version and doesn't depend on this flag (which is removed 2026-10-30).
+auto_expose_new_tables = false
 
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.
