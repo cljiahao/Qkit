@@ -22,20 +22,19 @@ export default async function OrderStatusPage({ params }: Props) {
   // Service client bypasses RLS — customers are unauthenticated
   const supabase = await createServiceClient();
 
-  const { data: order } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("booth_id", boothId)
-    .eq("order_number", orderNumber)
-    .single();
+  // Both reads key only on the route params, so fetch them together instead of
+  // serially (one round-trip of latency, not two) on this hot status page.
+  const [{ data: order }, { data: booth }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("booth_id", boothId)
+      .eq("order_number", orderNumber)
+      .single(),
+    supabase.from("booths").select("name, payment").eq("id", boothId).single(),
+  ]);
 
   if (!order) notFound();
-
-  const { data: booth } = await supabase
-    .from("booths")
-    .select("name, payment")
-    .eq("id", boothId)
-    .single();
 
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
