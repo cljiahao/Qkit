@@ -1,0 +1,12 @@
+-- T38 — orders.status defaulted to 'pending', a value the live flow never uses:
+-- place_order always inserts 'preparing', and the state machine is
+-- preparing→ready→completed (+cancelled). Point the default at the real initial
+-- state so it's correct if a future insert path ever relies on it.
+--
+-- The 'pending' and 'confirmed' enum values are RETAINED deliberately:
+--   1. orderStatusSchema / STATUS_MESSAGE still accept them so any pre-v2 row
+--      renders rather than being dropped (tolerant-read design), and
+--   2. Postgres has no DROP VALUE — removing them means a full enum type swap
+--      (rename → recreate → column cast → drop old), which fails on any legacy
+--      row still carrying the value. Not worth that risk for two inert values.
+ALTER TABLE public.orders ALTER COLUMN status SET DEFAULT 'preparing';

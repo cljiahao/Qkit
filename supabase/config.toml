@@ -18,10 +18,15 @@ extra_search_path = ["public", "extensions"]
 max_rows = 1000
 # Controls whether new tables, views, sequences and functions created in the `public` schema by
 # `postgres` are reachable through the Data API roles (`anon`, `authenticated`, `service_role`)
-# without explicit GRANTs. Leave unset today to preserve local behaviour. The implicit default
-# flips to `false` on 2026-05-30 to match the new cloud default, and the field is removed in
-# 2026-10-30 once the always-revoked behaviour is permanent. Set to `false` to opt in early.
-# auto_expose_new_tables = false
+# without explicit GRANTs. The implicit default flipped to `false` on 2026-05-30, but QKit's whole
+# migration history is written against the auto-expose model: base grants at table-creation time,
+# then SELECTIVE REVOKEs (anon booth SELECT in 0029, INSERT on orders/feedback in 0033, etc.). RLS
+# is still the authorization layer — auto-expose only provides the base table privilege the RLS
+# policies then gate. Set `true` explicitly so a fresh `supabase start`/`db reset` (CI) reproduces
+# the production grant model; without it, `authenticated` has no base SELECT on booths and every
+# vendor read 500s. NOTE: this field is removed in 2026-10-30 — before then, add an explicit-GRANT
+# migration and drop this line.
+auto_expose_new_tables = true
 
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.
