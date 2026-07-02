@@ -7,13 +7,20 @@ import {
 
 // Mock the supabase server client's fluent chain and the vendor gate. Two
 // chains hang off `from("orders")`: a read (select→eq→maybeSingle) and a write
-// (update→eq). `maybeSingle` is set per-test to the "current" order row.
-const { getVendorMock, maybeSingle, update, updateEq } = vi.hoisted(() => ({
-  getVendorMock: vi.fn(),
-  maybeSingle: vi.fn(),
-  update: vi.fn(() => ({ eq: updateEq })),
-  updateEq: vi.fn(() => Promise.resolve({ error: null })),
-}));
+// (update→eq→eq→select). `maybeSingle` is set per-test to the "current" order
+// row; `updateSelect` returns the updated rows — [] models a concurrent change
+// that the status/payment guard filtered out.
+const { getVendorMock, maybeSingle, update, updateSelect } = vi.hoisted(() => {
+  const updateSelect = vi.fn();
+  return {
+    getVendorMock: vi.fn(),
+    maybeSingle: vi.fn(),
+    update: vi.fn(() => ({
+      eq: () => ({ eq: () => ({ select: updateSelect }) }),
+    })),
+    updateSelect,
+  };
+});
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: () =>
@@ -35,7 +42,10 @@ beforeEach(() => {
     .mockResolvedValue({ user: { id: "v1" }, vendor: {} });
   maybeSingle.mockReset();
   update.mockClear();
-  updateEq.mockClear().mockResolvedValue({ error: null });
+  // Default: the guarded UPDATE matched its row (1 row back).
+  updateSelect
+    .mockReset()
+    .mockResolvedValue({ data: [{ id: ID }], error: null });
 });
 
 describe("advanceOrder", () => {
@@ -85,6 +95,19 @@ describe("advanceOrder", () => {
     const res = await advanceOrder(ID);
     expect(res.success).toBe(false);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh when the status changed concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    // The guarded UPDATE matched nothing — another action moved the order.
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await advanceOrder(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed — please refresh.",
+    });
   });
 });
 
@@ -137,5 +160,17 @@ describe("cancelOrder", () => {
     const res = await cancelOrder(ID);
     expect(res.success).toBe(false);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh when the order advanced concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "ready", payment_status: "confirmed" },
+    });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await cancelOrder(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed — please refresh.",
+    });
   });
 });

@@ -38,7 +38,18 @@ race — migration `0034`: stock gate moved to run AFTER the `order_seq` booth-r
 lock (serializes concurrent orders; second reads the counter incl. the first's
 committed sale), gating the persisted `v_priced` via a new shared
 `order_item_quantities()` helper that `apply_order_stock_delta` also uses (single
-clamp rule). pgTAP plan 51→53. Next: Phase B (T7–T22).
+clamp rule). pgTAP plan 51→53.
+
+**P2 security/money (partial) SHIPPED** (2026-07-02, same branch): **T7** (migration
+`0035` — `WITH CHECK` added to `vendors_self_update`/`booths_vendor_update`/
+`purchase_requests_admin_update`; **+ found & fixed a free→pro escalation**: revoked
+column-level `UPDATE(plan)` on vendors from anon+authenticated, since the row-scoped
+policy let a vendor set their own `plan='pro'` directly). **T8 + N-err N7** (order-board
+advance/cancel/confirm now guard the UPDATE on the read status/payment_status →
+`.select("id")` 0-row = concurrent change → "refresh"; closes the cancel↔advance
+resurrection race; loadOwnOrder logs its read error). pgTAP plan 53→59; unit 420→422.
+**Remaining Phase B (not started):** T9–T22 (latency batch, a11y, resilience-logging
+T14–16, CI job T19, storage T22, global-error T21, drop dead pino T20).
 
 ## P1 — do first
 

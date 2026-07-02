@@ -26,11 +26,14 @@ async function loadOwnOrder(orderId: string) {
   if (!user) return { supabase: null, order: null } as const;
 
   const supabase = await createServerClient();
-  const { data: order } = await supabase
+  const { data: order, error } = await supabase
     .from("orders")
     .select("id, status, payment_status")
     .eq("id", orderId)
     .maybeSingle();
+  // A read error (not a missing row) is otherwise indistinguishable from
+  // "not found" to the caller — log it so a DB hiccup is debuggable (N7).
+  if (error) console.error("loadOwnOrder failed", error.message);
   return { supabase, order } as const;
 }
 
@@ -50,7 +53,10 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   const adv = ADVANCE[order.status];
   if (!adv) return { success: false, error: "Order can't be advanced" };
 
-  const { error } = await supabase
+  // Guard on the status we read: if a concurrent action (e.g. a cancel) moved
+  // the order meanwhile, the UPDATE matches 0 rows instead of blindly advancing
+  // by id — which could otherwise resurrect a cancelled order into revenue+stock.
+  const { data: rows, error } = await supabase
     .from("orders")
     .update(
       buildAdvancePatch(
@@ -59,11 +65,15 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
         order.payment_status,
       ),
     )
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .eq("status", order.status)
+    .select("id");
   if (error) {
     console.error("advanceOrder failed", error.message);
     return { success: false, error: "Failed to update order" };
   }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed — please refresh." };
 
   revalidatePath("/dashboard");
   return { success: true, status: adv.next };
@@ -86,14 +96,20 @@ export async function confirmOrderPayment(
   if (order.payment_status === "not_required")
     return { success: false, error: "This order doesn't take payment" };
 
-  const { error } = await supabase
+  // Guard on the payment_status we read so a concurrent flip (double-tap, or a
+  // cancel) makes this a no-op rather than a lost update.
+  const { data: rows, error } = await supabase
     .from("orders")
     .update({ payment_status: "confirmed", paid_at: new Date().toISOString() })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .eq("payment_status", order.payment_status)
+    .select("id");
   if (error) {
     console.error("confirmOrderPayment failed", error.message);
     return { success: false, error: "Failed to confirm payment" };
   }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed — please refresh." };
 
   revalidatePath("/dashboard");
   return { success: true };
@@ -109,14 +125,20 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
   if (isTerminal(order.status))
     return { success: false, error: "Order is already closed" };
 
-  const { error } = await supabase
+  // Guard on the status we read so a cancel can't race an advance to completed
+  // (which would otherwise be undone, or leave stock/revenue inconsistent).
+  const { data: rows, error } = await supabase
     .from("orders")
     .update({ status: "cancelled" })
-    .eq("id", orderId);
+    .eq("id", orderId)
+    .eq("status", order.status)
+    .select("id");
   if (error) {
     console.error("cancelOrder failed", error.message);
     return { success: false, error: "Failed to cancel order" };
   }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed — please refresh." };
 
   revalidatePath("/dashboard");
   return { success: true };

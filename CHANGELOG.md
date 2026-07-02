@@ -45,6 +45,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Order-board actions guard against concurrent status changes.** Advance,
+  cancel, and confirm-payment updated an order by id using the status they had
+  read — so a cancel racing an advance-to-completed could resurrect a cancelled
+  order back into revenue and stock. Each update now also matches on the
+  read status/payment_status; a concurrent change makes it a no-op and the
+  action reports "Order changed — please refresh." rather than clobbering.
 - **Dead customer order links resurrected.** Phase A moved the customer entry
   route to `/o/{short_code}` and removed `/order/{boothId}`, but the vendor
   "Copy order link" button, the reorder button, and the status page's "Order
@@ -73,6 +79,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- **Vendors can no longer self-escalate to Pro.** `vendors_self_update` was
+  row-scoped with no column limit, so a vendor could `UPDATE vendors SET
+plan='pro'` on their own row via a direct PostgREST call — a free→pro
+  escalation. Column-level `UPDATE(plan)` is now revoked from `anon` +
+  `authenticated`; only the admin action (service role) writes `plan`. Same
+  migration adds the missing `WITH CHECK` to the `vendors`, `booths`, and
+  `purchase_requests` UPDATE policies (a policy with only `USING` doesn't
+  constrain the result row, so an update could move a row out of the caller's
+  ownership — e.g. re-point a booth to another vendor). Migration `0035`.
 - **Order-path hardening extended to the `authenticated` role.** Phase A closed
   the customer write path for `anon` only, but sign-up is open — so any logged-in
   JWT still bypassed all of it: the permissive `orders_public_insert` /

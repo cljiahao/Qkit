@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(53);
+select plan(59);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -242,6 +242,40 @@ select throws_ok(
   $$ select public.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
   null,
   'authenticated cannot EXECUTE next_order_number');
+
+-- ── UPDATE-policy WITH CHECK + plan-escalation (0035 / T7) ──────────────────
+-- Free→pro escalation: `plan` lives on the vendor's own row, so before the
+-- column revoke a vendor could set it directly. UPDATE(plan) is now revoked from
+-- authenticated (only the service-role admin action writes it).
+select throws_ok(
+  $$ update public.vendors set plan = 'pro'
+     where id = '00000000-0000-0000-0000-00000000000a' $$,
+  null,
+  'authenticated vendor cannot self-escalate plan to pro');
+-- A legitimate self-edit (name) still works — the revoke is column-scoped.
+select lives_ok(
+  $$ update public.vendors set name = 'Vendor A2'
+     where id = '00000000-0000-0000-0000-00000000000a' $$,
+  'vendor can still update its own name');
+-- WITH CHECK now blocks re-pointing an owned booth to another vendor (the USING
+-- filter passes since A owns it; the result row would belong to B).
+select throws_ok(
+  $$ update public.booths set vendor_id = '00000000-0000-0000-0000-00000000000b'
+     where id = '00000000-0000-0000-0000-0000000b0001' $$,
+  null,
+  'vendor cannot re-point its own booth to another vendor (WITH CHECK)');
+select isnt(
+  (select with_check from pg_policies
+   where tablename = 'vendors' and policyname = 'vendors_self_update'),
+  null, 'vendors_self_update has a WITH CHECK clause');
+select isnt(
+  (select with_check from pg_policies
+   where tablename = 'booths' and policyname = 'booths_vendor_update'),
+  null, 'booths_vendor_update has a WITH CHECK clause');
+select isnt(
+  (select with_check from pg_policies
+   where tablename = 'purchase_requests' and policyname = 'purchase_requests_admin_update'),
+  null, 'purchase_requests_admin_update has a WITH CHECK clause');
 
 -- Customer feedback: A sees only its own booths' reviews.
 select isnt_empty(
