@@ -46,6 +46,42 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  db:
+    name: db (migrations + pgTAP RLS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # `supabase start` boots the local stack and applies every migration in
+      # supabase/migrations — so a malformed migration fails here. `test db` then
+      # runs the pgTAP suite (supabase/tests/rls.test.sql), which carries its own
+      # inline fixtures, so no seed or API keys are needed.
+      - run: supabase start
+      - run: supabase test db
+      - if: always()
+        run: supabase stop
+
+  build:
+    name: build (next build)
+    runs-on: ubuntu-latest
+    env:
+      # next build renders dynamic routes at request time, so real Supabase
+      # creds aren't needed — dummy values satisfy the non-null env reads.
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_dummy
+      SUPABASE_SECRET_KEY: sb_secret_ci_dummy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
   mutation:
     name: mutation (changed lib)
     runs-on: ubuntu-latest
