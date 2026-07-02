@@ -48,8 +48,21 @@ policy let a vendor set their own `plan='pro'` directly). **T8 + N-err N7** (ord
 advance/cancel/confirm now guard the UPDATE on the read status/payment_status →
 `.select("id")` 0-row = concurrent change → "refresh"; closes the cancel↔advance
 resurrection race; loadOwnOrder logs its read error). pgTAP plan 53→59; unit 420→422.
-**Remaining Phase B (not started):** T9–T22 (latency batch, a11y, resilience-logging
-T14–16, CI job T19, storage T22, global-error T21, drop dead pino T20).
+
+**Phase B SHIPPED** (2026-07-03, branch `feat/phase-b-polish`, 8 commits): resilience
+logging **T14/T15/T16** (log+surface DB errors on place_order / booth-resolve /
+dashboard reads; ExpiredCode error variant; board retry banner); a11y **T17/T18**
+(aria-live status + option-choice radio/checkbox); hygiene **T20/T21/F10** (remove
+dead pino, add global-error.tsx, drop redundant revalidatePath); latency **T10/T13/T9**
+(status-page Promise.all, request-memoized getUser/getVendor/loadEntitlement via
+React.cache, rate-limit index + probabilistic sweep migration `0036`); **T11/D7/R13**
+(shared `usePolling` hook); storage **T22/B5** (bucket size/MIME limits migration `0037`
+
+- tested orphan cleanup in save/deleteBooth via `lib/booth-images.ts`); CI **T19 partial**
+  (pgTAP `supabase test db` + `next build` jobs; seeded order-e2e deferred — needs live
+  key/seed wiring unvalidatable on Windows). Unit 422→429; migrations 0036/0037.
+  **Phase B deferred:** T12 (o/[code] revalidate=0 → cache static catalog; risky caching,
+  needs careful stock/servable-live split) + the T19 seeded order-e2e job.
 
 ## P1 — do first
 

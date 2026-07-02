@@ -45,6 +45,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Backend read errors no longer masquerade as empty/expired states.** A DB
+  error while placing an order, resolving a booth code, or loading the vendor
+  board is now logged and shown honestly — a distinct "try again" screen for a
+  code that failed to resolve (instead of "QR expired", which looped a customer
+  whose code was valid), and a retry banner on the dashboard (instead of a
+  cheery empty "All clear" board that hid in-flight orders).
+- **Accessibility:** the customer's live order-status and payment states are
+  screen-reader live regions (announces "ready for pickup" / "payment
+  confirmed"), and menu option choices expose radio/checkbox semantics instead
+  of conveying selection by colour alone.
 - **Order-board actions guard against concurrent status changes.** Advance,
   cancel, and confirm-payment updated an order by id using the status they had
   read — so a cancel racing an advance-to-completed could resurrect a cancelled
@@ -79,6 +89,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- **Booth-image storage hardened.** The `booth-images` bucket now enforces a
+  size cap and an image-only MIME allowlist at the bucket (previously only the
+  client checked), and replacing/removing an image or deleting a booth now
+  reclaims the orphaned storage objects instead of leaking them.
 - **Vendors can no longer self-escalate to Pro.** `vendors_self_update` was
   row-scoped with no column limit, so a vendor could `UPDATE vendors SET
 plan='pro'` on their own row via a direct PostgREST call — a free→pro
@@ -138,6 +152,16 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
+- **Performance:** the customer status page fetches its order + booth in one
+  round-trip instead of two; the dashboard's auth + vendor lookups are memoized
+  per request (a layout + page no longer double-fetch); the DB rate limiter is
+  indexed and sweeps only occasionally instead of on every call; and the two
+  customer pollers share one visibility-aware hook.
+- **Removed `pino`** (+ `pino-pretty`) — an unused dependency (26 packages
+  pruned). A root `global-error` boundary now renders a styled page when the
+  root layout itself throws.
+- **CI** now applies every migration and runs the pgTAP RLS suite, and runs a
+  production `next build`, on each push/PR.
 - Mobile "order ready" alerts now work. Sound: a single shared, gesture-unlocked
   AudioContext (reused, await-resumed) replaces the per-call context that stayed
   silent on iOS/Android; the customer page always shows an "Alert me" tap so
