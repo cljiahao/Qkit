@@ -23,11 +23,30 @@ type BoothView = {
 interface Props {
   booths: BoothView[];
   initialOrders: Order[];
+  // The initial server-side read errored — the board may be missing in-flight
+  // orders, so warn instead of silently showing "All clear".
+  loadError?: boolean;
 }
 
 type BoothFilter = "all" | string;
 
-export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
+function LoadErrorBanner() {
+  return (
+    <div
+      role="alert"
+      className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
+    >
+      Couldn&apos;t load your current orders — some in-flight orders may be
+      missing. Refresh to try again.
+    </div>
+  );
+}
+
+export function RealtimeOrderBoard({
+  booths,
+  initialOrders,
+  loadError = false,
+}: Props) {
   const boothIds = booths.map((b) => b.id);
   const [filter, setFilter] = useState<BoothFilter>("all");
   const [soundOn, setSoundOn] = useState(false);
@@ -99,6 +118,12 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
       ? active
       : active.filter((o) => o.booth_id === effectiveFilter);
 
+  // An empty booth list during a read error is almost certainly the error, not a
+  // genuinely booth-less vendor — don't show the "No booths yet" onboarding.
+  if (booths.length === 0 && loadError) {
+    return <LoadErrorBanner />;
+  }
+
   if (booths.length === 0) {
     return (
       <div className="ticket mx-auto mt-10 max-w-md overflow-hidden rounded-2xl border border-dashed border-border p-10 text-center">
@@ -123,6 +148,7 @@ export function RealtimeOrderBoard({ booths, initialOrders }: Props) {
 
   return (
     <div>
+      {loadError && <LoadErrorBanner />}
       <div
         data-tour="order-board"
         className="mb-7 flex items-end justify-between gap-3"

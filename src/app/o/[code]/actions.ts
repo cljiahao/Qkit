@@ -56,15 +56,26 @@ export async function placeOrder(
     p_items: parsed.data.items,
     p_idempotency_key: idempotencyKey,
   });
-  if (error) return { success: false, error: messageFor(error.message) };
+  if (error) {
+    const message = messageFor(error.message);
+    // Log only unexpected failures (those that fall through to the generic
+    // message). Known business raises — sold out, expired, unservable, rate
+    // limited — are normal outcomes, not bugs, so they'd only be log noise.
+    if (message === "Could not place order. Please try again.")
+      console.error("placeOrder failed", error.message);
+    return { success: false, error: message };
+  }
   const out = z
     .object({ order_number: z.string(), booth_id: z.string() })
     .safeParse(data);
-  if (!out.success)
+  if (!out.success) {
+    // The RPC succeeded but returned an unexpected shape — a real bug worth a log.
+    console.error("placeOrder: malformed RPC output", JSON.stringify(data));
     return {
       success: false,
       error: "Could not place order. Please try again.",
     };
+  }
   return {
     success: true,
     orderNumber: out.data.order_number,

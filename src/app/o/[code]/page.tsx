@@ -29,9 +29,16 @@ const boothForOrder = z.object({
 export default async function OrderEntryPage({ params }: Props) {
   const { code } = await params;
   const supabase = await createServerClient();
-  const { data } = await supabase.rpc("get_booth_for_order", {
+  const { data, error } = await supabase.rpc("get_booth_for_order", {
     p_short_code: code,
   });
+  // A DB/RPC error is NOT the same as an unresolved code: the code may be valid
+  // and telling the customer to rescan sends them in a loop. Log it and show the
+  // transient-error screen instead of "QR expired".
+  if (error) {
+    console.error("get_booth_for_order failed", error.message);
+    return <ExpiredCode variant="error" />;
+  }
   const parsed = boothForOrder.safeParse(data);
   if (!parsed.success) return <ExpiredCode />; // null/unresolved code → hard block
   const booth = parsed.data;

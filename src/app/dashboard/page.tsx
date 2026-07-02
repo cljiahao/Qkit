@@ -12,11 +12,12 @@ export default async function DashboardPage() {
 
   const supabase = await createServerClient();
 
-  const { data: booths } = await supabase
+  const { data: booths, error: boothErr } = await supabase
     .from("booths")
     .select("id, name, is_active, hours")
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: true });
+  if (boothErr) console.error("dashboard booths read failed", boothErr.message);
 
   // Open/closed as of this request (SGT); revalidate=0 re-evaluates on nav.
   const nowIso = new Date().toISOString();
@@ -33,15 +34,28 @@ export default async function DashboardPage() {
   const boothIds = (booths ?? []).map((b) => b.id);
 
   let orders: Order[] = [];
+  let ordersErr = null;
   if (boothIds.length) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("orders")
       .select("*")
       .in("booth_id", boothIds)
       .not("status", "in", "(completed,cancelled)")
       .order("created_at", { ascending: false });
+    ordersErr = error;
+    if (error) console.error("dashboard orders read failed", error.message);
     orders = data ?? [];
   }
 
-  return <RealtimeOrderBoard booths={boothViews} initialOrders={orders} />;
+  // A read error must not masquerade as an empty board — a vendor could think
+  // the queue is clear when it isn't. Surface a retry banner instead.
+  const loadError = Boolean(boothErr) || Boolean(ordersErr);
+
+  return (
+    <RealtimeOrderBoard
+      booths={boothViews}
+      initialOrders={orders}
+      loadError={loadError}
+    />
+  );
 }
