@@ -1,4 +1,4 @@
-import type { OrderItem, OrderStatus } from "@/lib/types";
+import type { OrderItem, OrderStatus, PaymentStatus } from "@/lib/types";
 import { formatOptions, MS_PER_HOUR } from "@/lib/utils";
 import { sgtHour, sgtWeekday, type WeekdayKey } from "@/lib/tz";
 
@@ -13,6 +13,9 @@ export type StatsOrder = {
   items: OrderItem[];
   created_at: string;
   ready_at?: string | null;
+  // Needed to distinguish a refund (a confirmed-paid order later cancelled) from
+  // an ordinary cancellation. Optional so older callers/tests still typecheck.
+  payment_status?: PaymentStatus | null;
 };
 
 export type TopItem = {
@@ -43,6 +46,10 @@ export type StatsSummary = {
   orderCount: number;
   aov_cents: number;
   cancelled: number;
+  // Refunds = orders that were confirmed-paid then cancelled (money collected,
+  // then returned). Surfaced for the trail; revenue_cents already excludes them.
+  refunds_cents: number;
+  refundCount: number;
   fulfilmentRate: number; // 0..1 — completed / (completed + cancelled)
   topItems: TopItem[];
   hourly: HourBucket[]; // always 24 entries, hour 0..23
@@ -224,6 +231,18 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
   const fulfilmentDenom = completed + cancelled;
   const fulfilmentRate = fulfilmentDenom ? completed / fulfilmentDenom : 0;
 
+  // A confirmed-paid order that was then cancelled = a refund. The money left
+  // revenue (it's cancelled), so record it as a refund for the audit trail
+  // rather than letting it vanish silently.
+  let refunds_cents = 0;
+  let refundCount = 0;
+  for (const o of orders) {
+    if (o.status === "cancelled" && o.payment_status === "confirmed") {
+      refunds_cents += o.total_cents;
+      refundCount += 1;
+    }
+  }
+
   const revenue_cents = counted.reduce((sum, o) => sum + o.total_cents, 0);
   const orderCount = counted.length;
   const aov_cents = orderCount ? Math.round(revenue_cents / orderCount) : 0;
@@ -325,6 +344,8 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     orderCount,
     aov_cents,
     cancelled,
+    refunds_cents,
+    refundCount,
     fulfilmentRate,
     topItems,
     hourly,

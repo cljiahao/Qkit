@@ -16,6 +16,10 @@ export type SalesSummaryV1 = {
   order_count: number;
   aov_cents: number;
   cancelled: number;
+  // Money collected then returned (confirmed-paid orders that were cancelled).
+  // Additive since v1 shipped; already excluded from revenue_cents.
+  refunds_cents: number;
+  refund_count: number;
   fulfilment_rate: number; // 0..1
   gross_margin: {
     revenue_cents: number;
@@ -45,6 +49,8 @@ export function toSalesSummaryV1(
     order_count: summary.orderCount,
     aov_cents: summary.aov_cents,
     cancelled: summary.cancelled,
+    refunds_cents: summary.refunds_cents,
+    refund_count: summary.refundCount,
     fulfilment_rate: summary.fulfilmentRate,
     gross_margin: gm
       ? {
@@ -87,6 +93,8 @@ export function salesSummaryToCsv(s: SalesSummaryV1): string {
     ["Orders", s.order_count],
     ["Avg order", dollars(s.aov_cents)],
     ["Cancelled", s.cancelled],
+    ["Refunds", dollars(s.refunds_cents)],
+    ["Refund count", s.refund_count],
     ["Fulfilment %", Math.round(s.fulfilment_rate * 100)],
   ];
   if (s.gross_margin) {

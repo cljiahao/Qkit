@@ -389,6 +389,46 @@ describe("computeStats — margins", () => {
   });
 });
 
+describe("computeStats — refunds", () => {
+  const at = "2026-06-12T04:00:00Z";
+  it("counts a confirmed-paid cancelled order as a refund, not revenue", () => {
+    const s = computeStats([
+      {
+        status: "completed",
+        total_cents: 500,
+        items: [],
+        created_at: at,
+        payment_status: "confirmed",
+      },
+      {
+        status: "cancelled",
+        total_cents: 300,
+        items: [],
+        created_at: at,
+        payment_status: "confirmed",
+      },
+      // An unpaid cancellation is NOT a refund — no money changed hands.
+      {
+        status: "cancelled",
+        total_cents: 200,
+        items: [],
+        created_at: at,
+        payment_status: "pending",
+      },
+    ]);
+    expect(s.revenue_cents).toBe(500); // cancelled excluded from revenue
+    expect(s.refunds_cents).toBe(300); // only the paid-then-cancelled one
+    expect(s.refundCount).toBe(1);
+    expect(s.cancelled).toBe(2); // both cancellations still counted
+  });
+
+  it("reports zero refunds when nothing paid was cancelled", () => {
+    const s = computeStats([order("completed", 500)]);
+    expect(s.refunds_cents).toBe(0);
+    expect(s.refundCount).toBe(0);
+  });
+});
+
 function waitOrder(
   created_at: string,
   ready_at: string | null,

@@ -65,7 +65,7 @@ export async function GET(request: Request) {
   if (queryIds.length) {
     const { data, error: ordersErr } = await supabase
       .from("orders")
-      .select("status, total_cents, items, created_at")
+      .select("status, total_cents, items, created_at, payment_status")
       .in("booth_id", queryIds)
       .gte("created_at", cutoff);
     if (ordersErr) {
@@ -80,6 +80,7 @@ export async function GET(request: Request) {
       total_cents: row.total_cents,
       items: parseOrderItems(row.items),
       created_at: row.created_at,
+      payment_status: row.payment_status,
     }));
   }
 

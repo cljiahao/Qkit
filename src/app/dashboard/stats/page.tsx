@@ -52,7 +52,7 @@ async function fetchOrders(
   if (!boothIds.length) return [];
   let query = supabase
     .from("orders")
-    .select("status, total_cents, items, created_at, ready_at")
+    .select("status, total_cents, items, created_at, ready_at, payment_status")
     .in("booth_id", boothIds)
     .gte("created_at", gte);
   if (lt) query = query.lt("created_at", lt);
@@ -63,6 +63,7 @@ async function fetchOrders(
     items: parseOrderItems(row.items),
     created_at: row.created_at,
     ready_at: row.ready_at,
+    payment_status: row.payment_status,
   }));
 }
 

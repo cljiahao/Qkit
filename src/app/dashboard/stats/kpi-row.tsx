@@ -108,6 +108,13 @@ export function KpiRow({
             index={3}
           />
           <Card label="Cancelled" value={String(summary.cancelled)} index={4} />
+          {summary.refundCount > 0 && (
+            <Card
+              label="Refunds"
+              value={formatPrice(summary.refunds_cents)}
+              index={5}
+            />
+          )}
         </>
       )}
     </div>

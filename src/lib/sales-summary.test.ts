@@ -12,6 +12,8 @@ function summary(over: Partial<StatsSummary> = {}): StatsSummary {
     orderCount: 3,
     aov_cents: 167,
     cancelled: 1,
+    refunds_cents: 0,
+    refundCount: 0,
     fulfilmentRate: 0.75,
     topItems: [
       {
@@ -54,6 +56,8 @@ describe("toSalesSummaryV1", () => {
       order_count: 3,
       aov_cents: 167,
       cancelled: 1,
+      refunds_cents: 0,
+      refund_count: 0,
       fulfilment_rate: 0.75,
       gross_margin: {
         revenue_cents: 500,
