@@ -5,7 +5,21 @@ import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { boothFormSchema, type BoothFormInput } from "@/lib/schemas";
+import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
 import type { ActionResult } from "@/lib/action-result";
+
+// Best-effort removal of orphaned booth-image objects. Never fails the caller —
+// a leaked object is cost creep, not a correctness problem, whereas failing the
+// save/delete over it would be worse. RLS scopes deletes to the vendor's folder.
+async function removeBoothImages(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  paths: string[],
+  context: string,
+) {
+  if (paths.length === 0) return;
+  const { error } = await supabase.storage.from("booth-images").remove(paths);
+  if (error) console.error(`${context} image cleanup failed`, error.message);
+}
 
 type SaveBoothResult = ActionResult<{ boothId: string }>;
 type DeleteBoothResult = ActionResult;
@@ -26,12 +40,23 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
+  // Read the referenced images before the row (and its images' only reference)
+  // is gone, so we can reclaim the storage objects after a successful delete.
+  const { data: booth } = await supabase
+    .from("booths")
+    .select("image_url, menu_items")
+    .eq("id", boothId)
+    .maybeSingle();
+
   const { count, error } = await supabase
     .from("booths")
     .delete({ count: "exact" })
     .eq("id", boothId);
   if (error) return { success: false, error: "Could not delete booth" };
   if (!count) return { success: false, error: "Booth not found" };
+
+  if (booth)
+    await removeBoothImages(supabase, boothImagePaths(booth), "deleteBooth");
   return { success: true };
 }
 
@@ -132,6 +157,14 @@ export async function saveBooth(
   };
 
   if (data.boothId) {
+    // Capture the currently-stored images before overwriting, to reclaim any the
+    // new version no longer references (a replaced banner or a removed item photo).
+    const { data: prev } = await supabase
+      .from("booths")
+      .select("image_url, menu_items")
+      .eq("id", data.boothId)
+      .maybeSingle();
+
     // RLS (booths_vendor_all) scopes the update to this vendor's own booths.
     const { data: updated, error } = await supabase
       .from("booths")
@@ -141,6 +174,13 @@ export async function saveBooth(
       .maybeSingle();
     if (error || !updated)
       return { success: false, error: "Could not save booth" };
+
+    if (prev)
+      await removeBoothImages(
+        supabase,
+        orphanedImagePaths(prev, row),
+        "saveBooth",
+      );
     return { success: true, boothId: updated.id };
   }
 
