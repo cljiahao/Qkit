@@ -50,6 +50,18 @@ export async function setVendorPlan(
   if (!parsed.success) return { success: false, error: "Invalid input" };
 
   const supabase = await createServiceClient();
+
+  // Read the current plan first, so we only record a payment on an actual
+  // free→pro transition. Re-submitting (or double-clicking) an already-pro
+  // vendor is idempotent for the plan, and must not append a second payment row
+  // — that would double-count subscription revenue.
+  const { data: current } = await supabase
+    .from("vendors")
+    .select("plan")
+    .eq("id", parsed.data.vendorId)
+    .maybeSingle();
+  const wasAlreadyPro = current?.plan === "pro";
+
   const { data: updated, error } = await supabase
     .from("vendors")
     .update({ plan: parsed.data.plan })
@@ -63,9 +75,9 @@ export async function setVendorPlan(
   }
 
   // Record subscription revenue when flipping to pro against a real payment
-  // (blank/0 = a comp, no ledger row). Best-effort.
+  // (blank/0 = a comp, no ledger row). Only on a genuine transition. Best-effort.
   const amount = parsed.data.amountCents ?? 0;
-  if (parsed.data.plan === "pro" && amount > 0) {
+  if (parsed.data.plan === "pro" && amount > 0 && !wasAlreadyPro) {
     const { error: payError } = await supabase.from("payments").insert({
       vendor_id: parsed.data.vendorId,
       kind: "subscription",
