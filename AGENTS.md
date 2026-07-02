@@ -1,4 +1,4 @@
-<!-- templateCentral: nextjs@5.0.0 (Supabase variant — NOT better-auth/Drizzle) -->
+<!-- templateCentral: nextjs@5.7.0 (Supabase variant — NOT better-auth/Drizzle) -->
 
 # AGENTS.md — QKit
 
@@ -111,6 +111,22 @@ no realtime). Use only the stack-agnostic ones here:
 
 Do **not** run `templatecentral:add (auth)` or `(database)` — they install
 better-auth / Drizzle and will break RLS + realtime.
+
+**5.0 → 5.7 review (2026-07-03):** version marker + `harness.json` bumped to 5.7.0.
+Deliberately **not** adopted (Supabase-variant / bespoke-harness divergence, each
+a conscious choice — don't let a future drift-check "fix" them):
+
+- **pino route-logging enforcement** (5.7) — pino was removed as an unused dep;
+  QKit's API surface (one route) logs via `console.error`, not the tc `withLogging`
+  wrapper. No `scripts/check-route-logging.mjs` gate.
+- **lefthook** (5.2) — QKit uses husky + lint-staged; not migrating the git-hook system.
+- **tc CI gates + `verify-harness.sh` / `.harness-base`** (5.2–5.3) — QKit has its own
+  CI (`.github/workflows/{ci,security}.yml`); no harness re-sync base exists (seeded
+  pre-5.3), so `migrate` Phase-5 3-way merge is N/A.
+- **password min-12 on the login schema** (5.5) — would lock out existing 8-char
+  sign-ins; Supabase Auth config owns the real policy.
+
+Adopted: build-artefact `Read` denies in `settings.json` (context hygiene, 5.4).
 
 ## AI Harness
 

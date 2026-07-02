@@ -136,7 +136,11 @@
       "Edit(.env.production)",
       "Edit(.env.staging)",
       "Edit(.env.test)",
-      "Edit(./secrets/**)"
+      "Edit(./secrets/**)",
+      "Read(node_modules/**)",
+      "Read(.next/**)",
+      "Read(coverage/**)",
+      "Read(*.tsbuildinfo)"
     ]
   },
   "skillListingBudgetFraction": 0.02
