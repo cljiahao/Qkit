@@ -1,6 +1,6 @@
 import type { OrderItem, OrderStatus, PaymentStatus } from "@/lib/types";
 import { formatOptions, MS_PER_HOUR } from "@/lib/utils";
-import { sgtHour, sgtWeekday, type WeekdayKey } from "@/lib/tz";
+import { sgtHour, sgtWeekday, WEEKDAY_ORDER } from "@/lib/tz";
 
 // Empty-data convention across this module: rates and waits return `null` (the
 // UI renders "—", never a misleading 0), while money and counts return `0`.
@@ -58,9 +58,6 @@ export type StatsSummary = {
   optionBreakdown: OptionCount[]; // most-selected customization choices
   grossMargin: GrossMargin | null; // null when no item carries a cost
 };
-
-// Row order for the day×hour matrix; index 0 = Monday.
-const WEEK: WeekdayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 /** Label an order line by name plus its selected options, e.g. "Kopi · Iced". */
 function itemLabel(item: OrderItem): string {
@@ -266,7 +263,7 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     const hour = sgtHour(order.created_at);
     hourly[hour].orders += 1;
     hourly[hour].revenue_cents += order.total_cents;
-    dayHour[WEEK.indexOf(sgtWeekday(order.created_at))][hour] += 1;
+    dayHour[WEEKDAY_ORDER.indexOf(sgtWeekday(order.created_at))][hour] += 1;
 
     for (const item of order.items) {
       const label = itemLabel(item);

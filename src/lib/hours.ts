@@ -1,4 +1,10 @@
-import { sgtMinutes, sgtWeekday, type WeekdayKey } from "@/lib/tz";
+import {
+  sgtMinutes,
+  sgtWeekday,
+  WEEKDAY_ORDER,
+  WEEKDAY_LABELS,
+  type WeekdayKey,
+} from "@/lib/tz";
 
 export type DayWindow = { open: string; close: string }; // "HH:MM"
 
@@ -7,18 +13,6 @@ export type BoothHours =
   | null // no restriction — open whenever is_active
   | { mode: "daily"; open: string; close: string }
   | { mode: "weekly"; days: Record<WeekdayKey, DayWindow | null> }; // null day = closed
-
-const ORDER: WeekdayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-
-const DAY_LABEL: Record<WeekdayKey, string> = {
-  mon: "Mon",
-  tue: "Tue",
-  wed: "Wed",
-  thu: "Thu",
-  fri: "Fri",
-  sat: "Sat",
-  sun: "Sun",
-};
 
 function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(":");
@@ -78,14 +72,14 @@ export function nextOpenLabel(
     return `Opens ${todayWindow.open}`;
   }
 
-  const startIdx = ORDER.indexOf(today);
+  const startIdx = WEEKDAY_ORDER.indexOf(today);
   for (let i = 1; i <= 7; i++) {
-    const day = ORDER[(startIdx + i) % 7];
+    const day = WEEKDAY_ORDER[(startIdx + i) % 7];
     const w = windowFor(booth.hours, day);
     if (w) {
       return booth.hours.mode === "daily"
         ? `Opens ${w.open}`
-        : `Opens ${DAY_LABEL[day]} ${w.open}`;
+        : `Opens ${WEEKDAY_LABELS[day]} ${w.open}`;
     }
   }
   return null;

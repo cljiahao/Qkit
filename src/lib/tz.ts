@@ -5,6 +5,29 @@ export const BOOTH_TZ = "Asia/Singapore";
 
 export type WeekdayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
+// Canonical Monday-first weekday order + display labels — single source for the
+// stats day×hour matrix (row 0 = Mon), the hours editor, and the heatmap axis,
+// so their ordering can't drift and mislabel the grid.
+export const WEEKDAY_ORDER: WeekdayKey[] = [
+  "mon",
+  "tue",
+  "wed",
+  "thu",
+  "fri",
+  "sat",
+  "sun",
+];
+
+export const WEEKDAY_LABELS: Record<WeekdayKey, string> = {
+  mon: "Mon",
+  tue: "Tue",
+  wed: "Wed",
+  thu: "Thu",
+  fri: "Fri",
+  sat: "Sat",
+  sun: "Sun",
+};
+
 const WEEKDAY_MAP: Record<string, WeekdayKey> = {
   Sun: "sun",
   Mon: "mon",

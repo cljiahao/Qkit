@@ -1,7 +1,10 @@
 import type { StatsSummary } from "@/lib/stats";
+import { WEEKDAY_ORDER, WEEKDAY_LABELS } from "@/lib/tz";
 import { hourLabel } from "./chart-format";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// Derived from the shared order so the axis can't drift from the stats matrix
+// (dayHour row 0 = Mon).
+const DAYS = WEEKDAY_ORDER.map((k) => WEEKDAY_LABELS[k]);
 
 /**
  * Day × hour busyness grid (SGT). Colour intensity = order volume, so the
