@@ -25,6 +25,7 @@ export function PayPanel({
 }) {
   const [status, setStatus] = useState<PaymentStatus>(initialStatus);
   const [busy, setBusy] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   // Poll until the vendor confirms (terminal for payment), so a "Confirm
   // payment" tap on the board reflects on the customer's page — same poll-only
@@ -83,14 +84,21 @@ export function PayPanel({
           <QRCode value={checkout.payload} size={180} />
         </div>
       )}
-      {checkout?.type === "image" && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={checkout.url}
-          alt="Payment QR"
-          className="mx-auto w-44 rounded-xl border border-border"
-        />
-      )}
+      {checkout?.type === "image" &&
+        (imgError ? (
+          <p className="mx-auto max-w-xs text-center text-sm text-muted-foreground">
+            The payment QR couldn&apos;t load — check your connection and
+            refresh, or ask the stall to show its QR.
+          </p>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={checkout.url}
+            alt="Payment QR"
+            onError={() => setImgError(true)}
+            className="mx-auto w-44 rounded-xl border border-border"
+          />
+        ))}
       {checkout?.type === "link" && (
         <Button asChild className="h-12 w-full rounded-xl">
           <a href={checkout.url} target="_blank" rel="noopener noreferrer">
