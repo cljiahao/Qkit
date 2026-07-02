@@ -42,9 +42,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   scoped `allowed-tools` on all project skills.
 - pgTAP RLS isolation test (`supabase/tests/rls.test.sql`, run via
   `supabase test db`) — asserts a vendor cannot read or mutate another's data.
+- **Refunds reporting.** A confirmed-paid order that's later cancelled is now
+  reported as a refund (following the standard gross / refunds / net accounting
+  model) instead of silently vanishing from revenue — surfaced on the stats KPI
+  band, the `SalesSummaryV1` API, and the CSV export.
 
 ### Fixed
 
+- **Subscription revenue isn't double-counted** when an admin re-submits (or
+  double-clicks) an already-Pro vendor — the payment is recorded only on a real
+  free→Pro transition.
 - **Entitlement drift closed.** The booth-create gate (`can_create_booth`)
   checked a license's `expires_at` but not `valid_from`, while serveability
   (`booth_servable`) checked both — so a vendor with a **future-dated** pass
