@@ -18,6 +18,11 @@ export function formatPrice(cents: number): string {
   }).format(cents / 100);
 }
 
+/** Cents → a plain "12.34" decimal string (no currency symbol) for inputs/CSV. */
+export function centsToDollarString(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
 export function genOrderNumber(existingCount: number): string {
   return String(existingCount + 1).padStart(4, "0");
 }

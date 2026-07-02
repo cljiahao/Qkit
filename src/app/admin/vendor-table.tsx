@@ -7,6 +7,7 @@ import { Sparkles, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Paginated } from "@/components/paginated";
+import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import { setVendorPlan, grantPass, revokePass } from "./actions";
 import type { Plan } from "@/lib/types";
 
@@ -36,10 +37,8 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
 
   // Shared by grant + make-pro: parse the $ field to cents (blank/invalid = 0 = comp).
   function parseAmountCents(): number {
-    const dollars = Number(amount.trim());
-    return amount.trim() && !Number.isNaN(dollars) && dollars >= 0
-      ? Math.round(dollars * 100)
-      : 0;
+    const r = parseDollarsToCents(amount);
+    return r.ok && r.cents !== undefined ? r.cents : 0;
   }
 
   function reset() {
@@ -72,7 +71,7 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
         return;
       }
       toast.success(
-        `${v.name} → ${next}${next === "pro" && amountCents ? ` · $${(amountCents / 100).toFixed(2)}` : ""}`,
+        `${v.name} → ${next}${next === "pro" && amountCents ? ` · $${centsToDollarString(amountCents)}` : ""}`,
       );
       reset();
       router.refresh();
@@ -95,7 +94,7 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
       }
       const when = startDate ? ` from ${startDate}` : "";
       toast.success(
-        `${v.name} → ${days}-day pass${when}${amountCents ? ` · $${(amountCents / 100).toFixed(2)}` : " · free"}`,
+        `${v.name} → ${days}-day pass${when}${amountCents ? ` · $${centsToDollarString(amountCents)}` : " · free"}`,
       );
       reset();
       router.refresh();

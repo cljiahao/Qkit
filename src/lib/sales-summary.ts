@@ -1,4 +1,5 @@
 import type { StatsSummary } from "@/lib/stats";
+import { centsToDollarString } from "@/lib/utils";
 
 // ── Stable external sales contract (v1) ──────────────────────────────────────
 // This is the FROZEN shape that the `/api/v1/sales/summary` route returns and
@@ -69,10 +70,6 @@ export function toSalesSummaryV1(
   };
 }
 
-function dollars(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
 function csvCell(value: string | number): string {
   const s = String(value);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -89,17 +86,17 @@ export function salesSummaryToCsv(s: SalesSummaryV1): string {
     ["Generated at", s.generated_at],
     ["Range", s.range],
     ["Booth", s.booth_id],
-    ["Revenue", dollars(s.revenue_cents)],
+    ["Revenue", centsToDollarString(s.revenue_cents)],
     ["Orders", s.order_count],
-    ["Avg order", dollars(s.aov_cents)],
+    ["Avg order", centsToDollarString(s.aov_cents)],
     ["Cancelled", s.cancelled],
-    ["Refunds", dollars(s.refunds_cents)],
+    ["Refunds", centsToDollarString(s.refunds_cents)],
     ["Refund count", s.refund_count],
     ["Fulfilment %", Math.round(s.fulfilment_rate * 100)],
   ];
   if (s.gross_margin) {
     rows.push(["Gross margin %", Math.round(s.gross_margin.margin_pct)]);
-    rows.push(["Profit", dollars(s.gross_margin.profit_cents)]);
+    rows.push(["Profit", centsToDollarString(s.gross_margin.profit_cents)]);
   }
   rows.push([]);
   rows.push(["Item", "Quantity", "Revenue", "Profit"]);
@@ -107,8 +104,8 @@ export function salesSummaryToCsv(s: SalesSummaryV1): string {
     rows.push([
       it.label,
       it.quantity,
-      dollars(it.revenue_cents),
-      dollars(it.profit_cents),
+      centsToDollarString(it.revenue_cents),
+      centsToDollarString(it.profit_cents),
     ]);
   }
   return rows.map((r) => r.map(csvCell).join(",")).join("\n");

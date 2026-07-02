@@ -6,17 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import { setPricing } from "./actions";
-
-function centsToDollars(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
-function dollarsToCents(value: string): number | null {
-  const n = Number(value.trim());
-  if (Number.isNaN(n) || n < 0) return null;
-  return Math.round(n * 100);
-}
 
 /** Admin-editable prices shown on the vendor offer page. */
 export function PricingForm({
@@ -31,17 +22,23 @@ export function PricingForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [eventPass, setEventPass] = useState(
-    centsToDollars(initial.event_pass_cents),
+    centsToDollarString(initial.event_pass_cents),
   );
-  const [monthly, setMonthly] = useState(centsToDollars(initial.monthly_cents));
+  const [monthly, setMonthly] = useState(
+    centsToDollarString(initial.monthly_cents),
+  );
 
   function onSave() {
-    const event_pass_cents = dollarsToCents(eventPass);
-    const monthly_cents = dollarsToCents(monthly);
-    if (event_pass_cents === null || monthly_cents === null) {
+    const ep = parseDollarsToCents(eventPass);
+    const mo = parseDollarsToCents(monthly);
+    // Both prices are required, so a blank field (cents === undefined) is invalid
+    // here — not the "cleared/optional" case parseDollarsToCents allows elsewhere.
+    if (!ep.ok || ep.cents === undefined || !mo.ok || mo.cents === undefined) {
       toast.error("Enter valid prices");
       return;
     }
+    const event_pass_cents = ep.cents;
+    const monthly_cents = mo.cents;
     startTransition(async () => {
       const res = await setPricing({ event_pass_cents, monthly_cents });
       if (!res.success) {
