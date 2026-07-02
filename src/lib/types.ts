@@ -498,6 +498,17 @@ export interface Database {
         };
         Returns: number;
       };
+      submit_feedback: {
+        Args: {
+          p_source: string;
+          p_booth_id?: string;
+          p_order_number?: string;
+          p_rating?: number;
+          p_nps?: number;
+          p_message?: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       order_status: OrderStatus;

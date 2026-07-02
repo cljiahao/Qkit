@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 
@@ -18,6 +19,8 @@ function messageFor(raw: string): string {
     return "This booth isn't taking orders right now";
   if (raw.includes("ORDER_SOLD_OUT") || raw.includes("ORDER_ITEM_UNAVAILABLE"))
     return "Sorry — an item just sold out. Please adjust your order.";
+  if (raw.includes("ORDER_RATE_LIMITED"))
+    return "Too many orders too fast — wait a moment and try again.";
   return "Could not place order. Please try again.";
 }
 
@@ -36,18 +39,12 @@ export async function placeOrder(
 
   const supabase = await createServerClient();
 
-  // Anti-flood (best-effort; trusted-IP hardening is Phase B). Fails open.
-  const hdrs = await headers();
-  const ip =
-    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    hdrs.get("x-real-ip") ||
-    "unknown";
-  const { data: allowed } = await supabase.rpc("check_rate_limit", {
-    p_key: `order:${code}:${ip}`,
-    p_limit: 8,
-    p_window_seconds: 60,
-  });
-  if (allowed === false)
+  // Anti-flood (best-effort; trusted-IP hardening is Phase B). Fails open. This
+  // is the honest-path per-IP guard; place_order also carries a booth-scoped
+  // limiter so a direct RPC call that skips this action is still bounded.
+  const ip = clientIp(await headers());
+  const allowed = await rateLimit(supabase, `order:${code}:${ip}`, 8, 60);
+  if (!allowed)
     return {
       success: false,
       error: "Too many orders too fast — wait a moment and try again.",

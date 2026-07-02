@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
 
@@ -54,17 +55,9 @@ export async function claimPayment(
   // Throttle per IP+booth so a script can't enumerate the small sequential
   // order numbers and mass-flip a booth's orders to 'claimed'. Fails open on
   // limiter errors (don't block a real customer on infra hiccups).
-  const hdrs = await headers();
-  const ip =
-    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    hdrs.get("x-real-ip") ||
-    "unknown";
-  const { data: allowed } = await supabase.rpc("check_rate_limit", {
-    p_key: `claim:${boothId}:${ip}`,
-    p_limit: 10,
-    p_window_seconds: 60,
-  });
-  if (allowed === false)
+  const ip = clientIp(await headers());
+  const allowed = await rateLimit(supabase, `claim:${boothId}:${ip}`, 10, 60);
+  if (!allowed)
     return { success: false, error: "Too many attempts — wait a moment." };
 
   const { error } = await supabase

@@ -43,8 +43,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - pgTAP RLS isolation test (`supabase/tests/rls.test.sql`, run via
   `supabase test db`) — asserts a vendor cannot read or mutate another's data.
 
+### Fixed
+
+- **Gross margin no longer reads 100% for every no-cost vendor.** `place_order`
+  wrote `cost_cents: 0` for every item, even ones with no cost set, so the margin
+  stats treated the cost as "present" and reported `profit == revenue` (100%
+  margin) on the dashboard, the `SalesSummaryV1.gross_margin` API field, and the
+  CSV export. It now omits `cost_cents` for a no-cost item (a genuine cost of 0
+  is preserved and still counts). Migration `0033`.
+- **`/api/v1/sales/summary` fails loud on a DB read error.** It discarded the
+  Supabase `error` on both reads, so a transient failure returned a `200` with
+  `{revenue: 0, …}` — a downstream consumer would silently under-invoice. It now
+  logs and returns `503` on either read error.
+
 ### Security
 
+- **Order-path hardening extended to the `authenticated` role.** Phase A closed
+  the customer write path for `anon` only, but sign-up is open — so any logged-in
+  JWT still bypassed all of it: the permissive `orders_public_insert` /
+  `booths_public_read` / `feedback_public_insert` policies had no `TO` clause
+  (they applied to `authenticated` too) and the Phase-A `REVOKE`s named only
+  `anon`. A logged-in vendor could forge orders, read **every** servable booth's
+  `cost_cents` + `short_code` cross-vendor, forge competitor reviews, and burn
+  any booth's `order_seq`. Migration `0033` drops the three dead permissive
+  policies, revokes the direct grants from **both** roles, routes public feedback
+  through a new `submit_feedback` `SECURITY DEFINER` RPC (re-derives `vendor_id`
+  from the caller's own session), and hardens `place_order` against the
+  direct-RPC path that skips the server action: re-derives each item name from
+  the stored menu, validates + caps chosen options against the item's option
+  groups, rejects an all-zero-quantity cart, caps the line count, and carries a
+  booth-scoped flood guard inside the RPC. pgTAP asserts every path is denied to
+  a non-owner `authenticated` session.
 - **Customer order path enforced in Postgres, not just the app.** Previously the
   public anon key could POST directly to PostgREST and bypass every app-layer
   guard (rate limit, servability, stock, cost snapshot) and read private booth

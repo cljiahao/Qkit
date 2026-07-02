@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(40);
+select plan(51);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -105,7 +105,9 @@ values (
      {"id":"cap1","name":"Capped Bun","description":"","price_cents":500,
       "cost_cents":200,"available":true,"stock":2},
      {"id":"free1","name":"Unlimited Tea","description":"","price_cents":300,
-      "cost_cents":100,"available":true}
+      "cost_cents":100,"available":true},
+     {"id":"free2","name":"No-Cost Snack","description":"","price_cents":100,
+      "available":true}
    ]'::jsonb
 );
 
@@ -195,6 +197,35 @@ select isnt(
   (select with_check from pg_policies
    where tablename = 'orders' and policyname = 'orders_vendor_update'),
   null, 'orders_vendor_update has a WITH CHECK clause');
+
+-- ── Authenticated-role lockdown (0033) ──────────────────────────────────────
+-- Phase A closed these for anon only; sign-up is open, so `authenticated` is
+-- attacker-reachable. A is a logged-in vendor that does NOT own Vendor C's
+-- servable booth b0004. Every direct path must be denied for A too.
+-- booths_public_read is dropped → A cannot read another vendor's servable booth
+-- (this was the cost_cents + short_code cross-vendor leak).
+select is_empty(
+  $$ select 1 from public.booths where id = '00000000-0000-0000-0000-0000000b0004' $$,
+  'authenticated non-owner cannot read another vendor''s servable booth');
+-- orders_public_insert is dropped + INSERT revoked → no forged orders.
+select throws_ok(
+  $$ insert into public.orders
+       (booth_id, order_number, customer_name, items, total_cents)
+     values
+       ('00000000-0000-0000-0000-0000000b0004', 'H-001', 'Mallory', '[]'::jsonb, 0) $$,
+  null,
+  'authenticated cannot INSERT into orders directly');
+-- feedback_public_insert is dropped + INSERT revoked → no forged reviews.
+select throws_ok(
+  $$ insert into public.feedback (source, booth_id, rating)
+     values ('customer', '00000000-0000-0000-0000-0000000b0004', 1) $$,
+  null,
+  'authenticated cannot INSERT into feedback directly');
+-- next_order_number EXECUTE revoked from authenticated → cannot burn order_seq.
+select throws_ok(
+  $$ select public.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
+  null,
+  'authenticated cannot EXECUTE next_order_number');
 
 -- Customer feedback: A sees only its own booths' reviews.
 select isnt_empty(
@@ -353,6 +384,58 @@ select throws_like(
        gen_random_uuid()) $$,
   '%ORDER_SOLD_OUT%',
   'place_order clamps a negative line instead of letting it mask an oversell');
+
+-- ── place_order RPC hardening (0033) ─────────────────────────────────────────
+-- V2 (name re-derived from the stored menu) + T2 (cost_cents omitted for a
+-- no-cost item). Order free2 with a FORGED item name; the persisted item must
+-- carry the menu's name and no cost_cents key.
+select lives_ok(
+  $$ select public.place_order(
+       'rlstestcode1', 'Gil',
+       '[{"menuItemId":"free2","name":"FORGED","price_cents":999,"quantity":1}]'::jsonb,
+       '22222222-2222-2222-2222-222222222222'::uuid) $$,
+  'place_order accepts a no-cost item');
+select is(
+  (select items->0->>'name' from public.orders
+   where idempotency_key = '22222222-2222-2222-2222-222222222222'),
+  'No-Cost Snack',
+  'place_order re-derives the item name from the stored menu (V2)');
+select ok(
+  (select not (items->0 ? 'cost_cents') from public.orders
+   where idempotency_key = '22222222-2222-2222-2222-222222222222'),
+  'place_order omits cost_cents for a no-cost item (T2)');
+
+-- V6: a cart whose only line is quantity 0 prices to nothing → rejected (would
+-- otherwise burn an order number on a real $0 order).
+select throws_like(
+  $$ select public.place_order(
+       'rlstestcode1', 'Hana',
+       '[{"menuItemId":"free2","name":"No-Cost Snack","quantity":0}]'::jsonb,
+       gen_random_uuid()) $$,
+  '%ORDER_INVALID%',
+  'place_order rejects an all-zero-quantity cart (V6)');
+
+-- V3: an option not present in the item's option groups is rejected (free2 has
+-- no option groups, so any option is unknown).
+select throws_like(
+  $$ select public.place_order(
+       'rlstestcode1', 'Ivy',
+       '[{"menuItemId":"free2","name":"No-Cost Snack","quantity":1,
+          "options":[{"group":"Ghost","choice":"None"}]}]'::jsonb,
+       gen_random_uuid()) $$,
+  '%ORDER_INVALID%',
+  'place_order rejects an option not in the item''s option groups (V3)');
+
+-- submit_feedback: the only feedback insert path (public policy dropped). An
+-- anonymous customer review lands.
+select lives_ok(
+  $$ select public.submit_feedback('customer',
+       '00000000-0000-0000-0000-0000000b0004'::uuid, null, 5, null, 'Great!') $$,
+  'submit_feedback inserts an anonymous customer review');
+select is(
+  (select count(*)::int from public.feedback
+   where booth_id = '00000000-0000-0000-0000-0000000b0004' and message = 'Great!'),
+  1, 'submit_feedback wrote exactly one feedback row');
 
 -- Non-servable booth: flip is_active off (booth_servable gates on it) and
 -- confirm place_order refuses with ORDER_UNSERVABLE. Flipped as the superuser

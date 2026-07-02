@@ -320,6 +320,26 @@ describe("computeStats — margins", () => {
     expect(s.topItems[0].cost_cents).toBe(0);
   });
 
+  // The margin guard keys on cost being PRESENT, not > 0: an explicit
+  // cost_cents:0 is a real (zero) cost and surfaces a 100% margin. This is why
+  // place_order (0033) must OMIT cost_cents for a no-cost item rather than write
+  // 0 — writing 0 made every no-cost vendor read as 100% margin (T2).
+  it("treats an explicit cost_cents:0 as a real cost (margin surfaces)", () => {
+    const s = computeStats([
+      order("completed", 200, [
+        {
+          menuItemId: "k",
+          name: "Kopi",
+          price_cents: 200,
+          cost_cents: 0,
+          quantity: 1,
+        },
+      ]),
+    ]);
+    expect(s.grossMargin).not.toBeNull();
+    expect(s.grossMargin!.marginPct).toBe(100);
+  });
+
   it("computes profit + margin from snapshotted costs", () => {
     const s = computeStats([
       order("completed", 0, [

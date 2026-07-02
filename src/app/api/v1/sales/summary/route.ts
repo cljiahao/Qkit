@@ -41,10 +41,20 @@ export async function GET(request: Request) {
   const supabase = await createServerClient();
 
   // Resolve booth filter against the vendor's own booths (RLS-scoped read).
-  const { data: booths } = await supabase
+  // This is a revenue contract consumed by sibling products — a transient DB
+  // error must FAIL LOUD (503), never silently return {revenue: 0} zeros, which
+  // would make a downstream consumer under-invoice with no signal.
+  const { data: booths, error: boothErr } = await supabase
     .from("booths")
     .select("id")
     .eq("vendor_id", vendor.id);
+  if (boothErr) {
+    console.error("sales summary: booths read failed", boothErr.message);
+    return NextResponse.json(
+      { error: "Upstream unavailable" },
+      { status: 503 },
+    );
+  }
   const boothIds = (booths ?? []).map((b) => b.id);
   const boothParam = params.get("booth");
   const boothId =
@@ -53,11 +63,18 @@ export async function GET(request: Request) {
 
   let orders: StatsOrder[] = [];
   if (queryIds.length) {
-    const { data } = await supabase
+    const { data, error: ordersErr } = await supabase
       .from("orders")
       .select("status, total_cents, items, created_at")
       .in("booth_id", queryIds)
       .gte("created_at", cutoff);
+    if (ordersErr) {
+      console.error("sales summary: orders read failed", ordersErr.message);
+      return NextResponse.json(
+        { error: "Upstream unavailable" },
+        { status: 503 },
+      );
+    }
     orders = (data ?? []).map((row) => ({
       status: row.status,
       total_cents: row.total_cents,

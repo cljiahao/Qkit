@@ -17,6 +17,18 @@ Severity model: pre-launch, no vendors/data → nothing is a live P0. "P1" = do 
 
 ---
 
+## Progress
+
+**Phase A.2 SHIPPED** (2026-07-02, branch `feat/auth-role-lockdown`): **T1** (migration
+`0033_authenticated_lockdown.sql` — drop `orders_public_insert`/`booths_public_read`/
+`feedback_public_insert`, revoke from anon+authenticated, `submit_feedback` SECURITY
+DEFINER RPC, `place_order` hardened: re-derive name / validate+cap options / reject
+empty priced cart / cap lines / booth-scoped flood guard), **T2** (place_order omits
+`cost_cents` for no-cost items → margin no longer always 100%), **T5** (sales API 503
+fail-loud), **T6** (place-order + feedback + margin tests; 405→420 unit tests), **D2**
+(`src/lib/rate-limit.ts` — `clientIp`+`rateLimit`, 3 call sites deduped). pgTAP plan
+40→51. Next: T3 (dead route), T4 (oversell race).
+
 ## P1 — do first
 
 ### T1. Complete the DB enforcement for the `authenticated` role + lock the RPC (SECURITY) — effort M

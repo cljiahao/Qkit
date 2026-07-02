@@ -55,4 +55,94 @@ describe("placeOrder", () => {
       boothId: "b1",
     });
   });
+
+  it("rejects at the action flood guard without calling place_order", async () => {
+    const seen: string[] = [];
+    rpc.mockImplementation((name: string) => {
+      seen.push(name);
+      if (name === "check_rate_limit") return Promise.resolve({ data: false });
+      throw new Error(`unexpected rpc: ${name}`);
+    });
+
+    const res = await placeOrder("code123", validInput, IDEM);
+    expect(res).toEqual({
+      success: false,
+      error: "Too many orders too fast — wait a moment and try again.",
+    });
+    // place_order must NOT be reached once the limiter denies.
+    expect(seen).toEqual(["check_rate_limit"]);
+  });
+
+  it("fails open when the limiter errors (data null) and proceeds to place_order", async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === "check_rate_limit")
+        return Promise.resolve({ data: null, error: { message: "boom" } });
+      if (name === "place_order")
+        return Promise.resolve({
+          data: { order_number: "0009", booth_id: "b1" },
+          error: null,
+        });
+      throw new Error(`unexpected rpc: ${name}`);
+    });
+
+    const res = await placeOrder("code123", validInput, IDEM);
+    expect(res).toEqual({ success: true, orderNumber: "0009", boothId: "b1" });
+  });
+
+  it.each([
+    [
+      "ORDER_UNSERVABLE: booth not serving",
+      "This booth isn't taking orders right now",
+    ],
+    [
+      "ORDER_SOLD_OUT: m1",
+      "Sorry — an item just sold out. Please adjust your order.",
+    ],
+    [
+      "ORDER_ITEM_UNAVAILABLE: m1",
+      "Sorry — an item just sold out. Please adjust your order.",
+    ],
+    [
+      "ORDER_RATE_LIMITED: booth flood",
+      "Too many orders too fast — wait a moment and try again.",
+    ],
+    [
+      "ORDER_INVALID: too many items",
+      "Could not place order. Please try again.",
+    ],
+  ])("maps the raise %s to its customer message", async (raise, message) => {
+    rpc.mockImplementation((name: string) => {
+      if (name === "check_rate_limit") return Promise.resolve({ data: true });
+      if (name === "place_order")
+        return Promise.resolve({ data: null, error: { message: raise } });
+      throw new Error(`unexpected rpc: ${name}`);
+    });
+
+    const res = await placeOrder("code123", validInput, IDEM);
+    expect(res).toEqual({ success: false, error: message });
+  });
+
+  it("returns a generic error when place_order output is malformed", async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === "check_rate_limit") return Promise.resolve({ data: true });
+      if (name === "place_order")
+        // Missing booth_id — the output schema parse fails.
+        return Promise.resolve({ data: { order_number: "0007" }, error: null });
+      throw new Error(`unexpected rpc: ${name}`);
+    });
+
+    const res = await placeOrder("code123", validInput, IDEM);
+    expect(res).toEqual({
+      success: false,
+      error: "Could not place order. Please try again.",
+    });
+  });
+
+  it("rejects a malformed idempotency key before any RPC", async () => {
+    const spy = vi.fn();
+    rpc.mockImplementation(spy);
+    const res = await placeOrder("code123", validInput, "not-a-uuid");
+    expect(res).toEqual({ success: false, error: "Invalid request" });
+    expect(spy).not.toHaveBeenCalled();
+  });
 });
