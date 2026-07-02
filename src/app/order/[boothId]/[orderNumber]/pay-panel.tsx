@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import QRCode from "react-qr-code";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { CheckoutView } from "@/lib/payments/adapters";
 import type { PaymentStatus } from "@/lib/types";
+import { usePolling } from "@/hooks/use-polling";
 import { claimPayment, getPaymentStatus } from "./payment-actions";
 
 const POLL_MS = 5000;
@@ -28,44 +29,15 @@ export function PayPanel({
   // Poll until the vendor confirms (terminal for payment), so a "Confirm
   // payment" tap on the board reflects on the customer's page — same poll-only
   // approach the order-status poller uses (realtime is flaky on customer
-  // devices). Pauses while the tab is hidden.
-  useEffect(() => {
-    if (status === "confirmed" || status === "not_required") return;
-    let stopped = false;
-    let timer: ReturnType<typeof setInterval> | undefined;
-
-    async function tick() {
-      if (document.hidden) return;
-      const next = await getPaymentStatus(boothId, orderNumber);
-      if (!stopped && next) setStatus(next);
-    }
-    function start() {
-      if (!timer) timer = setInterval(tick, POLL_MS);
-    }
-    function stop() {
-      if (timer) {
-        clearInterval(timer);
-        timer = undefined;
-      }
-    }
-    function onVisibility() {
-      if (document.hidden) stop();
-      else {
-        void tick();
-        start();
-      }
-    }
-    document.addEventListener("visibilitychange", onVisibility);
-    if (!document.hidden) {
-      void tick();
-      start();
-    }
-    return () => {
-      stopped = true;
-      stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [boothId, orderNumber, status]);
+  // devices). The shared hook pauses while the tab is hidden.
+  const poll = useCallback(async () => {
+    const next = await getPaymentStatus(boothId, orderNumber);
+    if (next) setStatus(next);
+  }, [boothId, orderNumber]);
+  usePolling(poll, {
+    intervalMs: POLL_MS,
+    enabled: status !== "confirmed" && status !== "not_required",
+  });
 
   if (status === "not_required") return null;
 

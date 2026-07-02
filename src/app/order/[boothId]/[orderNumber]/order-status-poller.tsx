@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bell, BellRing } from "lucide-react";
+import { usePolling } from "@/hooks/use-polling";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import {
   fireReadyNotification,
@@ -81,48 +82,13 @@ export function OrderStatusPoller({
   }
 
   // Poll the status until it reaches a terminal state. Works on every browser
-  // (no WebSocket dependency). Polling pauses while the tab is backgrounded
-  // (phone pocketed) and resumes with an immediate refresh on return — saves
-  // needless DB hits and gives a fresh status the instant the customer looks.
-  useEffect(() => {
-    if (isTerminal(status)) return;
-    let stopped = false;
-    let timer: ReturnType<typeof setInterval> | undefined;
-
-    async function tick() {
-      if (document.hidden) return;
-      const next = await getOrderStatus(boothId, orderNumber);
-      if (!stopped && next) setStatus(next);
-    }
-    function start() {
-      if (!timer) timer = setInterval(tick, POLL_MS);
-    }
-    function stop() {
-      if (timer) {
-        clearInterval(timer);
-        timer = undefined;
-      }
-    }
-    function onVisibility() {
-      if (document.hidden) {
-        stop();
-      } else {
-        void tick();
-        start();
-      }
-    }
-
-    document.addEventListener("visibilitychange", onVisibility);
-    if (!document.hidden) {
-      void tick(); // catch a change between SSR and hydration
-      start();
-    }
-    return () => {
-      stopped = true;
-      stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [boothId, orderNumber, status]);
+  // (no WebSocket dependency); the shared hook pauses while backgrounded and
+  // refreshes the instant the tab returns.
+  const poll = useCallback(async () => {
+    const next = await getOrderStatus(boothId, orderNumber);
+    if (next) setStatus(next);
+  }, [boothId, orderNumber]);
+  usePolling(poll, { intervalMs: POLL_MS, enabled: !isTerminal(status) });
 
   // Alert the moment the order flips to ready. setState bails on an identical
   // value, so this fires once per real transition, not every poll.
