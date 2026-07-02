@@ -2,14 +2,14 @@
 
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
-import { getVendor } from "@/lib/supabase/get-vendor";
+import { getUser } from "@/lib/supabase/get-user";
 import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus } from "@/lib/types";
 
 // Vendor order-board mutations. The browser used to UPDATE orders directly;
 // these move that behind a validated server boundary (Layer 1). Authorization
-// is still enforced in Postgres: getVendor() gates signed-in, and RLS
+// is still enforced in Postgres: getUser() gates signed-in, and RLS
 // (orders_vendor_update USING + WITH CHECK) scopes writes to the vendor's own
 // booths — the server client runs as the AUTHENTICATED role, never service-role.
 // The 0032 freeze trigger blocks any attempt to change financial/identity
@@ -21,7 +21,7 @@ type StatusResult = ActionResult<{ status: OrderStatus }>;
 
 /** Load the current order (RLS-scoped to the caller's booths) for a gated vendor. */
 async function loadOwnOrder(orderId: string) {
-  const { user } = await getVendor();
+  const user = await getUser();
   if (!user) return { supabase: null, order: null } as const;
 
   const supabase = await createServerClient();

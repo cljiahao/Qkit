@@ -10,10 +10,10 @@ import {
 // (update→eq→eq→select). `maybeSingle` is set per-test to the "current" order
 // row; `updateSelect` returns the updated rows — [] models a concurrent change
 // that the status/payment guard filtered out.
-const { getVendorMock, maybeSingle, update, updateSelect } = vi.hoisted(() => {
+const { getUserMock, maybeSingle, update, updateSelect } = vi.hoisted(() => {
   const updateSelect = vi.fn();
   return {
-    getVendorMock: vi.fn(),
+    getUserMock: vi.fn(),
     maybeSingle: vi.fn(),
     update: vi.fn(() => ({
       eq: () => ({ eq: () => ({ select: updateSelect }) }),
@@ -31,14 +31,12 @@ vi.mock("@/lib/supabase/server", () => ({
       }),
     }),
 }));
-vi.mock("@/lib/supabase/get-vendor", () => ({ getVendor: getVendorMock }));
+vi.mock("@/lib/supabase/get-user", () => ({ getUser: getUserMock }));
 
 const ID = "00000000-0000-4000-8000-000000000001";
 
 beforeEach(() => {
-  getVendorMock
-    .mockReset()
-    .mockResolvedValue({ user: { id: "v1" }, vendor: {} });
+  getUserMock.mockReset().mockResolvedValue({ id: "v1" });
   maybeSingle.mockReset();
   update.mockClear();
   // Default: the guarded UPDATE matched its row (1 row back).
@@ -86,11 +84,11 @@ describe("advanceOrder", () => {
   it("rejects an invalid order id before touching the DB", async () => {
     const res = await advanceOrder("not-a-uuid");
     expect(res.success).toBe(false);
-    expect(getVendorMock).not.toHaveBeenCalled();
+    expect(getUserMock).not.toHaveBeenCalled();
   });
 
   it("rejects when not signed in", async () => {
-    getVendorMock.mockResolvedValue({ user: null, vendor: null });
+    getUserMock.mockResolvedValue(null);
     const res = await advanceOrder(ID);
     expect(res.success).toBe(false);
     expect(update).not.toHaveBeenCalled();

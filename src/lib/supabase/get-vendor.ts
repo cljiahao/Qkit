@@ -20,11 +20,20 @@ export const getVendor = cache(
     if (!user) return { user: null, vendor: null };
 
     const supabase = await createServerClient();
-    const { data: vendor } = await supabase
+    const { data: vendor, error } = await supabase
       .from("vendors")
       .select("*")
       .eq("id", user.id)
       .maybeSingle();
+
+    // A read ERROR is not the same as "no vendor row yet" (not onboarded):
+    // maybeSingle returns null data + null error when the row is simply absent.
+    // Returning null on an error would misroute a real vendor to /onboarding on
+    // a transient DB hiccup, so surface it instead (caught by the error boundary).
+    if (error) {
+      console.error("getVendor: vendor read failed", error.message);
+      throw new Error("vendor lookup failed");
+    }
 
     return { user, vendor: vendor ?? null };
   },
