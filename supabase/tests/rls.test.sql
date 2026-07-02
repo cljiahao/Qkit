@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(51);
+select plan(53);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -118,6 +118,22 @@ select ok((select relrowsecurity from pg_class where oid = 'public.orders'::regc
 select ok((select relrowsecurity from pg_class where oid = 'public.feedback'::regclass), 'RLS on feedback');
 select ok((select relrowsecurity from pg_class where oid = 'public.purchase_requests'::regclass), 'RLS on purchase_requests');
 select ok((select relrowsecurity from pg_class where oid = 'public.licenses'::regclass), 'RLS on licenses');
+
+-- ── Shared stock-quantity rule (0034 / T4 + R4) ──────────────────────────────
+-- order_item_quantities is the single source the gate and the counter both use:
+-- pool per menu item, clamp each line to >= 0, drop items that net to 0.
+select is(
+  (select qty from public.order_item_quantities(
+     '[{"menuItemId":"x","quantity":2},
+       {"menuItemId":"x","quantity":-5},
+       {"menuItemId":"x","quantity":1}]'::jsonb)
+   where menu_item_id = 'x'),
+  3, 'order_item_quantities pools and clamps per line (2 + 0 + 1 = 3)');
+select is_empty(
+  $$ select 1 from public.order_item_quantities(
+       '[{"menuItemId":"y","quantity":0},
+         {"menuItemId":"y","quantity":-3}]'::jsonb) $$,
+  'order_item_quantities drops an item whose lines net to 0');
 
 -- ── Act as Vendor A (authenticated role + JWT claims so auth.uid() = A) ───────
 set local role authenticated;

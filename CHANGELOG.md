@@ -45,6 +45,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Dead customer order links resurrected.** Phase A moved the customer entry
+  route to `/o/{short_code}` and removed `/order/{boothId}`, but the vendor
+  "Copy order link" button, the reorder button, and the status page's "Order
+  again" link still pointed at the removed route (404). The copy-link now yields
+  the canonical `/o/{short_code}`, and a redirect shim at `/order/{boothId}`
+  resolves a booth's current code and forwards to `/o/{code}` — also rescuing any
+  previously printed/shared `/order/{boothId}` link. Reorder still seeds the cart
+  (its sessionStorage handoff is booth-keyed and survives the redirect).
+- **Stock oversell race in `place_order` closed.** The stock gate read remaining
+  stock and passed _before_ acquiring the per-booth `order_seq` lock (the sold
+  counter is bumped only in an AFTER-INSERT trigger), so two concurrent last-unit
+  orders could both pass and oversell. The gate now runs after the lock —
+  serializing concurrent orders on a booth — and checks the same pooled,
+  clamped quantities the counter applies (one shared `order_item_quantities()`
+  rule, replacing three subtly-different clamps). Migration `0034`.
 - **Gross margin no longer reads 100% for every no-cost vendor.** `place_order`
   wrote `cost_cents: 0` for every item, even ones with no cost set, so the margin
   stats treated the cost as "present" and reported `profit == revenue` (100%

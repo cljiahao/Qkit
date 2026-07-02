@@ -14,11 +14,13 @@ interface BoothRow {
   itemCount: number;
   // Active but beyond the plan's serve limit — not orderable by customers.
   paused: boolean;
+  // Current rotating short code → the canonical /o/{code} order URL.
+  shortCode: string;
 }
 
 export function BoothList({ booths }: { booths: BoothRow[] }) {
-  async function copyLink(id: string) {
-    const url = `${window.location.origin}/order/${id}`;
+  async function copyLink(shortCode: string) {
+    const url = `${window.location.origin}/o/${shortCode}`;
     await navigator.clipboard.writeText(url);
     toast.success("Order link copied");
   }
@@ -93,7 +95,7 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
                 size="sm"
                 variant="outline"
                 className="rounded-lg"
-                onClick={() => copyLink(booth.id)}
+                onClick={() => copyLink(booth.shortCode)}
                 aria-label="Copy order link"
               >
                 <Copy className="size-3.5" />

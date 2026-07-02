@@ -17,7 +17,9 @@ export default async function BoothsPage() {
   const supabase = await createServerClient();
   const { data: booths } = await supabase
     .from("booths")
-    .select("id, name, is_active, image_url, menu_items, created_at")
+    .select(
+      "id, name, is_active, image_url, menu_items, created_at, short_code",
+    )
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: true });
 
@@ -30,6 +32,7 @@ export default async function BoothsPage() {
     image_url: b.image_url,
     itemCount: parseMenuItems(b.menu_items).length,
     paused: isBoothPaused(b, servable),
+    shortCode: b.short_code,
   }));
 
   const canCreate = canAddBooth(entitlement, rows.length);

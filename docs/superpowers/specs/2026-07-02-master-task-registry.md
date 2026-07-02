@@ -27,7 +27,18 @@ empty priced cart / cap lines / booth-scoped flood guard), **T2** (place_order o
 `cost_cents` for no-cost items → margin no longer always 100%), **T5** (sales API 503
 fail-loud), **T6** (place-order + feedback + margin tests; 405→420 unit tests), **D2**
 (`src/lib/rate-limit.ts` — `clientIp`+`rateLimit`, 3 call sites deduped). pgTAP plan
-40→51. Next: T3 (dead route), T4 (oversell race).
+40→51.
+
+**P1 correctness SHIPPED** (2026-07-02, same branch): **T3** dead `/order/[boothId]`
+route — added a redirect shim (`src/app/order/[boothId]/page.tsx`) resolving the
+booth's current `short_code` → `/o/{code}` (rescues old printed links + reorder +
+"order again"; reorder handoff is boothId-keyed so it survives the hop); vendor
+copy-link repointed to the canonical `/o/{shortCode}`. **T4 + R4** stock oversell
+race — migration `0034`: stock gate moved to run AFTER the `order_seq` booth-row
+lock (serializes concurrent orders; second reads the counter incl. the first's
+committed sale), gating the persisted `v_priced` via a new shared
+`order_item_quantities()` helper that `apply_order_stock_delta` also uses (single
+clamp rule). pgTAP plan 51→53. Next: Phase B (T7–T22).
 
 ## P1 — do first
 
