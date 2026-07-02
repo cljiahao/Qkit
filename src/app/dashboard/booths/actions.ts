@@ -139,7 +139,11 @@ export async function saveBooth(
       .eq("vendor_id", user.id)
       .eq("is_active", true);
     if (data.boothId) q = q.neq("id", data.boothId);
-    const { count } = await q;
+    const { count, error: countErr } = await q;
+    // Fails open (the DB booth_servable rule is the real backstop), but log so a
+    // persistently-failing count isn't invisible.
+    if (countErr)
+      console.error("saveBooth active-cap count failed", countErr.message);
     if ((count ?? 0) >= entitlement.maxBooths)
       return {
         success: false,

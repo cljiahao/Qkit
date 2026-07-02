@@ -28,10 +28,13 @@ export async function rateLimit(
   limit: number,
   windowSeconds: number,
 ): Promise<boolean> {
-  const { data: allowed } = await supabase.rpc("check_rate_limit", {
+  const { data: allowed, error } = await supabase.rpc("check_rate_limit", {
     p_key: key,
     p_limit: limit,
     p_window_seconds: windowSeconds,
   });
+  // Fail open, but don't fail SILENT — a degraded limiter is invisible
+  // otherwise (the flood guard would quietly stop guarding).
+  if (error) console.error("rateLimit degraded (failing open)", error.message);
   return allowed !== false;
 }
