@@ -1,7 +1,6 @@
 "use server";
 
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import { getVendor } from "@/lib/supabase/get-vendor";
 import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
@@ -75,7 +74,6 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
 
-  revalidatePath("/dashboard");
   return { success: true, status: adv.next };
 }
 
@@ -111,7 +109,6 @@ export async function confirmOrderPayment(
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
 
-  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -140,6 +137,5 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
 
-  revalidatePath("/dashboard");
   return { success: true };
 }

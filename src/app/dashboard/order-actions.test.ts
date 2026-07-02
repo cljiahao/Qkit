@@ -32,7 +32,6 @@ vi.mock("@/lib/supabase/server", () => ({
     }),
 }));
 vi.mock("@/lib/supabase/get-vendor", () => ({ getVendor: getVendorMock }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const ID = "00000000-0000-4000-8000-000000000001";
 
