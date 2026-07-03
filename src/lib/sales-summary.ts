@@ -36,9 +36,9 @@ export type SalesSummaryV1 = {
   }[];
 };
 
-// The internal aggregation is now the full (capped) item set; the frozen export
+// The internal aggregation is the full (capped) item set; the frozen export
 // stays bounded. Quantity order is inherited from computeStats, so this is the
-// same top-by-volume slice the contract has always shipped.
+// same top-by-volume slice the contract ships.
 const EXPORT_TOP_ITEMS = 10;
 
 export function toSalesSummaryV1(

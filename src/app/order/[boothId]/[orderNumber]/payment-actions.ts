@@ -91,8 +91,7 @@ export async function claimPayment(
 
   // The guarded UPDATE matched nothing. Re-read to distinguish a harmless
   // double-tap (already claimed/confirmed → keep it idempotent) from a genuine
-  // "can't pay this" (cancelled, or a wrong token/order) — so a cancelled order
-  // no longer falsely reports "payment sent".
+  // "can't pay this" (cancelled, or a wrong token/order).
   const { data: cur } = await supabase
     .from("orders")
     .select("payment_status, status")

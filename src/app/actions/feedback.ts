@@ -30,8 +30,8 @@ export async function submitFeedback(
   if (!allowed)
     return { success: false, error: "Thanks — you've already sent feedback." };
 
-  // Insert via a SECURITY DEFINER RPC — the feedback table no longer carries a
-  // public INSERT policy (that WITH CHECK(true) let any JWT forge reviews). The
+  // Insert via a SECURITY DEFINER RPC: the feedback table has no public INSERT
+  // policy (a public WITH CHECK(true) would let any JWT forge reviews). The
   // RPC re-derives vendor_id from the caller's own session (auth.uid()) for the
   // vendor source, so it can't be spoofed via a param.
   const { error } = await supabase.rpc("submit_feedback", {

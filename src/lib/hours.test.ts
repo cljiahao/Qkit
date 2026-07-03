@@ -67,7 +67,7 @@ describe("isBoothOpen", () => {
 
   it("weekly overnight window carries past midnight into a null next day", () => {
     // Fri 22:00–02:00, Sat has no window of its own. The shift must still run to
-    // Sat 02:00 (the bug: it used to close at midnight).
+    // Sat 02:00.
     const hours: BoothHours = {
       mode: "weekly",
       days: {

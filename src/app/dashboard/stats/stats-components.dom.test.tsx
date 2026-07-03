@@ -55,7 +55,7 @@ describe("KpiRow", () => {
     const fulfilled = screen.getByText("Fulfilled");
     expect(fulfilled).toBeInTheDocument();
     expect(screen.getByText("90%")).toBeInTheDocument();
-    // Cancelled is no longer its own tile; its count rides as a tooltip on the
+    // Cancelled has no tile of its own; its count rides as a tooltip on the
     // Fulfilled tile instead.
     expect(screen.queryByText("Cancelled")).not.toBeInTheDocument();
     expect(fulfilled.closest("[title]")).toHaveAttribute(

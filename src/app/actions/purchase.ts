@@ -8,7 +8,7 @@ const optionSchema = z.enum(["event", "monthly"]);
 
 /**
  * File an in-product upgrade request (pass or monthly Pro) for the admin to
- * action — replaces the old mailto:. Idempotent: a second click while a request
+ * action. Idempotent: a second click while a request
  * of the same kind is still pending is a no-op success.
  */
 export async function requestUpgrade(

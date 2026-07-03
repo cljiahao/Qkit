@@ -77,8 +77,8 @@ describe("toSalesSummaryV1", () => {
   });
 
   it("bounds top_items to the export cap (the internal set is now full)", () => {
-    // computeStats now returns the full per-item aggregation; the frozen export
-    // stays bounded, keeping its long-standing top-by-quantity slice.
+    // computeStats returns the full per-item aggregation; the frozen export
+    // stays bounded to its top-by-quantity slice.
     const many = Array.from({ length: 15 }, (_, i) => ({
       label: `Item ${i}`,
       quantity: 15 - i,

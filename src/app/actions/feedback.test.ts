@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // submitFeedback runs the anti-flood check then inserts via the submit_feedback
-// RPC (the feedback table has no public INSERT policy since 0033). Stub both RPCs.
+// RPC (the feedback table has no public INSERT policy). Stub both RPCs.
 const rpc = vi.fn();
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ rpc }),

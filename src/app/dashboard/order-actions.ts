@@ -7,9 +7,8 @@ import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus } from "@/lib/types";
 
-// Vendor order-board mutations. The browser used to UPDATE orders directly;
-// these move that behind a validated server boundary (Layer 1). Authorization
-// is still enforced in Postgres: getUser() gates signed-in, and RLS
+// Vendor order-board mutations behind a validated server boundary. Authorization
+// is enforced in Postgres: getUser() gates signed-in, and RLS
 // (orders_vendor_update USING + WITH CHECK) scopes writes to the vendor's own
 // booths — the server client runs as the AUTHENTICATED role, never service-role.
 // The 0032 freeze trigger blocks any attempt to change financial/identity
@@ -31,7 +30,7 @@ async function loadOwnOrder(orderId: string) {
     .eq("id", orderId)
     .maybeSingle();
   // A read error (not a missing row) is otherwise indistinguishable from
-  // "not found" to the caller — log it so a DB hiccup is debuggable (N7).
+  // "not found" to the caller — log it so a DB hiccup is debuggable.
   if (error) console.error("loadOwnOrder failed", error.message);
   return { supabase, order } as const;
 }

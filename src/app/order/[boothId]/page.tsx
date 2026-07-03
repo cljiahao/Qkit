@@ -8,13 +8,12 @@ interface Props {
 
 const boothIdSchema = z.string().uuid();
 
-// Compatibility shim. Phase A moved the customer entry route to /o/{short_code},
-// but three callers only know the booth id: the reorder button, the status
-// page's "Order again" link, and any previously shared/printed /order/{boothId}
-// URL. Resolve the booth's CURRENT short code and redirect — so old links keep
-// working and the reorder handoff (sessionStorage keyed by boothId, read on the
-// menu page) survives the hop. Service client: the customer is anonymous and
-// anon can no longer read booths directly (0029/0033).
+// Compatibility shim for the /order/{boothId} route: three callers only know the
+// booth id — the reorder button, the status page's "Order again" link, and any
+// shared/printed /order/{boothId} URL. Resolve the booth's short code and redirect
+// to /o/{short_code} so those links keep working and the reorder handoff
+// (sessionStorage keyed by boothId, read on the menu page) survives the hop.
+// Service client: the customer is anonymous and anon cannot read booths directly.
 export default async function OrderBoothRedirect({ params }: Props) {
   const { boothId } = await params;
   if (!boothIdSchema.safeParse(boothId).success) notFound();

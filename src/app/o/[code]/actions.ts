@@ -43,7 +43,7 @@ export async function placeOrder(
 
   const supabase = await createServerClient();
 
-  // Anti-flood (best-effort; trusted-IP hardening is Phase B). Fails open. This
+  // Anti-flood (best-effort). Fails open. This
   // is the honest-path per-IP guard; place_order also carries a booth-scoped
   // limiter so a direct RPC call that skips this action is still bounded.
   const ip = clientIp(await headers());

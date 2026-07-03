@@ -93,7 +93,7 @@ export function OrderCard({
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
 
   // All three mutations go through validated server actions (order-actions.ts);
-  // the DB enforces ownership (RLS) and column integrity (0032 freeze trigger).
+  // the DB enforces ownership (RLS) and column integrity (a freeze trigger).
   function advanceStatus() {
     if (!advance) return;
     return run(async () => {

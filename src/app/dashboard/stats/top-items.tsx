@@ -28,8 +28,8 @@ export function TopItems({
 }) {
   const [metric, setMetric] = useState<Metric>("quantity");
   // Rank by the CHOSEN metric first, THEN take the top-N. `items` is the full
-  // aggregation from computeStats, so switching to "By revenue" can now surface
-  // a high-revenue item that a quantity-only pre-slice would have hidden.
+  // aggregation from computeStats, so switching to "By revenue" can surface a
+  // high-revenue item a quantity-only pre-slice would hide.
   const ranked =
     metric === "revenue_cents"
       ? [...items].sort((a, b) => b.revenue_cents - a.revenue_cents)

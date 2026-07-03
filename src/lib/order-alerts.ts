@@ -115,7 +115,7 @@ export function unlockAudio(): void {
 const CHIME_NOTES = [784, 1047, 1319, 784, 1047, 1319];
 const NOTE_SPACING = 0.2; // seconds between note onsets (no overlap → no clip)
 const NOTE_DURATION = 0.22;
-const PEAK_GAIN = 0.32; // ~2× the old chime
+const PEAK_GAIN = 0.32;
 
 export async function playReadyChime(): Promise<boolean> {
   const ctx = sharedCtx();

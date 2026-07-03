@@ -41,8 +41,8 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
   cancelled: "Your order was cancelled",
 };
 
-// Live flow is preparing → ready (2 steps). STATUS_MESSAGE retains the legacy
-// pending/confirmed keys so any pre-v2 order still renders a message.
+// Live flow is preparing → ready (2 steps). STATUS_MESSAGE also keeps
+// pending/confirmed keys so an order still in one of those states renders a message.
 const STEPS: OrderStatus[] = ["preparing", "ready"];
 
 export function OrderStatusPoller({

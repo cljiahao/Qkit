@@ -142,10 +142,9 @@ describe("computeStats", () => {
   });
 
   it("returns the FULL per-item aggregation, not a single-metric top-N slice", () => {
-    // The old behaviour sliced topItems to top-N by quantity, so a low-volume
-    // but high-revenue/high-margin item could never reach the revenue/profit
-    // consumers (TopItems "By revenue", MarginTable, the sales export). The full
-    // set now comes back — topN no longer bounds it.
+    // topItems returns the FULL per-item aggregation, not a top-N by quantity
+    // slice, so a low-volume but high-revenue/high-margin item still reaches the
+    // revenue/profit consumers (TopItems "By revenue", MarginTable, the sales export).
     const items = Array.from({ length: 15 }, (_, i) => ({
       menuItemId: `i${i}`,
       name: `Item ${i}`,
@@ -337,8 +336,7 @@ describe("computeStats — margins", () => {
 
   // The margin guard keys on cost being PRESENT, not > 0: an explicit
   // cost_cents:0 is a real (zero) cost and surfaces a 100% margin. This is why
-  // place_order (0033) must OMIT cost_cents for a no-cost item rather than write
-  // 0 — writing 0 made every no-cost vendor read as 100% margin (T2).
+  // place_order must OMIT cost_cents for a no-cost item rather than write 0.
   it("treats an explicit cost_cents:0 as a real cost (margin surfaces)", () => {
     const s = computeStats([
       order("completed", 200, [

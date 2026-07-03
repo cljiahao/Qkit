@@ -12,7 +12,7 @@ export type EventType = z.infer<typeof eventTypeSchema>;
 /**
  * Best-effort analytics. Fire-and-forget: validates the type, inserts via the
  * normal client (RLS allows insert), and never throws to the caller — analytics
- * must not disrupt the user flow, and it's a no-op until migration 0005 lands.
+ * must not disrupt the user flow.
  *
  * `metadata` (e.g. `{ feature: "stock" }` on an upgrade_cta) is best-effort too:
  * a non-object or oversized value is dropped rather than risking the insert.
@@ -23,8 +23,8 @@ export async function logEvent(
 ): Promise<void> {
   const parsed = eventTypeSchema.safeParse(type);
   if (!parsed.success) return;
-  // Drop a non-object OR an oversized/unserializable metadata blob (the comment
-  // promised this; now enforced) so a caller can't stuff the events table.
+  // Drop a non-object OR an oversized/unserializable metadata blob so a caller
+  // can't stuff the events table.
   let safeMeta: Record<string, unknown> | undefined;
   if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
     try {
