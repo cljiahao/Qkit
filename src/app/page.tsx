@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Bell, ListChecks, QrCode, ScanLine } from "lucide-react";
+import { Bell, Check, ListChecks, QrCode, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandingCta } from "@/components/landing-cta";
-import { LandingBoardPreview } from "@/components/landing-board-preview";
+import { HeroPreviewCarousel } from "@/components/hero-preview-carousel";
 import { FeaturedBooths } from "@/components/featured-booths";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_PRICING } from "@/lib/pricing";
@@ -45,7 +45,14 @@ const MOAT = [
   },
 ];
 
-const FAQ = [
+// An answer is either a plain sentence or a scannable block: a short lead, a
+// spaced bullet list, and an optional closing note. Wordy answers use the block
+// form so a vendor can find the fact fast instead of parsing a paragraph.
+type FaqAnswer = string | { lead?: string; bullets?: string[]; note?: string };
+
+type FaqEntry = { q: string; a: FaqAnswer };
+
+const FAQ: FaqEntry[] = [
   {
     q: "Do customers need to download anything?",
     a: "No. They scan the QR and order in their phone browser, then track status on the same page. Nothing to install.",
@@ -60,15 +67,33 @@ const FAQ = [
   },
   {
     q: "Can I take payment through QKit?",
-    a: "Not yet. Orders land on your live board and you settle however you like: cash, PayNow, or your own terminal. Online card payment is on the roadmap.",
+    a: {
+      lead: "Not yet. Orders land on your live board and you settle however you like:",
+      bullets: ["Cash", "PayNow", "Your own card terminal"],
+      note: "Online card payment is on the roadmap.",
+    },
   },
   {
     q: "How much does it cost?",
-    a: "Start free with one booth (up to 6 items) and today's stats. The full kit (extra booths, customization, auto-close, sold-out caps) is free while we're in beta: just ask and we'll unlock it for your next event. Per-event and monthly pricing arrive with card payments.",
+    a: {
+      lead: "Start free with one booth (up to 6 items) and today's stats.",
+      bullets: [
+        "The full kit adds extra booths, customization, auto-close hours, and sold-out caps.",
+        "It's free while we're in beta: just ask and we'll unlock it for your next event.",
+      ],
+      note: "Per-event and monthly pricing arrive with card payments.",
+    },
   },
   {
     q: "Event pass or monthly: what's the difference?",
-    a: "Same full features either way. A pass unlocks them for a single event (great for the occasional market); monthly keeps them on plus full sales history and trends across events (better if you trade most weeks). Both are free during beta. Paid plans land with card payments.",
+    a: {
+      lead: "Same full features either way.",
+      bullets: [
+        "Event pass: unlocks the full kit for a single event, great for the occasional market.",
+        "Monthly: keeps it on plus full sales history and trends across events, better if you trade most weeks.",
+      ],
+      note: "Both are free during beta. Paid plans land with card payments.",
+    },
   },
   {
     q: "Can orders stop when I sell out?",
@@ -86,46 +111,146 @@ const FAQ = [
 
 // Vendor-facing troubleshooting, grounded in the actual app behaviour so a
 // stall can self-serve common "why isn't this working" moments without support.
-const VENDOR_FAQ = [
+const VENDOR_FAQ: FaqEntry[] = [
   {
     q: "I signed up but never reached a dashboard.",
-    a: "Email sign-up needs confirmation first: after Create account you'll see a Check your email screen, and no session starts until you click the link (check spam). If it doesn't arrive, try Create account again with the same email to resend it. Signing in with Google skips this step.",
+    a: {
+      lead: "Email sign-up needs confirmation first.",
+      bullets: [
+        "After Create account you'll see a Check your email screen. No session starts until you click the link (check spam).",
+        "If it doesn't arrive, try Create account again with the same email to resend it.",
+        "Signing in with Google skips this step.",
+      ],
+    },
   },
   {
     q: "New orders stopped appearing on my board.",
-    a: "The board updates live and now reconnects on its own. If the connection drops (tab asleep, patchy wifi) you'll see a Reconnecting notice, and it re-syncs any missed orders once it's back. If it still looks stuck, reload the page. Keeping the tab in the foreground helps.",
+    a: {
+      lead: "The board updates live and reconnects on its own.",
+      bullets: [
+        "If the connection drops (tab asleep, patchy wifi) you'll see a Reconnecting notice, then it re-syncs any missed orders once it's back.",
+        "If it still looks stuck, reload the page.",
+        "Keeping the tab in the foreground helps.",
+      ],
+    },
   },
   {
     q: "A customer tapped 'I've paid' but it still shows unpaid.",
-    a: "That button only flags the order as Says paid, a self-reported claim, and it never auto-confirms. Once you've seen the PayNow/transfer land, tap Confirm payment received on the order card yourself; that's the only thing that flips it to Paid.",
+    a: {
+      lead: "That button only flags the order as Says paid, a self-reported claim. It never auto-confirms.",
+      bullets: [
+        "Once you've seen the PayNow or transfer land, tap Confirm payment received on the order card yourself.",
+        "That's the only thing that flips an order to Paid.",
+      ],
+    },
   },
   {
     q: "My booth is Active but customers see 'not taking orders'.",
-    a: "A booth serves only when it's Active, within its open hours, and within your plan's serve limit. The free plan serves one live booth at a time. If you have more (e.g. after an event pass ended), only your oldest active booth serves and the rest show as Paused. Renew a pass or Pro to serve them all, or deactivate the extras.",
+    a: {
+      lead: "A booth serves only when all three are true: it's Active, within its open hours, and within your plan's serve limit.",
+      bullets: [
+        "The free plan serves one live booth at a time.",
+        "If you have more (say, after an event pass ended), only your oldest active booth serves and the rest show as Paused.",
+        "Renew a pass or go Pro to serve them all, or deactivate the extras.",
+      ],
+    },
   },
   {
     q: "My booth is Active but shows closed during the hours I set.",
-    a: "Scheduled hours are always read in Singapore time (SGT), so check them against SGT. Hours are also a pass/Pro feature, so on the free plan any saved hours are cleared, and a free booth is simply open when Active and closed when not.",
+    a: {
+      lead: "Two things to check.",
+      bullets: [
+        "Scheduled hours are always read in Singapore time (SGT), so check them against SGT.",
+        "Hours are a pass or Pro feature. On the free plan any saved hours are cleared, and a free booth is simply open when Active and closed when not.",
+      ],
+    },
   },
   {
     q: "A customer says their order didn't go through.",
-    a: "Usual causes: the QR/short code was regenerated (they need to rescan), the booth stopped serving (paused, inactive, or outside SGT hours), an item sold out or went unavailable mid-order, a line exceeded 20 of one item, or more than 8 orders came from the same network within a minute (clears after 60s). Ask them to rescan and retry. Orders are atomic with an idempotency key, so a failed or retried attempt never double-charges or duplicates.",
+    a: {
+      lead: "Usual causes:",
+      bullets: [
+        "The QR or short code was regenerated, so they need to rescan.",
+        "The booth stopped serving (paused, inactive, or outside SGT hours).",
+        "An item sold out or went unavailable mid-order.",
+        "A line exceeded 20 of one item.",
+        "More than 8 orders came from the same network within a minute (clears after 60s).",
+      ],
+      note: "Ask them to rescan and retry. Orders are atomic with an idempotency key, so a failed or retried attempt never double-charges or duplicates.",
+    },
   },
   {
     q: "I regenerated my QR and old printed codes stopped working.",
-    a: "Regenerating a booth's QR is instant and permanent: every previously printed or saved link breaks immediately with This code expired, with no grace period. Only regenerate if a code leaked or is being abused, and reprint the new QR right away.",
+    a: {
+      lead: "Regenerating a booth's QR is instant and permanent.",
+      bullets: [
+        "Every previously printed or saved link breaks immediately with This code expired. There's no grace period.",
+        "Only regenerate if a code leaked or is being abused, and reprint the new QR right away.",
+      ],
+    },
   },
   {
     q: "My banner or menu photo won't upload.",
-    a: "Use a JPEG, PNG, or WebP (not SVG or HEIC). Large phone photos are fine, the app resizes and re-encodes them in your browser before upload. A generic Upload failed is usually a flaky connection, so wait and retry. The image only sticks once you Save the booth or item: the preview swaps instantly, but nothing is stored until you save.",
+    a: {
+      lead: "Check the file, then the save step.",
+      bullets: [
+        "Use a JPEG, PNG, or WebP (not SVG or HEIC). Large phone photos are fine; the app resizes and re-encodes them in your browser before upload.",
+        "A generic Upload failed is usually a flaky connection, so wait and retry.",
+        "The image only sticks once you Save the booth or item. The preview swaps instantly, but nothing is stored until you save.",
+      ],
+    },
   },
   {
     q: "My stats only show the last 24 hours.",
-    a: "The 7-, 30-, and 90-day trend ranges are Pro-only. An event pass unlocks the operational features (extra booths, unlimited items, stock caps, auto-close hours) for its window, but its stats still show the 24-hour view. Go monthly Pro for longitudinal trends across events.",
+    a: {
+      lead: "The 7-, 30-, and 90-day trend ranges are Pro-only.",
+      bullets: [
+        "An event pass unlocks the operational features (extra booths, unlimited items, stock caps, auto-close hours), but its stats still show the 24-hour view.",
+        "Go monthly Pro for longitudinal trends across events.",
+      ],
+    },
   },
 ];
 
-function FaqItem({ q, a }: { q: string; a: string }) {
+function FaqAnswerBody({ a }: { a: FaqAnswer }) {
+  if (typeof a === "string") {
+    return (
+      <p className="text-[0.95rem] leading-relaxed text-foreground/80">{a}</p>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {a.lead ? (
+        <p className="text-[0.95rem] leading-relaxed text-foreground/80">
+          {a.lead}
+        </p>
+      ) : null}
+      {a.bullets ? (
+        <ul className="space-y-2.5">
+          {a.bullets.map((b) => (
+            <li
+              key={b}
+              className="flex gap-2.5 text-[0.95rem] leading-relaxed text-foreground/80"
+            >
+              <span
+                aria-hidden
+                className="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-primary/60"
+              />
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {a.note ? (
+        <p className="text-[0.85rem] leading-relaxed text-muted-foreground">
+          {a.note}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function FaqItem({ q, a }: FaqEntry) {
   return (
     <details className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40 open:border-primary/50 open:bg-primary/[0.03]">
       <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-xl px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset">
@@ -141,7 +266,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
       </summary>
       <div className="px-5 pb-5">
         <hr className="perforation mb-4" />
-        <p className="text-[0.95rem] leading-relaxed text-foreground/80">{a}</p>
+        <FaqAnswerBody a={a} />
       </div>
     </details>
   );
@@ -234,25 +359,26 @@ export default async function LandingPage() {
                 <Link href="#how">See how</Link>
               </Button>
             </div>
-          </div>
-          <LandingBoardPreview />
-        </div>
-      </section>
 
-      {/* Trust strip */}
-      <section className="mx-auto max-w-5xl px-5 pb-14">
-        <p className="text-center text-sm text-muted-foreground">
-          Built in Singapore for hawker stalls, night-market &amp; event booths.
-        </p>
-        <div className="mt-3 flex flex-wrap justify-center gap-2">
-          {TRUST.map((t) => (
-            <span
-              key={t}
-              className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground"
-            >
-              {t}
-            </span>
-          ))}
+            {/* Trust pills, pulled up into the hero and set in the ember so the
+                three reasons to try it are the first thing the eye catches. */}
+            <ul className="mt-8 flex flex-wrap justify-center gap-2.5 lg:justify-start">
+              {TRUST.map((t) => (
+                <li
+                  key={t}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/30"
+                >
+                  <Check className="size-4" strokeWidth={2.75} aria-hidden />
+                  {t}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-5 text-sm text-muted-foreground">
+              Built in Singapore for hawker stalls, night-market &amp; event
+              booths.
+            </p>
+          </div>
+          <HeroPreviewCarousel />
         </div>
       </section>
 
