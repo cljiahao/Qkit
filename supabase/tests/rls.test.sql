@@ -405,6 +405,16 @@ select lives_ok(
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
        '11111111-1111-1111-1111-111111111111'::uuid) $$,
   'place_order succeeds for a valid cart');
+
+-- The side-effect verifications below read protected tables (orders/feedback)
+-- DIRECTLY. Under `auto_expose_new_tables = false` (config.toml) anon has no
+-- base SELECT on those tables — and these checks are NOT about anon's read
+-- permission (the deny tests above already cover that). They verify what the
+-- SECURITY DEFINER RPCs wrote, so run them as the privileged test role; the
+-- RPCs behave identically regardless of caller (definer). anon-callability
+-- stays asserted by the place_order lives_ok above and the anon-scoped
+-- submit_feedback test below.
+reset role;
 select is(
   (select count(*)::int from public.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
@@ -509,12 +519,19 @@ select throws_like(
   '%ORDER_INVALID%',
   'place_order rejects an option not in the item''s option groups (V3)');
 
--- submit_feedback: the only feedback insert path (public policy dropped). An
--- anonymous customer review lands.
+-- submit_feedback: the only feedback insert path (public policy dropped). Assert
+-- anon can still reach the RPC (its EXECUTE grant) as a customer, then verify the
+-- written row as the privileged role (anon has no direct feedback SELECT).
+set local role anon;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('role', 'anon')::text,
+  true);
 select lives_ok(
   $$ select public.submit_feedback('customer',
        '00000000-0000-0000-0000-0000000b0004'::uuid, null, 5, null, 'Great!') $$,
   'submit_feedback inserts an anonymous customer review');
+reset role;
 select is(
   (select count(*)::int from public.feedback
    where booth_id = '00000000-0000-0000-0000-0000000b0004' and message = 'Great!'),
