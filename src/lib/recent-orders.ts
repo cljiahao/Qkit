@@ -10,6 +10,9 @@ export interface RecentOrder {
   boothId: string;
   orderNumber: string;
   customerName: string;
+  // Per-order access token (gates the status page). Optional: entries stored
+  // before this existed simply can't deep-link (they'll 404 on the token check).
+  token?: string;
   placedAt: number; // epoch ms
   // Compact snapshot of the order's lines, so the list can offer "Reorder"
   // without a server round-trip. Optional: entries placed before this existed

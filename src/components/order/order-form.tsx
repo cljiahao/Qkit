@@ -209,6 +209,9 @@ export function OrderForm({
       boothId,
       orderNumber: result.orderNumber,
       customerName: formData.customerName,
+      // The per-order token gates the status page + its polling reads; store it
+      // so a "track your recent order" link can reopen the page later.
+      token: result.accessToken,
       items: cartItems.map((it) => ({
         menuItemId: it.menuItemId,
         quantity: it.quantity,
@@ -216,7 +219,9 @@ export function OrderForm({
       })),
     });
 
-    router.push(`/order/${result.boothId}/${result.orderNumber}`);
+    router.push(
+      `/order/${result.boothId}/${result.orderNumber}?t=${result.accessToken}`,
+    );
   }
 
   const hasItems = cartItems.length > 0;

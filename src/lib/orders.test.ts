@@ -27,6 +27,7 @@ function order(over: Partial<Order>): Order {
     completed_at: over.completed_at ?? null,
     updated_at: over.updated_at ?? "2026-06-12T10:00:00Z",
     idempotency_key: over.idempotency_key ?? null,
+    access_token: over.access_token ?? "tok-test",
   };
 }
 

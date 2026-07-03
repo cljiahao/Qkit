@@ -212,6 +212,10 @@ export const paymentStatusSchema = z.enum([
 // strings (bounded to reject junk before it reaches a query).
 export const orderBoothIdSchema = z.string().uuid();
 export const orderNumberSchema = z.string().min(1).max(40);
+// Per-order access token minted by place_order; gates the status page + its
+// polling/claim reads so booth_id + sequential order_number alone can't
+// enumerate other customers' orders.
+export const orderTokenSchema = z.string().uuid();
 
 /** Parse a JSONB booths.payment value; any malformed shape degrades to null. */
 export function parsePaymentConfig(data: unknown): PaymentConfig | null {
@@ -344,6 +348,9 @@ export const orderRowSchema = z.object({
   completed_at: z.string().nullable(),
   updated_at: z.string(),
   idempotency_key: z.string().nullable(),
+  // The vendor board never reads this, but Order carries it; tolerant so a
+  // payload missing it degrades to "" instead of dropping the whole event.
+  access_token: z.string().catch(""),
 });
 
 /** Parse a JSONB menu_items value, dropping any malformed entries. */

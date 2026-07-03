@@ -16,11 +16,13 @@ const POLL_MS = 5000;
 export function PayPanel({
   boothId,
   orderNumber,
+  token,
   checkout,
   initialStatus,
 }: {
   boothId: string;
   orderNumber: string;
+  token: string;
   checkout: CheckoutView | null;
   initialStatus: PaymentStatus;
 }) {
@@ -33,9 +35,9 @@ export function PayPanel({
   // approach the order-status poller uses (realtime is flaky on customer
   // devices). The shared hook pauses while the tab is hidden.
   const poll = useCallback(async () => {
-    const next = await getPaymentStatus(boothId, orderNumber);
+    const next = await getPaymentStatus(boothId, orderNumber, token);
     if (next) setStatus(next);
-  }, [boothId, orderNumber]);
+  }, [boothId, orderNumber, token]);
   usePolling(poll, {
     intervalMs: POLL_MS,
     enabled: status !== "confirmed" && status !== "not_required",
@@ -66,7 +68,7 @@ export function PayPanel({
 
   function claim() {
     return run(async () => {
-      const res = await claimPayment(boothId, orderNumber);
+      const res = await claimPayment(boothId, orderNumber, token);
       if (res.success) setStatus("claimed");
       else toast.error(res.error);
     });

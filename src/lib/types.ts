@@ -398,6 +398,7 @@ export interface Database {
           completed_at: string | null;
           updated_at: string;
           idempotency_key: string | null;
+          access_token: string;
         };
         Insert: {
           id?: string;
@@ -415,6 +416,7 @@ export interface Database {
           completed_at?: string | null;
           updated_at?: string;
           idempotency_key?: string | null;
+          access_token?: string;
         };
         Update: {
           id?: string;
@@ -432,6 +434,7 @@ export interface Database {
           completed_at?: string | null;
           updated_at?: string;
           idempotency_key?: string | null;
+          access_token?: string;
         };
         Relationships: [
           {

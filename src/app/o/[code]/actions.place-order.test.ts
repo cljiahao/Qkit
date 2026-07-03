@@ -42,7 +42,7 @@ describe("placeOrder", () => {
       if (name === "check_rate_limit") return Promise.resolve({ data: true });
       if (name === "place_order")
         return Promise.resolve({
-          data: { order_number: "0007", booth_id: "b1" },
+          data: { order_number: "0007", booth_id: "b1", access_token: "tok7" },
           error: null,
         });
       throw new Error(`unexpected rpc: ${name}`);
@@ -53,6 +53,7 @@ describe("placeOrder", () => {
       success: true,
       orderNumber: "0007",
       boothId: "b1",
+      accessToken: "tok7",
     });
   });
 
@@ -79,14 +80,19 @@ describe("placeOrder", () => {
         return Promise.resolve({ data: null, error: { message: "boom" } });
       if (name === "place_order")
         return Promise.resolve({
-          data: { order_number: "0009", booth_id: "b1" },
+          data: { order_number: "0009", booth_id: "b1", access_token: "tok9" },
           error: null,
         });
       throw new Error(`unexpected rpc: ${name}`);
     });
 
     const res = await placeOrder("code123", validInput, IDEM);
-    expect(res).toEqual({ success: true, orderNumber: "0009", boothId: "b1" });
+    expect(res).toEqual({
+      success: true,
+      orderNumber: "0009",
+      boothId: "b1",
+      accessToken: "tok9",
+    });
   });
 
   it.each([

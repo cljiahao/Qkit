@@ -27,6 +27,7 @@ function renderPoller(initialStatus: OrderStatus = "preparing") {
     <OrderStatusPoller
       boothId="b1"
       orderNumber="0007"
+      token="tok"
       initialStatus={initialStatus}
       boothName="Kopi Cart"
     />,
@@ -49,7 +50,7 @@ describe("OrderStatusPoller", () => {
         screen.getByText("Your order is ready for pickup!"),
       ).toBeInTheDocument(),
     );
-    expect(getOrderStatus).toHaveBeenCalledWith("b1", "0007");
+    expect(getOrderStatus).toHaveBeenCalledWith("b1", "0007", "tok");
   });
 
   it("alerts the customer when the order becomes ready", async () => {

@@ -3,7 +3,11 @@
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { orderBoothIdSchema, orderNumberSchema } from "@/lib/schemas";
+import {
+  orderBoothIdSchema,
+  orderNumberSchema,
+  orderTokenSchema,
+} from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
 
@@ -16,20 +20,24 @@ import type { PaymentStatus } from "@/lib/types";
 export async function getPaymentStatus(
   boothId: string,
   orderNumber: string,
+  token: string,
 ): Promise<PaymentStatus | null> {
   if (
     !orderBoothIdSchema.safeParse(boothId).success ||
-    !orderNumberSchema.safeParse(orderNumber).success
+    !orderNumberSchema.safeParse(orderNumber).success ||
+    !orderTokenSchema.safeParse(token).success
   )
     return null;
 
   const supabase = await createServiceClient();
-  // maybeSingle + log real errors only (an unknown order is a normal null).
+  // maybeSingle + log real errors only (an unknown order is a normal null). The
+  // token match authorizes the read (booth_id + number aren't secret).
   const { data, error } = await supabase
     .from("orders")
     .select("payment_status")
     .eq("booth_id", boothId)
     .eq("order_number", orderNumber)
+    .eq("access_token", token)
     .maybeSingle();
   if (error) console.error("getPaymentStatus failed", error.message);
 
@@ -45,10 +53,13 @@ export async function getPaymentStatus(
 export async function claimPayment(
   boothId: string,
   orderNumber: string,
+  token: string,
 ): Promise<ActionResult> {
   if (!orderBoothIdSchema.safeParse(boothId).success)
     return { success: false, error: "Invalid booth" };
   if (!orderNumberSchema.safeParse(orderNumber).success)
+    return { success: false, error: "Invalid order" };
+  if (!orderTokenSchema.safeParse(token).success)
     return { success: false, error: "Invalid order" };
 
   const supabase = await createServiceClient();
@@ -66,6 +77,7 @@ export async function claimPayment(
     .update({ payment_status: "claimed" })
     .eq("booth_id", boothId)
     .eq("order_number", orderNumber)
+    .eq("access_token", token)
     .eq("payment_status", "pending")
     // A cancelled order must not accept a payment claim — no-op it.
     .neq("status", "cancelled");

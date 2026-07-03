@@ -41,7 +41,7 @@ export function RecentOrders({ boothId }: Props) {
         {visible.map((o) => (
           <li key={o.orderNumber}>
             <Link
-              href={`/order/${boothId}/${o.orderNumber}`}
+              href={`/order/${boothId}/${o.orderNumber}${o.token ? `?t=${o.token}` : ""}`}
               className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
             >
               <span className="truncate">

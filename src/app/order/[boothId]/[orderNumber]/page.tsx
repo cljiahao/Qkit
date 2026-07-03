@@ -6,6 +6,7 @@ import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import {
   orderBoothIdSchema,
   orderNumberSchema,
+  orderTokenSchema,
   parseOrderItems,
   parsePaymentConfig,
 } from "@/lib/schemas";
@@ -17,19 +18,25 @@ import { PayPanel } from "./pay-panel";
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;
+  searchParams: Promise<{ t?: string }>;
 }
 
 export const revalidate = 0;
 
-export default async function OrderStatusPage({ params }: Props) {
+export default async function OrderStatusPage({ params, searchParams }: Props) {
   const { boothId, orderNumber } = await params;
+  const { t: token } = await searchParams;
 
-  // Validate the route params before they reach the query (V8). A bad boothId
-  // would degrade safe on .eq anyway, but rejecting junk up front avoids a
-  // pointless service-role round-trip and keeps the bound explicit.
+  // Validate the route params AND the per-order token before the query. booth_id
+  // is not secret (it's in the URL a customer gets), and order numbers are short
+  // sequential per-booth strings — the unguessable `token` is what authorizes the
+  // read, so without a valid one there's nothing to show (closes the enumeration
+  // of other customers' orders at the same booth).
   if (
     !orderBoothIdSchema.safeParse(boothId).success ||
-    !orderNumberSchema.safeParse(orderNumber).success
+    !orderNumberSchema.safeParse(orderNumber).success ||
+    !token ||
+    !orderTokenSchema.safeParse(token).success
   )
     notFound();
 
@@ -37,13 +44,15 @@ export default async function OrderStatusPage({ params }: Props) {
   const supabase = await createServiceClient();
 
   // Both reads key only on the route params, so fetch them together instead of
-  // serially (one round-trip of latency, not two) on this hot status page.
+  // serially (one round-trip of latency, not two) on this hot status page. The
+  // order read also matches the token, so a wrong/guessed number returns nothing.
   const [{ data: order }, { data: booth }] = await Promise.all([
     supabase
       .from("orders")
       .select("*")
       .eq("booth_id", boothId)
       .eq("order_number", orderNumber)
+      .eq("access_token", token)
       .single(),
     supabase.from("booths").select("name, payment").eq("id", boothId).single(),
   ]);
@@ -93,6 +102,7 @@ export default async function OrderStatusPage({ params }: Props) {
         <OrderStatusPoller
           boothId={boothId}
           orderNumber={orderNumber}
+          token={token}
           initialStatus={order.status}
           boothName={booth?.name ?? "Your order"}
         />
@@ -104,6 +114,7 @@ export default async function OrderStatusPage({ params }: Props) {
             <PayPanel
               boothId={boothId}
               orderNumber={orderNumber}
+              token={token}
               checkout={checkout}
               initialStatus={order.payment_status}
             />

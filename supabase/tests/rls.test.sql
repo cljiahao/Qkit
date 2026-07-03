@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(63);
+select plan(67);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -158,6 +158,20 @@ select ok(
 select ok(
   NOT public.can_create_booth('00000000-0000-0000-0000-00000000000c'),
   'can_create_booth false for a future-dated pass holder with a booth');
+
+-- ── booth_open (0044): server-side opening-hours gate (SGT, deterministic) ────
+-- p_now is explicit so these don't depend on the wall clock. 05:00Z = 13:00 SGT.
+select ok(
+  public.booth_open(NULL, now()),
+  'booth_open: null hours is always open');
+select ok(
+  public.booth_open('{"mode":"daily","open":"00:00","close":"23:59"}'::jsonb,
+                    '2026-01-01T05:00:00Z'::timestamptz),
+  'booth_open: inside a daily window is open (13:00 SGT)');
+select ok(
+  NOT public.booth_open('{"mode":"daily","open":"09:00","close":"17:00"}'::jsonb,
+                        '2026-01-01T00:00:00Z'::timestamptz),
+  'booth_open: outside a daily window is closed (08:00 SGT)');
 
 -- ── Act as Vendor A (authenticated role + JWT claims so auth.uid() = A) ───────
 set local role authenticated;
@@ -420,6 +434,13 @@ select is(
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '11111111-1111-1111-1111-111111111111'),
   1, 'place_order inserted exactly one row');
+-- The order carries an unguessable access_token (0044) — what the status page +
+-- polling reads now authorize on, closing the sequential-order-number leak.
+select isnt(
+  (select access_token::text from public.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '11111111-1111-1111-1111-111111111111'),
+  null, 'place_order minted a per-order access_token');
 
 -- Replay with the SAME idempotency key must return the SAME order_number and
 -- must not insert a second row.

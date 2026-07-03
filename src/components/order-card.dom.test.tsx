@@ -39,6 +39,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     completed_at: null,
     updated_at: new Date(0).toISOString(),
     idempotency_key: null,
+    access_token: "tok-test",
     ...overrides,
   };
 }

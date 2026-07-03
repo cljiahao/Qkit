@@ -17,6 +17,7 @@ describe("PayPanel", () => {
       <PayPanel
         boothId="b"
         orderNumber="12"
+        token="tok"
         checkout={{ type: "qr", payload: "00020101" }}
         initialStatus="pending"
       />,
@@ -33,6 +34,7 @@ describe("PayPanel", () => {
       <PayPanel
         boothId="b"
         orderNumber="12"
+        token="tok"
         checkout={{ type: "link", url: "https://a.b", label: "PayLah" }}
         initialStatus="pending"
       />,
@@ -48,6 +50,7 @@ describe("PayPanel", () => {
       <PayPanel
         boothId="b"
         orderNumber="12"
+        token="tok"
         checkout={{ type: "qr", payload: "x" }}
         initialStatus="confirmed"
       />,
@@ -60,6 +63,7 @@ describe("PayPanel", () => {
       <PayPanel
         boothId="b"
         orderNumber="12"
+        token="tok"
         checkout={null}
         initialStatus="not_required"
       />,

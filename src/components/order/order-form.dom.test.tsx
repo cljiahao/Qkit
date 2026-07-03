@@ -73,6 +73,7 @@ beforeEach(() => {
     success: true,
     orderNumber: "0042",
     boothId: "b1",
+    accessToken: "tok42",
   });
 });
 
@@ -141,9 +142,10 @@ describe("OrderForm cart", () => {
       boothId: "b1",
       orderNumber: "0042",
       customerName: "Ada",
+      token: "tok42",
       items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
     });
-    expect(push).toHaveBeenCalledWith("/order/b1/0042");
+    expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
   });
 
   it("seeds the cart from a reorder handoff on mount", async () => {
@@ -187,6 +189,7 @@ describe("OrderForm cart", () => {
         success: true,
         orderNumber: "0042",
         boothId: "b1",
+        accessToken: "tok42",
       });
     const user = userEvent.setup();
     renderForm();
@@ -206,7 +209,7 @@ describe("OrderForm cart", () => {
       expect.objectContaining({ customerName: "Ada" }),
       secondIdem,
     );
-    expect(push).toHaveBeenCalledWith("/order/b1/0042");
+    expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
   });
 
   it("disables ordering when the booth is closed", () => {

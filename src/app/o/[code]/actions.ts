@@ -6,7 +6,11 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 
-type Result = ActionResult<{ orderNumber: string; boothId: string }>;
+type Result = ActionResult<{
+  orderNumber: string;
+  boothId: string;
+  accessToken: string;
+}>;
 
 const codeSchema = z.string().min(1).max(64);
 const idemSchema = z.string().uuid();
@@ -66,7 +70,11 @@ export async function placeOrder(
     return { success: false, error: message };
   }
   const out = z
-    .object({ order_number: z.string(), booth_id: z.string() })
+    .object({
+      order_number: z.string(),
+      booth_id: z.string(),
+      access_token: z.string(),
+    })
     .safeParse(data);
   if (!out.success) {
     // The RPC succeeded but returned an unexpected shape — a real bug worth a log.
@@ -80,5 +88,6 @@ export async function placeOrder(
     success: true,
     orderNumber: out.data.order_number,
     boothId: out.data.booth_id,
+    accessToken: out.data.access_token,
   };
 }

@@ -27,6 +27,7 @@ const POLL_MS = 5000;
 interface Props {
   boothId: string;
   orderNumber: string;
+  token: string;
   initialStatus: OrderStatus;
   boothName: string;
 }
@@ -47,6 +48,7 @@ const STEPS: OrderStatus[] = ["preparing", "ready"];
 export function OrderStatusPoller({
   boothId,
   orderNumber,
+  token,
   initialStatus,
   boothName,
 }: Props) {
@@ -85,9 +87,9 @@ export function OrderStatusPoller({
   // (no WebSocket dependency); the shared hook pauses while backgrounded and
   // refreshes the instant the tab returns.
   const poll = useCallback(async () => {
-    const next = await getOrderStatus(boothId, orderNumber);
+    const next = await getOrderStatus(boothId, orderNumber, token);
     if (next) setStatus(next);
-  }, [boothId, orderNumber]);
+  }, [boothId, orderNumber, token]);
   usePolling(poll, { intervalMs: POLL_MS, enabled: !isTerminal(status) });
 
   // Alert the moment the order flips to ready. setState bails on an identical
