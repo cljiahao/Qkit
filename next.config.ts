@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  // Don't advertise the framework (drops the X-Powered-By: Next.js header).
+  poweredByHeader: false,
 
   images: {
     remotePatterns: [
