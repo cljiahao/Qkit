@@ -51,6 +51,11 @@ export type StatsSummary = {
   refunds_cents: number;
   refundCount: number;
   fulfilmentRate: number; // 0..1 — completed / (completed + cancelled)
+  // FULL per-item aggregation (quantity-sorted, capped at ITEM_CAP for safety).
+  // Deliberately NOT pre-sliced to a single metric's top-N: each consumer
+  // re-ranks by its own metric (TopItems by volume/revenue, MarginTable by
+  // profit, the sales export by its own bound) so a low-volume but
+  // high-revenue/high-margin item is never dropped before they see it.
   topItems: TopItem[];
   hourly: HourBucket[]; // always 24 entries, hour 0..23
   busiestHour: number | null; // hour with the most orders, null if none
@@ -216,9 +221,16 @@ export function peakThroughput(orders: StatsOrder[]): number {
   return peak;
 }
 
+// Safety bound on the returned per-item aggregation. Generous on purpose: it is
+// not a "top N" selection (consumers do their own ranking) but a cap so a booth
+// with an unusually long tail of item+option combos can't blow up the payload.
+const ITEM_CAP = 50;
+
 /**
  * Aggregate order rows into KPIs, patterns, and (cost-aware) margins. Cancelled
  * orders are excluded from revenue/items but counted for the fulfilment rate.
+ * `topN` bounds the option breakdown only; `topItems` returns the full (capped)
+ * aggregation for consumers to re-rank by their own metric.
  * Pure: no DB, no React, no Date — unit-testable.
  */
 export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
@@ -303,11 +315,13 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     }
   }
 
+  // Quantity-sorted (revenue tiebreak) so topItems[0] is the best seller by
+  // volume, but the WHOLE set (capped) is returned — no single-metric slice.
   const topItems = [...byLabel.values()]
     .sort(
       (a, b) => b.quantity - a.quantity || b.revenue_cents - a.revenue_cents,
     )
-    .slice(0, topN);
+    .slice(0, ITEM_CAP);
 
   const optionBreakdown = [...optionMap.values()]
     .sort((a, b) => b.count - a.count)

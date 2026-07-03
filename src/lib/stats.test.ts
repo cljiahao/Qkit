@@ -141,7 +141,11 @@ describe("computeStats", () => {
     ]);
   });
 
-  it("respects topN limit", () => {
+  it("returns the FULL per-item aggregation, not a single-metric top-N slice", () => {
+    // The old behaviour sliced topItems to top-N by quantity, so a low-volume
+    // but high-revenue/high-margin item could never reach the revenue/profit
+    // consumers (TopItems "By revenue", MarginTable, the sales export). The full
+    // set now comes back — topN no longer bounds it.
     const items = Array.from({ length: 15 }, (_, i) => ({
       menuItemId: `i${i}`,
       name: `Item ${i}`,
@@ -149,8 +153,19 @@ describe("computeStats", () => {
       quantity: i + 1,
     }));
     const s = computeStats([order("completed", 0, items)], 10);
-    expect(s.topItems).toHaveLength(10);
-    expect(s.topItems[0].label).toBe("Item 14"); // highest quantity first
+    expect(s.topItems).toHaveLength(15); // all 15, not sliced to topN
+    expect(s.topItems[0].label).toBe("Item 14"); // still quantity-sorted
+  });
+
+  it("caps the per-item aggregation at a generous safety bound", () => {
+    const items = Array.from({ length: 60 }, (_, i) => ({
+      menuItemId: `i${i}`,
+      name: `Item ${i}`,
+      price_cents: 100,
+      quantity: i + 1,
+    }));
+    const s = computeStats([order("completed", 0, items)]);
+    expect(s.topItems).toHaveLength(50); // ITEM_CAP
   });
 
   it("breaks a busiest-hour tie toward the earlier hour (stable)", () => {

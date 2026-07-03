@@ -10,9 +10,13 @@ export function MarginTable({ summary }: { summary: StatsSummary }) {
   const gm = summary.grossMargin;
   if (!gm) return null;
 
+  // Rank the FULL aggregation by profit contribution, then take the top slice —
+  // computeStats no longer pre-slices by quantity, so a high-margin low-volume
+  // item can finally reach the top of this table.
   const ranked = summary.topItems
     .filter((i) => i.cost_cents > 0)
-    .sort((a, b) => b.profit_cents - a.profit_cents);
+    .sort((a, b) => b.profit_cents - a.profit_cents)
+    .slice(0, 8);
 
   return (
     <section className="rounded-xl border border-border bg-card p-4">

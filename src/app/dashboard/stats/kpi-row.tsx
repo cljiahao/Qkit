@@ -15,8 +15,10 @@ function Delta({ pct }: { pct: number | null }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 font-mono text-xs font-semibold",
-        up ? "text-emerald-600" : "text-status-cancelled",
+        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-[0.7rem] font-semibold tabular-nums",
+        up
+          ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
+          : "bg-status-cancelled/12 text-status-cancelled",
       )}
       title="vs the previous period"
     >
@@ -42,21 +44,23 @@ function Card({
   return (
     <div
       className={cn(
-        "fade-rise rounded-xl border border-border bg-card p-4",
-        big && "sm:col-span-2",
+        "fade-rise flex flex-col justify-between gap-3 rounded-xl border p-4",
+        big
+          ? "border-primary/25 bg-gradient-to-br from-primary/[0.07] to-transparent sm:col-span-2"
+          : "border-border bg-card",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
         </p>
         {delta !== undefined && <Delta pct={delta} />}
       </div>
       <p
         className={cn(
-          "mt-1 font-mono font-bold tabular-nums",
-          big ? "text-3xl" : "text-2xl",
+          "font-mono font-bold leading-none tabular-nums",
+          big ? "text-3xl sm:text-4xl" : "text-2xl",
         )}
       >
         {value}
@@ -66,9 +70,9 @@ function Card({
 }
 
 /**
- * Summary KPI band. Revenue leads (top-left, largest) per the F-pattern.
- * Free plans see Revenue/Orders/AOV only; Pro adds fulfilment + cancelled and
- * the period-over-period deltas.
+ * Summary KPI band. Revenue leads (top-left, largest, ember-washed) per the
+ * F-pattern. Free plans see Revenue/Orders/AOV only; Pro adds fulfilment +
+ * cancelled and the period-over-period deltas.
  */
 export function KpiRow({
   summary,
@@ -80,7 +84,7 @@ export function KpiRow({
   pro: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <Card
         label="Revenue"
         value={formatPrice(summary.revenue_cents)}

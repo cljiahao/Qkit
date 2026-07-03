@@ -21,17 +21,20 @@ function revenueCents(payload: unknown): number {
 
 export function TopItems({
   items,
-  limit,
+  limit = 8,
 }: {
   items: TopItem[];
   limit?: number;
 }) {
   const [metric, setMetric] = useState<Metric>("quantity");
+  // Rank by the CHOSEN metric first, THEN take the top-N. `items` is the full
+  // aggregation from computeStats, so switching to "By revenue" can now surface
+  // a high-revenue item that a quantity-only pre-slice would have hidden.
   const ranked =
     metric === "revenue_cents"
       ? [...items].sort((a, b) => b.revenue_cents - a.revenue_cents)
-      : items;
-  const data = limit ? ranked.slice(0, limit) : ranked;
+      : [...items].sort((a, b) => b.quantity - a.quantity);
+  const data = ranked.slice(0, limit);
   const chartHeight = Math.max(140, data.length * 44);
 
   return (

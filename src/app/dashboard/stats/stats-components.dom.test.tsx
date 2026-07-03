@@ -4,8 +4,20 @@ import { render, screen } from "@testing-library/react";
 import { KpiRow } from "./kpi-row";
 import { MarginTable } from "./margin-table";
 import { ServiceSpeedChart } from "./service-speed-chart";
+import { StatsView } from "./stats-view";
 import { fmtWait, waitClock } from "./chart-format";
-import type { StatsSummary } from "@/lib/stats";
+import type { StatsSummary, TopItem } from "@/lib/stats";
+
+function topItem(over: Partial<TopItem> = {}): TopItem {
+  return {
+    label: "Kopi",
+    quantity: 9,
+    revenue_cents: 900,
+    cost_cents: 0,
+    profit_cents: 900,
+    ...over,
+  };
+}
 
 function summary(over: Partial<StatsSummary> = {}): StatsSummary {
   return {
@@ -126,6 +138,88 @@ describe("ServiceSpeedChart", () => {
     // no misleading zero line).
     expect(screen.getByText(/service speed/i)).toBeInTheDocument();
     expect(screen.getByText(/5\s*\/\s*hr/i)).toBeInTheDocument();
+  });
+});
+
+describe("StatsView", () => {
+  it("shows the empty state when there are no orders", () => {
+    render(
+      <StatsView
+        summary={summary({ orderCount: 0 })}
+        deltas={null}
+        series={null}
+        range="7d"
+        boothId="all"
+        pro
+      />,
+    );
+    expect(screen.getByText(/no orders yet/i)).toBeInTheDocument();
+  });
+
+  it("pro: pins the metric strip + at-a-glance highlights above three tabs", () => {
+    render(
+      <StatsView
+        summary={summary({
+          topItems: [topItem({ label: "Kopi", quantity: 9 })],
+          busiestHour: 12,
+          hourly: Array.from({ length: 24 }, (_, hour) => ({
+            hour,
+            orders: hour === 12 ? 9 : 0,
+            revenue_cents: 0,
+          })),
+        })}
+        deltas={null}
+        series={null}
+        range="7d"
+        boothId="all"
+        pro
+      />,
+    );
+    // At-a-glance highlights (historical, from the summary).
+    expect(screen.getByText("Best seller")).toBeInTheDocument();
+    expect(screen.getByText("Kopi")).toBeInTheDocument();
+    expect(screen.getByText("Busiest hour")).toBeInTheDocument();
+    expect(screen.getByText("12pm")).toBeInTheDocument();
+    // Three touch tabs, Sales selected by default.
+    expect(screen.getByRole("tab", { name: /sales/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /items/i })).toBeInTheDocument();
+    const service = screen.getByRole("tab", { name: /service/i });
+    expect(service).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /sales/i })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    expect(service).toHaveAttribute("data-state", "inactive");
+    // Export stays reachable from the pinned strip.
+    expect(
+      screen.getByRole("button", { name: /export csv/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("free: no tabs, but keeps the highlights + upgrade CTA", () => {
+    render(
+      <StatsView
+        summary={summary({
+          topItems: [topItem({ label: "Teh" })],
+          busiestHour: 9,
+          hourly: Array.from({ length: 24 }, (_, hour) => ({
+            hour,
+            orders: hour === 9 ? 4 : 0,
+            revenue_cents: 0,
+          })),
+        })}
+        deltas={null}
+        series={null}
+        range="24h"
+        boothId="all"
+        pro={false}
+        speed={{ avgWaitSeconds: 90, series: null, peakThroughput: 0 }}
+      />,
+    );
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByText("Best seller")).toBeInTheDocument();
+    expect(screen.getByText("Avg wait")).toBeInTheDocument();
+    expect(screen.getByText(/upgrade/i)).toBeInTheDocument();
   });
 });
 

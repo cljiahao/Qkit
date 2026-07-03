@@ -57,7 +57,7 @@ export function BusyHeatmap({ summary }: { summary: StatsSummary }) {
                     backgroundColor: "var(--color-primary)",
                     opacity: max ? 0.06 + (orders / max) * 0.94 : 0.06,
                   }}
-                  title={`${day} ${hourLabel(h)} — ${orders} order${orders === 1 ? "" : "s"}`}
+                  title={`${day} ${hourLabel(h)}: ${orders} order${orders === 1 ? "" : "s"}`}
                 />
               ))}
             </div>

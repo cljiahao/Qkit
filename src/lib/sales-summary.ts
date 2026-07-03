@@ -36,6 +36,11 @@ export type SalesSummaryV1 = {
   }[];
 };
 
+// The internal aggregation is now the full (capped) item set; the frozen export
+// stays bounded. Quantity order is inherited from computeStats, so this is the
+// same top-by-volume slice the contract has always shipped.
+const EXPORT_TOP_ITEMS = 10;
+
 export function toSalesSummaryV1(
   summary: StatsSummary,
   meta: { range: string; boothId: string; generatedAt: string },
@@ -61,7 +66,7 @@ export function toSalesSummaryV1(
           margin_pct: gm.marginPct,
         }
       : null,
-    top_items: summary.topItems.map((t) => ({
+    top_items: summary.topItems.slice(0, EXPORT_TOP_ITEMS).map((t) => ({
       label: t.label,
       quantity: t.quantity,
       revenue_cents: t.revenue_cents,

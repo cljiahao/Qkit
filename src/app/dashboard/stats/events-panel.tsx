@@ -25,7 +25,7 @@ export function EventsPanel({ events }: { events: EventLicense[] }) {
         Your events
       </h2>
       <p className="mt-1 mb-3 text-sm text-muted-foreground">
-        Stats for every pass you&apos;ve bought stay here for good — even after
+        Stats for every pass you&apos;ve bought stay here for good, even after
         it ends. Name each one after your event day.
       </p>
       <ul className="space-y-2">
