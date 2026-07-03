@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 
 type Mode = "signin" | "signup";
@@ -40,7 +41,7 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
   const [mode, setMode] = useState<Mode>("signin");
-  const [loading, setLoading] = useState(false);
+  const { pending: loading, run } = useAsyncAction();
   // Set when a signup needs email confirmation (no session returned).
   const [sentTo, setSentTo] = useState<string | null>(null);
 
@@ -50,49 +51,44 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
-  async function signInWithGoogle() {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+  function signInWithGoogle() {
+    return run(async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) toast.error(error.message);
+      // On success the browser navigates to Google; no further action here.
     });
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-    }
-    // On success the browser navigates to Google; no further action here.
   }
 
-  async function onSubmit(data: LoginInput) {
-    setLoading(true);
-
-    if (mode === "signup") {
-      const { data: result, error } = await supabase.auth.signUp(data);
-      if (error) {
-        toast.error(error.message);
-        setLoading(false);
+  function onSubmit(data: LoginInput) {
+    return run(async () => {
+      if (mode === "signup") {
+        const { data: result, error } = await supabase.auth.signUp(data);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        // Email confirmation on → no session yet. Show a "check your email" state
+        // instead of bouncing to a dashboard the user can't reach.
+        if (!result.session) {
+          setSentTo(data.email);
+          return;
+        }
+        router.push("/dashboard");
+        router.refresh();
         return;
       }
-      // Email confirmation on → no session yet. Show a "check your email" state
-      // instead of bouncing to a dashboard the user can't reach.
-      if (!result.session) {
-        setSentTo(data.email);
-        setLoading(false);
+
+      const { error } = await supabase.auth.signInWithPassword(data);
+      if (error) {
+        toast.error(error.message);
         return;
       }
       router.push("/dashboard");
       router.refresh();
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithPassword(data);
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-      return;
-    }
-    router.push("/dashboard");
-    router.refresh();
+    });
   }
 
   const isSignin = mode === "signin";

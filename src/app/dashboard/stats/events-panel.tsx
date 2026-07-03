@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { shortDay } from "@/lib/tz";
 import { eventLabel, type EventLicense } from "@/lib/events";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { renameEvent } from "./actions";
 
 /**
@@ -40,19 +41,19 @@ function EventRow({ event }: { event: EventLicense }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(event.label ?? "");
-  const [saving, setSaving] = useState(false);
+  const { pending: saving, run } = useAsyncAction();
 
-  async function save() {
-    setSaving(true);
-    const res = await renameEvent({ licenseId: event.id, label: name });
-    setSaving(false);
-    if (!res.success) {
-      toast.error(res.error);
-      return;
-    }
-    setEditing(false);
-    toast.success("Event renamed");
-    router.refresh();
+  function save() {
+    return run(async () => {
+      const res = await renameEvent({ licenseId: event.id, label: name });
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      setEditing(false);
+      toast.success("Event renamed");
+      router.refresh();
+    });
   }
 
   const window = `${shortDay(Date.parse(event.valid_from))} – ${shortDay(

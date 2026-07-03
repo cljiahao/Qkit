@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,29 +9,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { vendorSchema, type VendorInput } from "@/lib/schemas";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { createVendor } from "./actions";
 
 export function OnboardingForm() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const { pending: loading, run } = useAsyncAction();
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<VendorInput>({ resolver: zodResolver(vendorSchema) });
 
-  async function onSubmit(data: VendorInput) {
-    setLoading(true);
-    const result = await createVendor(data);
-    if (!result.success) {
-      toast.error(result.error);
-      setLoading(false);
-      return;
-    }
-    // replace (not push) so Back doesn't return to onboarding; no refresh — the
-    // dashboard is revalidate=0 so it re-fetches the new vendor on navigation,
-    // and a refresh here would cancel the navigation.
-    router.replace("/dashboard");
+  function onSubmit(data: VendorInput) {
+    return run(async () => {
+      const result = await createVendor(data);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      // replace (not push) so Back doesn't return to onboarding; no refresh — the
+      // dashboard is revalidate=0 so it re-fetches the new vendor on navigation,
+      // and a refresh here would cancel the navigation.
+      router.replace("/dashboard");
+    });
   }
 
   return (

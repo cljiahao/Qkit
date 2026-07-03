@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ImageUploader } from "@/components/image-uploader";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
@@ -60,23 +61,23 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
   const [payment, setPayment] = useState<PaymentConfig | null>(
     initial?.payment ?? null,
   );
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const { pending: saving, run: runSave } = useAsyncAction();
+  const { pending: deleting, run: runDelete } = useAsyncAction();
 
-  async function onDelete() {
+  function onDelete() {
     if (!initial?.boothId) return;
-    setDeleting(true);
-    const result = await deleteBooth(initial.boothId);
-    if (!result.success) {
-      toast.error(result.error);
-      setDeleting(false);
-      return;
-    }
-    toast.success("Booth deleted");
-    router.replace("/dashboard/booths");
+    return runDelete(async () => {
+      const result = await deleteBooth(initial.boothId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Booth deleted");
+      router.replace("/dashboard/booths");
+    });
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const candidate = {
       boothId: initial?.boothId,
@@ -98,17 +99,17 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
       return;
     }
 
-    setSaving(true);
-    const result = await saveBooth(parsed.data);
-    if (!result.success) {
-      toast.error(result.error);
-      setSaving(false);
-      return;
-    }
-    toast.success("Booth saved");
-    // replace + no refresh: a refresh here races and cancels the navigation
-    // (same bug as onboarding). The list is revalidate=0 so it refetches on nav.
-    router.replace("/dashboard/booths");
+    return runSave(async () => {
+      const result = await saveBooth(parsed.data);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Booth saved");
+      // replace + no refresh: a refresh here races and cancels the navigation
+      // (same bug as onboarding). The list is revalidate=0 so it refetches on nav.
+      router.replace("/dashboard/booths");
+    });
   }
 
   return (
