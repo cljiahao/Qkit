@@ -93,7 +93,11 @@ export function RealtimeOrderBoard({
     });
   }
 
-  const orders = useRealtimeOrders(boothIds, initialOrders, handleNewOrder);
+  const { orders, status: liveStatus } = useRealtimeOrders(
+    boothIds,
+    initialOrders,
+    handleNewOrder,
+  );
 
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
 
@@ -149,6 +153,15 @@ export function RealtimeOrderBoard({
   return (
     <div>
       {loadError && <LoadErrorBanner />}
+      {liveStatus === "disconnected" && (
+        <div
+          role="status"
+          className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
+        >
+          Live updates interrupted — reconnecting. New orders may be delayed;
+          the board re-syncs automatically once it&apos;s back.
+        </div>
+      )}
       <div
         data-tour="order-board"
         className="mb-7 flex items-end justify-between gap-3"
