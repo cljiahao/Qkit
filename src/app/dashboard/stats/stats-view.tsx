@@ -1,11 +1,11 @@
 import { Children } from "react";
 import Link from "next/link";
-import { Clock, DollarSign, Lock, Package, Timer, Trophy } from "lucide-react";
+import { DollarSign, Lock, Package, Timer } from "lucide-react";
 import type { SeriesPoint, StatsSummary, WaitPoint } from "@/lib/stats";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { hourLabel, waitClock } from "./chart-format";
+import { hourLabel, rangeCaption, waitClock } from "./chart-format";
 import { ServiceSpeedChart } from "./service-speed-chart";
-import { KpiRow } from "./kpi-row";
+import { AllTimeBand, KpiRow, StatTile } from "./kpi-row";
 import { ExportButton } from "./export-button";
 import { TrendChart } from "./trend-chart";
 import { BusyHeatmap } from "./busy-heatmap";
@@ -25,6 +25,9 @@ type Speed = {
   peakThroughput: number;
 } | null;
 
+/** Lifetime totals across every booth — not range-scoped (see AllTimeBand). */
+type AllTime = { orders: number; revenue_cents: number } | null;
+
 interface Props {
   summary: StatsSummary;
   deltas: Deltas;
@@ -33,6 +36,7 @@ interface Props {
   boothId: string;
   pro: boolean;
   speed?: Speed;
+  allTime?: AllTime;
 }
 
 /**
@@ -62,42 +66,6 @@ function Stagger({
   ));
 }
 
-/**
- * At-a-glance highlight tile: a qualitative headline (best seller, busiest hour)
- * set in Fraunces on an ember-washed ticket, distinct from the numeric KPI band.
- * Purely historical — everything shown comes from the computed summary.
- */
-function Highlight({
-  icon: Icon,
-  label,
-  value,
-  caption,
-}: {
-  icon: typeof Trophy;
-  label: string;
-  value: string;
-  caption?: string;
-}) {
-  return (
-    <div className="fade-rise overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.06] to-transparent p-4">
-      <div className="flex items-center gap-1.5 text-primary">
-        <Icon className="size-3.5" />
-        <p className="text-[0.7rem] font-semibold uppercase tracking-wider">
-          {label}
-        </p>
-      </div>
-      <p className="mt-1.5 truncate font-display text-xl font-semibold leading-tight">
-        {value}
-      </p>
-      {caption && (
-        <p className="mt-0.5 font-mono text-xs text-muted-foreground tabular-nums">
-          {caption}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /** Eyebrow + hairline divider that titles a tab's content. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -118,6 +86,7 @@ export function StatsView({
   boothId,
   pro,
   speed,
+  allTime,
 }: Props) {
   if (summary.orderCount === 0) {
     return (
@@ -144,42 +113,55 @@ export function StatsView({
   return (
     <div className="space-y-6">
       {/* ── Pinned metric strip: always visible, above the tabs ─────────────── */}
-      <div className="space-y-3">
-        {pro && (
-          <div className="flex items-center justify-end">
+      <div className="space-y-4">
+        {/* Range indicator: names the window every KPI below is scoped to, so
+            "$100.00" is unambiguously "revenue over the last 7 days". */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-baseline gap-1.5 text-xs">
+            <span className="font-semibold uppercase tracking-wider text-muted-foreground">
+              Showing
+            </span>
+            <span className="font-semibold text-primary">
+              {rangeCaption(range)}
+            </span>
+          </p>
+          {pro && (
             <ExportButton summary={summary} range={range} boothId={boothId} />
-          </div>
-        )}
+          )}
+        </div>
 
         <KpiRow summary={summary} deltas={deltas} pro={pro} />
 
         {(bestSeller || busiestHour !== null || avgWait != null) && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {bestSeller && (
-              <Highlight
-                icon={Trophy}
+              <StatTile
                 label="Best seller"
                 value={bestSeller.label}
                 caption={`${bestSeller.quantity} sold`}
               />
             )}
             {busiestHour !== null && (
-              <Highlight
-                icon={Clock}
+              <StatTile
                 label="Busiest hour"
                 value={hourLabel(busiestHour, { long: true })}
                 caption={`${busiestOrders} order${busiestOrders === 1 ? "" : "s"}`}
               />
             )}
-            {/* Avg wait as a highlight only where there's no Service chart (free). */}
+            {/* Avg wait as a tile only where there's no Service chart (free). */}
             {!pro && avgWait != null && (
-              <Highlight
-                icon={Timer}
-                label="Avg wait"
-                value={waitClock(avgWait)}
-              />
+              <StatTile label="Avg wait" value={waitClock(avgWait)} />
             )}
           </div>
+        )}
+
+        {/* Lifetime totals — visually broken out from the range KPIs. Guarded on
+            a positive count so a booth with no all-time orders shows nothing. */}
+        {allTime && allTime.orders > 0 && (
+          <AllTimeBand
+            orders={allTime.orders}
+            revenue_cents={allTime.revenue_cents}
+          />
         )}
       </div>
 

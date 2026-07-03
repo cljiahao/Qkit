@@ -11,6 +11,29 @@ export const RANGE_LABEL: Record<string, string> = {
 };
 
 /**
+ * Human window caption for the KPI strip — answers "what am I looking at?" in
+ * one glance. 24h collapses to the friendlier "today"; the per-event view says
+ * "this event" (its window is the event, not a rolling range). Falls back to a
+ * neutral phrase so an unknown range never renders a bare key.
+ */
+export function rangeCaption(range: string): string {
+  switch (range) {
+    case "24h":
+      return "today";
+    case "7d":
+      return "last 7 days";
+    case "30d":
+      return "last 30 days";
+    case "90d":
+      return "last 90 days";
+    case "event":
+      return "this event";
+    default:
+      return "recent activity";
+  }
+}
+
+/**
  * Hour-of-day label. `long` → "9am" / "12pm" (KPI/axis copy); compact default →
  * "9a" / "12p" (tight heatmap cells).
  */

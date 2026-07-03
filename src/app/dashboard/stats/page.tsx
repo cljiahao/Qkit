@@ -68,6 +68,31 @@ async function fetchOrders(
 }
 
 /**
+ * Lifetime totals across the vendor's booths — order count and revenue earned,
+ * non-cancelled (`status <> 'cancelled'`, so completed and in-flight both
+ * count). Deliberately NOT range- or booth-filtered: it's the "since you
+ * started, every booth" number, kept separate from the range KPIs. Selects just
+ * `total_cents` and reduces in-process (count = row count) so there's no
+ * dependency on a PostgREST aggregate. RLS scopes rows to this vendor.
+ */
+async function fetchAllTimeTotals(
+  supabase: SupabaseClient<Database>,
+  boothIds: string[],
+): Promise<{ orders: number; revenue_cents: number }> {
+  if (!boothIds.length) return { orders: 0, revenue_cents: 0 };
+  const { data } = await supabase
+    .from("orders")
+    .select("total_cents")
+    .in("booth_id", boothIds)
+    .neq("status", "cancelled");
+  const rows = data ?? [];
+  return {
+    orders: rows.length,
+    revenue_cents: rows.reduce((sum, r) => sum + r.total_cents, 0),
+  };
+}
+
+/**
  * All customer reviews for this vendor's booths, newest first. RLS
  * (feedback_vendor_read_own) returns only feedback for booths this vendor owns.
  */
@@ -232,10 +257,13 @@ export default async function StatsPage({ searchParams }: Props) {
     boothParam && allBoothIds.includes(boothParam) ? boothParam : "all";
   const queryIds = selectedBooth === "all" ? allBoothIds : [selectedBooth];
 
-  // Orders and reviews are independent reads — run them together.
-  const [orders, reviewRows] = await Promise.all([
+  // Range orders, reviews, and the all-time totals are independent reads — run
+  // them together. All-time stays across every booth (allBoothIds), regardless
+  // of the selected booth/range filters, so lifetime numbers never shift.
+  const [orders, reviewRows, allTime] = await Promise.all([
     fetchOrders(supabaseEarly, queryIds, cutoff),
     fetchReviewRows(supabaseEarly),
+    fetchAllTimeTotals(supabaseEarly, allBoothIds),
   ]);
   const summary = computeStats(orders);
   const avgWait = avgWaitSeconds(orders);
@@ -300,6 +328,7 @@ export default async function StatsPage({ searchParams }: Props) {
           series: waitPoints,
           peakThroughput: peak,
         }}
+        allTime={allTime}
       />
 
       <ReviewsCard

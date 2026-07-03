@@ -175,7 +175,10 @@ describe("StatsView", () => {
         pro
       />,
     );
-    // At-a-glance highlights (historical, from the summary).
+    // Range indicator names the window the KPIs are scoped to.
+    expect(screen.getByText("Showing")).toBeInTheDocument();
+    expect(screen.getByText("last 7 days")).toBeInTheDocument();
+    // At-a-glance context tiles (historical, from the summary).
     expect(screen.getByText("Best seller")).toBeInTheDocument();
     expect(screen.getByText("Kopi")).toBeInTheDocument();
     expect(screen.getByText("Busiest hour")).toBeInTheDocument();
@@ -217,9 +220,46 @@ describe("StatsView", () => {
       />,
     );
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    // 24h range collapses to the friendlier "today" caption.
+    expect(screen.getByText("today")).toBeInTheDocument();
     expect(screen.getByText("Best seller")).toBeInTheDocument();
     expect(screen.getByText("Avg wait")).toBeInTheDocument();
     expect(screen.getByText(/upgrade/i)).toBeInTheDocument();
+  });
+
+  it("renders the all-time totals band, distinct from the range KPIs", () => {
+    render(
+      <StatsView
+        summary={summary()}
+        deltas={null}
+        series={null}
+        range="7d"
+        boothId="all"
+        pro
+        allTime={{ orders: 512, revenue_cents: 1234500 }}
+      />,
+    );
+    // Lifetime band: its own header + labels, not the range revenue ($100.00).
+    expect(screen.getByText("Since you started")).toBeInTheDocument();
+    expect(screen.getByText("Total orders")).toBeInTheDocument();
+    expect(screen.getByText("512")).toBeInTheDocument();
+    expect(screen.getByText("Total earned")).toBeInTheDocument();
+    expect(screen.getByText("$12,345.00")).toBeInTheDocument();
+  });
+
+  it("hides the all-time band when there are no lifetime orders", () => {
+    render(
+      <StatsView
+        summary={summary()}
+        deltas={null}
+        series={null}
+        range="7d"
+        boothId="all"
+        pro
+        allTime={{ orders: 0, revenue_cents: 0 }}
+      />,
+    );
+    expect(screen.queryByText("Since you started")).not.toBeInTheDocument();
   });
 });
 
