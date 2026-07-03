@@ -207,6 +207,12 @@ export const paymentStatusSchema = z.enum([
   "confirmed",
 ]);
 
+// Customer order-route params, shared by the status page and its status/payment
+// polling reads. boothId is a UUID; order numbers are short sequential per-booth
+// strings (bounded to reject junk before it reaches a query).
+export const orderBoothIdSchema = z.string().uuid();
+export const orderNumberSchema = z.string().min(1).max(40);
+
 /** Parse a JSONB booths.payment value; any malformed shape degrades to null. */
 export function parsePaymentConfig(data: unknown): PaymentConfig | null {
   if (data == null) return null;

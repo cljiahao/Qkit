@@ -15,6 +15,9 @@ import type { Vendor } from "@/lib/types";
  *
  * Defensive: if the licenses table predates migration 0010 the query errors and
  * `data` is null, so we degrade to the plan-only entitlement rather than throw.
+ * The VENDOR read is not treated this way — a read error there is surfaced (like
+ * get-vendor), because swallowing it would misroute a real vendor to /onboarding
+ * on a transient DB hiccup.
  */
 export const loadEntitlement = cache(
   async (): Promise<{
@@ -39,18 +42,26 @@ export const loadEntitlement = cache(
     // A pass counts only inside its window: valid_from <= now < expires_at. Among
     // currently-active licenses, take the latest-expiring (longest remaining).
     const nowIso = new Date(now).toISOString();
-    const [{ data: vendor }, { data: license }] = await Promise.all([
-      supabase.from("vendors").select("*").eq("id", user.id).maybeSingle(),
-      supabase
-        .from("licenses")
-        .select("expires_at")
-        .eq("vendor_id", user.id)
-        .lte("valid_from", nowIso)
-        .gt("expires_at", nowIso)
-        .order("expires_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+    const [{ data: vendor, error: vendorError }, { data: license }] =
+      await Promise.all([
+        supabase.from("vendors").select("*").eq("id", user.id).maybeSingle(),
+        supabase
+          .from("licenses")
+          .select("expires_at")
+          .eq("vendor_id", user.id)
+          .lte("valid_from", nowIso)
+          .gt("expires_at", nowIso)
+          .order("expires_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+    // Fail loud on a vendor read error (see get-vendor) — a null-on-error would
+    // bounce an onboarded vendor back to /onboarding. Caught by the error boundary.
+    if (vendorError) {
+      console.error("loadEntitlement: vendor read failed", vendorError.message);
+      throw new Error("vendor lookup failed");
+    }
 
     const licenseExpiresAt = vendor ? (license?.expires_at ?? null) : null;
     return {

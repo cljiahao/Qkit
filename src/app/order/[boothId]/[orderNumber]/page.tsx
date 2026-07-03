@@ -1,10 +1,14 @@
 import { notFound } from "next/navigation";
-import { z } from "zod";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
-import { parseOrderItems, parsePaymentConfig } from "@/lib/schemas";
+import {
+  orderBoothIdSchema,
+  orderNumberSchema,
+  parseOrderItems,
+  parsePaymentConfig,
+} from "@/lib/schemas";
 import { renderCheckout } from "@/lib/payments/adapters";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
@@ -24,8 +28,8 @@ export default async function OrderStatusPage({ params }: Props) {
   // would degrade safe on .eq anyway, but rejecting junk up front avoids a
   // pointless service-role round-trip and keeps the bound explicit.
   if (
-    !z.string().uuid().safeParse(boothId).success ||
-    !z.string().min(1).max(40).safeParse(orderNumber).success
+    !orderBoothIdSchema.safeParse(boothId).success ||
+    !orderNumberSchema.safeParse(orderNumber).success
   )
     notFound();
 

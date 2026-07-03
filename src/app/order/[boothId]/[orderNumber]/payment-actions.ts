@@ -1,13 +1,11 @@
 "use server";
 
-import { z } from "zod";
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { orderBoothIdSchema, orderNumberSchema } from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
-
-const boothIdSchema = z.string().uuid();
 
 /**
  * Read one order's payment status. Polling companion to getOrderStatus so the
@@ -19,21 +17,24 @@ export async function getPaymentStatus(
   boothId: string,
   orderNumber: string,
 ): Promise<PaymentStatus | null> {
-  if (!boothIdSchema.safeParse(boothId).success) return null;
+  if (
+    !orderBoothIdSchema.safeParse(boothId).success ||
+    !orderNumberSchema.safeParse(orderNumber).success
+  )
+    return null;
 
   const supabase = await createServiceClient();
-  const { data } = await supabase
+  // maybeSingle + log real errors only (an unknown order is a normal null).
+  const { data, error } = await supabase
     .from("orders")
     .select("payment_status")
     .eq("booth_id", boothId)
     .eq("order_number", orderNumber)
-    .single();
+    .maybeSingle();
+  if (error) console.error("getPaymentStatus failed", error.message);
 
   return data?.payment_status ?? null;
 }
-// Order numbers are short sequential per-booth strings — validate to reject
-// junk and bound the value used in the query.
-const orderNumberSchema = z.string().min(1).max(40);
 
 // Customer is anonymous, so this uses the service-role client (same pattern as
 // the order status page read). It is deliberately narrow: it only advances a
@@ -45,7 +46,7 @@ export async function claimPayment(
   boothId: string,
   orderNumber: string,
 ): Promise<ActionResult> {
-  if (!boothIdSchema.safeParse(boothId).success)
+  if (!orderBoothIdSchema.safeParse(boothId).success)
     return { success: false, error: "Invalid booth" };
   if (!orderNumberSchema.safeParse(orderNumber).success)
     return { success: false, error: "Invalid order" };

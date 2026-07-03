@@ -1,10 +1,8 @@
 "use server";
 
-import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
+import { orderBoothIdSchema, orderNumberSchema } from "@/lib/schemas";
 import type { OrderStatus } from "@/lib/types";
-
-const boothIdSchema = z.string().uuid();
 
 /**
  * Read the current status of one order. Polling fallback for the live status
@@ -16,15 +14,22 @@ export async function getOrderStatus(
   boothId: string,
   orderNumber: string,
 ): Promise<OrderStatus | null> {
-  if (!boothIdSchema.safeParse(boothId).success) return null;
+  if (
+    !orderBoothIdSchema.safeParse(boothId).success ||
+    !orderNumberSchema.safeParse(orderNumber).success
+  )
+    return null;
 
   const supabase = await createServiceClient();
-  const { data } = await supabase
+  // maybeSingle (not single): a not-yet-readable / unknown order is a normal
+  // null, not an error — only real DB/network failures should surface in logs.
+  const { data, error } = await supabase
     .from("orders")
     .select("status")
     .eq("booth_id", boothId)
     .eq("order_number", orderNumber)
-    .single();
+    .maybeSingle();
+  if (error) console.error("getOrderStatus failed", error.message);
 
   return data?.status ?? null;
 }
