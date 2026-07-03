@@ -93,6 +93,8 @@ export async function confirmOrderPayment(
   if (order.payment_status === "confirmed") return { success: true };
   if (order.payment_status === "not_required")
     return { success: false, error: "This order doesn't take payment" };
+  if (order.status === "cancelled")
+    return { success: false, error: "This order was cancelled" };
 
   // Guard on the payment_status we read so a concurrent flip (double-tap, or a
   // cancel) makes this a no-op rather than a lost update.

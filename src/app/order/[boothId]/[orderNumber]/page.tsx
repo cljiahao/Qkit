@@ -52,8 +52,13 @@ export default async function OrderStatusPage({ params }: Props) {
   const paymentConfig = parsePaymentConfig(booth?.payment);
   // Show the pay panel for any payment-expected order (PayPanel renders the QR
   // while pending/claimed and a confirmation once paid, and polls for the flip).
+  // A cancelled order must never solicit payment — gate precisely on
+  // status==='cancelled' (NOT isTerminal: a *completed* order auto-confirms its
+  // payment, and PayPanel then shows the intended "Payment confirmed" panel).
   const showPay =
-    paymentConfig != null && order.payment_status !== "not_required";
+    paymentConfig != null &&
+    order.payment_status !== "not_required" &&
+    order.status !== "cancelled";
   const checkout = showPay
     ? renderCheckout(paymentConfig, {
         amountCents: order.total_cents,

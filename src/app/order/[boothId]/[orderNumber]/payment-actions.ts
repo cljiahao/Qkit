@@ -65,7 +65,9 @@ export async function claimPayment(
     .update({ payment_status: "claimed" })
     .eq("booth_id", boothId)
     .eq("order_number", orderNumber)
-    .eq("payment_status", "pending");
+    .eq("payment_status", "pending")
+    // A cancelled order must not accept a payment claim — no-op it.
+    .neq("status", "cancelled");
 
   if (error) {
     console.error("claimPayment failed", error.message);

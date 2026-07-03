@@ -257,7 +257,9 @@ export function OrderCard({
           </>
         )}
 
-        {payStatus === "claimed" && (
+        {/* Payment prompts only while the order is live — a cancelled/completed
+            order must not solicit or re-confirm payment. */}
+        {!closed && payStatus === "claimed" && (
           <div className="px-4 pb-3">
             <Button
               className="h-12 w-full rounded-lg bg-blue-600 text-base font-bold text-white hover:bg-blue-700"
@@ -268,7 +270,7 @@ export function OrderCard({
             </Button>
           </div>
         )}
-        {payStatus === "pending" && (
+        {!closed && payStatus === "pending" && (
           <div className="px-4 pb-3">
             <Button
               size="sm"
