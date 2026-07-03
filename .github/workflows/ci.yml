@@ -46,6 +46,47 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  e2e-order:
+    name: e2e (order lifecycle)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      # Boot the real stack (applies every migration) and load the coffee-cart
+      # seed the order specs depend on (the "Kopitiam Cart" booth + its
+      # short_code e2eKopitiam01). psql ships on ubuntu-latest.
+      - run: supabase start
+      - name: Load coffee-cart seed
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/seed/coffee-cart.sql
+      # Hand the app the live local creds under the names it reads. The
+      # override-name form writes KEY=value lines straight to the job env.
+      - name: Export local Supabase creds for the app
+        run: |
+          supabase status -o env \
+            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
+            --override-name auth.service_role_key=SUPABASE_SECRET_KEY \
+            >> "$GITHUB_ENV"
+      # Playwright's webServer boots `pnpm dev`, which inherits the env above.
+      - run: pnpm exec playwright test e2e/customer-order.spec.ts e2e/order-code.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-order
+          path: playwright-report/
+          retention-days: 7
+      - if: always()
+        run: supabase stop
+
   db:
     name: db (migrations + pgTAP RLS)
     runs-on: ubuntu-latest
