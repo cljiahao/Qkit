@@ -80,7 +80,9 @@ async function fetchReviewRows(
     .eq("source", "customer")
     .order("created_at", { ascending: false })
     .limit(500);
-  return (data ?? []) as ReviewRow[];
+  // No cast: the select column list matches the generated `feedback` Row, so the
+  // typed client already infers ReviewRow[] — parse-don't-cast holds by inference.
+  return data ?? [];
 }
 
 /**
