@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activationFunnel,
+  latestActivePassByVendor,
   summarizeEvents,
   summarizeVendors,
 } from "./admin-stats";
@@ -8,6 +9,41 @@ import type { Plan } from "@/lib/types";
 
 const NOW = Date.parse("2026-06-11T00:00:00Z");
 const daysAgo = (n: number) => new Date(NOW - n * 86_400_000).toISOString();
+const daysAhead = (n: number) => new Date(NOW + n * 86_400_000).toISOString();
+
+describe("latestActivePassByVendor", () => {
+  it("keeps only in-window passes and picks the longest-remaining per vendor", () => {
+    const m = latestActivePassByVendor(
+      [
+        // vendor a: two live passes — the later expiry wins
+        { vendor_id: "a", valid_from: daysAgo(1), expires_at: daysAhead(1) },
+        { vendor_id: "a", valid_from: daysAgo(2), expires_at: daysAhead(5) },
+        // vendor b: expired — excluded
+        { vendor_id: "b", valid_from: daysAgo(10), expires_at: daysAgo(1) },
+        // vendor c: scheduled future — not yet live, excluded
+        { vendor_id: "c", valid_from: daysAhead(1), expires_at: daysAhead(3) },
+      ],
+      NOW,
+    );
+    expect(m.get("a")).toBe(daysAhead(5));
+    expect(m.has("b")).toBe(false);
+    expect(m.has("c")).toBe(false);
+    expect(m.size).toBe(1);
+  });
+
+  it("treats expires_at == now as expired (half-open window)", () => {
+    const nowIso = new Date(NOW).toISOString();
+    const m = latestActivePassByVendor(
+      [{ vendor_id: "a", valid_from: daysAgo(1), expires_at: nowIso }],
+      NOW,
+    );
+    expect(m.has("a")).toBe(false);
+  });
+
+  it("returns an empty map for no licenses", () => {
+    expect(latestActivePassByVendor([], NOW).size).toBe(0);
+  });
+});
 
 describe("summarizeVendors", () => {
   it("counts plans and recent signups", () => {

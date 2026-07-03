@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import {
   activationFunnel,
+  latestActivePassByVendor,
   summarizeEvents,
   summarizeVendors,
 } from "@/lib/admin-stats";
@@ -85,16 +86,7 @@ export default async function AdminPage() {
   const licenses = licenseRows ?? [];
   const payments = paymentRows ?? [];
 
-  // Latest currently-active pass per vendor (in-window: valid_from <= now <
-  // expires_at; longest remaining wins). A scheduled-future pass isn't "live".
-  const passByVendor = new Map<string, string>();
-  for (const l of licenses) {
-    if (Date.parse(l.valid_from) > now || Date.parse(l.expires_at) <= now)
-      continue;
-    const cur = passByVendor.get(l.vendor_id);
-    if (!cur || Date.parse(l.expires_at) > Date.parse(cur))
-      passByVendor.set(l.vendor_id, l.expires_at);
-  }
+  const passByVendor = latestActivePassByVendor(licenses, now);
 
   // QKit's own revenue — what we actually collected, from the payments ledger
   // (NOT vendor GMV). Beta comps record no payment, so this is honest earnings.

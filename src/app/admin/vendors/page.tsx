@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
-import { summarizeVendors } from "@/lib/admin-stats";
+import { latestActivePassByVendor, summarizeVendors } from "@/lib/admin-stats";
 import { pctChange } from "@/lib/stats";
 import { MS_PER_DAY } from "@/lib/utils";
 import { Stat } from "../stat";
@@ -25,15 +25,7 @@ export default async function AdminVendorsPage() {
     supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
   ]);
 
-  // Latest currently-active pass per vendor (valid_from <= now < expires_at).
-  const passByVendor = new Map<string, string>();
-  for (const l of licenseRows ?? []) {
-    if (Date.parse(l.valid_from) > now || Date.parse(l.expires_at) <= now)
-      continue;
-    const cur = passByVendor.get(l.vendor_id);
-    if (!cur || Date.parse(l.expires_at) > Date.parse(cur))
-      passByVendor.set(l.vendor_id, l.expires_at);
-  }
+  const passByVendor = latestActivePassByVendor(licenseRows ?? [], now);
 
   const vendors: AdminVendorRow[] = (vendorRows ?? []).map((v) => ({
     ...v,

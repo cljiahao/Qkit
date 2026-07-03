@@ -56,6 +56,33 @@ export function activationFunnel(
   };
 }
 
+export type LicenseWindowLite = {
+  vendor_id: string;
+  valid_from: string;
+  expires_at: string;
+};
+
+/**
+ * Map each vendor to the expiry of their latest CURRENTLY-ACTIVE pass — in
+ * window (valid_from <= now < expires_at), longest remaining wins. A
+ * scheduled-future or already-expired pass is not "live" and is skipped.
+ * Pure: no DB. Shared by the admin overview and vendors pages.
+ */
+export function latestActivePassByVendor(
+  licenses: LicenseWindowLite[],
+  nowMs: number,
+): Map<string, string> {
+  const byVendor = new Map<string, string>();
+  for (const l of licenses) {
+    if (Date.parse(l.valid_from) > nowMs || Date.parse(l.expires_at) <= nowMs)
+      continue;
+    const cur = byVendor.get(l.vendor_id);
+    if (!cur || Date.parse(l.expires_at) > Date.parse(cur))
+      byVendor.set(l.vendor_id, l.expires_at);
+  }
+  return byVendor;
+}
+
 function withinDays(createdAt: string, nowMs: number, days: number): boolean {
   const t = Date.parse(createdAt);
   return Number.isFinite(t) && nowMs - t <= days * MS_PER_DAY;
