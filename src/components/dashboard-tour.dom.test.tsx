@@ -89,7 +89,8 @@ describe("DashboardTour", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /replay onboarding tour/i }),
     );
-    expect(mocks.drive).toHaveBeenCalledTimes(1);
+    // start() lazy-imports driver.js, so the drive() call resolves a tick later.
+    await waitFor(() => expect(mocks.drive).toHaveBeenCalledTimes(1));
   });
 
   it("stamps tour-seen once when the auto-run tour ends, not on a later replay", async () => {
@@ -103,6 +104,7 @@ describe("DashboardTour", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /replay onboarding tour/i }),
     );
+    await waitFor(() => expect(mocks.drive).toHaveBeenCalledTimes(2));
     config().onDestroyed?.();
     expect(mocks.markTourSeen).toHaveBeenCalledTimes(1);
   });
@@ -112,6 +114,7 @@ describe("DashboardTour", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /replay onboarding tour/i }),
     );
+    await waitFor(() => expect(mocks.drive).toHaveBeenCalled());
     config().onDestroyed?.();
     expect(mocks.markTourSeen).not.toHaveBeenCalled();
   });

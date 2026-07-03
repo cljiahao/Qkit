@@ -3,19 +3,27 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CircleHelp } from "lucide-react";
-import { driver, type Driver } from "driver.js";
-import "driver.js/dist/driver.css";
+import { type Driver } from "driver.js";
 import { tourSteps } from "./tour-steps";
 import { markTourSeen } from "@/app/dashboard/tour-actions";
 import "./tour.css";
 
-function buildDriver(onDone: () => void): Driver {
+// driver.js (+ its CSS) is loaded lazily, only when the tour actually runs — it
+// auto-runs at most once per vendor, so statically importing it would ship the
+// library in every dashboard page's bundle for nothing. The type import above is
+// erased at compile time (no runtime cost).
+async function buildDriver(onDone: () => void): Promise<Driver> {
   // Matches Tailwind's `sm` breakpoint: below 640px the nav links collapse
   // behind the burger, so the mobile step list spotlights that instead.
   const isMobile =
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
     window.matchMedia("(max-width: 639px)").matches;
+
+  const [{ driver }] = await Promise.all([
+    import("driver.js"),
+    import("driver.js/dist/driver.css"),
+  ]);
 
   return driver({
     showProgress: true,
@@ -49,9 +57,9 @@ export function DashboardTour({ seen }: { seen: boolean }) {
   // land back on the order board (step 1's anchor).
   const pendingReplay = useRef(false);
 
-  function start() {
+  async function start() {
     driverRef.current?.destroy();
-    const d = buildDriver(() => {
+    const d = await buildDriver(() => {
       driverRef.current = null;
       if (!seenRef.current) {
         seenRef.current = true;

@@ -123,22 +123,23 @@ export default async function StatsPage({ searchParams }: Props) {
 
   const supabaseEarly = await createServerClient();
 
-  // The vendor's booths (RLS-scoped). Needed for both the live view filter and
-  // the per-event windows.
-  const { data: boothsData } = await supabaseEarly
-    .from("booths")
-    .select("id, name")
-    .eq("vendor_id", vendor.id)
-    .order("created_at", { ascending: true });
+  // The vendor's booths (for the live filter + per-event windows) and paid passes
+  // (which double as named, permanently-viewable events) are independent reads —
+  // fetch them together rather than serially on this revalidate=0 page.
+  const [{ data: boothsData }, { data: licenses }] = await Promise.all([
+    supabaseEarly
+      .from("booths")
+      .select("id, name")
+      .eq("vendor_id", vendor.id)
+      .order("created_at", { ascending: true }),
+    supabaseEarly
+      .from("licenses")
+      .select("id, label, valid_from, expires_at")
+      .eq("vendor_id", vendor.id)
+      .order("valid_from", { ascending: false }),
+  ]);
   const boothList = boothsData ?? [];
   const allBoothIds = boothList.map((b) => b.id);
-
-  // Paid passes double as named, permanently-viewable events.
-  const { data: licenses } = await supabaseEarly
-    .from("licenses")
-    .select("id, label, valid_from, expires_at")
-    .eq("vendor_id", vendor.id)
-    .order("valid_from", { ascending: false });
   const events = licenses ?? [];
 
   // ── Per-event view: a paid window's FULL stats, ungated (they paid). ─────────
@@ -231,11 +232,14 @@ export default async function StatsPage({ searchParams }: Props) {
     boothParam && allBoothIds.includes(boothParam) ? boothParam : "all";
   const queryIds = selectedBooth === "all" ? allBoothIds : [selectedBooth];
 
-  const orders = await fetchOrders(supabaseEarly, queryIds, cutoff);
+  // Orders and reviews are independent reads — run them together.
+  const [orders, reviewRows] = await Promise.all([
+    fetchOrders(supabaseEarly, queryIds, cutoff),
+    fetchReviewRows(supabaseEarly),
+  ]);
   const summary = computeStats(orders);
   const avgWait = avgWaitSeconds(orders);
 
-  const reviewRows = await fetchReviewRows(supabaseEarly);
   const reviewGroups = groupReviewsByBooth(reviewRows, boothList);
   const reviewOverall = summarizeReviews(reviewRows);
 
