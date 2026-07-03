@@ -75,8 +75,9 @@ export async function setVendorPlan(
   }
 
   // Record subscription revenue when flipping to pro against a real payment
-  // (blank/0 = a comp, no ledger row). Only on a genuine transition. Best-effort.
+  // (blank/0 = a comp, no ledger row). Only on a genuine transition.
   const amount = parsed.data.amountCents ?? 0;
+  let paymentFailed = false;
   if (parsed.data.plan === "pro" && amount > 0 && !wasAlreadyPro) {
     const { error: payError } = await supabase.from("payments").insert({
       vendor_id: parsed.data.vendorId,
@@ -85,10 +86,13 @@ export async function setVendorPlan(
       source: "paynow",
       note: parsed.data.note ?? null,
     });
-    if (payError) console.error("payment insert failed", payError.message);
+    if (payError) {
+      console.error("payment insert failed", payError.message);
+      paymentFailed = true;
+    }
   }
 
-  // Audit trail of who changed what.
+  // Audit trail of who changed what (records the change regardless).
   await recordAudit(supabase, {
     admin_id: user.id,
     action: "set_plan",
@@ -101,6 +105,15 @@ export async function setVendorPlan(
     await resolveVendorRequests(supabase, parsed.data.vendorId);
 
   revalidatePath("/admin");
+  // The plan flip succeeded but the ledger row didn't land — surface it rather
+  // than returning success and letting the payments ledger silently diverge from
+  // the audit trail (the admin can add the row manually).
+  if (paymentFailed)
+    return {
+      success: false,
+      error:
+        "Plan updated, but recording the payment failed — add it to the ledger manually.",
+    };
   return { success: true };
 }
 
@@ -154,6 +167,7 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
 
   // Record the money separately in the revenue ledger (0 = free comp → no row).
   const amount = parsed.data.amountCents ?? 0;
+  let paymentFailed = false;
   if (amount > 0) {
     const { error: payError } = await supabase.from("payments").insert({
       vendor_id: parsed.data.vendorId,
@@ -163,7 +177,10 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
       note: parsed.data.note ?? null,
       license_id: license.id,
     });
-    if (payError) console.error("payment insert failed", payError.message);
+    if (payError) {
+      console.error("payment insert failed", payError.message);
+      paymentFailed = true;
+    }
   }
 
   await recordAudit(supabase, {
@@ -181,6 +198,14 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
   await resolveVendorRequests(supabase, parsed.data.vendorId);
 
   revalidatePath("/admin");
+  // Pass granted but the ledger row didn't land — surface it rather than
+  // silently diverging the ledger from the audit trail.
+  if (paymentFailed)
+    return {
+      success: false,
+      error:
+        "Pass granted, but recording the payment failed — add it to the ledger manually.",
+    };
   return { success: true };
 }
 

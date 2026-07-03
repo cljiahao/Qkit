@@ -106,4 +106,25 @@ describe("salesSummaryToCsv", () => {
     );
     expect(csv).toContain('"Kopi, Iced",1,1.00,1.00');
   });
+
+  it("escapes embedded quotes and newlines in a cell", () => {
+    const csv = salesSummaryToCsv(
+      toSalesSummaryV1(
+        summary({
+          topItems: [
+            {
+              label: 'Kopi "O"\nHot',
+              quantity: 1,
+              revenue_cents: 100,
+              cost_cents: 0,
+              profit_cents: 100,
+            },
+          ],
+        }),
+        meta,
+      ),
+    );
+    // A double-quote is doubled and the whole cell wrapped in quotes.
+    expect(csv).toContain('"Kopi ""O""\nHot",1,1.00,1.00');
+  });
 });
