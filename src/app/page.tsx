@@ -84,6 +84,47 @@ const FAQ = [
   },
 ];
 
+// Vendor-facing troubleshooting — grounded in the actual app behaviour so a
+// stall can self-serve common "why isn't this working" moments without support.
+const VENDOR_FAQ = [
+  {
+    q: "I signed up but never reached a dashboard.",
+    a: "Email sign-up needs confirmation first: after Create account you'll see a Check your email screen, and no session starts until you click the link (check spam). If it doesn't arrive, try Create account again with the same email to resend it. Signing in with Google skips this step.",
+  },
+  {
+    q: "New orders stopped appearing on my board.",
+    a: "The board updates live and now reconnects on its own — if the connection drops (tab asleep, patchy wifi) you'll see a Reconnecting notice, and it re-syncs any missed orders once it's back. If it still looks stuck, reload the page. Keeping the tab in the foreground helps.",
+  },
+  {
+    q: "A customer tapped 'I've paid' but it still shows unpaid.",
+    a: "That button only flags the order as Says paid — a self-reported claim, and it never auto-confirms. Once you've seen the PayNow/transfer land, tap Confirm payment received on the order card yourself; that's the only thing that flips it to Paid.",
+  },
+  {
+    q: "My booth is Active but customers see 'not taking orders'.",
+    a: "A booth serves only when it's Active, within its open hours, and within your plan's serve limit. The free plan serves one live booth at a time — if you have more (e.g. after an event pass ended), only your oldest active booth serves and the rest show as Paused. Renew a pass or Pro to serve them all, or deactivate the extras.",
+  },
+  {
+    q: "My booth is Active but shows closed during the hours I set.",
+    a: "Scheduled hours are always read in Singapore time (SGT), so check them against SGT. Hours are also a pass/Pro feature — on the free plan any saved hours are cleared, so a free booth is simply open when Active and closed when not.",
+  },
+  {
+    q: "A customer says their order didn't go through.",
+    a: "Usual causes: the QR/short code was regenerated (they need to rescan), the booth stopped serving (paused, inactive, or outside SGT hours), an item sold out or went unavailable mid-order, a line exceeded 20 of one item, or more than 8 orders came from the same network within a minute (clears after 60s). Ask them to rescan and retry — orders are atomic with an idempotency key, so a failed or retried attempt never double-charges or duplicates.",
+  },
+  {
+    q: "I regenerated my QR and old printed codes stopped working.",
+    a: "Regenerating a booth's QR is instant and permanent — every previously printed or saved link breaks immediately with This code expired, with no grace period. Only regenerate if a code leaked or is being abused, and reprint the new QR right away.",
+  },
+  {
+    q: "My banner or menu photo won't upload.",
+    a: "Use a JPEG, PNG, or WebP (not SVG or HEIC). Large phone photos are fine — the app resizes and re-encodes them in your browser before upload. A generic Upload failed is usually a flaky connection, so wait and retry. The image only sticks once you Save the booth or item — the preview swaps instantly, but nothing is stored until you save.",
+  },
+  {
+    q: "My stats only show the last 24 hours.",
+    a: "The 7-, 30-, and 90-day trend ranges are Pro-only. An event pass unlocks the operational features (extra booths, unlimited items, stock caps, auto-close hours) for its window, but its stats still show the 24-hour view. Go monthly Pro for longitudinal trends across events.",
+  },
+];
+
 export default async function LandingPage() {
   const supabase = await createServerClient();
   const [
@@ -372,6 +413,34 @@ export default async function LandingPage() {
               <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
             </details>
           ))}
+        </div>
+
+        {/* Vendor troubleshooting — for signed-up stalls hitting a snag. Kept
+            below the marketing FAQ so it doesn't lead the pitch, but on the home
+            page so a vendor can find it fast. */}
+        <div className="mt-12">
+          <h3 className="font-display mb-2 text-center text-xl font-semibold">
+            Already selling? Troubleshooting
+          </h3>
+          <p className="mx-auto mb-6 max-w-md text-center text-sm text-muted-foreground">
+            Quick fixes for the most common stall-side snags.
+          </p>
+          <div className="space-y-3">
+            {VENDOR_FAQ.map((item) => (
+              <details
+                key={item.q}
+                className="group rounded-xl border border-border bg-card px-5 py-4"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium">
+                  {item.q}
+                  <span className="shrink-0 text-muted-foreground transition-transform group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
