@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { CheckoutView } from "@/lib/payments/adapters";
 import type { PaymentStatus } from "@/lib/types";
 import { usePolling } from "@/hooks/use-polling";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { claimPayment, getPaymentStatus } from "./payment-actions";
 
 const POLL_MS = 5000;
@@ -24,7 +25,7 @@ export function PayPanel({
   initialStatus: PaymentStatus;
 }) {
   const [status, setStatus] = useState<PaymentStatus>(initialStatus);
-  const [busy, setBusy] = useState(false);
+  const { pending: busy, run } = useAsyncAction();
   const [imgError, setImgError] = useState(false);
 
   // Poll until the vendor confirms (terminal for payment), so a "Confirm
@@ -63,12 +64,12 @@ export function PayPanel({
     );
   }
 
-  async function claim() {
-    setBusy(true);
-    const res = await claimPayment(boothId, orderNumber);
-    setBusy(false);
-    if (res.success) setStatus("claimed");
-    else toast.error(res.error);
+  function claim() {
+    return run(async () => {
+      const res = await claimPayment(boothId, orderNumber);
+      if (res.success) setStatus("claimed");
+      else toast.error(res.error);
+    });
   }
 
   const claimed = status === "claimed";

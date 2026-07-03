@@ -31,6 +31,7 @@ import {
 } from "@/app/dashboard/order-actions";
 import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { Banknote, ChevronDown, Clock } from "lucide-react";
 import type { Order, OrderStatus } from "@/lib/types";
 
@@ -69,7 +70,7 @@ export function OrderCard({
   // realtime echo arrives.
   const [confirmedLocally, setConfirmedLocally] = useState(false);
   const payStatus = confirmedLocally ? "confirmed" : order.payment_status;
-  const [updating, setUpdating] = useState(false);
+  const { pending: updating, run } = useAsyncAction();
   const [expanded, setExpanded] = useState(false);
 
   // Ticket aging: tick the clock each 30s (only while live) so the vendor sees
@@ -85,37 +86,37 @@ export function OrderCard({
 
   // All three mutations go through validated server actions (order-actions.ts);
   // the DB enforces ownership (RLS) and column integrity (0032 freeze trigger).
-  async function advanceStatus() {
+  function advanceStatus() {
     if (!advance) return;
-    setUpdating(true);
-    const res = await advanceOrder(order.id);
-    if (!res.success) {
-      toast.error(res.error);
-    } else {
-      setStatus(res.status);
-      // Completing auto-confirms an outstanding payment (see buildAdvancePatch).
-      if (res.status === "completed") setConfirmedLocally(true);
-    }
-    setUpdating(false);
+    return run(async () => {
+      const res = await advanceOrder(order.id);
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        setStatus(res.status);
+        // Completing auto-confirms an outstanding payment (see buildAdvancePatch).
+        if (res.status === "completed") setConfirmedLocally(true);
+      }
+    });
   }
 
-  async function confirmPayment() {
-    setUpdating(true);
-    const res = await confirmOrderPayment(order.id);
-    if (!res.success) toast.error(res.error);
-    else setConfirmedLocally(true);
-    setUpdating(false);
+  function confirmPayment() {
+    return run(async () => {
+      const res = await confirmOrderPayment(order.id);
+      if (!res.success) toast.error(res.error);
+      else setConfirmedLocally(true);
+    });
   }
 
-  async function cancelOrder() {
-    setUpdating(true);
-    const res = await cancelOrderAction(order.id);
-    if (!res.success) {
-      toast.error(res.error);
-    } else {
-      setStatus("cancelled");
-    }
-    setUpdating(false);
+  function cancelOrder() {
+    return run(async () => {
+      const res = await cancelOrderAction(order.id);
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        setStatus("cancelled");
+      }
+    });
   }
 
   const closed = isTerminal(status);
