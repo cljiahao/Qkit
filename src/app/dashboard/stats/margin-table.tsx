@@ -10,9 +10,10 @@ export function MarginTable({ summary }: { summary: StatsSummary }) {
   const gm = summary.grossMargin;
   if (!gm) return null;
 
-  // Rank the FULL aggregation by profit contribution, then take the top slice —
-  // computeStats no longer pre-slices by quantity, so a high-margin low-volume
-  // item can finally reach the top of this table.
+  // Rank by profit contribution, then take the top slice. computeStats no longer
+  // pre-slices to top-N by quantity (it now returns the full per-item set, capped
+  // at 50 by quantity), so a high-margin lower-volume item within that set can
+  // reach the top of this table where the old top-8-by-quantity list hid it.
   const ranked = summary.topItems
     .filter((i) => i.cost_cents > 0)
     .sort((a, b) => b.profit_cents - a.profit_cents)
