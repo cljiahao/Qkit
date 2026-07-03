@@ -359,27 +359,32 @@ export default async function LandingPage() {
                 <Link href="#how">See how</Link>
               </Button>
             </div>
-
-            {/* Trust pills, pulled up into the hero and set in the ember so the
-                three reasons to try it are the first thing the eye catches. */}
-            <ul className="mt-8 flex flex-wrap justify-center gap-2.5 lg:justify-start">
-              {TRUST.map((t) => (
-                <li
-                  key={t}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/30"
-                >
-                  <Check className="size-4" strokeWidth={2.75} aria-hidden />
-                  {t}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-5 text-sm text-muted-foreground">
-              Built in Singapore for hawker stalls, night-market &amp; event
-              booths.
-            </p>
           </div>
           <HeroPreviewCarousel />
         </div>
+      </section>
+
+      {/* Trust strip: centered below the hero, above the three steps. Emphasized
+          in the ember so the three reasons to try it stand out. */}
+      <section className="mx-auto max-w-5xl px-5 pb-12 text-center">
+        <ul className="flex flex-wrap justify-center gap-3">
+          {TRUST.map((t) => (
+            <li
+              key={t}
+              className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/30 sm:px-5 sm:text-base"
+            >
+              <Check
+                className="size-4 sm:size-[1.05rem]"
+                strokeWidth={2.75}
+                aria-hidden
+              />
+              {t}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-5 text-sm text-muted-foreground">
+          Built in Singapore for hawker stalls, night-market &amp; event booths.
+        </p>
       </section>
 
       {/* Featured booths: seam, hidden until real, consenting vendors exist.
@@ -395,7 +400,7 @@ export default async function LandingPage() {
           {STEPS.map((step, i) => (
             <div
               key={step.title}
-              className="ticket rounded-2xl border border-border bg-card p-6"
+              className="ticket rounded-2xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
             >
               <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <step.icon className="size-5" />
@@ -421,7 +426,10 @@ export default async function LandingPage() {
         </h2>
         <div className="grid gap-5 sm:grid-cols-3">
           {MOAT.map((m) => (
-            <div key={m.title} className="rounded-2xl border border-border p-6">
+            <div
+              key={m.title}
+              className="rounded-2xl border border-border p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
+            >
               <h3 className="font-display text-xl font-semibold">{m.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {m.body}
@@ -442,7 +450,7 @@ export default async function LandingPage() {
         </p>
         <div className="grid gap-5 sm:grid-cols-3">
           {/* Free */}
-          <div className="rounded-2xl border border-border p-6">
+          <div className="rounded-2xl border border-border p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]">
             <p className="font-display text-2xl font-semibold">Free</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Try it with one booth.
@@ -457,7 +465,7 @@ export default async function LandingPage() {
           </div>
 
           {/* Event pass */}
-          <div className="rounded-2xl border border-border p-6">
+          <div className="rounded-2xl border border-border p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]">
             <div className="flex items-baseline justify-between gap-2">
               <p className="font-display text-2xl font-semibold">Event pass</p>
               <span
@@ -498,7 +506,7 @@ export default async function LandingPage() {
           </div>
 
           {/* Monthly Pro */}
-          <div className="ticket rounded-2xl border border-primary/40 bg-primary/[0.04] p-6">
+          <div className="ticket rounded-2xl border border-primary/40 bg-primary/[0.04] p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_18px_44px_-24px_oklch(0.4_0.09_45/0.55)]">
             <div className="flex items-baseline justify-between gap-2">
               <p className="font-display text-2xl font-semibold text-primary">
                 Monthly Pro

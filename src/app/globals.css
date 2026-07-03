@@ -209,3 +209,11 @@ body {
     animation: none;
   }
 }
+
+/* Smooth in-page anchor scrolling (e.g. the hero "See how" jump to #how),
+   disabled under reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
