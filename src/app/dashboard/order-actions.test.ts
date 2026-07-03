@@ -159,9 +159,23 @@ describe("cancelOrder", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("reports a refresh when the order advanced concurrently (0 rows)", async () => {
+  it("rejects a paid (confirmed-payment) live order — no refund rail", async () => {
     maybeSingle.mockResolvedValue({
-      data: { id: ID, status: "ready", payment_status: "confirmed" },
+      data: { id: ID, status: "preparing", payment_status: "confirmed" },
+    });
+    const res = await cancelOrder(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Paid orders can't be cancelled. Refund the customer directly.",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh when the order advanced concurrently (0 rows)", async () => {
+    // A cancellable (non-confirmed-payment) order that reaches the guarded
+    // UPDATE, which then matches nothing because it moved concurrently.
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "ready", payment_status: "claimed" },
     });
     updateSelect.mockResolvedValue({ data: [], error: null });
     const res = await cancelOrder(ID);

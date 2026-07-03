@@ -304,41 +304,46 @@ export function OrderCard({
                 {advance.label}
               </Button>
             )}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
-                  disabled={updating}
-                >
-                  Cancel
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Cancel order #{order.order_number}?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This permanently cancels the order and removes it from the
-                    board. This can&apos;t be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={updating}>
-                    Keep order
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={cancelOrder}
+            {/* No cancel affordance once payment is confirmed — there's no
+                refund rail, so a paid order can only be refunded off-platform
+                (the server action rejects the cancel too). */}
+            {payStatus !== "confirmed" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
                     disabled={updating}
-                    className="bg-destructive text-white hover:bg-destructive/90"
                   >
-                    Cancel order
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    Cancel
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Cancel order #{order.order_number}?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently cancels the order and removes it from the
+                      board. This can&apos;t be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={updating}>
+                      Keep order
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={cancelOrder}
+                      disabled={updating}
+                      className="bg-destructive text-white hover:bg-destructive/90"
+                    >
+                      Cancel order
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         )}
 

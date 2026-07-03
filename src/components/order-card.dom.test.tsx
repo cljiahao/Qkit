@@ -148,4 +148,28 @@ describe("OrderCard payment", () => {
       screen.queryByRole("button", { name: /confirm payment/i }),
     ).not.toBeInTheDocument();
   });
+
+  it("hides the Cancel button for a paid (confirmed) live order", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "preparing", payment_status: "confirmed" })}
+      />,
+    );
+    // No refund rail — a paid order shows no cancel affordance, but stays live.
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Mark Ready" }),
+    ).toBeInTheDocument();
+  });
+
+  it("still shows Cancel for a non-paid live order", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "preparing", payment_status: "pending" })}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
 });

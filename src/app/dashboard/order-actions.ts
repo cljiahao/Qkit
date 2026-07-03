@@ -123,6 +123,14 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
   if (!supabase || !order) return { success: false, error: "Order not found" };
   if (isTerminal(order.status))
     return { success: false, error: "Order is already closed" };
+  // No refund rail: cancelling a confirmed-payment order would take money with
+  // no order behind it. A "claimed" order (customer says paid, unconfirmed)
+  // stays cancellable — the money isn't real to us until the vendor confirms.
+  if (order.payment_status === "confirmed")
+    return {
+      success: false,
+      error: "Paid orders can't be cancelled. Refund the customer directly.",
+    };
 
   // Guard on the status we read so a cancel can't race an advance to completed
   // (which would otherwise be undone, or leave stock/revenue inconsistent).

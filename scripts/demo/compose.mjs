@@ -30,8 +30,15 @@ const CHIME_SPACING_MS = 200;
 function ffEscapeText(s) {
   return s.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
 }
+// Escape a filesystem path for use inside an ffmpeg filtergraph option
+// (drawtext fontfile=, movie=, …). Both special chars are handled in one pass
+// so no backslash ever slips through un-normalised:
+//   • "\" → "/"  ffmpeg reads a lone "\" as a filter escape char; on Windows it
+//                accepts forward slashes, so normalise every backslash.
+//   • ":" → "\:" the drive-letter colon would otherwise be parsed as the
+//                option separator, so escape it.
 function ffEscapePath(p) {
-  return p.replace(/\\/g, "/").replace(/:/g, "\\:");
+  return p.replace(/[\\:]/g, (ch) => (ch === ":" ? "\\:" : "/"));
 }
 
 function probeDuration(src) {
