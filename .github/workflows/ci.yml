@@ -70,11 +70,16 @@ jobs:
       # Hand the app the live local creds under the names it reads. The
       # override-name form writes KEY=value lines straight to the job env.
       - name: Export local Supabase creds for the app
+        # `status -o env` emits KEY="value"; $GITHUB_ENV keeps quotes literally,
+        # which made the app read a quoted (invalid) supabaseUrl. Strip the
+        # surrounding quotes so the values land clean.
         run: |
           supabase status -o env \
             --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
             --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
             --override-name auth.service_role_key=SUPABASE_SECRET_KEY \
+            | sed -E 's/^([A-Z_]+)="?(.*[^"])"?$/\1=\2/' \
+            | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY|SUPABASE_SECRET_KEY)=' \
             >> "$GITHUB_ENV"
       # Playwright's webServer boots `pnpm dev`, which inherits the env above.
       - run: pnpm exec playwright test e2e/customer-order.spec.ts e2e/order-code.spec.ts
