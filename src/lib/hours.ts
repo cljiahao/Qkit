@@ -19,13 +19,33 @@ function toMin(hhmm: string): number {
   return Number(h) * 60 + Number(m);
 }
 
-/** True if nowMin falls in [open, close); a close <= open window wraps midnight. */
-function inWindow(nowMin: number, open: string, close: string): boolean {
-  const o = toMin(open);
-  const c = toMin(close);
-  if (o === c) return true; // degenerate window treated as open all day
+/**
+ * Does a window that STARTS on its own day cover nowMin on that SAME day?
+ * - normal (close > open): [open, close)
+ * - overnight (close < open): [open, 24:00) — only the evening part; the
+ *   after-midnight tail belongs to the NEXT day (see morningCarry)
+ * - degenerate (open == close): open all day
+ */
+function eveningCovers(win: DayWindow | null, nowMin: number): boolean {
+  if (!win) return false;
+  const o = toMin(win.open);
+  const c = toMin(win.close);
+  if (o === c) return true;
   if (c > o) return nowMin >= o && nowMin < c;
-  return nowMin >= o || nowMin < c; // overnight
+  return nowMin >= o;
+}
+
+/**
+ * For an OVERNIGHT window on the PREVIOUS day, does its after-midnight tail
+ * [00:00, close) cover nowMin this morning? Non-overnight windows don't carry.
+ * This is what makes a weekly overnight shift (e.g. Fri 22:00–02:00) stay open
+ * past midnight even when the next day has no window of its own.
+ */
+function morningCarry(win: DayWindow | null, nowMin: number): boolean {
+  if (!win) return false;
+  const o = toMin(win.open);
+  const c = toMin(win.close);
+  return c < o && nowMin < c;
 }
 
 function windowFor(hours: BoothHours, day: WeekdayKey): DayWindow | null {
@@ -48,10 +68,16 @@ export function isBoothOpen(
   if (!booth.hours) return true;
   const nowMin = sgtMinutes(nowIso);
   if (booth.hours.mode === "daily") {
-    return inWindow(nowMin, booth.hours.open, booth.hours.close);
+    // Daily: every day carries the same window, so "yesterday" is that window too.
+    const w = { open: booth.hours.open, close: booth.hours.close };
+    return eveningCovers(w, nowMin) || morningCarry(w, nowMin);
   }
-  const day = booth.hours.days[sgtWeekday(nowIso)];
-  return day ? inWindow(nowMin, day.open, day.close) : false;
+  const today = sgtWeekday(nowIso);
+  const prev = WEEKDAY_ORDER[(WEEKDAY_ORDER.indexOf(today) + 6) % 7];
+  return (
+    eveningCovers(booth.hours.days[today], nowMin) ||
+    morningCarry(booth.hours.days[prev], nowMin)
+  );
 }
 
 /**

@@ -65,6 +65,48 @@ describe("isBoothOpen", () => {
     ).toBe(false); // Sat 12:00
   });
 
+  it("weekly overnight window carries past midnight into a null next day", () => {
+    // Fri 22:00–02:00, Sat has no window of its own. The shift must still run to
+    // Sat 02:00 (the bug: it used to close at midnight).
+    const hours: BoothHours = {
+      mode: "weekly",
+      days: {
+        mon: null,
+        tue: null,
+        wed: null,
+        thu: null,
+        fri: { open: "22:00", close: "02:00" },
+        sat: null,
+        sun: null,
+      },
+    };
+    const open = (z: string) => isBoothOpen({ is_active: true, hours }, z);
+    expect(open("2026-06-12T15:00:00Z")).toBe(true); // Fri 23:00, evening part
+    expect(open("2026-06-12T17:00:00Z")).toBe(true); // Sat 01:00, carried from Fri
+    expect(open("2026-06-12T19:00:00Z")).toBe(false); // Sat 03:00, past Fri's close
+    expect(open("2026-06-13T04:00:00Z")).toBe(false); // Sat 12:00, Sat is null
+    expect(open("2026-06-12T13:00:00Z")).toBe(false); // Fri 21:00, before open
+  });
+
+  it("weekly: a non-overnight window does NOT bleed into the next day", () => {
+    // Fri 10:00–18:00 (normal). Sat 01:00 must be closed (no carry).
+    const hours: BoothHours = {
+      mode: "weekly",
+      days: {
+        mon: null,
+        tue: null,
+        wed: null,
+        thu: null,
+        fri: { open: "10:00", close: "18:00" },
+        sat: null,
+        sun: null,
+      },
+    };
+    expect(
+      isBoothOpen({ is_active: true, hours }, "2026-06-12T17:00:00Z"),
+    ).toBe(false); // Sat 01:00
+  });
+
   it("daily degenerate window (open == close) is open all day", () => {
     const hours: BoothHours = { mode: "daily", open: "09:00", close: "09:00" };
     expect(

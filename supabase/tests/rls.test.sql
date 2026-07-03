@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(68);
+select plan(71);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -172,6 +172,21 @@ select ok(
   NOT public.booth_open('{"mode":"daily","open":"09:00","close":"17:00"}'::jsonb,
                         '2026-01-01T00:00:00Z'::timestamptz),
   'booth_open: outside a daily window is closed (08:00 SGT)');
+-- Weekly overnight window (0046): Fri 22:00-02:00, Sat null. 2026-06-12 = Friday.
+-- 15:00Z = Fri 23:00 SGT (evening); 17:00Z = Sat 01:00 SGT (carry from Fri);
+-- 19:00Z = Sat 03:00 SGT (past Fri's close).
+select ok(
+  public.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
+                    '2026-06-12T15:00:00Z'::timestamptz),
+  'booth_open: weekly overnight open in the evening (Fri 23:00)');
+select ok(
+  public.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
+                    '2026-06-12T17:00:00Z'::timestamptz),
+  'booth_open: weekly overnight carries past midnight into a null next day (Sat 01:00)');
+select ok(
+  NOT public.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
+                        '2026-06-12T19:00:00Z'::timestamptz),
+  'booth_open: weekly overnight closed after the carried close (Sat 03:00)');
 
 -- ── Act as Vendor A (authenticated role + JWT claims so auth.uid() = A) ───────
 set local role authenticated;
