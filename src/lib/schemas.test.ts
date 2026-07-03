@@ -13,6 +13,9 @@ import {
   parseOrderItems,
   paymentConfigSchema,
   parsePaymentConfig,
+  profileNameSchema,
+  displayNameSchema,
+  passwordChangeSchema,
 } from "./schemas";
 
 describe("loginSchema", () => {
@@ -69,6 +72,71 @@ describe("vendorSchema", () => {
     expect(vendorSchema.safeParse({ name: "x".repeat(101) }).success).toBe(
       false,
     );
+  });
+});
+
+describe("profileNameSchema", () => {
+  it("accepts a valid stall name", () => {
+    expect(profileNameSchema.safeParse({ name: "Kopitiam Cart" }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects an empty name", () => {
+    expect(profileNameSchema.safeParse({ name: "" }).success).toBe(false);
+  });
+
+  it("rejects a name over 100 chars", () => {
+    expect(profileNameSchema.safeParse({ name: "x".repeat(101) }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("displayNameSchema", () => {
+  it("accepts a personal name", () => {
+    expect(displayNameSchema.safeParse({ displayName: "Aisha" }).success).toBe(
+      true,
+    );
+  });
+
+  it("accepts an empty string (clears the name)", () => {
+    expect(displayNameSchema.safeParse({ displayName: "" }).success).toBe(true);
+  });
+
+  it("rejects a name over 60 chars", () => {
+    expect(
+      displayNameSchema.safeParse({ displayName: "x".repeat(61) }).success,
+    ).toBe(false);
+  });
+});
+
+describe("passwordChangeSchema", () => {
+  it("accepts matching passwords of at least 8 chars", () => {
+    expect(
+      passwordChangeSchema.safeParse({
+        password: "hunter22",
+        confirm: "hunter22",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a password shorter than 8", () => {
+    expect(
+      passwordChangeSchema.safeParse({ password: "short", confirm: "short" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects when confirm does not match", () => {
+    const res = passwordChangeSchema.safeParse({
+      password: "hunter22",
+      confirm: "hunter23",
+    });
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.issues[0]?.path).toEqual(["confirm"]);
+    }
   });
 });
 

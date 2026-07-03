@@ -3,8 +3,31 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, MessageSquarePlus, X } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Menu,
+  MessageSquarePlus,
+  User,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { FeedbackForm } from "@/components/feedback-form";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -23,70 +46,124 @@ function tourAnchor(href: string): string {
   return `nav-${href === "/dashboard" ? "orders" : href.split("/").pop()}`;
 }
 
+/** Up to two initials from a stall name; falls back to a bullet when blank. */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "•";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 /**
- * Dashboard nav. On a phone the links collapse behind a burger so the bar never
- * overflows; from sm up they sit inline. Sign out runs the passed server action.
+ * Dashboard nav. On a phone the page links collapse behind a burger so the bar
+ * never overflows; from sm up they sit inline. The account menu (avatar + name)
+ * is present at every width and carries Profile, Feedback, and Sign out.
  */
-export function DashboardNav({ signOut }: { signOut: () => Promise<void> }) {
+export function DashboardNav({
+  signOut,
+  vendorName = "",
+}: {
+  signOut: () => Promise<void>;
+  vendorName?: string;
+}) {
   const [open, setOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const path = usePathname();
 
   return (
     <>
-      {/* Inline nav — sm and up */}
-      <div className="hidden items-center gap-2 sm:flex">
-        {LINKS.map((l) => (
-          <Button
-            key={l.href}
-            asChild
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "rounded-lg",
-              isActive(path, l.href) && "bg-primary/10 text-primary",
-            )}
-          >
-            <Link href={l.href} data-tour={tourAnchor(l.href)}>
-              {l.label}
-            </Link>
-          </Button>
-        ))}
+      <div className="flex items-center gap-2">
+        {/* Inline page links — sm and up */}
+        <div className="hidden items-center gap-2 sm:flex">
+          {LINKS.map((l) => (
+            <Button
+              key={l.href}
+              asChild
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "rounded-lg",
+                isActive(path, l.href) && "bg-primary/10 text-primary",
+              )}
+            >
+              <Link href={l.href} data-tour={tourAnchor(l.href)}>
+                {l.label}
+              </Link>
+            </Button>
+          ))}
+        </div>
+
+        {/* Burger — below sm (page links only) */}
         <Button
-          asChild
-          size="sm"
-          variant="outline"
-          className="rounded-lg border-primary/40 text-primary hover:bg-primary/10"
+          variant="ghost"
+          size="icon"
+          data-tour="nav-menu"
+          className="rounded-lg sm:hidden"
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
         >
-          <Link href="/dashboard/feedback" className="gap-1.5">
-            <MessageSquarePlus className="size-4" />
-            Feedback
-          </Link>
+          {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </Button>
-        <form action={signOut}>
-          <Button
-            variant="outline"
-            size="sm"
-            type="submit"
-            className="rounded-lg"
-          >
-            Sign out
-          </Button>
-        </form>
+
+        {/* Account menu — every width */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              data-tour="nav-account"
+              aria-label="Account menu"
+              className="flex items-center gap-2 rounded-lg py-1 pr-2 pl-1 text-left transition-colors outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            >
+              <span
+                aria-hidden
+                className="font-mono grid size-8 place-items-center rounded-md bg-primary/12 text-xs font-semibold tracking-tight text-primary ring-1 ring-primary/25 ring-inset"
+              >
+                {initials(vendorName)}
+              </span>
+              <span className="hidden max-w-[9rem] truncate text-sm font-semibold md:inline">
+                {vendorName || "Account"}
+              </span>
+              <ChevronDown className="hidden size-4 text-muted-foreground md:inline" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 rounded-xl">
+            <DropdownMenuLabel className="px-2 py-2">
+              <p className="truncate text-sm font-semibold">
+                {vendorName || "Your stall"}
+              </p>
+              <p className="text-xs font-normal text-muted-foreground">
+                Vendor account
+              </p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/profile" className="cursor-pointer">
+                <User className="size-4" />
+                Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={() => setFeedbackOpen(true)}
+            >
+              <MessageSquarePlus className="size-4" />
+              Feedback
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <form action={signOut}>
+              <DropdownMenuItem asChild variant="destructive">
+                <button type="submit" className="w-full cursor-pointer">
+                  <LogOut className="size-4" />
+                  Sign out
+                </button>
+              </DropdownMenuItem>
+            </form>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Burger — below sm */}
-      <Button
-        variant="ghost"
-        size="icon"
-        data-tour="nav-menu"
-        className="rounded-lg sm:hidden"
-        aria-label={open ? "Close menu" : "Open menu"}
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? <X className="size-5" /> : <Menu className="size-5" />}
-      </Button>
-
+      {/* Mobile page-links panel */}
       {open && (
         <>
           {/* Tap-away scrim */}
@@ -114,27 +191,32 @@ export function DashboardNav({ signOut }: { signOut: () => Promise<void> }) {
                   {l.label}
                 </Link>
               ))}
-              <Link
-                href="/dashboard/feedback"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10"
-              >
-                <MessageSquarePlus className="size-4" />
-                Feedback
-              </Link>
-              <form action={signOut} className="pt-1">
-                <button
-                  type="submit"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground hover:bg-secondary"
-                >
-                  <X className="size-4" />
-                  Sign out
-                </button>
-              </form>
             </div>
           </div>
         </>
       )}
+
+      {/* Feedback drawer — opened from the account menu */}
+      <Sheet open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="font-display text-2xl">
+              Share feedback
+            </SheetTitle>
+            <SheetDescription>
+              What&apos;s working, what&apos;s missing, what&apos;s broken? We
+              read every note.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pb-6">
+            <FeedbackForm
+              source="vendor"
+              metric="nps"
+              prompt="How likely are you to recommend QKit to another vendor?"
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

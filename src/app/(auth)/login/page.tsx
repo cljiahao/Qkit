@@ -42,12 +42,17 @@ export default function LoginPage() {
   const supabase = createClient();
   const [mode, setMode] = useState<Mode>("signin");
   const { pending: loading, run } = useAsyncAction();
-  // Set when a signup needs email confirmation (no session returned).
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  // Set when we've emailed the user and are waiting on them to click a link:
+  // "signup" = confirm the new account, "reset" = choose a new password.
+  const [sent, setSent] = useState<{
+    email: string;
+    kind: "signup" | "reset";
+  } | null>(null);
 
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
@@ -73,7 +78,7 @@ export default function LoginPage() {
         // Email confirmation on → no session yet. Show a "check your email" state
         // instead of bouncing to a dashboard the user can't reach.
         if (!result.session) {
-          setSentTo(data.email);
+          setSent({ email: data.email, kind: "signup" });
           return;
         }
         router.push("/dashboard");
@@ -91,9 +96,31 @@ export default function LoginPage() {
     });
   }
 
+  // Email a password-reset link. The link lands on /auth/callback, which
+  // establishes a recovery session and forwards to /reset-password.
+  function sendReset() {
+    const email = getValues("email");
+    const parsed = loginSchema.shape.email.safeParse(email);
+    if (!parsed.success) {
+      toast.error("Enter your email first");
+      return;
+    }
+    return run(async () => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setSent({ email, kind: "reset" });
+    });
+  }
+
   const isSignin = mode === "signin";
 
-  if (sentTo) {
+  if (sent) {
+    const isReset = sent.kind === "reset";
     return (
       <main className="min-h-screen flex items-center justify-center p-5">
         <div className="w-full max-w-md text-center">
@@ -105,16 +132,30 @@ export default function LoginPage() {
               Check your email
             </h1>
             <p className="mt-3 text-sm text-muted-foreground">
-              We sent a confirmation link to{" "}
-              <span className="font-medium text-foreground">{sentTo}</span>.
-              Click it to activate your account, then sign in.
+              {isReset ? (
+                <>
+                  We sent a password reset link to{" "}
+                  <span className="font-medium text-foreground">
+                    {sent.email}
+                  </span>
+                  . Open it to choose a new password.
+                </>
+              ) : (
+                <>
+                  We sent a confirmation link to{" "}
+                  <span className="font-medium text-foreground">
+                    {sent.email}
+                  </span>
+                  . Click it to activate your account, then sign in.
+                </>
+              )}
             </p>
             <Button
               type="button"
               variant="outline"
               className="mt-7 h-11 w-full rounded-xl"
               onClick={() => {
-                setSentTo(null);
+                setSent(null);
                 setMode("signin");
               }}
             >
@@ -191,12 +232,24 @@ export default function LoginPage() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label
-                  htmlFor="password"
-                  className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-                >
-                  Password
-                </Label>
+                <div className="flex items-center justify-between gap-3">
+                  <Label
+                    htmlFor="password"
+                    className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                  >
+                    Password
+                  </Label>
+                  {isSignin && (
+                    <button
+                      type="button"
+                      onClick={sendReset}
+                      disabled={loading}
+                      className="text-xs font-semibold text-primary underline-offset-4 hover:underline disabled:opacity-50"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="password"
                   type="password"

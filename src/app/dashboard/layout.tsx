@@ -50,7 +50,7 @@ export default async function DashboardLayout({
               </span>
             )}
           </div>
-          <DashboardNav signOut={signOut} />
+          <DashboardNav signOut={signOut} vendorName={vendor?.name ?? ""} />
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">

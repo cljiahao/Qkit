@@ -284,6 +284,35 @@ export const feedbackSchema = z
   );
 export type FeedbackInput = z.infer<typeof feedbackSchema>;
 
+// ── Account / profile ────────────────────────────────────────────────────────
+
+// Stall name shown to customers (vendors.name). Same rule as vendorSchema — the
+// authenticated role may UPDATE (name, tour_seen_at) under RLS vendors_self_update.
+export const profileNameSchema = z.object({
+  name: z.string().min(1, "Stall name is required").max(100),
+});
+
+// Personal display name on the auth user (user_metadata.display_name). Optional:
+// an empty string clears it. Trimmed so trailing whitespace can't slip past max.
+export const displayNameSchema = z.object({
+  displayName: z.string().trim().max(60, "Display name is too long"),
+});
+
+// New password + confirm. Min length mirrors loginSchema (8); confirm must match.
+export const passwordChangeSchema = z
+  .object({
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, {
+    message: "Passwords do not match",
+    path: ["confirm"],
+  });
+
+export type ProfileNameInput = z.infer<typeof profileNameSchema>;
+export type DisplayNameInput = z.infer<typeof displayNameSchema>;
+export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
 export type VendorInput = z.infer<typeof vendorSchema>;
