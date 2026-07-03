@@ -5,7 +5,7 @@ import type { SeriesPoint, StatsSummary, WaitPoint } from "@/lib/stats";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hourLabel, rangeCaption, waitClock } from "./chart-format";
 import { ServiceSpeedChart } from "./service-speed-chart";
-import { AllTimeBand, KpiRow, StatTile } from "./kpi-row";
+import { KpiRow, StatTile } from "./kpi-row";
 import { ExportButton } from "./export-button";
 import { TrendChart } from "./trend-chart";
 import { BusyHeatmap } from "./busy-heatmap";
@@ -25,7 +25,8 @@ type Speed = {
   peakThroughput: number;
 } | null;
 
-/** Lifetime totals across every booth — not range-scoped (see AllTimeBand). */
+/** Lifetime totals across every booth, not range-scoped. Shown as captions
+    under the Revenue and Orders tiles. */
 type AllTime = { orders: number; revenue_cents: number } | null;
 
 interface Props {
@@ -135,6 +136,7 @@ export function StatsView({
           deltas={deltas}
           pro={pro}
           rangeLabel={rangeCaption(range)}
+          allTime={allTime ?? undefined}
         />
 
         {(bestSeller || busiestHour !== null || avgWait != null) && (
@@ -158,15 +160,6 @@ export function StatsView({
               <StatTile label="Avg wait" value={waitClock(avgWait)} />
             )}
           </div>
-        )}
-
-        {/* Lifetime totals — visually broken out from the range KPIs. Guarded on
-            a positive count so a booth with no all-time orders shows nothing. */}
-        {allTime && allTime.orders > 0 && (
-          <AllTimeBand
-            orders={allTime.orders}
-            revenue_cents={allTime.revenue_cents}
-          />
         )}
       </div>
 

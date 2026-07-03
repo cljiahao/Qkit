@@ -46,6 +46,7 @@ export type StatsSummary = {
   orderCount: number;
   aov_cents: number;
   cancelled: number;
+  completed: number; // orders that reached the completed state
   // Refunds = orders that were confirmed-paid then cancelled (money collected,
   // then returned). Surfaced for the trail; revenue_cents already excludes them.
   refunds_cents: number;
@@ -355,6 +356,7 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     orderCount,
     aov_cents,
     cancelled,
+    completed,
     refunds_cents,
     refundCount,
     fulfilmentRate,

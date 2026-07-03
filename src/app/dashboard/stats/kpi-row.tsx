@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import type { StatsSummary } from "@/lib/stats";
+import { StatBreakdownTile, type BreakdownRow } from "./stat-breakdown";
 
 type Deltas = {
   revenue: number | null;
@@ -100,32 +101,66 @@ export function KpiRow({
   deltas,
   pro,
   rangeLabel,
+  allTime,
 }: {
   summary: StatsSummary;
   deltas: Deltas;
   pro: boolean;
   rangeLabel?: string;
+  allTime?: { orders: number; revenue_cents: number };
 }) {
-  // Cancelled is redundant as its own tile next to Fulfilled, so surface the
-  // count as a tooltip on the Fulfilment rate instead.
   const rl = rangeLabel ? ` · ${rangeLabel}` : "";
   const cancelledHint =
     summary.cancelled === 0
       ? `No cancellations${rl}`
       : `${summary.cancelled} cancelled${rl}`;
+
+  // Per-item breakdowns behind the Revenue and Orders tiles (hover / tap).
+  const revenueRows: BreakdownRow[] = [...summary.topItems]
+    .filter((i) => i.revenue_cents > 0)
+    .sort((a, b) => b.revenue_cents - a.revenue_cents)
+    .slice(0, 6)
+    .map((i) => ({ label: i.label, value: formatPrice(i.revenue_cents) }));
+  const orderRows: BreakdownRow[] = [...summary.topItems]
+    .filter((i) => i.quantity > 0)
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 6)
+    .map((i) => ({ label: i.label, value: String(i.quantity) }));
+
+  // Lifetime totals ride as a caption under the matching range tile (hidden for
+  // a brand-new vendor with no all-time orders).
+  const showAllTime = allTime !== undefined && allTime.orders > 0;
+  const revenueCaption = showAllTime
+    ? `${formatPrice(allTime.revenue_cents)} all time`
+    : undefined;
+  const ordersCaption = showAllTime ? `${allTime.orders} all time` : undefined;
+
+  // Fulfilled shown as fulfilled / decided (completed + cancelled); the cancelled
+  // count rides in the tooltip.
+  const decided = summary.completed + summary.cancelled;
+  const fulfilledValue =
+    decided > 0 ? `${summary.completed}/${decided}` : "0/0";
+  const fulfilledCaption = `${Math.round(summary.fulfilmentRate * 100)}% fulfilled`;
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-      <StatTile
+      <StatBreakdownTile
         label="Revenue"
         value={formatPrice(summary.revenue_cents)}
-        delta={deltas?.revenue}
+        caption={revenueCaption}
+        rows={revenueRows}
+        breakdownLabel="Revenue by item"
+        deltaSlot={<Delta pct={deltas?.revenue ?? null} />}
         primary
         index={0}
       />
-      <StatTile
+      <StatBreakdownTile
         label="Orders"
         value={String(summary.orderCount)}
-        delta={deltas?.orders}
+        caption={ordersCaption}
+        rows={orderRows}
+        breakdownLabel="Orders by item"
+        deltaSlot={<Delta pct={deltas?.orders ?? null} />}
         index={1}
       />
       <StatTile
@@ -138,7 +173,8 @@ export function KpiRow({
         <>
           <StatTile
             label="Fulfilled"
-            value={`${Math.round(summary.fulfilmentRate * 100)}%`}
+            value={fulfilledValue}
+            caption={fulfilledCaption}
             hint={cancelledHint}
             index={3}
           />
@@ -151,51 +187,6 @@ export function KpiRow({
           )}
         </>
       )}
-    </div>
-  );
-}
-
-/**
- * Lifetime totals — deliberately set apart from the range KPIs so the two are
- * never confused. It carries an ember wash + a "Since you started" header, and
- * its numbers are all-time across every booth (independent of the range/booth
- * filters above), which the sub-label states outright.
- */
-export function AllTimeBand({
-  orders,
-  revenue_cents,
-}: {
-  orders: number;
-  revenue_cents: number;
-}) {
-  return (
-    <div className="fade-rise rounded-xl border border-primary/20 bg-primary/[0.05] p-4">
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-primary">
-          Since you started
-        </p>
-        <p className="text-[0.7rem] text-muted-foreground">
-          all time · every booth
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-            Total orders
-          </p>
-          <p className="font-mono text-2xl font-bold leading-none tabular-nums text-primary">
-            {orders}
-          </p>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-            Total earned
-          </p>
-          <p className="truncate font-mono text-2xl font-bold leading-none tabular-nums text-primary">
-            {formatPrice(revenue_cents)}
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

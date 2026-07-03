@@ -12,6 +12,7 @@ function summary(over: Partial<StatsSummary> = {}): StatsSummary {
     orderCount: 3,
     aov_cents: 167,
     cancelled: 1,
+    completed: 3,
     refunds_cents: 0,
     refundCount: 0,
     fulfilmentRate: 0.75,

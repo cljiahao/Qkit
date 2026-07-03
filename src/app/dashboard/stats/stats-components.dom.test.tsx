@@ -25,6 +25,7 @@ function summary(over: Partial<StatsSummary> = {}): StatsSummary {
     orderCount: 20,
     aov_cents: 500,
     cancelled: 2,
+    completed: 18,
     refunds_cents: 0,
     refundCount: 0,
     fulfilmentRate: 0.9,
@@ -54,7 +55,9 @@ describe("KpiRow", () => {
     expect(screen.getByText("10%")).toBeInTheDocument(); // down, abs value
     const fulfilled = screen.getByText("Fulfilled");
     expect(fulfilled).toBeInTheDocument();
-    expect(screen.getByText("90%")).toBeInTheDocument();
+    // Shown as fulfilled / decided (18 completed of 18 + 2 cancelled) + a caption.
+    expect(screen.getByText("18/20")).toBeInTheDocument();
+    expect(screen.getByText("90% fulfilled")).toBeInTheDocument();
     // Cancelled has no tile of its own; its count rides as a tooltip on the
     // Fulfilled tile instead.
     expect(screen.queryByText("Cancelled")).not.toBeInTheDocument();
@@ -234,7 +237,7 @@ describe("StatsView", () => {
     expect(screen.getByText(/upgrade/i)).toBeInTheDocument();
   });
 
-  it("renders the all-time totals band, distinct from the range KPIs", () => {
+  it("shows the all-time totals as captions under Revenue and Orders", () => {
     render(
       <StatsView
         summary={summary()}
@@ -246,15 +249,12 @@ describe("StatsView", () => {
         allTime={{ orders: 512, revenue_cents: 1234500 }}
       />,
     );
-    // Lifetime band: its own header + labels, not the range revenue ($100.00).
-    expect(screen.getByText("Since you started")).toBeInTheDocument();
-    expect(screen.getByText("Total orders")).toBeInTheDocument();
-    expect(screen.getByText("512")).toBeInTheDocument();
-    expect(screen.getByText("Total earned")).toBeInTheDocument();
-    expect(screen.getByText("$12,345.00")).toBeInTheDocument();
+    // Lifetime numbers ride as "all time" captions, distinct from the range KPIs.
+    expect(screen.getByText("$12,345.00 all time")).toBeInTheDocument();
+    expect(screen.getByText("512 all time")).toBeInTheDocument();
   });
 
-  it("hides the all-time band when there are no lifetime orders", () => {
+  it("hides the all-time captions when there are no lifetime orders", () => {
     render(
       <StatsView
         summary={summary()}
@@ -266,7 +266,7 @@ describe("StatsView", () => {
         allTime={{ orders: 0, revenue_cents: 0 }}
       />,
     );
-    expect(screen.queryByText("Since you started")).not.toBeInTheDocument();
+    expect(screen.queryByText(/all time/)).not.toBeInTheDocument();
   });
 });
 
