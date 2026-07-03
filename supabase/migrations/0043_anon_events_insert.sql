@@ -1,0 +1,15 @@
+-- Restore anonymous analytics logging.
+--
+-- 0041 moved the Data-API to explicit grants (auto_expose off) and granted
+-- events INSERT to `authenticated` only. But logEvent() (src/app/actions/events.ts)
+-- inserts DIRECTLY as the caller's role, and the landing-page 'landing_cta'
+-- fires for logged-out visitors (role = anon). With no anon INSERT grant that
+-- insert was denied and silently swallowed by logEvent's try/catch, so
+-- landing-CTA analytics quietly stopped recording after 0041.
+--
+-- The events table was designed for public logging (0005: events_public_insert
+-- WITH CHECK (true), "Anyone may log an event"), so the RLS policy already
+-- permits it — only the base table privilege was missing. anon still cannot
+-- READ events (events_admin_select is admin-only), and the UUID PK
+-- (gen_random_uuid) needs no sequence grant.
+GRANT INSERT ON public.events TO anon;

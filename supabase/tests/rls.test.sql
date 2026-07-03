@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(62);
+select plan(63);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -359,6 +359,15 @@ select throws_ok(
      where id = '00000000-0000-0000-0000-00000000d001' $$,
   null,
   'anon cannot confirm payment on any order');
+
+-- But anon CAN log an analytics event: logEvent inserts directly as the caller
+-- (the landing-page 'landing_cta' fires for logged-out visitors), and the table
+-- is designed for public logging (0005 events_public_insert WITH CHECK(true) +
+-- the anon INSERT grant restored in 0043). A positive assertion so a future
+-- grant sweep can't silently regress landing analytics again (0041 did).
+select lives_ok(
+  $$ insert into public.events (type) values ('landing_cta') $$,
+  'anon can INSERT an analytics event');
 
 -- ── Order-path write path (anon) — migrations 0027–0031 ─────────────────────
 
