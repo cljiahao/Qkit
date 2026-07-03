@@ -16,7 +16,7 @@ const STEPS = [
   {
     icon: ListChecks,
     title: "Build your booth",
-    body: "Add menu items, photos, prices, and per-item options like size or spice — in minutes.",
+    body: "Add menu items, photos, prices, and per-item options like size or spice, in minutes.",
   },
   {
     icon: QrCode,
@@ -37,22 +37,22 @@ const MOAT = [
   },
   {
     title: "Runs the stall, not just the orders",
-    body: "Queue-only or priced, one booth or many, drinks or food. Schedule open/close and cap stock so orders stop the moment you sell out — no babysitting the board.",
+    body: "Queue-only or priced, one booth or many, drinks or food. Schedule open/close and cap stock so orders stop the moment you sell out, no babysitting the board.",
   },
   {
     title: "Know your numbers",
-    body: "Revenue trends, your busiest day × hour, top sellers, and true profit margin per item — so you stock and staff the next event right.",
+    body: "Revenue trends, your busiest day × hour, top sellers, and true profit margin per item, so you stock and staff the next event right.",
   },
 ];
 
 const FAQ = [
   {
     q: "Do customers need to download anything?",
-    a: "No. They scan the QR and order in their phone browser, then track status on the same page — nothing to install.",
+    a: "No. They scan the QR and order in their phone browser, then track status on the same page. Nothing to install.",
   },
   {
     q: "How long does it take to set up?",
-    a: "Minutes. Add your items, print the QR poster, stick it on the stall — you're taking orders.",
+    a: "Minutes. Add your items, print the QR poster, stick it on the stall, and you're taking orders.",
   },
   {
     q: "What do I need to run it?",
@@ -60,15 +60,15 @@ const FAQ = [
   },
   {
     q: "Can I take payment through QKit?",
-    a: "Not yet. Orders land on your live board and you settle however you like — cash, PayNow, or your own terminal. Online card payment is on the roadmap.",
+    a: "Not yet. Orders land on your live board and you settle however you like: cash, PayNow, or your own terminal. Online card payment is on the roadmap.",
   },
   {
     q: "How much does it cost?",
-    a: "Start free with one booth (up to 6 items) and today's stats. The full kit — extra booths, customization, auto-close, sold-out caps — is free while we're in beta: just ask and we'll unlock it for your next event. Per-event and monthly pricing arrive with card payments.",
+    a: "Start free with one booth (up to 6 items) and today's stats. The full kit (extra booths, customization, auto-close, sold-out caps) is free while we're in beta: just ask and we'll unlock it for your next event. Per-event and monthly pricing arrive with card payments.",
   },
   {
-    q: "Event pass or monthly — what's the difference?",
-    a: "Same full features either way. A pass unlocks them for a single event (great for the occasional market); monthly keeps them on plus full sales history and trends across events (better if you trade most weeks). Both are free during beta — paid plans land with card payments.",
+    q: "Event pass or monthly: what's the difference?",
+    a: "Same full features either way. A pass unlocks them for a single event (great for the occasional market); monthly keeps them on plus full sales history and trends across events (better if you trade most weeks). Both are free during beta. Paid plans land with card payments.",
   },
   {
     q: "Can orders stop when I sell out?",
@@ -76,15 +76,15 @@ const FAQ = [
   },
   {
     q: "Can I schedule when my booth takes orders?",
-    a: "Yes. Set open/close hours and orders stop automatically outside them — no need to flip the booth off by hand. Included with the event pass and monthly.",
+    a: "Yes. Set open/close hours and orders stop automatically outside them, no need to flip the booth off by hand. Included with the event pass and monthly.",
   },
   {
     q: "Does it work for non-food booths?",
-    a: "Yes. Any booth that takes orders — drinks, snacks, merch — works. Items can be priced or queue-only.",
+    a: "Yes. Any booth that takes orders (drinks, snacks, merch) works. Items can be priced or queue-only.",
   },
 ];
 
-// Vendor-facing troubleshooting — grounded in the actual app behaviour so a
+// Vendor-facing troubleshooting, grounded in the actual app behaviour so a
 // stall can self-serve common "why isn't this working" moments without support.
 const VENDOR_FAQ = [
   {
@@ -93,37 +93,59 @@ const VENDOR_FAQ = [
   },
   {
     q: "New orders stopped appearing on my board.",
-    a: "The board updates live and now reconnects on its own — if the connection drops (tab asleep, patchy wifi) you'll see a Reconnecting notice, and it re-syncs any missed orders once it's back. If it still looks stuck, reload the page. Keeping the tab in the foreground helps.",
+    a: "The board updates live and now reconnects on its own. If the connection drops (tab asleep, patchy wifi) you'll see a Reconnecting notice, and it re-syncs any missed orders once it's back. If it still looks stuck, reload the page. Keeping the tab in the foreground helps.",
   },
   {
     q: "A customer tapped 'I've paid' but it still shows unpaid.",
-    a: "That button only flags the order as Says paid — a self-reported claim, and it never auto-confirms. Once you've seen the PayNow/transfer land, tap Confirm payment received on the order card yourself; that's the only thing that flips it to Paid.",
+    a: "That button only flags the order as Says paid, a self-reported claim, and it never auto-confirms. Once you've seen the PayNow/transfer land, tap Confirm payment received on the order card yourself; that's the only thing that flips it to Paid.",
   },
   {
     q: "My booth is Active but customers see 'not taking orders'.",
-    a: "A booth serves only when it's Active, within its open hours, and within your plan's serve limit. The free plan serves one live booth at a time — if you have more (e.g. after an event pass ended), only your oldest active booth serves and the rest show as Paused. Renew a pass or Pro to serve them all, or deactivate the extras.",
+    a: "A booth serves only when it's Active, within its open hours, and within your plan's serve limit. The free plan serves one live booth at a time. If you have more (e.g. after an event pass ended), only your oldest active booth serves and the rest show as Paused. Renew a pass or Pro to serve them all, or deactivate the extras.",
   },
   {
     q: "My booth is Active but shows closed during the hours I set.",
-    a: "Scheduled hours are always read in Singapore time (SGT), so check them against SGT. Hours are also a pass/Pro feature — on the free plan any saved hours are cleared, so a free booth is simply open when Active and closed when not.",
+    a: "Scheduled hours are always read in Singapore time (SGT), so check them against SGT. Hours are also a pass/Pro feature, so on the free plan any saved hours are cleared, and a free booth is simply open when Active and closed when not.",
   },
   {
     q: "A customer says their order didn't go through.",
-    a: "Usual causes: the QR/short code was regenerated (they need to rescan), the booth stopped serving (paused, inactive, or outside SGT hours), an item sold out or went unavailable mid-order, a line exceeded 20 of one item, or more than 8 orders came from the same network within a minute (clears after 60s). Ask them to rescan and retry — orders are atomic with an idempotency key, so a failed or retried attempt never double-charges or duplicates.",
+    a: "Usual causes: the QR/short code was regenerated (they need to rescan), the booth stopped serving (paused, inactive, or outside SGT hours), an item sold out or went unavailable mid-order, a line exceeded 20 of one item, or more than 8 orders came from the same network within a minute (clears after 60s). Ask them to rescan and retry. Orders are atomic with an idempotency key, so a failed or retried attempt never double-charges or duplicates.",
   },
   {
     q: "I regenerated my QR and old printed codes stopped working.",
-    a: "Regenerating a booth's QR is instant and permanent — every previously printed or saved link breaks immediately with This code expired, with no grace period. Only regenerate if a code leaked or is being abused, and reprint the new QR right away.",
+    a: "Regenerating a booth's QR is instant and permanent: every previously printed or saved link breaks immediately with This code expired, with no grace period. Only regenerate if a code leaked or is being abused, and reprint the new QR right away.",
   },
   {
     q: "My banner or menu photo won't upload.",
-    a: "Use a JPEG, PNG, or WebP (not SVG or HEIC). Large phone photos are fine — the app resizes and re-encodes them in your browser before upload. A generic Upload failed is usually a flaky connection, so wait and retry. The image only sticks once you Save the booth or item — the preview swaps instantly, but nothing is stored until you save.",
+    a: "Use a JPEG, PNG, or WebP (not SVG or HEIC). Large phone photos are fine, the app resizes and re-encodes them in your browser before upload. A generic Upload failed is usually a flaky connection, so wait and retry. The image only sticks once you Save the booth or item: the preview swaps instantly, but nothing is stored until you save.",
   },
   {
     q: "My stats only show the last 24 hours.",
     a: "The 7-, 30-, and 90-day trend ranges are Pro-only. An event pass unlocks the operational features (extra booths, unlimited items, stock caps, auto-close hours) for its window, but its stats still show the 24-hour view. Go monthly Pro for longitudinal trends across events.",
   },
 ];
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  return (
+    <details className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40 open:border-primary/50 open:bg-primary/[0.03]">
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-xl px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset">
+        <span className="font-display text-base font-semibold leading-snug text-foreground sm:text-[1.0625rem]">
+          {q}
+        </span>
+        <span
+          aria-hidden
+          className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border border-border text-lg leading-none text-muted-foreground transition-[transform,color,border-color] duration-200 group-open:rotate-45 group-open:border-primary/60 group-open:text-primary"
+        >
+          +
+        </span>
+      </summary>
+      <div className="px-5 pb-5">
+        <hr className="perforation mb-4" />
+        <p className="text-[0.95rem] leading-relaxed text-foreground/80">{a}</p>
+      </div>
+    </details>
+  );
+}
 
 export default async function LandingPage() {
   const supabase = await createServerClient();
@@ -191,7 +213,7 @@ export default async function LandingPage() {
               <br />
               minus the queue.
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground lg:mx-0">
+            <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
               QKit turns any booth into a QR-ordering stall. Customers scan and
               order from their phone; you watch every order land in real time.
             </p>
@@ -234,7 +256,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Featured booths — seam: hidden until real, consenting vendors exist.
+      {/* Featured booths: seam, hidden until real, consenting vendors exist.
           Future spec wires the data source (showcase opt-in + consent + admin). */}
       <FeaturedBooths featured={[]} />
 
@@ -258,7 +280,9 @@ export default async function LandingPage() {
               <h3 className="font-display mt-1 text-xl font-semibold">
                 {step.title}
               </h3>
-              <p className="mt-2 text-sm text-muted-foreground">{step.body}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {step.body}
+              </p>
             </div>
           ))}
         </div>
@@ -273,7 +297,9 @@ export default async function LandingPage() {
           {MOAT.map((m) => (
             <div key={m.title} className="rounded-2xl border border-border p-6">
               <h3 className="font-display text-xl font-semibold">{m.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{m.body}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {m.body}
+              </p>
             </div>
           ))}
         </div>
@@ -379,8 +405,8 @@ export default async function LandingPage() {
         </div>
         <p className="mt-6 text-center text-xs text-muted-foreground">
           {paidMode
-            ? "Founding price for early vendors — locks in while we're in beta. Pay by PayNow or cash; card payments coming soon."
-            : "Free while we're in beta — ask for a pass to unlock the full kit for your next event."}
+            ? "Founding price for early vendors, locks in while we're in beta. Pay by PayNow or cash; card payments coming soon."
+            : "Free while we're in beta. Ask for a pass to unlock the full kit for your next event."}
         </p>
         <div className="mt-6 text-center">
           <LandingCta
@@ -393,53 +419,46 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="mx-auto max-w-2xl px-5 py-14">
-        <h2 className="font-display mb-8 text-center text-3xl font-semibold">
-          Questions
-        </h2>
-        <div className="space-y-3">
-          {FAQ.map((item) => (
-            <details
-              key={item.q}
-              className="group rounded-xl border border-border bg-card px-5 py-4"
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between font-medium">
-                {item.q}
-                <span className="text-muted-foreground transition-transform group-open:rotate-45">
-                  +
-                </span>
-              </summary>
-              <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
-            </details>
-          ))}
-        </div>
+      {/* FAQ: two groups side by side on wide screens. The marketing questions
+          and the vendor troubleshooting each read as their own receipt column,
+          with a perforation tear line between every question and its answer. */}
+      <section className="mx-auto max-w-5xl px-5 py-16">
+        <div className="grid gap-x-10 gap-y-14 lg:grid-cols-2">
+          {/* Marketing questions */}
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
+              For new vendors
+            </p>
+            <h2 className="font-display mt-2 text-3xl font-semibold">
+              Questions
+            </h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+              What most vendors ask before their first event.
+            </p>
+            <div className="mt-6 space-y-3">
+              {FAQ.map((item) => (
+                <FaqItem key={item.q} q={item.q} a={item.a} />
+              ))}
+            </div>
+          </div>
 
-        {/* Vendor troubleshooting — for signed-up stalls hitting a snag. Kept
-            below the marketing FAQ so it doesn't lead the pitch, but on the home
-            page so a vendor can find it fast. */}
-        <div className="mt-12">
-          <h3 className="font-display mb-2 text-center text-xl font-semibold">
-            Already selling? Troubleshooting
-          </h3>
-          <p className="mx-auto mb-6 max-w-md text-center text-sm text-muted-foreground">
-            Quick fixes for the most common stall-side snags.
-          </p>
-          <div className="space-y-3">
-            {VENDOR_FAQ.map((item) => (
-              <details
-                key={item.q}
-                className="group rounded-xl border border-border bg-card px-5 py-4"
-              >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium">
-                  {item.q}
-                  <span className="shrink-0 text-muted-foreground transition-transform group-open:rotate-45">
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
-              </details>
-            ))}
+          {/* Vendor troubleshooting, for signed-up stalls hitting a snag. Kept
+              on the home page so a vendor can find a fix fast. */}
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary">
+              Already selling?
+            </p>
+            <h2 className="font-display mt-2 text-3xl font-semibold">
+              Troubleshooting
+            </h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+              Quick fixes for the most common stall-side snags.
+            </p>
+            <div className="mt-6 space-y-3">
+              {VENDOR_FAQ.map((item) => (
+                <FaqItem key={item.q} q={item.q} a={item.a} />
+              ))}
+            </div>
           </div>
         </div>
       </section>
