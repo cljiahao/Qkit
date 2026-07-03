@@ -29,8 +29,10 @@ test("customer places an order and reaches the live status page", async ({
   await page.getByLabel("Your name").fill("Ada");
   await page.getByRole("button", { name: /Place order/ }).click();
 
-  // Lands on /order/<booth>/<orderNumber> with the "preparing" message.
-  await expect(page).toHaveURL(new RegExp(`/order/${BOOTH}/\\d+$`));
+  // Lands on /order/<booth>/<orderNumber>?t=<token> with the "preparing"
+  // message. The status page now carries a per-order access token (?t=…), so the
+  // URL no longer ends in the digits — allow the query string after the number.
+  await expect(page).toHaveURL(new RegExp(`/order/${BOOTH}/\\d+\\?t=`));
   await expect(page.getByText(/being prepared/i)).toBeVisible();
 
   // Payment seam: the seeded booth carries a PayNow method, so a pay panel
