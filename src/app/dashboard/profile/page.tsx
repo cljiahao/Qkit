@@ -6,9 +6,12 @@ export const revalidate = 0;
 export default async function ProfilePage() {
   const { user, vendor } = await requireVendor();
 
-  // display_name is arbitrary JSON on the auth user — read defensively.
+  // display_name and avatar_url are arbitrary JSON on the auth user — read
+  // defensively. avatar_url is the vendor's optional custom profile icon.
   const raw = user.user_metadata?.display_name;
   const displayName = typeof raw === "string" ? raw : "";
+  const rawAvatar = user.user_metadata?.avatar_url;
+  const avatarUrl = typeof rawAvatar === "string" ? rawAvatar : null;
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
@@ -20,8 +23,8 @@ export default async function ProfilePage() {
           Profile
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your stall name, how we address you, and your sign-in password. Each
-          section saves on its own.
+          Your stall name, profile icon, how we address you, and your sign-in
+          password. Each section saves on its own.
         </p>
       </header>
 
@@ -29,6 +32,8 @@ export default async function ProfilePage() {
         stallName={vendor.name}
         displayName={displayName}
         email={user.email ?? ""}
+        vendorId={user.id}
+        avatarUrl={avatarUrl}
       />
     </div>
   );

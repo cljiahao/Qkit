@@ -28,7 +28,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { FeedbackForm } from "@/components/feedback-form";
+import { MediaImage } from "@/components/media-image";
 import { cn } from "@/lib/utils";
+import type { Tier } from "@/lib/plan";
 
 const LINKS = [
   { href: "/dashboard", label: "Orders" },
@@ -54,6 +56,39 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// A small mono "ticket stamp" for the account's plan. Free reads as a quiet
+// muted chip; Pass borrows the amber account tint; Pro is the one that pops,
+// in emerald, so an upgraded stall is legible at a glance.
+const TIER_BADGE: Record<Tier, { label: string; className: string }> = {
+  free: {
+    label: "Free",
+    className: "bg-secondary text-muted-foreground ring-border",
+  },
+  pass: {
+    label: "Pass",
+    className: "bg-primary/12 text-primary ring-primary/25",
+  },
+  pro: {
+    label: "Pro",
+    className:
+      "bg-emerald-500/15 text-emerald-700 ring-emerald-500/30 dark:bg-emerald-400/15 dark:text-emerald-400 dark:ring-emerald-400/30",
+  },
+};
+
+function TierBadge({ tier }: { tier: Tier }) {
+  const { label, className } = TIER_BADGE[tier];
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[0.6rem] font-semibold uppercase tracking-wider ring-1 ring-inset",
+        className,
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 /**
  * Dashboard nav. On a phone the page links collapse behind a burger so the bar
  * never overflows; from sm up they sit inline. The account menu (avatar + name)
@@ -62,9 +97,13 @@ function initials(name: string): string {
 export function DashboardNav({
   signOut,
   vendorName = "",
+  avatarUrl = null,
+  tier = "free",
 }: {
   signOut: () => Promise<void>;
   vendorName?: string;
+  avatarUrl?: string | null;
+  tier?: Tier;
 }) {
   const [open, setOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -117,9 +156,21 @@ export function DashboardNav({
             >
               <span
                 aria-hidden
-                className="font-mono grid size-8 place-items-center rounded-md bg-primary/12 text-xs font-semibold tracking-tight text-primary ring-1 ring-primary/25 ring-inset"
+                className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-md ring-1 ring-primary/25 ring-inset"
               >
-                {initials(vendorName)}
+                {avatarUrl ? (
+                  <MediaImage
+                    src={avatarUrl}
+                    alt=""
+                    fill
+                    sizes="2rem"
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="font-mono grid size-full place-items-center bg-primary/12 text-xs font-semibold tracking-tight text-primary">
+                    {initials(vendorName)}
+                  </span>
+                )}
               </span>
               <span className="hidden max-w-[9rem] truncate text-sm font-semibold md:inline">
                 {vendorName || "Account"}
@@ -129,9 +180,12 @@ export function DashboardNav({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <DropdownMenuLabel className="px-2 py-2">
-              <p className="truncate text-sm font-semibold">
-                {vendorName || "Your stall"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold">
+                  {vendorName || "Your stall"}
+                </p>
+                <TierBadge tier={tier} />
+              </div>
               <p className="text-xs font-normal text-muted-foreground">
                 Vendor account
               </p>

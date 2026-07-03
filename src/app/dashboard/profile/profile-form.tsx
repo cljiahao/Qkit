@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Store, IdCard, KeyRound } from "lucide-react";
+import { Store, IdCard, KeyRound, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImageUploader } from "@/components/image-uploader";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import {
@@ -20,6 +21,8 @@ interface Props {
   stallName: string;
   displayName: string;
   email: string;
+  vendorId: string;
+  avatarUrl: string | null;
 }
 
 /** Small ticket-card wrapper for one independently-saved profile section. */
@@ -61,7 +64,13 @@ const labelClass =
   "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 const errorClass = "text-sm font-medium text-destructive";
 
-export function ProfileForm({ stallName, displayName, email }: Props) {
+export function ProfileForm({
+  stallName,
+  displayName,
+  email,
+  vendorId,
+  avatarUrl,
+}: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -69,6 +78,12 @@ export function ProfileForm({ stallName, displayName, email }: Props) {
   const [name, setName] = useState(stallName);
   const [nameError, setNameError] = useState<string | null>(null);
   const { pending: savingName, run: runName } = useAsyncAction();
+
+  // Profile icon (auth user_metadata.avatar_url) — the ImageUploader handles the
+  // storage upload; we persist the returned URL on the auth user, same channel
+  // as the display name. null clears it and the initials badge takes over.
+  const [avatar, setAvatar] = useState(avatarUrl);
+  const { run: runAvatar } = useAsyncAction();
 
   // Display name (auth user_metadata) — persisted via the browser auth client.
   const [display, setDisplay] = useState(displayName);
@@ -95,6 +110,21 @@ export function ProfileForm({ stallName, displayName, email }: Props) {
         return;
       }
       toast.success("Stall name saved");
+      router.refresh();
+    });
+  }
+
+  function saveAvatar(url: string | null) {
+    setAvatar(url);
+    return runAvatar(async () => {
+      const { error } = await supabase.auth.updateUser({
+        data: { avatar_url: url },
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(url ? "Profile icon saved" : "Profile icon removed");
       router.refresh();
     });
   }
@@ -174,6 +204,26 @@ export function ProfileForm({ stallName, displayName, email }: Props) {
       </Section>
 
       <Section
+        icon={<UserRound className="size-5" />}
+        eyebrow="Your account menu"
+        title="Profile icon"
+        description="A small image for your account menu. Defaults to your initials."
+      >
+        <div className="flex items-center gap-4">
+          <ImageUploader
+            vendorId={vendorId}
+            value={avatar}
+            onChange={saveAvatar}
+            variant="thumb"
+          />
+          <p className="text-xs text-muted-foreground">
+            Square images look best. Remove it any time to fall back to your
+            initials badge.
+          </p>
+        </div>
+      </Section>
+
+      <Section
         icon={<IdCard className="size-5" />}
         eyebrow="Just for you"
         title="Display name"
@@ -205,7 +255,7 @@ export function ProfileForm({ stallName, displayName, email }: Props) {
             className="h-11 rounded-xl bg-secondary/60"
           />
           <p className="text-xs text-muted-foreground">
-            Your sign-in email. Contact support to change it.
+            Your sign-in email. It can&apos;t be changed here yet.
           </p>
         </div>
         <div className="flex justify-end">
