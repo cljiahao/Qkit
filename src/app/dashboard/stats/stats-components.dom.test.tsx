@@ -52,9 +52,16 @@ describe("KpiRow", () => {
     expect(screen.getByText("$100.00")).toBeInTheDocument();
     expect(screen.getByText("25%")).toBeInTheDocument(); // up
     expect(screen.getByText("10%")).toBeInTheDocument(); // down, abs value
-    expect(screen.getByText("Fulfilled")).toBeInTheDocument();
+    const fulfilled = screen.getByText("Fulfilled");
+    expect(fulfilled).toBeInTheDocument();
     expect(screen.getByText("90%")).toBeInTheDocument();
-    expect(screen.getByText("Cancelled")).toBeInTheDocument();
+    // Cancelled is no longer its own tile; its count rides as a tooltip on the
+    // Fulfilled tile instead.
+    expect(screen.queryByText("Cancelled")).not.toBeInTheDocument();
+    expect(fulfilled.closest("[title]")).toHaveAttribute(
+      "title",
+      "2 cancelled",
+    );
   });
 
   it("hides Pro-only cards and deltas on free", () => {

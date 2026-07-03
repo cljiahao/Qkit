@@ -42,6 +42,7 @@ export function StatTile({
   value,
   delta,
   caption,
+  hint,
   primary,
   index = 0,
 }: {
@@ -49,14 +50,18 @@ export function StatTile({
   value: string;
   delta?: number | null;
   caption?: string;
+  /** Hover tooltip (native title), e.g. the cancelled count behind Fulfilled. */
+  hint?: string;
   primary?: boolean;
   index?: number;
 }) {
   return (
     <div
+      title={hint}
       className={cn(
         "fade-rise flex flex-col gap-2 rounded-xl border bg-card p-4",
         primary ? "border-primary/30" : "border-border",
+        hint && "cursor-help",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >
@@ -94,11 +99,20 @@ export function KpiRow({
   summary,
   deltas,
   pro,
+  rangeLabel,
 }: {
   summary: StatsSummary;
   deltas: Deltas;
   pro: boolean;
+  rangeLabel?: string;
 }) {
+  // Cancelled is redundant as its own tile next to Fulfilled, so surface the
+  // count as a tooltip on the Fulfilment rate instead.
+  const rl = rangeLabel ? ` · ${rangeLabel}` : "";
+  const cancelledHint =
+    summary.cancelled === 0
+      ? `No cancellations${rl}`
+      : `${summary.cancelled} cancelled${rl}`;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <StatTile
@@ -125,18 +139,14 @@ export function KpiRow({
           <StatTile
             label="Fulfilled"
             value={`${Math.round(summary.fulfilmentRate * 100)}%`}
+            hint={cancelledHint}
             index={3}
-          />
-          <StatTile
-            label="Cancelled"
-            value={String(summary.cancelled)}
-            index={4}
           />
           {summary.refundCount > 0 && (
             <StatTile
               label="Refunds"
               value={formatPrice(summary.refunds_cents)}
-              index={5}
+              index={4}
             />
           )}
         </>

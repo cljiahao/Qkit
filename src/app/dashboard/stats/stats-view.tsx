@@ -130,7 +130,12 @@ export function StatsView({
           )}
         </div>
 
-        <KpiRow summary={summary} deltas={deltas} pro={pro} />
+        <KpiRow
+          summary={summary}
+          deltas={deltas}
+          pro={pro}
+          rangeLabel={rangeCaption(range)}
+        />
 
         {(bestSeller || busiestHour !== null || avgWait != null) && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
