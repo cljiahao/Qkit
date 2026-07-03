@@ -72,7 +72,7 @@ export async function claimPayment(
   if (!allowed)
     return { success: false, error: "Too many attempts — wait a moment." };
 
-  const { error } = await supabase
+  const { data: rows, error } = await supabase
     .from("orders")
     .update({ payment_status: "claimed" })
     .eq("booth_id", boothId)
@@ -80,11 +80,30 @@ export async function claimPayment(
     .eq("access_token", token)
     .eq("payment_status", "pending")
     // A cancelled order must not accept a payment claim — no-op it.
-    .neq("status", "cancelled");
+    .neq("status", "cancelled")
+    .select("id");
 
   if (error) {
     console.error("claimPayment failed", error.message);
     return { success: false, error: "Could not record payment. Try again." };
   }
-  return { success: true };
+  if (rows && rows.length > 0) return { success: true };
+
+  // The guarded UPDATE matched nothing. Re-read to distinguish a harmless
+  // double-tap (already claimed/confirmed → keep it idempotent) from a genuine
+  // "can't pay this" (cancelled, or a wrong token/order) — so a cancelled order
+  // no longer falsely reports "payment sent".
+  const { data: cur } = await supabase
+    .from("orders")
+    .select("payment_status, status")
+    .eq("booth_id", boothId)
+    .eq("order_number", orderNumber)
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cur) return { success: false, error: "Invalid order" };
+  if (cur.payment_status === "claimed" || cur.payment_status === "confirmed")
+    return { success: true };
+  if (cur.status === "cancelled")
+    return { success: false, error: "This order was cancelled." };
+  return { success: false, error: "Order changed — please refresh." };
 }

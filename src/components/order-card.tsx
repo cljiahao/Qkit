@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +64,14 @@ export function OrderCard({
   boothName?: string;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
+  // Resync to the (realtime-updated) prop when it actually changes value, so a
+  // remote status change (another device advancing/cancelling) reflects on the
+  // card. An optimistic local setStatus doesn't change the prop, so it survives
+  // until its own realtime echo arrives and this no-ops.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStatus(order.status);
+  }, [order.status]);
   // Payment status is driven by the (realtime-updated) prop so a customer's
   // remote "I've paid" claim appears live on the board. A local flag only
   // covers the vendor's own confirm tap for instant feedback before the

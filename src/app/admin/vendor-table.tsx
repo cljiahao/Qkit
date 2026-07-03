@@ -49,10 +49,12 @@ export function VendorTable({ vendors }: { vendors: AdminVendorRow[] }) {
     setDays("1");
   }
 
-  // A date-only input is local midnight; toISOString gives the start instant.
+  // Interpret the date-only input as SGT midnight (QKit is UTC+8), NOT the
+  // browser/UTC midnight Date.parse("YYYY-MM-DD") would give — otherwise a
+  // granted pass starts up to 8h off from the event day the admin picked.
   function startIso(): string | undefined {
     if (!startDate) return undefined;
-    const ms = Date.parse(startDate);
+    const ms = Date.parse(`${startDate}T00:00:00+08:00`);
     return Number.isNaN(ms) ? undefined : new Date(ms).toISOString();
   }
 

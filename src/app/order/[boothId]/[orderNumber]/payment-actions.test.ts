@@ -1,27 +1,43 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { claimPayment } from "./payment-actions";
 
-// Mock the service client's write chain:
-//   from("orders").update().eq().eq().eq().eq().neq() → { error }
-// (four eq: booth_id, order_number, access_token, payment_status.) `neq` is the
-// terminal and is set per-test to a configurable { error }. `update` is a spy so
-// we can assert the payload and that it ran at all.
-const { createServiceClientMock, update, neq, rateLimitMock, clientIpMock } =
-  vi.hoisted(() => {
-    const neq = vi.fn();
-    const update = vi.fn(() => ({
-      eq: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ neq }) }) }) }),
-    }));
-    return {
-      createServiceClientMock: vi.fn(() =>
-        Promise.resolve({ from: () => ({ update }) }),
-      ),
-      update,
-      neq,
-      rateLimitMock: vi.fn(),
-      clientIpMock: vi.fn(() => "1.2.3.4"),
-    };
+// Mock the service client. Two chains hang off from("orders"):
+//   write:   update().eq().eq().eq().eq().neq().select("id") → { data, error }
+//            (four eq: booth_id, order_number, access_token, payment_status)
+//   re-read: select().eq().eq().eq().maybeSingle() → { data }
+// `writeSelect` is the write terminal (rows updated); `reread` the re-read
+// terminal, used only when the write matched 0 rows.
+const {
+  createServiceClientMock,
+  update,
+  writeSelect,
+  reread,
+  rateLimitMock,
+  clientIpMock,
+} = vi.hoisted(() => {
+  const writeSelect = vi.fn();
+  const reread = vi.fn();
+  const update = vi.fn(() => ({
+    eq: () => ({
+      eq: () => ({
+        eq: () => ({ eq: () => ({ neq: () => ({ select: writeSelect }) }) }),
+      }),
+    }),
+  }));
+  const select = () => ({
+    eq: () => ({ eq: () => ({ eq: () => ({ maybeSingle: reread }) }) }),
   });
+  return {
+    createServiceClientMock: vi.fn(() =>
+      Promise.resolve({ from: () => ({ update, select }) }),
+    ),
+    update,
+    writeSelect,
+    reread,
+    rateLimitMock: vi.fn(),
+    clientIpMock: vi.fn(() => "1.2.3.4"),
+  };
+});
 
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: createServiceClientMock,
@@ -39,7 +55,11 @@ const TOKEN = "11111111-2222-4333-8444-555555555555";
 beforeEach(() => {
   createServiceClientMock.mockClear();
   update.mockClear();
-  neq.mockReset().mockResolvedValue({ error: null });
+  // Default: the guarded UPDATE matched its row.
+  writeSelect
+    .mockReset()
+    .mockResolvedValue({ data: [{ id: "o1" }], error: null });
+  reread.mockReset().mockResolvedValue({ data: null });
   rateLimitMock.mockReset().mockResolvedValue(true);
   clientIpMock.mockClear();
 });
@@ -86,11 +106,32 @@ describe("claimPayment", () => {
   });
 
   it("reports a failure when the update errors", async () => {
-    neq.mockResolvedValue({ error: { message: "boom" } });
+    writeSelect.mockResolvedValue({ data: null, error: { message: "boom" } });
     const res = await claimPayment(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({
       success: false,
       error: "Could not record payment. Try again.",
     });
+  });
+
+  it("rejects a claim on a cancelled order (0 rows, re-read cancelled)", async () => {
+    writeSelect.mockResolvedValue({ data: [], error: null });
+    reread.mockResolvedValue({
+      data: { payment_status: "pending", status: "cancelled" },
+    });
+    const res = await claimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "This order was cancelled.",
+    });
+  });
+
+  it("stays idempotent on a double-tap (0 rows, already claimed)", async () => {
+    writeSelect.mockResolvedValue({ data: [], error: null });
+    reread.mockResolvedValue({
+      data: { payment_status: "claimed", status: "preparing" },
+    });
+    const res = await claimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ success: true });
   });
 });

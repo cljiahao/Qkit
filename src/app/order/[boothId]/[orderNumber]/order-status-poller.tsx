@@ -102,7 +102,9 @@ export function OrderStatusPoller({
     void fireReadyNotification(
       boothName,
       orderNumber,
-      window.location.pathname,
+      // Keep the ?t=<token> query — the status page now requires it, so a
+      // notification-tap that opens the page fresh must carry the token.
+      window.location.pathname + window.location.search,
     );
 
     if (!document.hidden) {

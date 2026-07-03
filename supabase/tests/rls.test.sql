@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(67);
+select plan(68);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -240,6 +240,13 @@ select throws_like(
      where id = '00000000-0000-0000-0000-00000000d001' $$,
   '%ORDER_IMMUTABLE_COLUMN%',
   'vendor cannot re-point booth_id (frozen; WITH CHECK also guards ownership)');
+-- access_token is the status-page secret — frozen too (0045), so it can't be
+-- rotated to hijack another order's status page.
+select throws_like(
+  $$ update public.orders set access_token = gen_random_uuid()
+     where id = '00000000-0000-0000-0000-00000000d001' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'vendor cannot rotate access_token on its own order (frozen)');
 -- The state machine stays writable: a status advance on the own order succeeds.
 with upd as (
   update public.orders set status = 'ready', ready_at = now()

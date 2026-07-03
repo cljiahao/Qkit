@@ -42,7 +42,22 @@ export function useRealtimeOrders(
       console.error("useRealtimeOrders resync failed", error.message);
       return;
     }
-    if (data) setOrders(data);
+    if (!data) return;
+    // MERGE by id (don't hard-replace): a realtime INSERT/UPDATE can land between
+    // this snapshot being read and applied, and a blanket setOrders(data) would
+    // clobber it — a just-placed order (its toast/sound already fired) would
+    // vanish from the board. Keep the newer of {local, snapshot} per id by
+    // updated_at, and never drop a local id just because it's absent from the
+    // snapshot (terminal orders are filtered at render anyway).
+    setOrders((prev) => {
+      const byId = new Map(prev.map((o) => [o.id, o]));
+      for (const row of data) {
+        const existing = byId.get(row.id);
+        if (!existing || row.updated_at >= existing.updated_at)
+          byId.set(row.id, row);
+      }
+      return [...byId.values()];
+    });
     // supabase is stable; only the booth filter identity matters here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterString]);
