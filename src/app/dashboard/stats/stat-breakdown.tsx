@@ -32,9 +32,8 @@ export function StatBreakdownTile({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  // Which pointer opened the tile last — mouse hovers, touch/pen taps. Set on
-  // pointerdown so the click handler can ignore the mouse (hover already owns
-  // it) and avoid the iOS tap-then-synthetic-mouseenter double-toggle.
+  // pointerType guard: mouse opens on hover, touch/pen on tap. Without it iOS
+  // fires a synthetic mouseenter then click on one tap, toggling open-shut.
   const lastPointer = useRef<string>("mouse");
   const hasRows = rows.length > 0;
 
@@ -65,7 +64,6 @@ export function StatBreakdownTile({
           lastPointer.current = e.pointerType;
         }}
         onClick={() => {
-          // Mouse already toggles via hover; only touch/pen taps flip here.
           if (lastPointer.current !== "mouse" && hasRows) setOpen((o) => !o);
         }}
         aria-expanded={hasRows ? open : undefined}

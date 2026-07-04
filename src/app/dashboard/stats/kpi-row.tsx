@@ -135,9 +135,8 @@ export function KpiRow({
     : undefined;
   const ordersCaption = showAllTime ? `${allTime.orders} all time` : undefined;
 
-  // Fulfilled shown as fulfilled / decided (completed + cancelled). Cancelled
-  // count rides in the visible caption (mobile has no hover) with the range
-  // detail kept in the tooltip for desktop.
+  // Fulfilled = completed / decided (completed + cancelled). Cancelled count in
+  // the visible caption since mobile has no hover; range detail in the tooltip.
   const decided = summary.completed + summary.cancelled;
   const fulfilledValue =
     decided > 0 ? `${summary.completed}/${decided}` : "0/0";
