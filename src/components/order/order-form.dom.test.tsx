@@ -93,15 +93,15 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(screen.getByRole("button", { name: "Add one" }));
+    await user.click(screen.getByRole("button", { name: "Increase Kopi" }));
 
     // 2 × $3.50 = $7.00 in the submit bar.
     expect(
       screen.getByRole("button", { name: /Place order · 2 items · \$7\.00/ }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Remove one" }));
-    await user.click(screen.getByRole("button", { name: "Remove one" }));
+    await user.click(screen.getByRole("button", { name: "Decrease Kopi" }));
+    await user.click(screen.getByRole("button", { name: "Decrease Kopi" }));
 
     // Cart empty → summary gone, submit disabled with the empty label.
     expect(screen.queryByText("Your order")).not.toBeInTheDocument();

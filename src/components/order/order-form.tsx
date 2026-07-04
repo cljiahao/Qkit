@@ -433,7 +433,7 @@ export function OrderForm({
                       size="icon"
                       className="size-11 rounded-lg"
                       onClick={() => decrement(key)}
-                      aria-label="Remove one"
+                      aria-label={`Decrease ${item.name}`}
                     >
                       <Minus className="size-3" />
                     </Button>
@@ -445,7 +445,7 @@ export function OrderForm({
                       size="icon"
                       className="size-11 rounded-lg"
                       onClick={() => increment(key)}
-                      aria-label="Add one"
+                      aria-label={`Increase ${item.name}`}
                     >
                       <Plus className="size-3" />
                     </Button>

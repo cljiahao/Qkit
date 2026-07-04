@@ -5,11 +5,16 @@ import QRCode from "react-qr-code";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { formatPrice } from "@/lib/utils";
 import type { CheckoutView } from "@/lib/payments/adapters";
 import type { PaymentStatus } from "@/lib/types";
 import { usePolling } from "@/hooks/use-polling";
 import { useAsyncAction } from "@/hooks/use-async-action";
-import { claimPayment, getPaymentStatus } from "./payment-actions";
+import {
+  claimPayment,
+  getPaymentStatus,
+  unclaimPayment,
+} from "./payment-actions";
 
 const POLL_MS = 5000;
 
@@ -19,12 +24,14 @@ export function PayPanel({
   token,
   checkout,
   initialStatus,
+  amountCents,
 }: {
   boothId: string;
   orderNumber: string;
   token: string;
   checkout: CheckoutView | null;
   initialStatus: PaymentStatus;
+  amountCents: number;
 }) {
   const [status, setStatus] = useState<PaymentStatus>(initialStatus);
   const { pending: busy, run } = useAsyncAction();
@@ -74,6 +81,14 @@ export function PayPanel({
     });
   }
 
+  function unclaim() {
+    return run(async () => {
+      const res = await unclaimPayment(boothId, orderNumber, token);
+      if (res.success) setStatus("pending");
+      else toast.error(res.error);
+    });
+  }
+
   const claimed = status === "claimed";
 
   return (
@@ -81,6 +96,14 @@ export function PayPanel({
       <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-primary">
         {checkout?.type === "link" ? "Pay to collect" : "Scan to pay"}
       </p>
+
+      {/* Echo the amount so the customer keys the right sum (and can sanity-check
+          a dynamic PayNow QR). Hidden for a $0 / unpriced order. */}
+      {amountCents > 0 && (
+        <p className="text-center font-mono text-2xl font-bold">
+          {formatPrice(amountCents)}
+        </p>
+      )}
 
       {checkout?.type === "qr" && (
         <div className="mx-auto w-fit rounded-xl bg-white p-4">
@@ -111,13 +134,23 @@ export function PayPanel({
       )}
 
       {claimed ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className="text-center text-sm font-semibold text-amber-600"
-        >
-          Payment sent — waiting for the stall to confirm.
-        </p>
+        <div className="space-y-2 text-center">
+          <p
+            role="status"
+            aria-live="polite"
+            className="text-sm font-semibold text-amber-600"
+          >
+            Payment sent — waiting for the stall to confirm.
+          </p>
+          <button
+            type="button"
+            onClick={unclaim}
+            disabled={busy}
+            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-60"
+          >
+            Tapped by mistake? Undo
+          </button>
+        </div>
       ) : (
         <Button
           variant="outline"

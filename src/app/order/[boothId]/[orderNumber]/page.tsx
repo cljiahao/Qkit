@@ -118,6 +118,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
               token={token}
               checkout={checkout}
               initialStatus={order.payment_status}
+              amountCents={order.total_cents}
             />
             <div className="perforation" />
           </>
@@ -185,7 +186,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           href={`/order/${boothId}`}
           className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
         >
-          Order again
+          {items.length > 0 ? "Order something else" : "Order again"}
         </Link>
       </div>
     </div>

@@ -106,3 +106,61 @@ export async function claimPayment(
     return { success: false, error: "This order was cancelled." };
   return { success: false, error: "Order changed — please refresh." };
 }
+
+// Undo an accidental "I've paid": revert a still-unverified 'claimed' order
+// back to 'pending'. Mirror of claimPayment and just as narrow — the
+// .eq("payment_status","claimed") guard means once the vendor confirms receipt
+// ('confirmed') this is a no-op, so a customer can never un-confirm real money.
+export async function unclaimPayment(
+  boothId: string,
+  orderNumber: string,
+  token: string,
+): Promise<ActionResult> {
+  if (!orderBoothIdSchema.safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+  if (!orderNumberSchema.safeParse(orderNumber).success)
+    return { success: false, error: "Invalid order" };
+  if (!orderTokenSchema.safeParse(token).success)
+    return { success: false, error: "Invalid order" };
+
+  const supabase = await createServiceClient();
+
+  const ip = clientIp(await headers());
+  const allowed = await rateLimit(supabase, `unclaim:${boothId}:${ip}`, 10, 60);
+  if (!allowed)
+    return { success: false, error: "Too many attempts — wait a moment." };
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({ payment_status: "pending" })
+    .eq("booth_id", boothId)
+    .eq("order_number", orderNumber)
+    .eq("access_token", token)
+    .eq("payment_status", "claimed")
+    .neq("status", "cancelled")
+    .select("id");
+
+  if (error) {
+    console.error("unclaimPayment failed", error.message);
+    return { success: false, error: "Could not undo. Try again." };
+  }
+  if (rows && rows.length > 0) return { success: true };
+
+  // 0 rows: re-read to stay idempotent — already back to pending is a success;
+  // an already-confirmed payment cannot be undone by the customer.
+  const { data: cur } = await supabase
+    .from("orders")
+    .select("payment_status")
+    .eq("booth_id", boothId)
+    .eq("order_number", orderNumber)
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!cur) return { success: false, error: "Invalid order" };
+  if (cur.payment_status === "pending") return { success: true };
+  if (cur.payment_status === "confirmed")
+    return {
+      success: false,
+      error: "The stall already confirmed your payment.",
+    };
+  return { success: false, error: "Order changed — please refresh." };
+}

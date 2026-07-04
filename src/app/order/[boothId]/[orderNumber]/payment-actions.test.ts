@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { claimPayment } from "./payment-actions";
+import { claimPayment, unclaimPayment } from "./payment-actions";
 
 // Mock the service client. Two chains hang off from("orders"):
 //   write:   update().eq().eq().eq().eq().neq().select("id") → { data, error }
@@ -133,5 +133,47 @@ describe("claimPayment", () => {
     });
     const res = await claimPayment(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({ success: true });
+  });
+});
+
+describe("unclaimPayment", () => {
+  it("reverts a claimed order back to pending", async () => {
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ success: true });
+    expect(update).toHaveBeenCalledWith({ payment_status: "pending" });
+  });
+
+  it("blocks when rate-limited and does not touch the DB", async () => {
+    rateLimitMock.mockResolvedValue(false);
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "Too many attempts — wait a moment.",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid booth id before creating the client", async () => {
+    const res = await unclaimPayment("not-a-uuid", ORDER, TOKEN);
+    expect(res).toEqual({ success: false, error: "Invalid booth" });
+    expect(createServiceClientMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("stays idempotent when already back to pending (0 rows)", async () => {
+    writeSelect.mockResolvedValue({ data: [], error: null });
+    reread.mockResolvedValue({ data: { payment_status: "pending" } });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ success: true });
+  });
+
+  it("refuses to undo a payment the vendor already confirmed", async () => {
+    writeSelect.mockResolvedValue({ data: [], error: null });
+    reread.mockResolvedValue({ data: { payment_status: "confirmed" } });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "The stall already confirmed your payment.",
+    });
   });
 });

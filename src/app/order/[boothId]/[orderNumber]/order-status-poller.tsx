@@ -214,9 +214,16 @@ export function OrderStatusPoller({
       )}
 
       {status === "ready" && (
-        <p className="animate-pulse text-sm font-medium text-status-ready">
-          Please collect your order now
-        </p>
+        <div className="flex flex-col items-center gap-2">
+          {/* Ticket-stamp reveal for the payoff moment; .fade-rise already
+              no-ops under prefers-reduced-motion. */}
+          <span className="fade-rise inline-block -rotate-3 rounded-md border-2 border-status-ready px-4 py-1.5 font-display text-2xl font-bold uppercase tracking-[0.2em] text-status-ready">
+            Ready
+          </span>
+          <p className="text-sm font-medium text-status-ready">
+            Please collect your order now
+          </p>
+        </div>
       )}
 
       {canArm && (
