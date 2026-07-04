@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin";
@@ -11,6 +13,23 @@ export default async function AdminLayout({
 }) {
   // Gate every /admin route: non-admins get a 404 from requireAdmin.
   await requireAdmin();
+
+  // Attention count for the bell: open help requests + open purchase requests,
+  // the two vendor-raised inboxes an admin acts on. Count-only (head:true) on
+  // the indexed status column, run in parallel — negligible per-page cost. RLS
+  // (is_admin) already scopes these to what an admin may see.
+  const supabase = await createServerClient();
+  const [openMessages, openRequests] = await Promise.all([
+    supabase
+      .from("support_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open"),
+    supabase
+      .from("purchase_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+  ]);
+  const attention = (openMessages.count ?? 0) + (openRequests.count ?? 0);
 
   async function signOut() {
     "use server";
@@ -29,16 +48,34 @@ export default async function AdminLayout({
               Admin
             </span>
           </span>
-          <form action={signOut}>
-            <Button
-              variant="outline"
-              size="sm"
-              type="submit"
-              className="rounded-lg"
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin"
+              aria-label={
+                attention > 0
+                  ? `${attention} items need attention`
+                  : "Nothing needs attention"
+              }
+              className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
-              Sign out
-            </Button>
-          </form>
+              <Bell className="size-5" />
+              {attention > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-status-cancelled px-1 text-[10px] font-bold leading-none text-white">
+                  {attention > 9 ? "9+" : attention}
+                </span>
+              )}
+            </Link>
+            <form action={signOut}>
+              <Button
+                variant="outline"
+                size="sm"
+                type="submit"
+                className="rounded-lg"
+              >
+                Sign out
+              </Button>
+            </form>
+          </div>
         </div>
       </header>
       <AdminNav />
