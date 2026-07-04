@@ -332,6 +332,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      support_messages: {
+        Row: {
+          id: string;
+          vendor_id: string;
+          category: "pass" | "payment" | "pro" | "other";
+          body: string;
+          status: "open" | "resolved";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          vendor_id: string;
+          category: "pass" | "payment" | "pro" | "other";
+          body: string;
+          status?: "open" | "resolved";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          vendor_id?: string;
+          category?: "pass" | "payment" | "pro" | "other";
+          body?: string;
+          status?: "open" | "resolved";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       booths: {
         Row: {
           id: string;

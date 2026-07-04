@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronDown,
+  LifeBuoy,
   LogOut,
   Menu,
   MessageSquarePlus,
@@ -28,6 +29,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { FeedbackForm } from "@/components/feedback-form";
+import { SupportForm } from "@/components/support-form";
 import { MediaImage } from "@/components/media-image";
 import { cn } from "@/lib/utils";
 import type { Tier } from "@/lib/plan";
@@ -107,6 +109,7 @@ export function DashboardNav({
 }) {
   const [open, setOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const path = usePathname();
 
   return (
@@ -199,6 +202,13 @@ export function DashboardNav({
             </DropdownMenuItem>
             <DropdownMenuItem
               className="cursor-pointer"
+              onSelect={() => setHelpOpen(true)}
+            >
+              <LifeBuoy className="size-4" />
+              Get help
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
               onSelect={() => setFeedbackOpen(true)}
             >
               <MessageSquarePlus className="size-4" />
@@ -249,6 +259,22 @@ export function DashboardNav({
           </div>
         </>
       )}
+
+      {/* Help drawer — opened from the account menu */}
+      <Sheet open={helpOpen} onOpenChange={setHelpOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle className="font-display text-2xl">Get help</SheetTitle>
+            <SheetDescription>
+              Trouble with a pass, payment, or your Pro plan? Tell us and
+              we&apos;ll sort it out.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pb-6">
+            <SupportForm />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Feedback drawer — opened from the account menu */}
       <Sheet open={feedbackOpen} onOpenChange={setFeedbackOpen}>

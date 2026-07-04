@@ -1,10 +1,15 @@
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { latestActivePassByVendor, summarizeVendors } from "@/lib/admin-stats";
+import {
+  buildVendorHealth,
+  statusRank,
+  type VendorLite,
+} from "@/lib/admin-vendor-health";
 import { pctChange } from "@/lib/stats";
 import { MS_PER_DAY } from "@/lib/utils";
 import { Stat } from "../stat";
-import { VendorTable, type AdminVendorRow } from "../vendor-table";
+import { VendorList, type VendorListItem } from "../vendor-list";
 
 export const revalidate = 0;
 
@@ -17,26 +22,74 @@ export default async function AdminVendorsPage() {
   const cutoff7d = new Date(now - 7 * MS_PER_DAY).toISOString();
   const cutoff14d = new Date(now - 14 * MS_PER_DAY).toISOString();
 
-  const [{ data: vendorRows }, { data: licenseRows }] = await Promise.all([
+  const [
+    { data: vendorRows },
+    { data: licenseRows },
+    { data: boothRows },
+    { data: orderRows },
+    { data: messageRows },
+  ] = await Promise.all([
     supabase
       .from("vendors")
       .select("id, name, plan, created_at")
       .order("created_at", { ascending: false }),
     supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
+    supabase.from("booths").select("id, vendor_id, created_at"),
+    supabase.from("orders").select("booth_id, status, created_at"),
+    supabase.from("support_messages").select("vendor_id").eq("status", "open"),
   ]);
 
+  const rows = vendorRows ?? [];
   const passByVendor = latestActivePassByVendor(licenseRows ?? [], now);
+  const openMsgVendors = new Set((messageRows ?? []).map((m) => m.vendor_id));
 
-  const vendors: AdminVendorRow[] = (vendorRows ?? []).map((v) => ({
-    ...v,
+  const vendorLites: VendorLite[] = rows.map((v) => ({
+    id: v.id,
+    plan: v.plan,
+    created_at: v.created_at,
     passExpiresAt: passByVendor.get(v.id) ?? null,
   }));
+  const health = buildVendorHealth(
+    vendorLites,
+    boothRows ?? [],
+    orderRows ?? [],
+    openMsgVendors,
+    now,
+  );
 
-  const vstat = summarizeVendors(vendors, now);
-  const signupsPrior7d = vendors.filter(
+  const items: VendorListItem[] = rows
+    .map((v) => {
+      const h = health.get(v.id)!;
+      const expiry = passByVendor.get(v.id);
+      return {
+        id: v.id,
+        name: v.name,
+        plan: v.plan,
+        created_at: v.created_at,
+        passHoursLeft: expiry
+          ? Math.max(0, Math.round((Date.parse(expiry) - now) / 3_600_000))
+          : null,
+        status: h.status,
+        orders7d: h.orders7d,
+        lastOrderAt: h.lastOrderAt,
+        boothCount: h.boothCount,
+      };
+    })
+    // Most-urgent first; ties keep the newest signup on top.
+    .sort(
+      (a, b) =>
+        statusRank(a.status) - statusRank(b.status) ||
+        b.created_at.localeCompare(a.created_at),
+    );
+
+  const vstat = summarizeVendors(vendorLites, now);
+  const signupsPrior7d = vendorLites.filter(
     (v) => v.created_at >= cutoff14d && v.created_at < cutoff7d,
   ).length;
-  const onPass = vendors.filter((v) => v.passExpiresAt).length;
+  const onPass = vendorLites.filter((v) => v.passExpiresAt).length;
+  const atRisk = items.filter((i) =>
+    ["attention", "expiring", "stuck"].includes(i.status),
+  ).length;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-5 py-7">
@@ -51,7 +104,7 @@ export default async function AdminVendorsPage() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Vendors" value={vstat.total} delay={0} />
-        <Stat label="Pro" value={vstat.pro} delay={60} />
+        <Stat label="Needs a look" value={atRisk} delay={60} />
         <Stat label="On a live pass" value={onPass} delay={120} />
         <Stat
           label="Signups · 7d"
@@ -61,7 +114,7 @@ export default async function AdminVendorsPage() {
         />
       </div>
 
-      <VendorTable vendors={vendors} />
+      <VendorList vendors={items} />
     </div>
   );
 }

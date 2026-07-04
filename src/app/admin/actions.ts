@@ -233,6 +233,42 @@ export async function resolvePurchaseRequest(
   return { success: true };
 }
 
+const resolveMessageSchema = z.object({ id: z.string().uuid() });
+
+/** Mark a vendor's help request resolved once handled. Admin-only. */
+export async function resolveSupportMessage(
+  input: z.infer<typeof resolveMessageSchema>,
+): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+  const parsed = resolveMessageSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid input" };
+
+  const supabase = await createServiceClient();
+  const { data: updated, error } = await supabase
+    .from("support_messages")
+    .update({ status: "resolved" })
+    .eq("id", parsed.data.id)
+    .select("vendor_id")
+    .maybeSingle();
+  if (error || !updated) {
+    console.error(
+      "resolveSupportMessage failed",
+      error?.message ?? "no row updated",
+    );
+    return { success: false, error: "Could not resolve" };
+  }
+
+  await recordAudit(supabase, {
+    admin_id: user.id,
+    action: "resolve_support_message",
+    target_id: updated.vendor_id,
+    detail: { message_id: parsed.data.id },
+  });
+
+  revalidatePath("/admin");
+  return { success: true };
+}
+
 const revokePassSchema = z.object({ vendorId: z.string().uuid() });
 
 /**

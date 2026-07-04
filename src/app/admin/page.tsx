@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import {
@@ -10,13 +11,21 @@ import { pctChange, windowSeries, type StatsOrder } from "@/lib/stats";
 import { formatPrice, MS_PER_DAY } from "@/lib/utils";
 import type { Plan } from "@/lib/types";
 import { DEFAULT_PRICING } from "@/lib/pricing";
-import { type AdminVendorRow } from "./vendor-table";
+import { type AdminVendorRow } from "./vendor-manage";
 import { PricingForm } from "./pricing-form";
 import { ActivationFunnelView } from "./activation-funnel";
 import { TrendChart } from "../dashboard/stats/trend-chart";
 import { Paginated } from "@/components/paginated";
 import { Stat } from "./stat";
 import { ResolveRequestButton } from "./resolve-request-button";
+import { ResolveMessageButton } from "./resolve-message-button";
+
+const SUPPORT_CATEGORY_LABEL: Record<string, string> = {
+  pass: "Event pass",
+  payment: "Payment",
+  pro: "Pro / billing",
+  other: "Something else",
+};
 
 export const revalidate = 0;
 
@@ -56,6 +65,7 @@ export default async function AdminPage() {
     { data: licenseRows },
     { data: paymentRows },
     { data: requestRows },
+    { data: messageRows },
   ] = await Promise.all([
     supabase
       .from("vendors")
@@ -80,6 +90,11 @@ export default async function AdminPage() {
       .from("purchase_requests")
       .select("id, vendor_id, kind, created_at")
       .eq("status", "pending")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("support_messages")
+      .select("id, vendor_id, category, body, created_at")
+      .eq("status", "open")
       .order("created_at", { ascending: true }),
   ]);
 
@@ -118,6 +133,11 @@ export default async function AdminPage() {
   const requests = (requestRows ?? []).map((r) => ({
     ...r,
     vendorName: vendorName.get(r.vendor_id) ?? "Unknown vendor",
+  }));
+  // Open vendor help requests — the "reach out and help" inbox.
+  const messages = (messageRows ?? []).map((m) => ({
+    ...m,
+    vendorName: vendorName.get(m.vendor_id) ?? "Unknown vendor",
   }));
   const funnel = activationFunnel(
     vendors as { id: string; plan: Plan }[],
@@ -187,6 +207,43 @@ export default async function AdminPage() {
                   </p>
                 </div>
                 <ResolveRequestButton id={r.id} />
+              </div>
+            ))}
+          </Paginated>
+        </section>
+      )}
+
+      {messages.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Help requests · {messages.length}
+          </h2>
+          <Paginated pageSize={6} className="space-y-2">
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-status-cancelled/30 bg-status-cancelled/[0.04] px-4 py-3 text-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/vendors/${m.vendor_id}`}
+                      className="truncate font-medium hover:underline"
+                    >
+                      {m.vendorName}
+                    </Link>
+                    <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-xs font-semibold">
+                      {SUPPORT_CATEGORY_LABEL[m.category] ?? m.category}
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {m.created_at.slice(0, 16).replace("T", " ")}
+                    </span>
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-muted-foreground">
+                    {m.body}
+                  </p>
+                </div>
+                <ResolveMessageButton id={m.id} />
               </div>
             ))}
           </Paginated>

@@ -284,6 +284,16 @@ export const feedbackSchema = z
   );
 export type FeedbackInput = z.infer<typeof feedbackSchema>;
 
+// ── Support / help requests ──────────────────────────────────────────────────
+
+// A vendor-reported problem the admin resolves in the dashboard. Category lets
+// the admin triage (pass/payment/pro billing issues vs. a general note).
+export const supportMessageSchema = z.object({
+  category: z.enum(["pass", "payment", "pro", "other"]),
+  body: z.string().trim().min(1, "Tell us what's wrong").max(2000),
+});
+export type SupportMessageInput = z.infer<typeof supportMessageSchema>;
+
 // ── Account / profile ────────────────────────────────────────────────────────
 
 // Stall name shown to customers (vendors.name). Same rule as vendorSchema — the

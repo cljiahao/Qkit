@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { setVendorPlan, grantPass } from "./actions";
+import { setVendorPlan, grantPass, resolveSupportMessage } from "./actions";
 
 // Mock the SERVICE client's fluent chains + the admin gate. `from(table)`
 // dispatches per table so we can drive each terminal independently and count
@@ -20,6 +20,7 @@ const {
   licensesSingle,
   auditInsert,
   purchaseReqEq,
+  supportMsgUpdateSingle,
 } = vi.hoisted(() => ({
   requireAdminMock: vi.fn(),
   vendorsReadSingle: vi.fn(),
@@ -30,6 +31,7 @@ const {
   licensesSingle: vi.fn(),
   auditInsert: vi.fn(),
   purchaseReqEq: vi.fn(),
+  supportMsgUpdateSingle: vi.fn(),
 }));
 
 vi.mock("@/lib/admin", () => ({ requireAdmin: requireAdminMock }));
@@ -68,6 +70,14 @@ vi.mock("@/lib/supabase/server", () => ({
             return { insert: auditInsert };
           case "purchase_requests":
             return { update: () => ({ eq: () => ({ eq: purchaseReqEq }) }) };
+          case "support_messages":
+            return {
+              update: () => ({
+                eq: () => ({
+                  select: () => ({ maybeSingle: supportMsgUpdateSingle }),
+                }),
+              }),
+            };
           default:
             throw new Error(`unexpected table ${table}`);
         }
@@ -93,6 +103,9 @@ beforeEach(() => {
     .mockResolvedValue({ data: { id: LICENSE }, error: null });
   auditInsert.mockReset().mockResolvedValue({ error: null });
   purchaseReqEq.mockReset().mockResolvedValue({ error: null });
+  supportMsgUpdateSingle
+    .mockReset()
+    .mockResolvedValue({ data: { vendor_id: VENDOR }, error: null });
 });
 
 describe("setVendorPlan", () => {
@@ -183,5 +196,35 @@ describe("grantPass", () => {
       note: "cash at booth",
       license_id: LICENSE,
     });
+  });
+});
+
+describe("resolveSupportMessage", () => {
+  const MESSAGE = "00000000-0000-4000-8000-0000000000bb";
+
+  it("marks it resolved and audits against the message's vendor", async () => {
+    const res = await resolveSupportMessage({ id: MESSAGE });
+    expect(res).toEqual({ success: true });
+    expect(auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        admin_id: ADMIN,
+        action: "resolve_support_message",
+        target_id: VENDOR,
+        detail: { message_id: MESSAGE },
+      }),
+    );
+  });
+
+  it("fails cleanly when no row matches (already resolved / bad id)", async () => {
+    supportMsgUpdateSingle.mockResolvedValue({ data: null, error: null });
+    const res = await resolveSupportMessage({ id: MESSAGE });
+    expect(res).toEqual({ success: false, error: "Could not resolve" });
+    expect(auditInsert).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-uuid id before touching the DB", async () => {
+    const res = await resolveSupportMessage({ id: "nope" });
+    expect(res).toEqual({ success: false, error: "Invalid input" });
+    expect(supportMsgUpdateSingle).not.toHaveBeenCalled();
   });
 });
