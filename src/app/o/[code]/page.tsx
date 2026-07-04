@@ -70,7 +70,7 @@ export default async function OrderEntryPage({ params }: Props) {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
           Order from
         </p>
-        <h1 className="font-display mt-1 text-4xl font-semibold leading-[1.05]">
+        <h1 className="font-display mt-1 text-4xl font-semibold leading-[1.05] break-words">
           {booth.name}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

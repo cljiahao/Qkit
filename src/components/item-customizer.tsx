@@ -148,7 +148,7 @@ function CustomizerBody({
                     role={g.multiple ? "checkbox" : "radio"}
                     aria-checked={active}
                     onClick={() => toggle(g, c.id)}
-                    className={`inline-flex min-h-11 items-center rounded-lg border px-3.5 text-sm font-medium transition-colors ${
+                    className={`inline-flex min-h-11 max-w-full items-center rounded-lg border px-3.5 text-sm font-medium whitespace-normal break-words transition-colors ${
                       active
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border text-foreground hover:border-primary/40"

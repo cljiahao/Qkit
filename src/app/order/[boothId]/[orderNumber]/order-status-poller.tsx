@@ -221,7 +221,7 @@ export function OrderStatusPoller({
           type="button"
           onClick={onEnableAlerts}
           disabled={requesting}
-          className="mx-auto flex items-center gap-2 rounded-full border border-primary/40 bg-primary/[0.04] px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
+          className="mx-auto flex min-h-11 items-center gap-2 rounded-full border border-primary/40 bg-primary/[0.04] px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
         >
           <Bell className="size-4" />
           {requesting ? "Just a sec…" : "Alert me when it's ready"}
