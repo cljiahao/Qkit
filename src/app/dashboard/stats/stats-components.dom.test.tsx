@@ -55,11 +55,12 @@ describe("KpiRow", () => {
     expect(screen.getByText("10%")).toBeInTheDocument(); // down, abs value
     const fulfilled = screen.getByText("Fulfilled");
     expect(fulfilled).toBeInTheDocument();
-    // Shown as fulfilled / decided (18 completed of 18 + 2 cancelled) + a caption.
+    // Shown as fulfilled / decided (18 completed of 18 + 2 cancelled) + a
+    // caption that surfaces the cancelled count visibly (mobile has no hover).
     expect(screen.getByText("18/20")).toBeInTheDocument();
-    expect(screen.getByText("90% fulfilled")).toBeInTheDocument();
-    // Cancelled has no tile of its own; its count rides as a tooltip on the
-    // Fulfilled tile instead.
+    expect(screen.getByText("90% fulfilled · 2 cancelled")).toBeInTheDocument();
+    // Cancelled has no tile of its own; its count rides in the Fulfilled caption
+    // (and the range detail stays in the tooltip).
     expect(screen.queryByText("Cancelled")).not.toBeInTheDocument();
     expect(fulfilled.closest("[title]")).toHaveAttribute(
       "title",
