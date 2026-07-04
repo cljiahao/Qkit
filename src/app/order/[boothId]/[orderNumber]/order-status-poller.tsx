@@ -13,7 +13,12 @@ import {
   unlockAudio,
 } from "@/lib/order-alerts";
 import { getOrderStatus } from "./status-actions";
-import { elapsedLabel, isTerminal } from "@/lib/orders";
+import {
+  elapsedLabel,
+  isTerminal,
+  orderProgressIndex,
+  ORDER_PROGRESS_SEGMENTS,
+} from "@/lib/orders";
 import type { OrderStatus } from "@/lib/types";
 
 // Poll cadence. The customer status page is poll-only by design: Supabase
@@ -42,25 +47,6 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
   cancelled: "Your order was cancelled",
 };
 
-// Three progress segments the customer sees: got it → cooking → ready.
-// pending/confirmed light the first segment so the earliest, most anxious phase
-// still shows movement (the live board itself mostly uses preparing/ready/done).
-const PROGRESS_SEGMENTS = 3;
-function progressIndex(status: OrderStatus): number {
-  switch (status) {
-    case "pending":
-    case "confirmed":
-      return 0;
-    case "preparing":
-      return 1;
-    case "ready":
-    case "completed":
-      return 2;
-    default:
-      return -1; // cancelled — no progress
-  }
-}
-
 export function OrderStatusPoller({
   boothId,
   orderNumber,
@@ -79,9 +65,12 @@ export function OrderStatusPoller({
   // arm sound + title-flash.
   const [armed, setArmed] = useState(false);
   const [requesting, setRequesting] = useState(false);
-  // Client-only clock for the "placed N min ago" stamp. null until mounted so
-  // the server and first client render agree (no hydration mismatch); ticks
-  // each 30s so the stamp stays roughly current without a per-second timer.
+  // Client-only clock for the "placed N min ago" stamp. Kept bespoke rather than
+  // useNow(): that seeds Date.now() in its initializer, which on this SSR'd page
+  // would differ between server and client render (hydration mismatch). Starting
+  // null and setting it in an effect makes the server and first client render
+  // agree. Ticks each 30s (matches the minute-granular label); stops once the
+  // order is terminal — a finished order's stamp no longer changes.
   const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
@@ -92,9 +81,10 @@ export function OrderStatusPoller({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNowMs(Date.now());
+    if (isTerminal(status)) return;
     const id = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(id);
-  }, []);
+  }, [status]);
 
   async function onEnableAlerts() {
     setRequesting(true);
@@ -164,7 +154,7 @@ export function OrderStatusPoller({
   }, [status, boothName, orderNumber]);
 
   const cancelled = status === "cancelled";
-  const idx = progressIndex(status);
+  const idx = orderProgressIndex(status);
   const elapsed =
     nowMs != null ? elapsedLabel(nowMs - Date.parse(placedAt)) : null;
 
@@ -185,7 +175,7 @@ export function OrderStatusPoller({
 
       {!cancelled && (
         <div className="flex items-center gap-1.5">
-          {Array.from({ length: PROGRESS_SEGMENTS }, (_, i) => (
+          {Array.from({ length: ORDER_PROGRESS_SEGMENTS }, (_, i) => (
             <div
               key={i}
               className={`h-1.5 flex-1 rounded-full transition-colors ${

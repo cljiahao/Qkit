@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { OrderForm } from "./order-form";
 import type { MenuItem, SelectedOption } from "@/lib/types";
 
@@ -165,6 +166,89 @@ describe("OrderForm cart", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Your name")).toHaveValue("Bo");
     expect(window.sessionStorage.getItem("qkit:reorder:b1")).toBeNull();
+  });
+
+  it("shows a placeholder when the booth has no menu yet", () => {
+    render(<OrderForm code="code123" boothId="b1" menuItems={[]} />);
+    expect(screen.getByText("Menu coming soon")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add items to order" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("restores a persisted cart on mount without clobbering it", async () => {
+    window.sessionStorage.setItem(
+      "qkit:cart:b1",
+      JSON.stringify([{ menuItemId: "kopi", quantity: 2 }]),
+    );
+    renderForm();
+
+    // Restored (2 × $3.50), and the first empty render did NOT wipe storage.
+    expect(await screen.findByText("Your order")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Place order · 2 items · \$7\.00/ }),
+    ).toBeInTheDocument();
+    expect(window.sessionStorage.getItem("qkit:cart:b1")).not.toBeNull();
+    expect(window.sessionStorage.getItem("qkit:cart:b1")).not.toBe("[]");
+  });
+
+  it("drops a fully-sold-out persisted cart silently (no toast)", async () => {
+    window.sessionStorage.setItem(
+      "qkit:cart:b1",
+      JSON.stringify([{ menuItemId: "kopi", quantity: 2 }]),
+    );
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI, TEH]}
+        remaining={{ kopi: 0 }}
+      />,
+    );
+    // Nothing restored, cleared silently — a refresh shouldn't nag the customer.
+    await waitFor(() =>
+      expect(window.sessionStorage.getItem("qkit:cart:b1")).toBeNull(),
+    );
+    expect(screen.queryByText("Your order")).not.toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("warns when only some persisted items sold out", async () => {
+    window.sessionStorage.setItem(
+      "qkit:cart:b1",
+      JSON.stringify([
+        { menuItemId: "kopi", quantity: 1 },
+        { menuItemId: "teh", quantity: 1 },
+      ]),
+    );
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI, TEH]}
+        remaining={{ kopi: 0 }}
+      />,
+    );
+    // Teh survives, Kopi is gone → one honest heads-up.
+    const cart = (await screen.findByText("Your order")).closest("section")!;
+    expect(within(cart).getByText("Teh")).toBeInTheDocument();
+    expect(within(cart).queryByText("Kopi")).not.toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalledWith("1 item sold out and was removed");
+  });
+
+  it("persists the cart on change and clears it after placing the order", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(window.sessionStorage.getItem("qkit:cart:b1")).toContain("kopi");
+
+    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Place order/ }));
+
+    await waitFor(() =>
+      expect(window.sessionStorage.getItem("qkit:cart:b1")).toBeNull(),
+    );
   });
 
   it("surfaces a server error and does not navigate", async () => {

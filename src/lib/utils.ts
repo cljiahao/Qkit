@@ -50,6 +50,11 @@ export function orderHasPricing(
   return items.some((i) => i.price_cents != null);
 }
 
+/** Count with a pluralized noun: "1 item" / "3 items" / "0 items". */
+export function count(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
 /** Render selected options as a single muted line, e.g. "Iced · Less". Empty when none. */
 export function formatOptions(options?: { choice: string }[] | null): string {
   return options && options.length

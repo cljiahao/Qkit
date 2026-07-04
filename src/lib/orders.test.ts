@@ -5,6 +5,8 @@ import {
   orderAgeTone,
   elapsedMinutes,
   elapsedLabel,
+  orderProgressIndex,
+  ORDER_PROGRESS_SEGMENTS,
   buildAdvancePatch,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
@@ -143,6 +145,34 @@ describe("elapsedLabel", () => {
     expect(elapsedLabel(60 * 60_000)).toBe("1 hr ago");
     expect(elapsedLabel(80 * 60_000)).toBe("1 hr 20 min ago");
     expect(elapsedLabel(125 * 60_000)).toBe("2 hr 5 min ago");
+  });
+});
+
+describe("orderProgressIndex", () => {
+  it("lights the first segment for the earliest states", () => {
+    expect(orderProgressIndex("pending")).toBe(0);
+    expect(orderProgressIndex("confirmed")).toBe(0);
+  });
+
+  it("advances through preparing and ready/completed", () => {
+    expect(orderProgressIndex("preparing")).toBe(1);
+    expect(orderProgressIndex("ready")).toBe(2);
+    expect(orderProgressIndex("completed")).toBe(2);
+  });
+
+  it("has no progress for a cancelled order, and fits the segment count", () => {
+    expect(orderProgressIndex("cancelled")).toBe(-1);
+    // Every non-cancelled index is a valid segment slot.
+    for (const s of [
+      "pending",
+      "confirmed",
+      "preparing",
+      "ready",
+      "completed",
+    ] as const) {
+      expect(orderProgressIndex(s)).toBeLessThan(ORDER_PROGRESS_SEGMENTS);
+      expect(orderProgressIndex(s)).toBeGreaterThanOrEqual(0);
+    }
   });
 });
 

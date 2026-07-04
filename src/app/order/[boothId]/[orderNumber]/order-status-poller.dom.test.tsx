@@ -77,6 +77,16 @@ describe("OrderStatusPoller", () => {
     );
   });
 
+  it("hides the placed stamp for a cancelled order", async () => {
+    getOrderStatus.mockResolvedValue("cancelled");
+    renderPoller("cancelled");
+    // Let the mount clock effect run.
+    await waitFor(() =>
+      expect(screen.getByText("Your order was cancelled")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/^Placed /)).not.toBeInTheDocument();
+  });
+
   it("does not poll once the order is in a terminal state", async () => {
     getOrderStatus.mockResolvedValue("completed");
     renderPoller("completed");

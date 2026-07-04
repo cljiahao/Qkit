@@ -34,6 +34,25 @@ const STATUS_RANK: Record<OrderStatus, number> = {
   cancelled: 3,
 };
 
+// Customer-facing progress for the status page's segmented bar: placed →
+// cooking → ready. pending/confirmed light the first segment so the earliest,
+// most anxious wait still shows movement; cancelled has no progress.
+export const ORDER_PROGRESS_SEGMENTS = 3;
+export function orderProgressIndex(status: OrderStatus): number {
+  switch (status) {
+    case "pending":
+    case "confirmed":
+      return 0;
+    case "preparing":
+      return 1;
+    case "ready":
+    case "completed":
+      return 2;
+    default:
+      return -1; // cancelled — no progress
+  }
+}
+
 export type AgeTone = "fresh" | "aging" | "overdue";
 
 /**

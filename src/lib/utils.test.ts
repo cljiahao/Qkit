@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   cn,
+  count,
   formatOptions,
   formatPrice,
   genOrderNumber,
   orderHasPricing,
   parseDollarsToCents,
 } from "./utils";
+
+describe("count", () => {
+  it("pluralizes on anything but 1", () => {
+    expect(count(0, "item")).toBe("0 items");
+    expect(count(1, "item")).toBe("1 item");
+    expect(count(2, "item")).toBe("2 items");
+  });
+});
 
 describe("cn", () => {
   it("merges class names", () => {

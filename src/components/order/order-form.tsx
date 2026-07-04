@@ -12,7 +12,13 @@ import { Label } from "@/components/ui/label";
 import { ZoomableImage } from "@/components/zoomable-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
-import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
+import {
+  cn,
+  count,
+  formatOptions,
+  formatPrice,
+  orderHasPricing,
+} from "@/lib/utils";
 import { cartKey, cartTotal } from "@/lib/cart";
 import { loadCart, saveCart, clearCart } from "@/lib/cart-storage";
 import { addRecentOrder } from "@/lib/recent-orders";
@@ -83,18 +89,17 @@ export function OrderForm({
     setCart(
       new Map(items.map((it) => [cartKey(it.menuItemId, it.options), it])),
     );
-    const n = items.length;
     if (seed) {
       if (seed.customerName) setValue("customerName", seed.customerName);
       toast.success(
         unavailable > 0
-          ? `Added ${n} item${n > 1 ? "s" : ""} · ${unavailable} no longer available`
-          : `Added ${n} item${n > 1 ? "s" : ""} to your order`,
+          ? `Added ${count(items.length, "item")} · ${unavailable} no longer available`
+          : `Added ${count(items.length, "item")} to your order`,
       );
     } else if (unavailable > 0) {
       // Restored, but some saved items sold out while the customer was away.
       toast.error(
-        `${unavailable} item${unavailable > 1 ? "s" : ""} sold out and ${
+        `${count(unavailable, "item")} sold out and ${
           unavailable > 1 ? "were" : "was"
         } removed`,
       );
@@ -506,8 +511,8 @@ export function OrderForm({
                 ? "Placing order…"
                 : hasItems
                   ? cartPriced
-                    ? `Place order · ${itemCount} item${itemCount > 1 ? "s" : ""} · ${formatPrice(total)}`
-                    : `Place order · ${itemCount} item${itemCount > 1 ? "s" : ""}`
+                    ? `Place order · ${count(itemCount, "item")} · ${formatPrice(total)}`
+                    : `Place order · ${count(itemCount, "item")}`
                   : "Add items to order"}
           </Button>
         </div>
