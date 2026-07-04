@@ -29,3 +29,8 @@ CREATE POLICY "support_messages_select" ON public.support_messages
 -- Admin resolves (the admin server action also uses the service role).
 CREATE POLICY "support_messages_admin_update" ON public.support_messages
   FOR UPDATE USING (public.is_admin(auth.uid()));
+
+-- Table-level privileges for the Data API's `authenticated` role — RLS filters
+-- rows, but Postgres still requires the base grant (a vendor inserts/reads its
+-- own; an admin reads all + updates). Service-role bypasses both.
+GRANT SELECT, INSERT, UPDATE ON public.support_messages TO authenticated;
