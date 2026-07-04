@@ -30,6 +30,7 @@ function renderPoller(initialStatus: OrderStatus = "preparing") {
       token="tok"
       initialStatus={initialStatus}
       boothName="Kopi Cart"
+      placedAt="2026-07-04T00:00:00Z"
     />,
   );
 }
@@ -66,6 +67,14 @@ describe("OrderStatusPoller", () => {
     );
     // Tab is visible in jsdom, so it chimes immediately.
     expect(alerts.playReadyChime).toHaveBeenCalled();
+  });
+
+  it("shows a 'placed' time stamp once mounted", async () => {
+    getOrderStatus.mockResolvedValue("preparing");
+    renderPoller("preparing");
+    await waitFor(() =>
+      expect(screen.getByText(/^Placed /)).toBeInTheDocument(),
+    );
   });
 
   it("does not poll once the order is in a terminal state", async () => {

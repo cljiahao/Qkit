@@ -4,6 +4,7 @@ import {
   sortActiveOrders,
   orderAgeTone,
   elapsedMinutes,
+  elapsedLabel,
   buildAdvancePatch,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
@@ -122,6 +123,26 @@ describe("elapsedMinutes", () => {
     expect(elapsedMinutes(90_000)).toBe(1);
     expect(elapsedMinutes(59_000)).toBe(0);
     expect(elapsedMinutes(-5000)).toBe(0);
+  });
+});
+
+describe("elapsedLabel", () => {
+  it("says 'just now' under a minute (and for negative clock skew)", () => {
+    expect(elapsedLabel(0)).toBe("just now");
+    expect(elapsedLabel(59_000)).toBe("just now");
+    expect(elapsedLabel(-5000)).toBe("just now");
+  });
+
+  it("counts minutes under an hour", () => {
+    expect(elapsedLabel(60_000)).toBe("1 min ago");
+    expect(elapsedLabel(5 * 60_000)).toBe("5 min ago");
+    expect(elapsedLabel(59 * 60_000)).toBe("59 min ago");
+  });
+
+  it("switches to hours (+ minutes) at an hour", () => {
+    expect(elapsedLabel(60 * 60_000)).toBe("1 hr ago");
+    expect(elapsedLabel(80 * 60_000)).toBe("1 hr 20 min ago");
+    expect(elapsedLabel(125 * 60_000)).toBe("2 hr 5 min ago");
   });
 });
 

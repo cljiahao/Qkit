@@ -105,6 +105,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           token={token}
           initialStatus={order.status}
           boothName={booth?.name ?? "Your order"}
+          placedAt={order.created_at}
         />
 
         <div className="perforation" />

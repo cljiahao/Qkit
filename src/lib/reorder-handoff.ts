@@ -27,8 +27,9 @@ export function stashReorder(boothId: string, seed: ReorderSeed): boolean {
 // A line survives only if it carries a string menuItemId, a numeric quantity,
 // and (when present) a well-formed options array — mirrors the per-field
 // rigor recent-orders.ts applies to its own sessionStorage/localStorage reads,
-// rather than trusting the cast.
-function isValidLine(value: unknown): value is ReorderLine {
+// rather than trusting the cast. Also reused by cart-storage for the persisted
+// in-progress cart (same line shape).
+export function isValidLine(value: unknown): value is ReorderLine {
   if (!value || typeof value !== "object") return false;
   const line = value as Record<string, unknown>;
   if (typeof line.menuItemId !== "string") return false;

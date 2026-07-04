@@ -13,7 +13,7 @@ import {
   unlockAudio,
 } from "@/lib/order-alerts";
 import { getOrderStatus } from "./status-actions";
-import { isTerminal } from "@/lib/orders";
+import { elapsedLabel, isTerminal } from "@/lib/orders";
 import type { OrderStatus } from "@/lib/types";
 
 // Poll cadence. The customer status page is poll-only by design: Supabase
@@ -30,6 +30,7 @@ interface Props {
   token: string;
   initialStatus: OrderStatus;
   boothName: string;
+  placedAt: string; // ISO created_at, for the "placed N min ago" stamp
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, string> = {
@@ -41,9 +42,24 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
   cancelled: "Your order was cancelled",
 };
 
-// Live flow is preparing → ready (2 steps). STATUS_MESSAGE also keeps
-// pending/confirmed keys so an order still in one of those states renders a message.
-const STEPS: OrderStatus[] = ["preparing", "ready"];
+// Three progress segments the customer sees: got it → cooking → ready.
+// pending/confirmed light the first segment so the earliest, most anxious phase
+// still shows movement (the live board itself mostly uses preparing/ready/done).
+const PROGRESS_SEGMENTS = 3;
+function progressIndex(status: OrderStatus): number {
+  switch (status) {
+    case "pending":
+    case "confirmed":
+      return 0;
+    case "preparing":
+      return 1;
+    case "ready":
+    case "completed":
+      return 2;
+    default:
+      return -1; // cancelled — no progress
+  }
+}
 
 export function OrderStatusPoller({
   boothId,
@@ -51,6 +67,7 @@ export function OrderStatusPoller({
   token,
   initialStatus,
   boothName,
+  placedAt,
 }: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   // null until known (avoids SSR/hydration mismatch); "default" = can ask.
@@ -62,10 +79,21 @@ export function OrderStatusPoller({
   // arm sound + title-flash.
   const [armed, setArmed] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  // Client-only clock for the "placed N min ago" stamp. null until mounted so
+  // the server and first client render agree (no hydration mismatch); ticks
+  // each 30s so the stamp stays roughly current without a per-second timer.
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPermission(notifyPermission());
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNowMs(Date.now());
+    const id = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
   }, []);
 
   async function onEnableAlerts() {
@@ -135,10 +163,10 @@ export function OrderStatusPoller({
     };
   }, [status, boothName, orderNumber]);
 
-  const completed = status === "completed";
   const cancelled = status === "cancelled";
-  // completed sits past the last step; cancelled has no progress.
-  const activeIndex = completed ? STEPS.length - 1 : STEPS.indexOf(status);
+  const idx = progressIndex(status);
+  const elapsed =
+    nowMs != null ? elapsedLabel(nowMs - Date.parse(placedAt)) : null;
 
   // Offer to arm alerts while still waiting — moot once ready/done. Shown even
   // where notifications aren't supported (iOS Safari), because the tap is also
@@ -157,11 +185,11 @@ export function OrderStatusPoller({
 
       {!cancelled && (
         <div className="flex items-center gap-1.5">
-          {STEPS.map((step, i) => (
+          {Array.from({ length: PROGRESS_SEGMENTS }, (_, i) => (
             <div
-              key={step}
+              key={i}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
-                i <= activeIndex ? "bg-primary" : "bg-border"
+                i <= idx ? "bg-primary" : "bg-border"
               }`}
             />
           ))}
@@ -180,6 +208,10 @@ export function OrderStatusPoller({
       >
         {STATUS_MESSAGE[status]}
       </p>
+
+      {!cancelled && elapsed && (
+        <p className="-mt-2 text-xs text-muted-foreground">Placed {elapsed}</p>
+      )}
 
       {status === "ready" && (
         <p className="animate-pulse text-sm font-medium text-status-ready">

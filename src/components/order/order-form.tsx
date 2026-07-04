@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import { ItemCustomizer } from "@/components/item-customizer";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { cartKey, cartTotal } from "@/lib/cart";
+import { loadCart, saveCart, clearCart } from "@/lib/cart-storage";
 import { addRecentOrder } from "@/lib/recent-orders";
 import { reconcileReorder } from "@/lib/reorder";
 import { takeReorder } from "@/lib/reorder-handoff";
@@ -41,6 +42,7 @@ export function OrderForm({
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const hydrated = useRef(false);
 
   const {
     register,
@@ -51,37 +53,74 @@ export function OrderForm({
     resolver: zodResolver(placeOrderSchema.pick({ customerName: true })),
   });
 
-  // Seed the cart from a "reorder" handoff (status page / recent-orders list).
-  // Post-mount + read-once (sessionStorage), so a refresh won't re-seed. Lines
-  // are reconciled against the LIVE menu + stock here — prices/availability are
-  // always current, never the stale snapshot.
+  // Seed the cart on mount. A "reorder" handoff (explicit intent from the status
+  // / recent-orders pages, read-once) wins; otherwise restore an in-progress
+  // cart persisted from a prior visit (survives a refresh or mobile tab-eviction
+  // — see cart-storage). Either source is reconciled against the LIVE menu +
+  // stock here, so prices/availability are always current, never a stale snapshot.
   useEffect(() => {
     const seed = takeReorder(boothId);
-    if (!seed) return;
+    const lines = seed ? seed.lines : loadCart(boothId);
+    if (lines.length === 0) return;
     const { items, unavailable } = reconcileReorder(
-      seed.lines,
+      lines,
       menuItems,
       remaining,
     );
     if (items.length === 0) {
-      toast.error("Those items aren't available anymore — start a new order.");
+      // A reorder that can't be fulfilled tells the customer; a persisted cart
+      // whose items are all gone is dropped silently (they didn't ask for it).
+      if (seed) {
+        toast.error(
+          "Those items aren't available anymore — start a new order.",
+        );
+      } else {
+        clearCart(boothId);
+      }
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(
       new Map(items.map((it) => [cartKey(it.menuItemId, it.options), it])),
     );
-    if (seed.customerName) setValue("customerName", seed.customerName);
     const n = items.length;
-    toast.success(
-      unavailable > 0
-        ? `Added ${n} item${n > 1 ? "s" : ""} · ${unavailable} no longer available`
-        : `Added ${n} item${n > 1 ? "s" : ""} to your order`,
-    );
+    if (seed) {
+      if (seed.customerName) setValue("customerName", seed.customerName);
+      toast.success(
+        unavailable > 0
+          ? `Added ${n} item${n > 1 ? "s" : ""} · ${unavailable} no longer available`
+          : `Added ${n} item${n > 1 ? "s" : ""} to your order`,
+      );
+    } else if (unavailable > 0) {
+      // Restored, but some saved items sold out while the customer was away.
+      toast.error(
+        `${unavailable} item${unavailable > 1 ? "s" : ""} sold out and ${
+          unavailable > 1 ? "were" : "was"
+        } removed`,
+      );
+    }
     // boothId is the only real input; menuItems/remaining are stable props and
-    // takeReorder is read-once, so re-runs are harmless no-ops.
+    // both reads are one-shot, so re-runs are harmless no-ops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boothId]);
+
+  // Persist the cart on every change so a refresh / tab-eviction restores it
+  // (the seed effect above reads it back). Skip the first invocation (mount) so
+  // an initial empty render can't clobber a saved cart before the restore lands.
+  useEffect(() => {
+    if (!hydrated.current) {
+      hydrated.current = true;
+      return;
+    }
+    saveCart(
+      boothId,
+      Array.from(cart.values(), (it) => ({
+        menuItemId: it.menuItemId,
+        quantity: it.quantity,
+        options: it.options,
+      })),
+    );
+  }, [cart, boothId]);
 
   // Single cart mutator. The updater receives the current entry (or undefined)
   // and returns: a CartItem to set, null to remove, or undefined to no-op
@@ -160,6 +199,7 @@ export function OrderForm({
   const cartEntries = Array.from(cart.entries());
   const cartItems = Array.from(cart.values());
   const total = cartTotal(cartItems);
+  const itemCount = cartItems.reduce((n, it) => n + it.quantity, 0);
 
   async function onSubmit(formData: { customerName: string }) {
     if (closed) {
@@ -202,6 +242,10 @@ export function OrderForm({
       return;
     }
 
+    // Order placed — the persisted cart has served its purpose; drop it so
+    // returning to this booth starts fresh rather than restoring a placed cart.
+    clearCart(boothId);
+
     // Remember on-device so the customer can find this order again after
     // closing the tab (no server-side customer identity exists). The compact
     // items snapshot powers one-tap reorder from the list.
@@ -226,6 +270,19 @@ export function OrderForm({
 
   const hasItems = cartItems.length > 0;
   const cartPriced = orderHasPricing(cartItems);
+
+  // A booth with no menu yet: show a friendly placeholder instead of an empty
+  // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).
+  if (menuItems.length === 0) {
+    return (
+      <div className="ticket rounded-xl border border-border px-6 py-12 text-center">
+        <p className="font-display text-lg font-semibold">Menu coming soon</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          This booth hasn&apos;t added its menu yet. Check back soon.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -449,8 +506,8 @@ export function OrderForm({
                 ? "Placing order…"
                 : hasItems
                   ? cartPriced
-                    ? `Place order · ${formatPrice(total)}`
-                    : "Place order"
+                    ? `Place order · ${itemCount} item${itemCount > 1 ? "s" : ""} · ${formatPrice(total)}`
+                    : `Place order · ${itemCount} item${itemCount > 1 ? "s" : ""}`
                   : "Add items to order"}
           </Button>
         </div>

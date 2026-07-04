@@ -85,7 +85,7 @@ describe("OrderForm cart", () => {
 
     expect(screen.getByText("Your order")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Place order · \$3\.50/ }),
+      screen.getByRole("button", { name: /Place order · 1 item · \$3\.50/ }),
     ).toBeEnabled();
   });
 
@@ -97,7 +97,7 @@ describe("OrderForm cart", () => {
 
     // 2 × $3.50 = $7.00 in the submit bar.
     expect(
-      screen.getByRole("button", { name: /Place order · \$7\.00/ }),
+      screen.getByRole("button", { name: /Place order · 2 items · \$7\.00/ }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Remove one" }));
@@ -161,7 +161,7 @@ describe("OrderForm cart", () => {
     // Cart prefilled (2 × $3.50), name filled, seed consumed (read-once).
     expect(await screen.findByText("Your order")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Place order · \$7\.00/ }),
+      screen.getByRole("button", { name: /Place order · 2 items · \$7\.00/ }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Your name")).toHaveValue("Bo");
     expect(window.sessionStorage.getItem("qkit:reorder:b1")).toBeNull();

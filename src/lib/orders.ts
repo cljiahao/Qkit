@@ -55,6 +55,20 @@ export function elapsedMinutes(elapsedMs: number): number {
 }
 
 /**
+ * Human "time since" label for a customer (e.g. "just now", "5 min ago",
+ * "1 hr 20 min ago"). Coarse on purpose — the customer wants a sense that the
+ * wait is tracked, not second precision. Floored at 0. Pure.
+ */
+export function elapsedLabel(elapsedMs: number): string {
+  const min = elapsedMinutes(elapsedMs);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} min ago`;
+  const hrs = Math.floor(min / 60);
+  const rem = min % 60;
+  return rem === 0 ? `${hrs} hr ago` : `${hrs} hr ${rem} min ago`;
+}
+
+/**
  * The DB patch for advancing an order to `next`: the new status plus the
  * transition timestamp it stamps — ready_at on entering "ready", completed_at on
  * "completed", neither otherwise. Pure: `nowIso` is passed in (no Date here).
