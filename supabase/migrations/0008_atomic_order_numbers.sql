@@ -8,14 +8,14 @@
 -- exhausted the retry loop and surfaced "Could not generate a unique order
 -- number". This replaces it with an atomic per-booth counter.
 
-ALTER TABLE public.booths
+ALTER TABLE qkit.booths
   ADD COLUMN order_seq INTEGER NOT NULL DEFAULT 0;
 
 -- Seed each booth from its current highest order number so freshly minted
 -- numbers do not collide with historical orders.
-UPDATE public.booths b
+UPDATE qkit.booths b
 SET order_seq = COALESCE(
-  (SELECT MAX(o.order_number::int) FROM public.orders o WHERE o.booth_id = b.id),
+  (SELECT MAX(o.order_number::int) FROM qkit.orders o WHERE o.booth_id = b.id),
   0
 );
 
@@ -26,16 +26,16 @@ SET order_seq = COALESCE(
 -- SECURITY DEFINER: customers placing orders are anonymous and cannot UPDATE
 -- booths under RLS. The function runs as its owner to advance the counter,
 -- but only ever touches order_seq for the one booth passed in.
-CREATE OR REPLACE FUNCTION public.next_order_number(p_booth_id uuid)
+CREATE OR REPLACE FUNCTION qkit.next_order_number(p_booth_id uuid)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
   v_seq integer;
 BEGIN
-  UPDATE public.booths
+  UPDATE qkit.booths
   SET order_seq = order_seq + 1
   WHERE id = p_booth_id
   RETURNING order_seq INTO v_seq;
@@ -49,4 +49,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.next_order_number(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION qkit.next_order_number(uuid) TO anon, authenticated;

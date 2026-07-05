@@ -7,8 +7,8 @@
 -- booths), and the cascade fires as a system operation — no orders DELETE
 -- policy is needed.
 
-ALTER TABLE public.orders DROP CONSTRAINT orders_booth_id_fkey;
+ALTER TABLE qkit.orders DROP CONSTRAINT orders_booth_id_fkey;
 
-ALTER TABLE public.orders
+ALTER TABLE qkit.orders
   ADD CONSTRAINT orders_booth_id_fkey
-  FOREIGN KEY (booth_id) REFERENCES public.booths(id) ON DELETE CASCADE;
+  FOREIGN KEY (booth_id) REFERENCES qkit.booths(id) ON DELETE CASCADE;

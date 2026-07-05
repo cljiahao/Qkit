@@ -13,14 +13,14 @@
 -- Pre-launch (no vendors) → drop + recreate is a clean cutover. Both clauses use
 -- bare auth.uid() to match the sibling orders_vendor_select; the systematic
 -- (select auth.uid()) optimization (L8) is a separate sweep.
-DROP POLICY IF EXISTS "orders_vendor_update" ON public.orders;
-CREATE POLICY "orders_vendor_update" ON public.orders
+DROP POLICY IF EXISTS "orders_vendor_update" ON qkit.orders;
+CREATE POLICY "orders_vendor_update" ON qkit.orders
   FOR UPDATE
   USING (
-    booth_id IN (SELECT id FROM public.booths WHERE vendor_id = auth.uid())
+    booth_id IN (SELECT id FROM qkit.booths WHERE vendor_id = auth.uid())
   )
   WITH CHECK (
-    booth_id IN (SELECT id FROM public.booths WHERE vendor_id = auth.uid())
+    booth_id IN (SELECT id FROM qkit.booths WHERE vendor_id = auth.uid())
   );
 
 -- ── 2. Freeze financial/identity columns on UPDATE ───────────────────────────
@@ -29,10 +29,10 @@ CREATE POLICY "orders_vendor_update" ON public.orders
 -- paid_at, ready_at, completed_at (+ updated_at, stamped by orders_updated_at).
 -- SECURITY INVOKER (default): reads only NEW/OLD, no table access. Fires on
 -- every UPDATE incl. service-role — nothing legitimately mutates these columns.
-CREATE OR REPLACE FUNCTION public.orders_freeze_columns()
+CREATE OR REPLACE FUNCTION qkit.orders_freeze_columns()
 RETURNS trigger
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = qkit
 AS $$
 BEGIN
   IF NEW.booth_id            IS DISTINCT FROM OLD.booth_id
@@ -50,7 +50,7 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS orders_freeze_columns ON public.orders;
+DROP TRIGGER IF EXISTS orders_freeze_columns ON qkit.orders;
 CREATE TRIGGER orders_freeze_columns
-  BEFORE UPDATE ON public.orders
-  FOR EACH ROW EXECUTE FUNCTION public.orders_freeze_columns();
+  BEFORE UPDATE ON qkit.orders
+  FOR EACH ROW EXECUTE FUNCTION qkit.orders_freeze_columns();

@@ -2,11 +2,11 @@
 -- the pretty URL id and the unguessable capability. 12 base62 chars ~= 71 bits.
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
-CREATE OR REPLACE FUNCTION public.gen_short_code()
+CREATE OR REPLACE FUNCTION qkit.gen_short_code()
 RETURNS text
 LANGUAGE plpgsql
 VOLATILE
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
   alphabet CONSTANT text :=
@@ -26,15 +26,15 @@ $$;
 
 -- Add the column with the generated default (backfills every existing booth with
 -- a distinct code — Postgres evaluates a VOLATILE default per row for this DDL).
-ALTER TABLE public.booths
-  ADD COLUMN short_code TEXT NOT NULL DEFAULT public.gen_short_code();
+ALTER TABLE qkit.booths
+  ADD COLUMN short_code TEXT NOT NULL DEFAULT qkit.gen_short_code();
 -- UNIQUE creates its own backing btree index — that index also serves the
 -- short_code lookups (get_booth_for_order / place_order), so no separate index.
-ALTER TABLE public.booths
+ALTER TABLE qkit.booths
   ADD CONSTRAINT booths_short_code_key UNIQUE (short_code);
 
 -- Remove the superseded access_token model (regenerate_booth_token is replaced
 -- in task 5; drop it here so the column can go).
-DROP FUNCTION IF EXISTS public.regenerate_booth_token(uuid);
-ALTER TABLE public.booths DROP COLUMN IF EXISTS access_token;
-DROP FUNCTION IF EXISTS public.gen_booth_token();
+DROP FUNCTION IF EXISTS qkit.regenerate_booth_token(uuid);
+ALTER TABLE qkit.booths DROP COLUMN IF EXISTS access_token;
+DROP FUNCTION IF EXISTS qkit.gen_booth_token();

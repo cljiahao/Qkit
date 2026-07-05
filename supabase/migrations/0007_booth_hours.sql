@@ -4,5 +4,5 @@
 --   | { "mode": "daily",  "open": "HH:MM", "close": "HH:MM" }
 --   | { "mode": "weekly", "days": { "mon": {open,close}|null, ... "sun": ... } }
 -- Existing booths default to null -> behavior unchanged.
-alter table public.booths
+alter table qkit.booths
   add column if not exists hours jsonb;

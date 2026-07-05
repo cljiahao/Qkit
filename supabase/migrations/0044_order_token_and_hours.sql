@@ -8,7 +8,7 @@
 -- 0001..9999 and read every other customer's name, items, and payment status.
 -- Add a random token minted per order; the reads must now also match it. NOT
 -- NULL DEFAULT backfills any existing row with its own random value.
-ALTER TABLE public.orders
+ALTER TABLE qkit.orders
   ADD COLUMN IF NOT EXISTS access_token uuid NOT NULL DEFAULT gen_random_uuid();
 
 -- ── 2. Server-enforced opening hours ────────────────────────────────────────
@@ -18,7 +18,7 @@ ALTER TABLE public.orders
 -- isBoothOpen (src/lib/hours.ts): SGT wall-clock, daily/weekly windows,
 -- overnight-aware; null hours = always open. IMMUTABLE-ish but reads the clock
 -- via its arg, so it's STABLE.
-CREATE OR REPLACE FUNCTION public.booth_open(p_hours jsonb, p_now timestamptz)
+CREATE OR REPLACE FUNCTION qkit.booth_open(p_hours jsonb, p_now timestamptz)
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE
@@ -65,7 +65,7 @@ $$;
 
 -- Recreate place_order: adds the hours gate (after booth_servable) and returns
 -- the new access_token. Everything else reproduced verbatim from 0042.
-CREATE OR REPLACE FUNCTION public.place_order(
+CREATE OR REPLACE FUNCTION qkit.place_order(
   p_short_code      text,
   p_customer_name   text,
   p_items           jsonb,
@@ -74,10 +74,10 @@ CREATE OR REPLACE FUNCTION public.place_order(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
-  b public.booths;
+  b qkit.booths;
   v_existing_number text;
   v_existing_token uuid;
   v_seq int;
@@ -104,14 +104,14 @@ BEGIN
     RAISE EXCEPTION 'ORDER_INVALID: name too long';
   END IF;
 
-  SELECT * INTO b FROM public.booths WHERE short_code = p_short_code;
+  SELECT * INTO b FROM qkit.booths WHERE short_code = p_short_code;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ORDER_EXPIRED: unknown code';
   END IF;
 
   IF p_idempotency_key IS NOT NULL THEN
     SELECT order_number, access_token INTO v_existing_number, v_existing_token
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
     IF FOUND THEN
       RETURN jsonb_build_object(
@@ -121,15 +121,15 @@ BEGIN
     END IF;
   END IF;
 
-  IF NOT public.check_rate_limit('order:booth:' || b.id::text, 120, 60) THEN
+  IF NOT qkit.check_rate_limit('order:booth:' || b.id::text, 120, 60) THEN
     RAISE EXCEPTION 'ORDER_RATE_LIMITED: booth flood';
   END IF;
 
-  IF NOT public.booth_servable(b.id) THEN
+  IF NOT qkit.booth_servable(b.id) THEN
     RAISE EXCEPTION 'ORDER_UNSERVABLE: booth not serving';
   END IF;
 
-  IF NOT public.booth_open(b.hours, now()) THEN
+  IF NOT qkit.booth_open(b.hours, now()) THEN
     RAISE EXCEPTION 'ORDER_UNSERVABLE: outside opening hours';
   END IF;
 
@@ -194,25 +194,25 @@ BEGIN
   v_payment_kind := b.payment->>'kind';
   v_expects_payment := v_payment_kind IS NOT NULL AND v_payment_kind <> 'stripe';
 
-  UPDATE public.booths SET order_seq = order_seq + 1
+  UPDATE qkit.booths SET order_seq = order_seq + 1
   WHERE id = b.id RETURNING order_seq INTO v_seq;
   v_number := lpad(v_seq::text, 4, '0');
 
-  v_remaining := public.booth_remaining_stock(b.id);
+  v_remaining := qkit.booth_remaining_stock(b.id);
   FOR r IN SELECT menu_item_id AS id, qty AS want
-           FROM public.order_item_quantities(v_priced) LOOP
+           FROM qkit.order_item_quantities(v_priced) LOOP
     IF v_remaining ? r.id AND r.want > (v_remaining->>r.id)::int THEN
       RAISE EXCEPTION 'ORDER_SOLD_OUT: %', r.id;
     END IF;
   END LOOP;
 
-  INSERT INTO public.orders (
+  INSERT INTO qkit.orders (
     booth_id, order_number, customer_name, items, total_cents,
     status, payment_status, payment_method_kind, idempotency_key
   ) VALUES (
     b.id, v_number, p_customer_name, v_priced, v_total,
     'preparing',
-    (CASE WHEN v_expects_payment THEN 'pending' ELSE 'not_required' END)::public.payment_status,
+    (CASE WHEN v_expects_payment THEN 'pending' ELSE 'not_required' END)::qkit.payment_status,
     CASE WHEN v_expects_payment THEN v_payment_kind ELSE NULL END,
     p_idempotency_key
   )
@@ -222,7 +222,7 @@ BEGIN
   IF NOT FOUND THEN
     -- Lost the idempotency race: another request inserted first. Return its row.
     SELECT order_number, access_token INTO v_number, v_token
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
   END IF;
 

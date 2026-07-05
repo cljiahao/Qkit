@@ -3,10 +3,10 @@
 -- session or a direct PostgREST UPDATE with a vendor JWT could rotate another
 -- order's token. It's set once by place_order (INSERT) and must never change —
 -- add it to the freeze list. Reproduces 0032's function verbatim + access_token.
-CREATE OR REPLACE FUNCTION public.orders_freeze_columns()
+CREATE OR REPLACE FUNCTION qkit.orders_freeze_columns()
 RETURNS trigger
 LANGUAGE plpgsql
-SET search_path = public
+SET search_path = qkit
 AS $$
 BEGIN
   IF NEW.booth_id            IS DISTINCT FROM OLD.booth_id

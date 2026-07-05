@@ -15,8 +15,8 @@
 -- place_order is SECURITY DEFINER (runs as owner, bypasses RLS), so no INSERT
 -- policy is needed. orders_public_insert (WITH CHECK true, no TO clause) only
 -- served the now-removed direct path and let any authenticated JWT forge orders.
-DROP POLICY IF EXISTS "orders_public_insert" ON public.orders;
-REVOKE INSERT ON public.orders FROM anon, authenticated;
+DROP POLICY IF EXISTS "orders_public_insert" ON qkit.orders;
+REVOKE INSERT ON qkit.orders FROM anon, authenticated;
 
 -- ── 2. Booths: no public table read for anyone ───────────────────────────────
 -- Customers read booths via get_booth_for_order (SECURITY DEFINER, public-safe
@@ -24,17 +24,17 @@ REVOKE INSERT ON public.orders FROM anon, authenticated;
 -- (USING booth_servable(id)) is now reachable ONLY by authenticated, where it
 -- leaked every servable booth's cost_cents + short_code cross-vendor. anon's
 -- table SELECT was already revoked in 0029; drop the vestigial policy too.
-DROP POLICY IF EXISTS "booths_public_read" ON public.booths;
+DROP POLICY IF EXISTS "booths_public_read" ON qkit.booths;
 
 -- ── 3. Feedback: close WITH CHECK(true), add a SECURITY DEFINER insert RPC ────
 -- feedback_public_insert (WITH CHECK true) let any JWT forge reviews / pollute
 -- admin NPS. Remove it and revoke the direct grant; submit_feedback becomes the
 -- only insert path. It re-derives vendor_id from the caller's own session and
 -- re-validates the payload in-DB so a direct RPC call can't bypass the Zod layer.
-DROP POLICY IF EXISTS "feedback_public_insert" ON public.feedback;
-REVOKE INSERT ON public.feedback FROM anon, authenticated;
+DROP POLICY IF EXISTS "feedback_public_insert" ON qkit.feedback;
+REVOKE INSERT ON qkit.feedback FROM anon, authenticated;
 
-CREATE OR REPLACE FUNCTION public.submit_feedback(
+CREATE OR REPLACE FUNCTION qkit.submit_feedback(
   p_source       text,
   p_booth_id     uuid    DEFAULT NULL,
   p_order_number text    DEFAULT NULL,
@@ -45,7 +45,7 @@ CREATE OR REPLACE FUNCTION public.submit_feedback(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
   v_vendor  uuid := NULL;
@@ -80,7 +80,7 @@ BEGIN
     v_vendor := auth.uid();
   END IF;
 
-  INSERT INTO public.feedback
+  INSERT INTO qkit.feedback
     (source, vendor_id, booth_id, order_number, rating, nps, message)
   VALUES
     (p_source, v_vendor, p_booth_id, NULLIF(p_order_number, ''),
@@ -88,14 +88,14 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.submit_feedback(text, uuid, text, int, int, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.submit_feedback(text, uuid, text, int, int, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION qkit.submit_feedback(text, uuid, text, int, int, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION qkit.submit_feedback(text, uuid, text, int, int, text) TO anon, authenticated;
 
 -- ── 4. next_order_number: superseded, close it for authenticated too ─────────
 -- place_order inlines numbering; next_order_number is dead in prod. It is
 -- SECURITY DEFINER with no ownership check, so leaving EXECUTE would let any
 -- authenticated JWT burn any booth's order_seq. anon was revoked in 0030.
-REVOKE EXECUTE ON FUNCTION public.next_order_number(uuid) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION qkit.next_order_number(uuid) FROM authenticated;
 
 -- ── 5. Harden place_order against the direct-RPC path ────────────────────────
 -- The server action validates + flood-guards, but place_order is GRANT EXECUTE
@@ -107,7 +107,7 @@ REVOKE EXECUTE ON FUNCTION public.next_order_number(uuid) FROM authenticated;
 -- old COALESCE(...,0) wrote cost_cents:0 for every no-cost item, which made the
 -- margin stats read 100% for every such vendor (T2). A genuine cost of 0 is
 -- preserved (0 is distinct from absent).
-CREATE OR REPLACE FUNCTION public.place_order(
+CREATE OR REPLACE FUNCTION qkit.place_order(
   p_short_code      text,
   p_customer_name   text,
   p_items           jsonb,
@@ -116,10 +116,10 @@ CREATE OR REPLACE FUNCTION public.place_order(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
-  b public.booths;
+  b qkit.booths;
   v_existing text;
   v_seq int;
   v_number text;
@@ -143,7 +143,7 @@ BEGIN
     RAISE EXCEPTION 'ORDER_INVALID: name too long';
   END IF;
 
-  SELECT * INTO b FROM public.booths WHERE short_code = p_short_code;
+  SELECT * INTO b FROM qkit.booths WHERE short_code = p_short_code;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ORDER_EXPIRED: unknown code';
   END IF;
@@ -152,7 +152,7 @@ BEGIN
   -- before the flood guard so a legit client retry never trips the limiter.
   IF p_idempotency_key IS NOT NULL THEN
     SELECT order_number INTO v_existing
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
     IF FOUND THEN
       RETURN jsonb_build_object('order_number', v_existing, 'booth_id', b.id);
@@ -162,11 +162,11 @@ BEGIN
   -- Booth-scoped flood guard INSIDE the RPC (V1): the per-IP guard lives in the
   -- server action, which a direct RPC call skips. This bounds total order churn
   -- on any one booth regardless of caller. Generous vs. a real busy stall.
-  IF NOT public.check_rate_limit('order:booth:' || b.id::text, 120, 60) THEN
+  IF NOT qkit.check_rate_limit('order:booth:' || b.id::text, 120, 60) THEN
     RAISE EXCEPTION 'ORDER_RATE_LIMITED: booth flood';
   END IF;
 
-  IF NOT public.booth_servable(b.id) THEN
+  IF NOT qkit.booth_servable(b.id) THEN
     RAISE EXCEPTION 'ORDER_UNSERVABLE: booth not serving';
   END IF;
 
@@ -179,7 +179,7 @@ BEGIN
     RAISE EXCEPTION 'ORDER_INVALID: too many items';
   END IF;
 
-  v_remaining := public.booth_remaining_stock(b.id);
+  v_remaining := qkit.booth_remaining_stock(b.id);
 
   -- Stock is pooled per menu item across lines (option variants share a cap).
   -- Gated once, aggregated, before pricing — a per-line check would let two
@@ -266,11 +266,11 @@ BEGIN
   v_expects_payment := v_payment_kind IS NOT NULL AND v_payment_kind <> 'stripe';
 
   -- Atomic order number (row-locks the booth counter).
-  UPDATE public.booths SET order_seq = order_seq + 1
+  UPDATE qkit.booths SET order_seq = order_seq + 1
   WHERE id = b.id RETURNING order_seq INTO v_seq;
   v_number := lpad(v_seq::text, 4, '0');
 
-  INSERT INTO public.orders (
+  INSERT INTO qkit.orders (
     booth_id, order_number, customer_name, items, total_cents,
     status, payment_status, payment_method_kind, idempotency_key
   ) VALUES (
@@ -286,7 +286,7 @@ BEGIN
   -- an acceptable rare gap — matches the project's existing stance on gaps).
   IF NOT FOUND THEN
     SELECT order_number INTO v_number
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
   END IF;
 

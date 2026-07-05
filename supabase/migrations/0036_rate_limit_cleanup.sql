@@ -9,9 +9,9 @@
 --      guaranteed enabled in every environment, incl. the pgTAP CI reset).
 
 CREATE INDEX IF NOT EXISTS rate_limits_window_start_idx
-  ON public.rate_limits (window_start);
+  ON qkit.rate_limits (window_start);
 
-CREATE OR REPLACE FUNCTION public.check_rate_limit(
+CREATE OR REPLACE FUNCTION qkit.check_rate_limit(
   p_key TEXT,
   p_limit INT,
   p_window_seconds INT
@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION public.check_rate_limit(
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
   v_window TIMESTAMPTZ;
@@ -30,17 +30,17 @@ BEGIN
     floor(extract(epoch FROM now()) / p_window_seconds) * p_window_seconds
   );
 
-  INSERT INTO public.rate_limits (key, window_start, count)
+  INSERT INTO qkit.rate_limits (key, window_start, count)
     VALUES (p_key, v_window, 1)
     ON CONFLICT (key, window_start)
-    DO UPDATE SET count = public.rate_limits.count + 1
+    DO UPDATE SET count = qkit.rate_limits.count + 1
     RETURNING count INTO v_count;
 
   -- Probabilistic cleanup: only ~2% of calls sweep expired windows, and the
   -- sweep is index-backed (rate_limits_window_start_idx). Keeps the table tiny
   -- without paying a DELETE scan on every single call.
   IF random() < 0.02 THEN
-    DELETE FROM public.rate_limits
+    DELETE FROM qkit.rate_limits
       WHERE window_start < now() - INTERVAL '1 hour';
   END IF;
 

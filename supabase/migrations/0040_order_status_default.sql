@@ -9,4 +9,4 @@
 --   2. Postgres has no DROP VALUE — removing them means a full enum type swap
 --      (rename → recreate → column cast → drop old), which fails on any legacy
 --      row still carrying the value. Not worth that risk for two inert values.
-ALTER TABLE public.orders ALTER COLUMN status SET DEFAULT 'preparing';
+ALTER TABLE qkit.orders ALTER COLUMN status SET DEFAULT 'preparing';
