@@ -7,7 +7,7 @@
 -- ARGUMENT to a STABLE helper (is_admin / can_create_booth), the wrap goes on the
 -- argument so the whole call becomes a stable one-shot expression.
 --
--- Scope: public-schema policies. The storage.objects booth-image policies keep
+-- Scope: qkit-schema policies. The storage.objects booth-image policies keep
 -- their bare auth.uid() — a vendor evaluates them over a handful of image rows,
 -- so there's no scan to optimize, and they're outside the pgTAP suite's reach.
 

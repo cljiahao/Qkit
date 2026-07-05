@@ -8,13 +8,13 @@
 -- Idempotent: safe to re-run; it upserts the vendor row and the booth.
 
 -- 1. Ensure the vendor row exists (no-op if that account already onboarded).
-insert into public.vendors (id, name)
+insert into qkit.vendors (id, name)
 values ('__VENDOR_ID__', 'Kopitiam Cart')
 on conflict (id) do nothing;
 
 -- 2. Seed the booth with the 3 customizable drinks.
 with v as (select '__VENDOR_ID__'::uuid as vendor_id)
-insert into public.booths (id, vendor_id, name, is_active, image_url, menu_items)
+insert into qkit.booths (id, vendor_id, name, is_active, image_url, menu_items)
 select
   'c0ffee01-0000-4000-8000-000000000001',
   v.vendor_id,

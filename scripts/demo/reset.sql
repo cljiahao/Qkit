@@ -17,10 +17,10 @@ begin
     return;
   end if;
 
-  delete from public.orders
-    where booth_id in (select id from public.booths where vendor_id = demo_uid);
-  delete from public.booths where vendor_id = demo_uid;
-  delete from public.vendors where id = demo_uid;
+  delete from qkit.orders
+    where booth_id in (select id from qkit.booths where vendor_id = demo_uid);
+  delete from qkit.booths where vendor_id = demo_uid;
+  delete from qkit.vendors where id = demo_uid;
   delete from auth.users where id = demo_uid;
 
   raise notice 'Demo account % wiped.', demo_uid;

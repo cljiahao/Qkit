@@ -19,15 +19,15 @@ declare vid uuid := '__VENDOR_ID__';
 begin
   -- Your vendor row → Pro (Pro lifts the 1-active-booth cap). Keeps your
   -- existing stall name if you've already onboarded.
-  insert into public.vendors (id, name, plan)
+  insert into qkit.vendors (id, name, plan)
   values (vid, 'My Stalls', 'pro')
   on conflict (id) do update set plan = 'pro';
 
   -- Clean slate for YOUR booths only (orders cascade-delete, migration 0009).
-  delete from public.booths where vendor_id = vid;
+  delete from qkit.booths where vendor_id = vid;
 
   -- Booth 1: Kopitiam Cart — PayNow payment wired.
-  insert into public.booths
+  insert into qkit.booths
     (id, vendor_id, name, is_active, image_url, payment, menu_items)
   values (
     'c0ffee01-0000-4000-8000-000000000001', vid, 'Kopitiam Cart', true,
@@ -83,7 +83,7 @@ begin
   );
 
   -- Booth 2: Ice Cream Cart — queue only, NO payment.
-  insert into public.booths
+  insert into qkit.booths
     (id, vendor_id, name, is_active, image_url, payment, menu_items)
   values (
     '1ce01ce0-0000-4000-8000-000000000002', vid, 'Ice Cream Cart', true,

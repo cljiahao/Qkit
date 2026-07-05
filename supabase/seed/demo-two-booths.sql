@@ -14,16 +14,16 @@ values ('6df824a1-9da2-4608-ad13-2400a9114ec0',
         'authenticated', 'authenticated', 'test@qkit.local')
 on conflict (id) do nothing;
 
-insert into public.vendors (id, name, plan)
+insert into qkit.vendors (id, name, plan)
 values ('6df824a1-9da2-4608-ad13-2400a9114ec0', 'Test', 'pro')
 on conflict (id) do update set plan = 'pro';
 
 -- ── Clean slate for this vendor (cascades orders) ────────────────────────────
-delete from public.booths
+delete from qkit.booths
 where vendor_id = '6df824a1-9da2-4608-ad13-2400a9114ec0';
 
 -- ── Booth 1: Kopitiam Cart — PayNow payment wired ────────────────────────────
-insert into public.booths
+insert into qkit.booths
   (id, vendor_id, name, is_active, image_url, payment, menu_items)
 values (
   'c0ffee01-0000-4000-8000-000000000001',
@@ -82,7 +82,7 @@ values (
 );
 
 -- ── Booth 2: Ice Cream Cart — queue only, NO payment ─────────────────────────
-insert into public.booths
+insert into qkit.booths
   (id, vendor_id, name, is_active, image_url, payment, menu_items)
 values (
   '1ce01ce0-0000-4000-8000-000000000002',
