@@ -43,7 +43,7 @@ REVOKE UPDATE (plan) ON qkit.vendors FROM authenticated;
 REVOKE EXECUTE ON FUNCTION qkit.next_order_number(uuid) FROM PUBLIC;
 
 -- Sequence USAGE for any serial-backed insert (harmless where PKs are UUIDs).
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA qkit TO authenticated;
 
 -- ── anon ─────────────────────────────────────────────────────────────────────
 -- Pricing is genuinely public (offer page); everything else customer-facing is
@@ -55,6 +55,6 @@ GRANT SELECT ON qkit.pricing TO anon;
 -- customer status page, admin actions, and claimPayment. auto-expose used to
 -- grant it; make it explicit. No migration REVOKEs target service_role, so
 -- granting everything here undoes nothing.
-GRANT ALL ON ALL TABLES IN SCHEMA public    TO service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA qkit    TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA qkit TO service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA qkit TO service_role;
