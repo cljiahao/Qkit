@@ -4,17 +4,17 @@
 -- false once the limit is exceeded. SECURITY DEFINER so anon can call it while
 -- the table stays locked (no RLS policies = service/definer access only).
 
-CREATE TABLE public.rate_limits (
+CREATE TABLE qkit.rate_limits (
   key          TEXT        NOT NULL,
   window_start TIMESTAMPTZ NOT NULL,
   count        INT         NOT NULL DEFAULT 0,
   PRIMARY KEY (key, window_start)
 );
 
-ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE qkit.rate_limits ENABLE ROW LEVEL SECURITY;
 -- No policies: only the SECURITY DEFINER function (and service role) touch it.
 
-CREATE OR REPLACE FUNCTION public.check_rate_limit(
+CREATE OR REPLACE FUNCTION qkit.check_rate_limit(
   p_key TEXT,
   p_limit INT,
   p_window_seconds INT
@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION public.check_rate_limit(
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
   v_window TIMESTAMPTZ;
@@ -33,18 +33,18 @@ BEGIN
     floor(extract(epoch FROM now()) / p_window_seconds) * p_window_seconds
   );
 
-  INSERT INTO public.rate_limits (key, window_start, count)
+  INSERT INTO qkit.rate_limits (key, window_start, count)
     VALUES (p_key, v_window, 1)
     ON CONFLICT (key, window_start)
-    DO UPDATE SET count = public.rate_limits.count + 1
+    DO UPDATE SET count = qkit.rate_limits.count + 1
     RETURNING count INTO v_count;
 
   -- Opportunistic cleanup of windows older than an hour (keeps the table tiny).
-  DELETE FROM public.rate_limits
+  DELETE FROM qkit.rate_limits
     WHERE window_start < now() - INTERVAL '1 hour';
 
   RETURN v_count <= p_limit;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.check_rate_limit(text, int, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION qkit.check_rate_limit(text, int, int) TO anon, authenticated;

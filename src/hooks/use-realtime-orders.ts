@@ -77,7 +77,7 @@ export function useRealtimeOrders(
         "postgres_changes",
         {
           event: "*",
-          schema: "public",
+          schema: "qkit",
           table: "orders",
           filter: `booth_id=in.(${filterString})`,
         },

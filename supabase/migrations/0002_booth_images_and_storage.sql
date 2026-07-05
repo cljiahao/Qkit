@@ -1,5 +1,5 @@
 -- Booth banner image
-ALTER TABLE public.booths ADD COLUMN image_url TEXT;
+ALTER TABLE qkit.booths ADD COLUMN image_url TEXT;
 
 -- Public-read bucket for booth banners
 INSERT INTO storage.buckets (id, name, public)

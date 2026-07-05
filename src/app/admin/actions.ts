@@ -14,7 +14,7 @@ import { MS_PER_DAY } from "@/lib/utils";
 import type { ActionResult } from "@/lib/action-result";
 import type { Database } from "@/lib/types";
 
-type AuditInsert = Database["public"]["Tables"]["admin_audit"]["Insert"];
+type AuditInsert = Database["qkit"]["Tables"]["admin_audit"]["Insert"];
 
 /**
  * Append an admin-audit row. Best-effort: a hiccup here must not fail the

@@ -29,10 +29,13 @@ function cookieMethods(cookieStore: CookieStore): CookieMethodsServer {
 export async function createServerClient() {
   const cookieStore = await cookies();
 
-  return createSSRClient<Database>(
+  return createSSRClient<Database, "qkit">(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { cookies: cookieMethods(cookieStore) },
+    {
+      cookies: cookieMethods(cookieStore),
+      db: { schema: "qkit" },
+    },
   );
 }
 
@@ -43,7 +46,7 @@ export async function createServerClient() {
 // admin writes (license inserts denied, cross-vendor updates match 0 rows). An
 // empty cookie adapter means the secret key drives auth → true RLS bypass.
 export async function createServiceClient() {
-  return createSSRClient<Database>(
+  return createSSRClient<Database, "qkit">(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SECRET_KEY!,
     {
@@ -52,6 +55,7 @@ export async function createServiceClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
+      db: { schema: "qkit" },
     },
   );
 }

@@ -6,8 +6,8 @@
 -- to the caller.
 
 -- vendors: a vendor may update its own row, and the result must still be its own.
-DROP POLICY IF EXISTS "vendors_self_update" ON public.vendors;
-CREATE POLICY "vendors_self_update" ON public.vendors
+DROP POLICY IF EXISTS "vendors_self_update" ON qkit.vendors;
+CREATE POLICY "vendors_self_update" ON qkit.vendors
   FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
@@ -20,19 +20,19 @@ CREATE POLICY "vendors_self_update" ON public.vendors
 -- which uses the service role (bypasses column grants), so revoke column-level
 -- UPDATE(plan) from the customer-facing roles. Vendor self-edits (name) and the
 -- onboarding tour (tour_seen_at) don't touch `plan`, so they're unaffected.
-REVOKE UPDATE (plan) ON public.vendors FROM anon, authenticated;
+REVOKE UPDATE (plan) ON qkit.vendors FROM anon, authenticated;
 
 -- booths: a vendor updates its own booth; the result must still be its own
 -- (prevents re-pointing a booth to another vendor).
-DROP POLICY IF EXISTS "booths_vendor_update" ON public.booths;
-CREATE POLICY "booths_vendor_update" ON public.booths
+DROP POLICY IF EXISTS "booths_vendor_update" ON qkit.booths;
+CREATE POLICY "booths_vendor_update" ON qkit.booths
   FOR UPDATE
   USING (vendor_id = auth.uid())
   WITH CHECK (vendor_id = auth.uid());
 
 -- purchase_requests: admin-only UPDATE; result must remain admin-consistent.
-DROP POLICY IF EXISTS "purchase_requests_admin_update" ON public.purchase_requests;
-CREATE POLICY "purchase_requests_admin_update" ON public.purchase_requests
+DROP POLICY IF EXISTS "purchase_requests_admin_update" ON qkit.purchase_requests;
+CREATE POLICY "purchase_requests_admin_update" ON qkit.purchase_requests
   FOR UPDATE
-  USING (public.is_admin(auth.uid()))
-  WITH CHECK (public.is_admin(auth.uid()));
+  USING (qkit.is_admin(auth.uid()))
+  WITH CHECK (qkit.is_admin(auth.uid()));

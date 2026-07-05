@@ -1,14 +1,14 @@
 -- Idempotency: a client generates one key per cart submit (stable across its one
 -- retry), so a committed-but-dropped request can't create a second order.
-ALTER TABLE public.orders ADD COLUMN idempotency_key UUID;
+ALTER TABLE qkit.orders ADD COLUMN idempotency_key UUID;
 CREATE UNIQUE INDEX orders_booth_idem_key
-  ON public.orders (booth_id, idempotency_key)
+  ON qkit.orders (booth_id, idempotency_key)
   WHERE idempotency_key IS NOT NULL;
 
 -- The ONLY customer write path. SECURITY DEFINER; validates + prices + numbers +
 -- inserts atomically. Raises a typed error the app maps to a message; the raise
 -- text is matched by prefix in the server action.
-CREATE OR REPLACE FUNCTION public.place_order(
+CREATE OR REPLACE FUNCTION qkit.place_order(
   p_short_code      text,
   p_customer_name   text,
   p_items           jsonb,
@@ -17,10 +17,10 @@ CREATE OR REPLACE FUNCTION public.place_order(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
-  b public.booths;
+  b qkit.booths;
   v_existing text;
   v_seq int;
   v_number text;
@@ -43,7 +43,7 @@ BEGIN
     RAISE EXCEPTION 'ORDER_INVALID: name too long';
   END IF;
 
-  SELECT * INTO b FROM public.booths WHERE short_code = p_short_code;
+  SELECT * INTO b FROM qkit.booths WHERE short_code = p_short_code;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ORDER_EXPIRED: unknown code';
   END IF;
@@ -51,14 +51,14 @@ BEGIN
   -- Idempotent replay: return the prior order if this key already landed.
   IF p_idempotency_key IS NOT NULL THEN
     SELECT order_number INTO v_existing
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
     IF FOUND THEN
       RETURN jsonb_build_object('order_number', v_existing, 'booth_id', b.id);
     END IF;
   END IF;
 
-  IF NOT public.booth_servable(b.id) THEN
+  IF NOT qkit.booth_servable(b.id) THEN
     RAISE EXCEPTION 'ORDER_UNSERVABLE: booth not serving';
   END IF;
 
@@ -66,7 +66,7 @@ BEGIN
     RAISE EXCEPTION 'ORDER_INVALID: empty cart';
   END IF;
 
-  v_remaining := public.booth_remaining_stock(b.id);
+  v_remaining := qkit.booth_remaining_stock(b.id);
 
   -- Stock is pooled per menu item across lines (option variants share a cap).
   -- Gated once, aggregated, before pricing — a per-line check would let two
@@ -123,11 +123,11 @@ BEGIN
   v_expects_payment := v_payment_kind IS NOT NULL AND v_payment_kind <> 'stripe';
 
   -- Atomic order number (row-locks the booth counter).
-  UPDATE public.booths SET order_seq = order_seq + 1
+  UPDATE qkit.booths SET order_seq = order_seq + 1
   WHERE id = b.id RETURNING order_seq INTO v_seq;
   v_number := lpad(v_seq::text, 4, '0');
 
-  INSERT INTO public.orders (
+  INSERT INTO qkit.orders (
     booth_id, order_number, customer_name, items, total_cents,
     status, payment_status, payment_method_kind, idempotency_key
   ) VALUES (
@@ -143,7 +143,7 @@ BEGIN
   -- an acceptable rare gap — matches the project's existing stance on gaps).
   IF NOT FOUND THEN
     SELECT order_number INTO v_number
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
   END IF;
 
@@ -151,9 +151,9 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.place_order(text, text, jsonb, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.place_order(text, text, jsonb, uuid) TO anon, authenticated;
+REVOKE ALL ON FUNCTION qkit.place_order(text, text, jsonb, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION qkit.place_order(text, text, jsonb, uuid) TO anon, authenticated;
 
 -- The RPC is now the only write path. Close the direct routes.
-REVOKE INSERT ON public.orders FROM anon;
-REVOKE EXECUTE ON FUNCTION public.next_order_number(uuid) FROM anon;
+REVOKE INSERT ON qkit.orders FROM anon;
+REVOKE EXECUTE ON FUNCTION qkit.next_order_number(uuid) FROM anon;

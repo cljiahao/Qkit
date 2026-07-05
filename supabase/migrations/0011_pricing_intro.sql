@@ -5,7 +5,7 @@
 --
 -- Guarded on the old seed value so it never clobbers a price an admin has since
 -- set in /admin. No-op if the row was already changed or already at $19.
-UPDATE public.pricing
+UPDATE qkit.pricing
   SET event_pass_cents = 1900,
       updated_at = now()
   WHERE id = 1

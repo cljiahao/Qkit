@@ -10,7 +10,7 @@
 -- New model: open now if EITHER today's window covers the evening/same-day part,
 -- OR the PREVIOUS day's window is overnight and its after-midnight tail
 -- [00:00, close) still covers now. For daily, "previous day" is the same window.
-CREATE OR REPLACE FUNCTION public.booth_open(p_hours jsonb, p_now timestamptz)
+CREATE OR REPLACE FUNCTION qkit.booth_open(p_hours jsonb, p_now timestamptz)
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE

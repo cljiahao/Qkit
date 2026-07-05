@@ -4,6 +4,6 @@
 -- going forward; past orders stay null and are excluded from wait metrics.
 -- preparing_at is omitted: placeOrder inserts orders already in 'preparing',
 -- so it would equal created_at.
-ALTER TABLE public.orders
+ALTER TABLE qkit.orders
   ADD COLUMN IF NOT EXISTS ready_at     TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;

@@ -17,7 +17,7 @@ function isProtectedPath(path: string): boolean {
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient<Database>(
+  const supabase = createServerClient<Database, "qkit">(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
@@ -35,6 +35,7 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
+      db: { schema: "qkit" },
     },
   );
 

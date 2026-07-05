@@ -26,12 +26,12 @@ values
    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'vendor-b@test.local');
 
-insert into public.vendors (id, name)
+insert into qkit.vendors (id, name)
 values
   ('00000000-0000-0000-0000-00000000000a', 'Vendor A'),
   ('00000000-0000-0000-0000-00000000000b', 'Vendor B');
 
-insert into public.booths (id, vendor_id, name, is_active)
+insert into qkit.booths (id, vendor_id, name, is_active)
 values
   ('00000000-0000-0000-0000-0000000b0001',
    '00000000-0000-0000-0000-00000000000a', 'A Booth', false),
@@ -42,13 +42,13 @@ values
 -- directly readable by anon; as of 0029 anon's direct booths SELECT is
 -- revoked, so this fixture now exists only as an active-but-otherwise-unread
 -- booth (kept for column stability / minimal diff — not asserted on directly).
-insert into public.booths (id, vendor_id, name, is_active, payment)
+insert into qkit.booths (id, vendor_id, name, is_active, payment)
 values
   ('00000000-0000-0000-0000-0000000b0003',
    '00000000-0000-0000-0000-00000000000a', 'A Active',
    true, '{"kind":"paynow","payee_name":"A","uen":"53312345A"}'::jsonb);
 
-insert into public.orders
+insert into qkit.orders
   (id, booth_id, order_number, customer_name, items, total_cents)
 values
   ('00000000-0000-0000-0000-00000000d001',
@@ -57,7 +57,7 @@ values
    '00000000-0000-0000-0000-0000000b0002', 'B-001', 'Cust', '[]'::jsonb, 500);
 
 -- Customer reviews tied to each booth.
-insert into public.feedback (id, source, booth_id, rating)
+insert into qkit.feedback (id, source, booth_id, rating)
 values
   ('00000000-0000-0000-0000-0000000f0001', 'customer',
    '00000000-0000-0000-0000-0000000b0001', 5),
@@ -65,7 +65,7 @@ values
    '00000000-0000-0000-0000-0000000b0002', 4);
 
 -- Upgrade requests, one per vendor.
-insert into public.purchase_requests (id, vendor_id, kind)
+insert into qkit.purchase_requests (id, vendor_id, kind)
 values
   ('00000000-0000-0000-0000-0000000e0001',
    '00000000-0000-0000-0000-00000000000a', 'event'),
@@ -73,7 +73,7 @@ values
    '00000000-0000-0000-0000-00000000000b', 'monthly');
 
 -- Help requests, one per vendor.
-insert into public.support_messages (id, vendor_id, category, body)
+insert into qkit.support_messages (id, vendor_id, category, body)
 values
   ('00000000-0000-0000-0000-0000000f0001',
    '00000000-0000-0000-0000-00000000000a', 'payment', 'PayNow pending'),
@@ -81,7 +81,7 @@ values
    '00000000-0000-0000-0000-00000000000b', 'pass', 'Pass not showing');
 
 -- Licenses, one per vendor (unlabelled, currently active).
-insert into public.licenses (id, vendor_id, valid_from, expires_at)
+insert into qkit.licenses (id, vendor_id, valid_from, expires_at)
 values
   ('00000000-0000-0000-0000-0000000c0001',
    '00000000-0000-0000-0000-00000000000a', now() - interval '1 day',
@@ -101,18 +101,18 @@ values
    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'vendor-c@test.local');
 
-insert into public.vendors (id, name)
+insert into qkit.vendors (id, name)
 values ('00000000-0000-0000-0000-00000000000c', 'Vendor C');
 
 -- Vendor C also holds a FUTURE-dated pass (starts tomorrow) — used to prove the
 -- entitlement predicate honours valid_from (0038): it must NOT count yet.
-insert into public.licenses (id, vendor_id, valid_from, expires_at)
+insert into qkit.licenses (id, vendor_id, valid_from, expires_at)
 values (
   '00000000-0000-0000-0000-0000000c0003',
   '00000000-0000-0000-0000-00000000000c',
   now() + interval '1 day', now() + interval '2 day');
 
-insert into public.booths (id, vendor_id, name, is_active, short_code, menu_items)
+insert into qkit.booths (id, vendor_id, name, is_active, short_code, menu_items)
 values (
   '00000000-0000-0000-0000-0000000b0004',
   '00000000-0000-0000-0000-00000000000c',
@@ -128,26 +128,26 @@ values (
 );
 
 -- ── RLS is actually enabled on every protected table ─────────────────────────
-select ok((select relrowsecurity from pg_class where oid = 'public.vendors'::regclass), 'RLS on vendors');
-select ok((select relrowsecurity from pg_class where oid = 'public.booths'::regclass), 'RLS on booths');
-select ok((select relrowsecurity from pg_class where oid = 'public.orders'::regclass), 'RLS on orders');
-select ok((select relrowsecurity from pg_class where oid = 'public.feedback'::regclass), 'RLS on feedback');
-select ok((select relrowsecurity from pg_class where oid = 'public.purchase_requests'::regclass), 'RLS on purchase_requests');
-select ok((select relrowsecurity from pg_class where oid = 'public.support_messages'::regclass), 'RLS on support_messages');
-select ok((select relrowsecurity from pg_class where oid = 'public.licenses'::regclass), 'RLS on licenses');
+select ok((select relrowsecurity from pg_class where oid = 'qkit.vendors'::regclass), 'RLS on vendors');
+select ok((select relrowsecurity from pg_class where oid = 'qkit.booths'::regclass), 'RLS on booths');
+select ok((select relrowsecurity from pg_class where oid = 'qkit.orders'::regclass), 'RLS on orders');
+select ok((select relrowsecurity from pg_class where oid = 'qkit.feedback'::regclass), 'RLS on feedback');
+select ok((select relrowsecurity from pg_class where oid = 'qkit.purchase_requests'::regclass), 'RLS on purchase_requests');
+select ok((select relrowsecurity from pg_class where oid = 'qkit.support_messages'::regclass), 'RLS on support_messages');
+select ok((select relrowsecurity from pg_class where oid = 'qkit.licenses'::regclass), 'RLS on licenses');
 
 -- ── Shared stock-quantity rule (0034 / T4 + R4) ──────────────────────────────
 -- order_item_quantities is the single source the gate and the counter both use:
 -- pool per menu item, clamp each line to >= 0, drop items that net to 0.
 select is(
-  (select qty from public.order_item_quantities(
+  (select qty from qkit.order_item_quantities(
      '[{"menuItemId":"x","quantity":2},
        {"menuItemId":"x","quantity":-5},
        {"menuItemId":"x","quantity":1}]'::jsonb)
    where menu_item_id = 'x'),
   3, 'order_item_quantities pools and clamps per line (2 + 0 + 1 = 3)');
 select is_empty(
-  $$ select 1 from public.order_item_quantities(
+  $$ select 1 from qkit.order_item_quantities(
        '[{"menuItemId":"y","quantity":0},
          {"menuItemId":"y","quantity":-3}]'::jsonb) $$,
   'order_item_quantities drops an item whose lines net to 0');
@@ -155,45 +155,45 @@ select is_empty(
 -- ── Shared entitlement predicate honours valid_from (0038 / T25) ─────────────
 -- A holds an active license (valid_from past, expires future) → entitled.
 select ok(
-  public.vendor_entitled('00000000-0000-0000-0000-00000000000a'),
+  qkit.vendor_entitled('00000000-0000-0000-0000-00000000000a'),
   'vendor_entitled true for an active license');
 -- C holds only a FUTURE-dated pass → not entitled yet (the valid_from fix; the
 -- old expires-only predicate would have counted it).
 select ok(
-  NOT public.vendor_entitled('00000000-0000-0000-0000-00000000000c'),
+  NOT qkit.vendor_entitled('00000000-0000-0000-0000-00000000000c'),
   'vendor_entitled false for a future-dated license');
 -- …and the create-cap agrees: C already has a booth and isn't entitled, so it
 -- cannot create another (the old can_create_booth would have allowed it).
 select ok(
-  NOT public.can_create_booth('00000000-0000-0000-0000-00000000000c'),
+  NOT qkit.can_create_booth('00000000-0000-0000-0000-00000000000c'),
   'can_create_booth false for a future-dated pass holder with a booth');
 
 -- ── booth_open (0044): server-side opening-hours gate (SGT, deterministic) ────
 -- p_now is explicit so these don't depend on the wall clock. 05:00Z = 13:00 SGT.
 select ok(
-  public.booth_open(NULL, now()),
+  qkit.booth_open(NULL, now()),
   'booth_open: null hours is always open');
 select ok(
-  public.booth_open('{"mode":"daily","open":"00:00","close":"23:59"}'::jsonb,
+  qkit.booth_open('{"mode":"daily","open":"00:00","close":"23:59"}'::jsonb,
                     '2026-01-01T05:00:00Z'::timestamptz),
   'booth_open: inside a daily window is open (13:00 SGT)');
 select ok(
-  NOT public.booth_open('{"mode":"daily","open":"09:00","close":"17:00"}'::jsonb,
+  NOT qkit.booth_open('{"mode":"daily","open":"09:00","close":"17:00"}'::jsonb,
                         '2026-01-01T00:00:00Z'::timestamptz),
   'booth_open: outside a daily window is closed (08:00 SGT)');
 -- Weekly overnight window (0046): Fri 22:00-02:00, Sat null. 2026-06-12 = Friday.
 -- 15:00Z = Fri 23:00 SGT (evening); 17:00Z = Sat 01:00 SGT (carry from Fri);
 -- 19:00Z = Sat 03:00 SGT (past Fri's close).
 select ok(
-  public.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
+  qkit.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
                     '2026-06-12T15:00:00Z'::timestamptz),
   'booth_open: weekly overnight open in the evening (Fri 23:00)');
 select ok(
-  public.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
+  qkit.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
                     '2026-06-12T17:00:00Z'::timestamptz),
   'booth_open: weekly overnight carries past midnight into a null next day (Sat 01:00)');
 select ok(
-  NOT public.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
+  NOT qkit.booth_open('{"mode":"weekly","days":{"mon":null,"tue":null,"wed":null,"thu":null,"fri":{"open":"22:00","close":"02:00"},"sat":null,"sun":null}}'::jsonb,
                         '2026-06-12T19:00:00Z'::timestamptz),
   'booth_open: weekly overnight closed after the carried close (Sat 03:00)');
 
@@ -209,34 +209,34 @@ select set_config(
 
 -- Booths + orders.
 select isnt_empty(
-  $$ select 1 from public.booths where id = '00000000-0000-0000-0000-0000000b0001' $$,
+  $$ select 1 from qkit.booths where id = '00000000-0000-0000-0000-0000000b0001' $$,
   'A reads its own booth');
 select is_empty(
-  $$ select 1 from public.booths where id = '00000000-0000-0000-0000-0000000b0002' $$,
+  $$ select 1 from qkit.booths where id = '00000000-0000-0000-0000-0000000b0002' $$,
   'A cannot read B booth');
 select isnt_empty(
-  $$ select 1 from public.orders where id = '00000000-0000-0000-0000-00000000d001' $$,
+  $$ select 1 from qkit.orders where id = '00000000-0000-0000-0000-00000000d001' $$,
   'A reads its own order');
 select is_empty(
-  $$ select 1 from public.orders where id = '00000000-0000-0000-0000-00000000d002' $$,
+  $$ select 1 from qkit.orders where id = '00000000-0000-0000-0000-00000000d002' $$,
   'A cannot read B order');
 -- A data-modifying CTE must attach to the TOP-LEVEL statement, so the WITH
 -- leads the `select is(...)` (it can't sit inside a scalar subquery).
 with upd as (
-  update public.orders set status = 'ready'
+  update qkit.orders set status = 'ready'
   where id = '00000000-0000-0000-0000-00000000d002' returning 1)
 select is((select count(*)::int from upd), 0, 'A cannot update B order');
 
 -- Payment confirmation rides the same orders update policy: A confirms its own
 -- order's payment, but never B's.
 with upd as (
-  update public.orders set payment_status = 'confirmed', paid_at = now()
+  update qkit.orders set payment_status = 'confirmed', paid_at = now()
   where id = '00000000-0000-0000-0000-00000000d001' returning 1)
 select is(
   (select count(*)::int from upd),
   1, 'A can confirm payment on its own order');
 with upd as (
-  update public.orders set payment_status = 'confirmed'
+  update qkit.orders set payment_status = 'confirmed'
   where id = '00000000-0000-0000-0000-00000000d002' returning 1)
 select is(
   (select count(*)::int from upd),
@@ -249,31 +249,31 @@ select is(
 -- throws. pgTAP wraps each throws_like in a savepoint, so the outer txn
 -- survives and later tests still run.
 select throws_like(
-  $$ update public.orders set total_cents = 1
+  $$ update qkit.orders set total_cents = 1
      where id = '00000000-0000-0000-0000-00000000d001' $$,
   '%ORDER_IMMUTABLE_COLUMN%',
   'vendor cannot change total_cents on its own order');
 select throws_like(
-  $$ update public.orders
+  $$ update qkit.orders
        set items = '[{"menuItemId":"x","name":"Forged","quantity":1}]'::jsonb
      where id = '00000000-0000-0000-0000-00000000d001' $$,
   '%ORDER_IMMUTABLE_COLUMN%',
   'vendor cannot change items on its own order');
 select throws_like(
-  $$ update public.orders set booth_id = '00000000-0000-0000-0000-0000000b0003'
+  $$ update qkit.orders set booth_id = '00000000-0000-0000-0000-0000000b0003'
      where id = '00000000-0000-0000-0000-00000000d001' $$,
   '%ORDER_IMMUTABLE_COLUMN%',
   'vendor cannot re-point booth_id (frozen; WITH CHECK also guards ownership)');
 -- access_token is the status-page secret — frozen too (0045), so it can't be
 -- rotated to hijack another order's status page.
 select throws_like(
-  $$ update public.orders set access_token = gen_random_uuid()
+  $$ update qkit.orders set access_token = gen_random_uuid()
      where id = '00000000-0000-0000-0000-00000000d001' $$,
   '%ORDER_IMMUTABLE_COLUMN%',
   'vendor cannot rotate access_token on its own order (frozen)');
 -- The state machine stays writable: a status advance on the own order succeeds.
 with upd as (
-  update public.orders set status = 'ready', ready_at = now()
+  update qkit.orders set status = 'ready', ready_at = now()
   where id = '00000000-0000-0000-0000-00000000d001' returning 1)
 select is((select count(*)::int from upd), 1,
   'vendor can still advance status on its own order');
@@ -290,11 +290,11 @@ select isnt(
 -- booths_public_read is dropped → A cannot read another vendor's servable booth
 -- (this was the cost_cents + short_code cross-vendor leak).
 select is_empty(
-  $$ select 1 from public.booths where id = '00000000-0000-0000-0000-0000000b0004' $$,
+  $$ select 1 from qkit.booths where id = '00000000-0000-0000-0000-0000000b0004' $$,
   'authenticated non-owner cannot read another vendor''s servable booth');
 -- orders_public_insert is dropped + INSERT revoked → no forged orders.
 select throws_ok(
-  $$ insert into public.orders
+  $$ insert into qkit.orders
        (booth_id, order_number, customer_name, items, total_cents)
      values
        ('00000000-0000-0000-0000-0000000b0004', 'H-001', 'Mallory', '[]'::jsonb, 0) $$,
@@ -302,13 +302,13 @@ select throws_ok(
   'authenticated cannot INSERT into orders directly');
 -- feedback_public_insert is dropped + INSERT revoked → no forged reviews.
 select throws_ok(
-  $$ insert into public.feedback (source, booth_id, rating)
+  $$ insert into qkit.feedback (source, booth_id, rating)
      values ('customer', '00000000-0000-0000-0000-0000000b0004', 1) $$,
   null,
   'authenticated cannot INSERT into feedback directly');
 -- next_order_number EXECUTE revoked from authenticated → cannot burn order_seq.
 select throws_ok(
-  $$ select public.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
+  $$ select qkit.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
   null,
   'authenticated cannot EXECUTE next_order_number');
 
@@ -317,19 +317,19 @@ select throws_ok(
 -- column revoke a vendor could set it directly. UPDATE(plan) is now revoked from
 -- authenticated (only the service-role admin action writes it).
 select throws_ok(
-  $$ update public.vendors set plan = 'pro'
+  $$ update qkit.vendors set plan = 'pro'
      where id = '00000000-0000-0000-0000-00000000000a' $$,
   null,
   'authenticated vendor cannot self-escalate plan to pro');
 -- A legitimate self-edit (name) still works — the revoke is column-scoped.
 select lives_ok(
-  $$ update public.vendors set name = 'Vendor A2'
+  $$ update qkit.vendors set name = 'Vendor A2'
      where id = '00000000-0000-0000-0000-00000000000a' $$,
   'vendor can still update its own name');
 -- WITH CHECK now blocks re-pointing an owned booth to another vendor (the USING
 -- filter passes since A owns it; the result row would belong to B).
 select throws_ok(
-  $$ update public.booths set vendor_id = '00000000-0000-0000-0000-00000000000b'
+  $$ update qkit.booths set vendor_id = '00000000-0000-0000-0000-00000000000b'
      where id = '00000000-0000-0000-0000-0000000b0001' $$,
   null,
   'vendor cannot re-point its own booth to another vendor (WITH CHECK)');
@@ -348,49 +348,49 @@ select isnt(
 
 -- Customer feedback: A sees only its own booths' reviews.
 select isnt_empty(
-  $$ select 1 from public.feedback where booth_id = '00000000-0000-0000-0000-0000000b0001' $$,
+  $$ select 1 from qkit.feedback where booth_id = '00000000-0000-0000-0000-0000000b0001' $$,
   'A reads its own booth feedback');
 select is_empty(
-  $$ select 1 from public.feedback where booth_id = '00000000-0000-0000-0000-0000000b0002' $$,
+  $$ select 1 from qkit.feedback where booth_id = '00000000-0000-0000-0000-0000000b0002' $$,
   'A cannot read B booth feedback');
 
 -- Upgrade requests: A sees only its own, and cannot file one as B.
 select isnt_empty(
-  $$ select 1 from public.purchase_requests where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
+  $$ select 1 from qkit.purchase_requests where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
   'A reads its own upgrade request');
 select is_empty(
-  $$ select 1 from public.purchase_requests where vendor_id = '00000000-0000-0000-0000-00000000000b' $$,
+  $$ select 1 from qkit.purchase_requests where vendor_id = '00000000-0000-0000-0000-00000000000b' $$,
   'A cannot read B upgrade request');
 select throws_ok(
-  $$ insert into public.purchase_requests (vendor_id, kind)
+  $$ insert into qkit.purchase_requests (vendor_id, kind)
      values ('00000000-0000-0000-0000-00000000000b', 'event') $$,
   null,
   'A cannot file an upgrade request as B');
 
 -- Help requests: A sees only its own, and cannot file one as B.
 select isnt_empty(
-  $$ select 1 from public.support_messages where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
+  $$ select 1 from qkit.support_messages where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
   'A reads its own help request');
 select is_empty(
-  $$ select 1 from public.support_messages where vendor_id = '00000000-0000-0000-0000-00000000000b' $$,
+  $$ select 1 from qkit.support_messages where vendor_id = '00000000-0000-0000-0000-00000000000b' $$,
   'A cannot read B help request');
 select throws_ok(
-  $$ insert into public.support_messages (vendor_id, category, body)
+  $$ insert into qkit.support_messages (vendor_id, category, body)
      values ('00000000-0000-0000-0000-00000000000b', 'other', 'x') $$,
   null,
   'A cannot file a help request as B');
 
 -- set_license_label: only the owner's label changes.
-select set_license_label('00000000-0000-0000-0000-0000000c0001', 'Event A');
+select qkit.set_license_label('00000000-0000-0000-0000-0000000c0001', 'Event A');
 select is(
-  (select label from public.licenses where id = '00000000-0000-0000-0000-0000000c0001'),
+  (select label from qkit.licenses where id = '00000000-0000-0000-0000-0000000c0001'),
   'Event A', 'A can label its own license');
 -- A attempts to label B's license — the function's ownership filter no-ops it.
-select set_license_label('00000000-0000-0000-0000-0000000c0002', 'Hacked');
+select qkit.set_license_label('00000000-0000-0000-0000-0000000c0002', 'Hacked');
 
 reset role; -- back to the superuser test role to verify B's row is untouched
 select is(
-  (select label from public.licenses where id = '00000000-0000-0000-0000-0000000c0002'),
+  (select label from qkit.licenses where id = '00000000-0000-0000-0000-0000000c0002'),
   null, 'B license label is unchanged by A');
 
 -- ── Act as an anonymous customer (anon role, no auth.uid()) ──────────────────
@@ -405,7 +405,7 @@ select set_config(
 -- internals). This also supersedes the pre-hardening "anon reads active booth
 -- payment config" direct-select test, which the 0029 REVOKE now makes throw.
 select throws_ok(
-  $$ select 1 from public.booths limit 1 $$,
+  $$ select 1 from qkit.booths limit 1 $$,
   null,
   'anon cannot SELECT booths directly');
 
@@ -413,7 +413,7 @@ select throws_ok(
 -- owning vendor can. anon has NO grant on orders (0041; customer flows go through
 -- the service client / RPCs), so a direct update is denied outright.
 select throws_ok(
-  $$ update public.orders set payment_status = 'confirmed'
+  $$ update qkit.orders set payment_status = 'confirmed'
      where id = '00000000-0000-0000-0000-00000000d001' $$,
   null,
   'anon cannot confirm payment on any order');
@@ -424,14 +424,14 @@ select throws_ok(
 -- the anon INSERT grant restored in 0043). A positive assertion so a future
 -- grant sweep can't silently regress landing analytics again (0041 did).
 select lives_ok(
-  $$ insert into public.events (type) values ('landing_cta') $$,
+  $$ insert into qkit.events (type) values ('landing_cta') $$,
   'anon can INSERT an analytics event');
 
 -- ── Order-path write path (anon) — migrations 0027–0031 ─────────────────────
 
 -- Direct INSERT into orders is closed (0030); place_order is the only path.
 select throws_ok(
-  $$ insert into public.orders
+  $$ insert into qkit.orders
        (booth_id, order_number, customer_name, items, total_cents)
      values
        ('00000000-0000-0000-0000-0000000b0004', 'X-999', 'Eve', '[]'::jsonb, 0) $$,
@@ -441,7 +441,7 @@ select throws_ok(
 -- next_order_number is superseded by place_order's own numbering; EXECUTE
 -- was revoked from anon in 0030.
 select throws_ok(
-  $$ select public.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
+  $$ select qkit.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
   null,
   'anon cannot EXECUTE next_order_number');
 
@@ -449,16 +449,16 @@ select throws_ok(
 select ok(
   (select bool_and(not (mi ? 'cost_cents'))
    from jsonb_array_elements(
-     public.get_booth_for_order('rlstestcode1') -> 'menu_items'
+     qkit.get_booth_for_order('rlstestcode1') -> 'menu_items'
    ) as mi),
   'get_booth_for_order strips cost_cents from every menu item');
 select ok(
-  not (public.get_booth_for_order('rlstestcode1') ? 'short_code'),
+  not (qkit.get_booth_for_order('rlstestcode1') ? 'short_code'),
   'get_booth_for_order never exposes short_code');
 
 -- place_order: happy path succeeds and inserts exactly one row.
 select lives_ok(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Ada',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
        '11111111-1111-1111-1111-111111111111'::uuid) $$,
@@ -474,14 +474,14 @@ select lives_ok(
 -- submit_feedback test below.
 reset role;
 select is(
-  (select count(*)::int from public.orders
+  (select count(*)::int from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '11111111-1111-1111-1111-111111111111'),
   1, 'place_order inserted exactly one row');
 -- The order carries an unguessable access_token (0044) — what the status page +
 -- polling reads now authorize on, closing the sequential-order-number leak.
 select isnt(
-  (select access_token::text from public.orders
+  (select access_token::text from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '11111111-1111-1111-1111-111111111111'),
   null, 'place_order minted a per-order access_token');
@@ -489,30 +489,30 @@ select isnt(
 -- Replay with the SAME idempotency key must return the SAME order_number and
 -- must not insert a second row.
 select is(
-  (select public.place_order(
+  (select qkit.place_order(
      'rlstestcode1', 'Ada',
      '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
      '11111111-1111-1111-1111-111111111111'::uuid) ->> 'order_number'),
-  (select order_number from public.orders
+  (select order_number from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '11111111-1111-1111-1111-111111111111'),
   'place_order replay returns the same order_number');
 select is(
-  (select count(*)::int from public.orders
+  (select count(*)::int from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '11111111-1111-1111-1111-111111111111'),
   1, 'place_order replay does not insert a second row');
 
 -- Unknown / rotated-away short_code.
 select throws_like(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'no-such-code', 'Eve', '[]'::jsonb, gen_random_uuid()) $$,
   '%ORDER_EXPIRED%',
   'place_order raises ORDER_EXPIRED for an unknown code');
 
 -- Over-cap single line: cap1 has stock 2, 1 already sold above (remaining 1).
 select throws_like(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Bob',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":5}]'::jsonb,
        gen_random_uuid()) $$,
@@ -523,7 +523,7 @@ select throws_like(
 -- the remaining cap (1 each) but SUMMING over it (2 > 1) — the stock gate must
 -- aggregate lines by menu item, not check each line in isolation.
 select throws_like(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Cara',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1},
          {"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
@@ -535,7 +535,7 @@ select throws_like(
 -- oversell — the aggregate clamps each line to >= 0 before comparing to the
 -- remaining cap (qty -10 clamps to 0, so the sum is 5, not -5).
 select throws_like(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Dev',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":-10},
          {"menuItemId":"cap1","name":"Capped Bun","quantity":5}]'::jsonb,
@@ -548,25 +548,25 @@ select throws_like(
 -- no-cost item). Order free2 with a FORGED item name; the persisted item must
 -- carry the menu's name and no cost_cents key.
 select lives_ok(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Gil',
        '[{"menuItemId":"free2","name":"FORGED","price_cents":999,"quantity":1}]'::jsonb,
        '22222222-2222-2222-2222-222222222222'::uuid) $$,
   'place_order accepts a no-cost item');
 select is(
-  (select items->0->>'name' from public.orders
+  (select items->0->>'name' from qkit.orders
    where idempotency_key = '22222222-2222-2222-2222-222222222222'),
   'No-Cost Snack',
   'place_order re-derives the item name from the stored menu (V2)');
 select ok(
-  (select not (items->0 ? 'cost_cents') from public.orders
+  (select not (items->0 ? 'cost_cents') from qkit.orders
    where idempotency_key = '22222222-2222-2222-2222-222222222222'),
   'place_order omits cost_cents for a no-cost item (T2)');
 
 -- V6: a cart whose only line is quantity 0 prices to nothing → rejected (would
 -- otherwise burn an order number on a real $0 order).
 select throws_like(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Hana',
        '[{"menuItemId":"free2","name":"No-Cost Snack","quantity":0}]'::jsonb,
        gen_random_uuid()) $$,
@@ -576,7 +576,7 @@ select throws_like(
 -- V3: an option not present in the item's option groups is rejected (free2 has
 -- no option groups, so any option is unknown).
 select throws_like(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Ivy',
        '[{"menuItemId":"free2","name":"No-Cost Snack","quantity":1,
           "options":[{"group":"Ghost","choice":"None"}]}]'::jsonb,
@@ -593,12 +593,12 @@ select set_config(
   json_build_object('role', 'anon')::text,
   true);
 select lives_ok(
-  $$ select public.submit_feedback('customer',
+  $$ select qkit.submit_feedback('customer',
        '00000000-0000-0000-0000-0000000b0004'::uuid, null, 5, null, 'Great!') $$,
   'submit_feedback inserts an anonymous customer review');
 reset role;
 select is(
-  (select count(*)::int from public.feedback
+  (select count(*)::int from qkit.feedback
    where booth_id = '00000000-0000-0000-0000-0000000b0004' and message = 'Great!'),
   1, 'submit_feedback wrote exactly one feedback row');
 
@@ -607,7 +607,7 @@ select is(
 -- test role — anon has no update policy on booths — then re-entered as anon to
 -- call place_order, matching the customer-facing path under test.
 reset role;
-update public.booths set is_active = false
+update qkit.booths set is_active = false
 where id = '00000000-0000-0000-0000-0000000b0004';
 set local role anon;
 select set_config(
@@ -615,7 +615,7 @@ select set_config(
   json_build_object('role', 'anon')::text,
   true);
 select throws_like(
-  $$ select public.place_order(
+  $$ select qkit.place_order(
        'rlstestcode1', 'Fay',
        '[{"menuItemId":"free1","name":"Unlimited Tea","quantity":1}]'::jsonb,
        gen_random_uuid()) $$,

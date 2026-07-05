@@ -17,11 +17,11 @@
 -- ── Single source of truth for per-item order quantities ─────────────────────
 -- Pool by menu item, clamp each line to >= 0, drop items that net to 0. Pure
 -- (no table access) so it's safe to call from any SECURITY DEFINER context.
-CREATE OR REPLACE FUNCTION public.order_item_quantities(p_items jsonb)
+CREATE OR REPLACE FUNCTION qkit.order_item_quantities(p_items jsonb)
 RETURNS TABLE (menu_item_id text, qty int)
 LANGUAGE sql
 IMMUTABLE
-SET search_path = public
+SET search_path = qkit
 AS $$
   SELECT it->>'menuItemId', sum(GREATEST((it->>'quantity')::int, 0))::int
   FROM jsonb_array_elements(COALESCE(p_items, '[]'::jsonb)) AS it
@@ -33,18 +33,18 @@ $$;
 -- same quantities the gate checks. (Called on NEW.items, which place_order has
 -- already sanitized to positive lines, so the clamp is a no-op here but keeps
 -- the rule identical across gate and counter.)
-CREATE OR REPLACE FUNCTION public.apply_order_stock_delta(
+CREATE OR REPLACE FUNCTION qkit.apply_order_stock_delta(
   p_booth_id uuid, p_items jsonb, p_sign int
 )
 RETURNS void
 LANGUAGE sql
-SET search_path = public
+SET search_path = qkit
 AS $$
-  INSERT INTO public.booth_item_sold (booth_id, menu_item_id, qty)
+  INSERT INTO qkit.booth_item_sold (booth_id, menu_item_id, qty)
   SELECT p_booth_id, q.menu_item_id, p_sign * q.qty
-  FROM public.order_item_quantities(p_items) AS q
+  FROM qkit.order_item_quantities(p_items) AS q
   ON CONFLICT (booth_id, menu_item_id)
-  DO UPDATE SET qty = GREATEST(public.booth_item_sold.qty + EXCLUDED.qty, 0);
+  DO UPDATE SET qty = GREATEST(qkit.booth_item_sold.qty + EXCLUDED.qty, 0);
 $$;
 
 -- ── place_order: gate stock AFTER the serializing lock, on the priced items ───
@@ -52,7 +52,7 @@ $$;
 -- after `UPDATE booths SET order_seq` (which row-locks the booth) and checks the
 -- persisted v_priced quantities via order_item_quantities — the same data the
 -- AFTER-INSERT counter bump uses.
-CREATE OR REPLACE FUNCTION public.place_order(
+CREATE OR REPLACE FUNCTION qkit.place_order(
   p_short_code      text,
   p_customer_name   text,
   p_items           jsonb,
@@ -61,10 +61,10 @@ CREATE OR REPLACE FUNCTION public.place_order(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = qkit
 AS $$
 DECLARE
-  b public.booths;
+  b qkit.booths;
   v_existing text;
   v_seq int;
   v_number text;
@@ -89,7 +89,7 @@ BEGIN
     RAISE EXCEPTION 'ORDER_INVALID: name too long';
   END IF;
 
-  SELECT * INTO b FROM public.booths WHERE short_code = p_short_code;
+  SELECT * INTO b FROM qkit.booths WHERE short_code = p_short_code;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ORDER_EXPIRED: unknown code';
   END IF;
@@ -98,7 +98,7 @@ BEGIN
   -- before the flood guard so a legit client retry never trips the limiter.
   IF p_idempotency_key IS NOT NULL THEN
     SELECT order_number INTO v_existing
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
     IF FOUND THEN
       RETURN jsonb_build_object('order_number', v_existing, 'booth_id', b.id);
@@ -107,11 +107,11 @@ BEGIN
 
   -- Booth-scoped flood guard INSIDE the RPC (the per-IP guard lives in the
   -- server action, which a direct RPC call skips).
-  IF NOT public.check_rate_limit('order:booth:' || b.id::text, 120, 60) THEN
+  IF NOT qkit.check_rate_limit('order:booth:' || b.id::text, 120, 60) THEN
     RAISE EXCEPTION 'ORDER_RATE_LIMITED: booth flood';
   END IF;
 
-  IF NOT public.booth_servable(b.id) THEN
+  IF NOT qkit.booth_servable(b.id) THEN
     RAISE EXCEPTION 'ORDER_UNSERVABLE: booth not serving';
   END IF;
 
@@ -188,7 +188,7 @@ BEGIN
   -- Acquire the per-booth lock: this row-locks the booth, serializing every
   -- concurrent place_order on it. The stock gate below therefore sees all sales
   -- committed by orders that won the lock ahead of us.
-  UPDATE public.booths SET order_seq = order_seq + 1
+  UPDATE qkit.booths SET order_seq = order_seq + 1
   WHERE id = b.id RETURNING order_seq INTO v_seq;
   v_number := lpad(v_seq::text, 4, '0');
 
@@ -196,15 +196,15 @@ BEGIN
   -- checked against the freshly-read remaining. Gates the SAME quantities the
   -- AFTER-INSERT counter bump will apply (both via order_item_quantities). A
   -- RAISE here rolls back the whole RPC, including the order_seq bump.
-  v_remaining := public.booth_remaining_stock(b.id);
+  v_remaining := qkit.booth_remaining_stock(b.id);
   FOR r IN SELECT menu_item_id AS id, qty AS want
-           FROM public.order_item_quantities(v_priced) LOOP
+           FROM qkit.order_item_quantities(v_priced) LOOP
     IF v_remaining ? r.id AND r.want > (v_remaining->>r.id)::int THEN
       RAISE EXCEPTION 'ORDER_SOLD_OUT: %', r.id;
     END IF;
   END LOOP;
 
-  INSERT INTO public.orders (
+  INSERT INTO qkit.orders (
     booth_id, order_number, customer_name, items, total_cents,
     status, payment_status, payment_method_kind, idempotency_key
   ) VALUES (
@@ -220,7 +220,7 @@ BEGIN
   -- an acceptable rare gap — matches the project's existing stance on gaps).
   IF NOT FOUND THEN
     SELECT order_number INTO v_number
-    FROM public.orders
+    FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
   END IF;
 

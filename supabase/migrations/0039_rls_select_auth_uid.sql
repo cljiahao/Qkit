@@ -7,127 +7,127 @@
 -- ARGUMENT to a STABLE helper (is_admin / can_create_booth), the wrap goes on the
 -- argument so the whole call becomes a stable one-shot expression.
 --
--- Scope: public-schema policies. The storage.objects booth-image policies keep
+-- Scope: qkit-schema policies. The storage.objects booth-image policies keep
 -- their bare auth.uid() — a vendor evaluates them over a handful of image rows,
 -- so there's no scan to optimize, and they're outside the pgTAP suite's reach.
 
 -- ── vendors ──────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "vendors_select" ON public.vendors;
-CREATE POLICY "vendors_select" ON public.vendors
+DROP POLICY IF EXISTS "vendors_select" ON qkit.vendors;
+CREATE POLICY "vendors_select" ON qkit.vendors
   FOR SELECT USING (
-    (select auth.uid()) = id OR public.is_admin((select auth.uid()))
+    (select auth.uid()) = id OR qkit.is_admin((select auth.uid()))
   );
 
-DROP POLICY IF EXISTS "vendors_self_insert" ON public.vendors;
-CREATE POLICY "vendors_self_insert" ON public.vendors
+DROP POLICY IF EXISTS "vendors_self_insert" ON qkit.vendors;
+CREATE POLICY "vendors_self_insert" ON qkit.vendors
   FOR INSERT WITH CHECK ((select auth.uid()) = id);
 
-DROP POLICY IF EXISTS "vendors_self_update" ON public.vendors;
-CREATE POLICY "vendors_self_update" ON public.vendors
+DROP POLICY IF EXISTS "vendors_self_update" ON qkit.vendors;
+CREATE POLICY "vendors_self_update" ON qkit.vendors
   FOR UPDATE
   USING ((select auth.uid()) = id)
   WITH CHECK ((select auth.uid()) = id);
 
 -- ── booths ───────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "booths_vendor_select" ON public.booths;
-CREATE POLICY "booths_vendor_select" ON public.booths
+DROP POLICY IF EXISTS "booths_vendor_select" ON qkit.booths;
+CREATE POLICY "booths_vendor_select" ON qkit.booths
   FOR SELECT USING (vendor_id = (select auth.uid()));
 
-DROP POLICY IF EXISTS "booths_vendor_update" ON public.booths;
-CREATE POLICY "booths_vendor_update" ON public.booths
+DROP POLICY IF EXISTS "booths_vendor_update" ON qkit.booths;
+CREATE POLICY "booths_vendor_update" ON qkit.booths
   FOR UPDATE
   USING (vendor_id = (select auth.uid()))
   WITH CHECK (vendor_id = (select auth.uid()));
 
-DROP POLICY IF EXISTS "booths_vendor_delete" ON public.booths;
-CREATE POLICY "booths_vendor_delete" ON public.booths
+DROP POLICY IF EXISTS "booths_vendor_delete" ON qkit.booths;
+CREATE POLICY "booths_vendor_delete" ON qkit.booths
   FOR DELETE USING (vendor_id = (select auth.uid()));
 
-DROP POLICY IF EXISTS "booths_vendor_insert" ON public.booths;
-CREATE POLICY "booths_vendor_insert" ON public.booths
+DROP POLICY IF EXISTS "booths_vendor_insert" ON qkit.booths;
+CREATE POLICY "booths_vendor_insert" ON qkit.booths
   FOR INSERT WITH CHECK (
     vendor_id = (select auth.uid())
-    AND public.can_create_booth((select auth.uid()))
+    AND qkit.can_create_booth((select auth.uid()))
   );
 
-DROP POLICY IF EXISTS "booths_admin_select" ON public.booths;
-CREATE POLICY "booths_admin_select" ON public.booths
-  FOR SELECT USING (public.is_admin((select auth.uid())));
+DROP POLICY IF EXISTS "booths_admin_select" ON qkit.booths;
+CREATE POLICY "booths_admin_select" ON qkit.booths
+  FOR SELECT USING (qkit.is_admin((select auth.uid())));
 
 -- ── orders ───────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "orders_vendor_select" ON public.orders;
-CREATE POLICY "orders_vendor_select" ON public.orders
+DROP POLICY IF EXISTS "orders_vendor_select" ON qkit.orders;
+CREATE POLICY "orders_vendor_select" ON qkit.orders
   FOR SELECT USING (
-    booth_id IN (SELECT id FROM public.booths WHERE vendor_id = (select auth.uid()))
+    booth_id IN (SELECT id FROM qkit.booths WHERE vendor_id = (select auth.uid()))
   );
 
-DROP POLICY IF EXISTS "orders_vendor_update" ON public.orders;
-CREATE POLICY "orders_vendor_update" ON public.orders
+DROP POLICY IF EXISTS "orders_vendor_update" ON qkit.orders;
+CREATE POLICY "orders_vendor_update" ON qkit.orders
   FOR UPDATE
   USING (
-    booth_id IN (SELECT id FROM public.booths WHERE vendor_id = (select auth.uid()))
+    booth_id IN (SELECT id FROM qkit.booths WHERE vendor_id = (select auth.uid()))
   )
   WITH CHECK (
-    booth_id IN (SELECT id FROM public.booths WHERE vendor_id = (select auth.uid()))
+    booth_id IN (SELECT id FROM qkit.booths WHERE vendor_id = (select auth.uid()))
   );
 
-DROP POLICY IF EXISTS "orders_admin_select" ON public.orders;
-CREATE POLICY "orders_admin_select" ON public.orders
-  FOR SELECT USING (public.is_admin((select auth.uid())));
+DROP POLICY IF EXISTS "orders_admin_select" ON qkit.orders;
+CREATE POLICY "orders_admin_select" ON qkit.orders
+  FOR SELECT USING (qkit.is_admin((select auth.uid())));
 
 -- ── feedback ─────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "feedback_admin_select" ON public.feedback;
-CREATE POLICY "feedback_admin_select" ON public.feedback
-  FOR SELECT USING (public.is_admin((select auth.uid())));
+DROP POLICY IF EXISTS "feedback_admin_select" ON qkit.feedback;
+CREATE POLICY "feedback_admin_select" ON qkit.feedback
+  FOR SELECT USING (qkit.is_admin((select auth.uid())));
 
-DROP POLICY IF EXISTS "feedback_vendor_read_own" ON public.feedback;
-CREATE POLICY "feedback_vendor_read_own" ON public.feedback
+DROP POLICY IF EXISTS "feedback_vendor_read_own" ON qkit.feedback;
+CREATE POLICY "feedback_vendor_read_own" ON qkit.feedback
   FOR SELECT USING (
     source = 'customer'
-    AND booth_id IN (SELECT id FROM public.booths WHERE vendor_id = (select auth.uid()))
+    AND booth_id IN (SELECT id FROM qkit.booths WHERE vendor_id = (select auth.uid()))
   );
 
 -- ── licenses ─────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "licenses_vendor_select" ON public.licenses;
-CREATE POLICY "licenses_vendor_select" ON public.licenses
+DROP POLICY IF EXISTS "licenses_vendor_select" ON qkit.licenses;
+CREATE POLICY "licenses_vendor_select" ON qkit.licenses
   FOR SELECT USING (
-    vendor_id = (select auth.uid()) OR public.is_admin((select auth.uid()))
+    vendor_id = (select auth.uid()) OR qkit.is_admin((select auth.uid()))
   );
 
 -- ── admins / admin_audit ─────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "admins_admin_select" ON public.admins;
-CREATE POLICY "admins_admin_select" ON public.admins
-  FOR SELECT USING (public.is_admin((select auth.uid())));
+DROP POLICY IF EXISTS "admins_admin_select" ON qkit.admins;
+CREATE POLICY "admins_admin_select" ON qkit.admins
+  FOR SELECT USING (qkit.is_admin((select auth.uid())));
 
-DROP POLICY IF EXISTS "admin_audit_admin_select" ON public.admin_audit;
-CREATE POLICY "admin_audit_admin_select" ON public.admin_audit
-  FOR SELECT USING (public.is_admin((select auth.uid())));
+DROP POLICY IF EXISTS "admin_audit_admin_select" ON qkit.admin_audit;
+CREATE POLICY "admin_audit_admin_select" ON qkit.admin_audit
+  FOR SELECT USING (qkit.is_admin((select auth.uid())));
 
 -- ── payments ─────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "payments_select" ON public.payments;
-CREATE POLICY "payments_select" ON public.payments
+DROP POLICY IF EXISTS "payments_select" ON qkit.payments;
+CREATE POLICY "payments_select" ON qkit.payments
   FOR SELECT USING (
-    vendor_id = (select auth.uid()) OR public.is_admin((select auth.uid()))
+    vendor_id = (select auth.uid()) OR qkit.is_admin((select auth.uid()))
   );
 
 -- ── events ───────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "events_admin_select" ON public.events;
-CREATE POLICY "events_admin_select" ON public.events
-  FOR SELECT USING (public.is_admin((select auth.uid())));
+DROP POLICY IF EXISTS "events_admin_select" ON qkit.events;
+CREATE POLICY "events_admin_select" ON qkit.events
+  FOR SELECT USING (qkit.is_admin((select auth.uid())));
 
 -- ── purchase_requests ────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "purchase_requests_vendor_insert" ON public.purchase_requests;
-CREATE POLICY "purchase_requests_vendor_insert" ON public.purchase_requests
+DROP POLICY IF EXISTS "purchase_requests_vendor_insert" ON qkit.purchase_requests;
+CREATE POLICY "purchase_requests_vendor_insert" ON qkit.purchase_requests
   FOR INSERT WITH CHECK (vendor_id = (select auth.uid()));
 
-DROP POLICY IF EXISTS "purchase_requests_select" ON public.purchase_requests;
-CREATE POLICY "purchase_requests_select" ON public.purchase_requests
+DROP POLICY IF EXISTS "purchase_requests_select" ON qkit.purchase_requests;
+CREATE POLICY "purchase_requests_select" ON qkit.purchase_requests
   FOR SELECT USING (
-    vendor_id = (select auth.uid()) OR public.is_admin((select auth.uid()))
+    vendor_id = (select auth.uid()) OR qkit.is_admin((select auth.uid()))
   );
 
-DROP POLICY IF EXISTS "purchase_requests_admin_update" ON public.purchase_requests;
-CREATE POLICY "purchase_requests_admin_update" ON public.purchase_requests
+DROP POLICY IF EXISTS "purchase_requests_admin_update" ON qkit.purchase_requests;
+CREATE POLICY "purchase_requests_admin_update" ON qkit.purchase_requests
   FOR UPDATE
-  USING (public.is_admin((select auth.uid())))
-  WITH CHECK (public.is_admin((select auth.uid())));
+  USING (qkit.is_admin((select auth.uid())))
+  WITH CHECK (qkit.is_admin((select auth.uid())));

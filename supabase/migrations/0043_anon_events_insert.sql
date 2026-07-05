@@ -12,4 +12,4 @@
 -- permits it — only the base table privilege was missing. anon still cannot
 -- READ events (events_admin_select is admin-only), and the UUID PK
 -- (gen_random_uuid) needs no sequence grant.
-GRANT INSERT ON public.events TO anon;
+GRANT INSERT ON qkit.events TO anon;

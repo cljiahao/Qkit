@@ -78,7 +78,7 @@ export type OrderItem = {
 };
 
 export interface Database {
-  public: {
+  qkit: {
     Tables: {
       vendors: {
         Row: {
@@ -550,12 +550,12 @@ export interface Database {
   };
 }
 
-export type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
-export type Booth = Database["public"]["Tables"]["booths"]["Row"];
-export type Order = Database["public"]["Tables"]["orders"]["Row"];
-export type License = Database["public"]["Tables"]["licenses"]["Row"];
-export type Pricing = Database["public"]["Tables"]["pricing"]["Row"];
-export type Payment = Database["public"]["Tables"]["payments"]["Row"];
-export type Feedback = Database["public"]["Tables"]["feedback"]["Row"];
-export type Admin = Database["public"]["Tables"]["admins"]["Row"];
-export type AdminAudit = Database["public"]["Tables"]["admin_audit"]["Row"];
+export type Vendor = Database["qkit"]["Tables"]["vendors"]["Row"];
+export type Booth = Database["qkit"]["Tables"]["booths"]["Row"];
+export type Order = Database["qkit"]["Tables"]["orders"]["Row"];
+export type License = Database["qkit"]["Tables"]["licenses"]["Row"];
+export type Pricing = Database["qkit"]["Tables"]["pricing"]["Row"];
+export type Payment = Database["qkit"]["Tables"]["payments"]["Row"];
+export type Feedback = Database["qkit"]["Tables"]["feedback"]["Row"];
+export type Admin = Database["qkit"]["Tables"]["admins"]["Row"];
+export type AdminAudit = Database["qkit"]["Tables"]["admin_audit"]["Row"];

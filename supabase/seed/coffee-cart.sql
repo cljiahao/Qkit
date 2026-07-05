@@ -1,7 +1,7 @@
 -- Kopitiam Cart: 3 base drinks under the existing "Test" vendor, each with
 -- single-choice option groups. vendors.id is FK to auth.users.id, so we reuse
 -- the real Test vendor. Run manually (Step 2); never via `db reset`.
-insert into public.booths (id, vendor_id, name, is_active, image_url, short_code, menu_items)
+insert into qkit.booths (id, vendor_id, name, is_active, image_url, short_code, menu_items)
 values (
   'c0ffee01-0000-4000-8000-000000000001',
   '6df824a1-9da2-4608-ad13-2400a9114ec0',
@@ -80,6 +80,6 @@ on conflict (id) do update
 -- Payment seam: give the Kopitiam Cart a PayNow method so the customer pay
 -- panel (and the payment-queue e2e) has something to render. No secrets — a
 -- UEN is public-by-design.
-update public.booths
+update qkit.booths
 set payment = '{"kind":"paynow","payee_name":"Kopitiam Cart","uen":"53312345A"}'::jsonb
 where id = 'c0ffee01-0000-4000-8000-000000000001';
