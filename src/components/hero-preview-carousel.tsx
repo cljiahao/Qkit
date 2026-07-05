@@ -68,12 +68,12 @@ export function HeroPreviewCarousel() {
 
   const drag = useRef<{ startX: number; startLeft: number } | null>(null);
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
     stopTimer();
     const el = trackRef.current;
     if (!el) return;
     drag.current = { startX: e.clientX, startLeft: el.scrollLeft };
-    el.setPointerCapture(e.pointerId);
+    el.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const el = trackRef.current;
