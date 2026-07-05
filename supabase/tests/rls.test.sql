@@ -381,12 +381,12 @@ select throws_ok(
   'A cannot file a help request as B');
 
 -- set_license_label: only the owner's label changes.
-select set_license_label('00000000-0000-0000-0000-0000000c0001', 'Event A');
+select qkit.set_license_label('00000000-0000-0000-0000-0000000c0001', 'Event A');
 select is(
   (select label from qkit.licenses where id = '00000000-0000-0000-0000-0000000c0001'),
   'Event A', 'A can label its own license');
 -- A attempts to label B's license — the function's ownership filter no-ops it.
-select set_license_label('00000000-0000-0000-0000-0000000c0002', 'Hacked');
+select qkit.set_license_label('00000000-0000-0000-0000-0000000c0002', 'Hacked');
 
 reset role; -- back to the superuser test role to verify B's row is untouched
 select is(
