@@ -16,6 +16,12 @@ jobs:
     name: secret scan (gitleaks)
     runs-on: ubuntu-latest
     if: github.event_name != 'schedule'
+    # A job-level block REPLACES the default, so restate contents:read (checkout)
+    # and add pull-requests:read — the v3 action's PR scan calls the PR API and
+    # 403s ("Resource not accessible by integration") without it.
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,6 +54,11 @@ jobs:
   codeql:
     name: CodeQL (javascript-typescript)
     runs-on: ubuntu-latest
+    # Code scanning is free only on PUBLIC repos (or private with paid GitHub
+    # Advanced Security). This repo is private on the free tier, so the SARIF
+    # upload errors "Code scanning is not enabled". Skip on private; the job
+    # self-enables if the repo is ever made public.
+    if: ${{ github.event.repository.private == false }}
     permissions:
       contents: read
       security-events: write

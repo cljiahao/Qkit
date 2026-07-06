@@ -1,60 +1,130 @@
 "use client";
 
-// Hero visual carousel: cross-fades between a priced coffee board and a
-// queue-only ice-cream board so visitors see QKit fits both a booth that
-// charges and one that just runs a queue. Both boards stay mounted and are
-// stacked in a single grid cell, so the taller one sizes the box and the
-// height never jumps. Decorative only (the boards are aria-hidden).
+// Hero visual: a swipeable horizontal carousel of mock "live order" boards so
+// visitors see the real product board (pricing, queue-only, payment, rush).
+// Native scroll-snap handles finger + trackpad; pointer handlers add mouse
+// click-drag; a 10s timer auto-advances but pauses while the visitor interacts.
+// Decorative only (aria-hidden). Reduced-motion: no auto-advance, no smooth.
 
-import { useEffect, useState } from "react";
-import { LandingBoardPreview } from "@/components/landing-board-preview";
-import { LandingOrderPreviewIcecream } from "@/components/landing-order-preview-icecream";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LandingBoard } from "@/components/landing-board";
+import { LANDING_BOARDS } from "@/components/landing-boards";
+import { nearestIndex } from "@/lib/carousel";
 
 const ROTATE_MS = 10_000;
 
-const BOARDS = [
-  { key: "coffee", Board: LandingBoardPreview },
-  { key: "icecream", Board: LandingOrderPreviewIcecream },
-] as const;
-
 export function HeroPreviewCarousel() {
+  const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const timer = useRef<number | null>(null);
+  const reduced = useRef(false);
+
+  const scrollToIndex = useCallback((i: number) => {
+    const el = trackRef.current;
+    if (!el) return;
+    el.scrollTo({
+      left: i * el.clientWidth,
+      behavior: reduced.current ? "auto" : "smooth",
+    });
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timer.current !== null) {
+      window.clearInterval(timer.current);
+      timer.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    if (reduced.current) return;
+    stopTimer();
+    timer.current = window.setInterval(() => {
+      const el = trackRef.current;
+      if (!el) return;
+      const cur = nearestIndex(
+        el.scrollLeft,
+        el.clientWidth,
+        LANDING_BOARDS.length,
+      );
+      scrollToIndex((cur + 1) % LANDING_BOARDS.length);
+    }, ROTATE_MS);
+  }, [scrollToIndex, stopTimer]);
 
   useEffect(() => {
-    // Respect reduced-motion: hold on the first board, no auto-rotation and no
-    // cross-fade. Otherwise swap every ROTATE_MS.
-    const reduce = window.matchMedia(
+    reduced.current = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    if (reduce) return;
+    startTimer();
+    return stopTimer;
+  }, [startTimer, stopTimer]);
 
-    const id = window.setInterval(() => {
-      setActive((i) => (i + 1) % BOARDS.length);
-    }, ROTATE_MS);
-    return () => window.clearInterval(id);
+  const onScroll = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    setActive(
+      nearestIndex(el.scrollLeft, el.clientWidth, LANDING_BOARDS.length),
+    );
   }, []);
+
+  const drag = useRef<{ startX: number; startLeft: number } | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    stopTimer();
+    const el = trackRef.current;
+    if (!el) return;
+    drag.current = { startX: e.clientX, startLeft: el.scrollLeft };
+    el.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const el = trackRef.current;
+    if (!drag.current || !el) return;
+    el.scrollLeft = drag.current.startLeft - (e.clientX - drag.current.startX);
+  };
+  const endDrag = (e: React.PointerEvent) => {
+    const el = trackRef.current;
+    if (drag.current && el) {
+      el.releasePointerCapture?.(e.pointerId);
+      scrollToIndex(
+        nearestIndex(el.scrollLeft, el.clientWidth, LANDING_BOARDS.length),
+      );
+    }
+    drag.current = null;
+    startTimer();
+  };
 
   return (
     <div aria-hidden>
-      <div className="relative grid">
-        {BOARDS.map(({ key, Board }, i) => (
-          <div
-            key={key}
-            className={
-              "[grid-area:1/1] transition-opacity duration-1000 ease-out motion-reduce:transition-none " +
-              (i === active ? "opacity-100" : "pointer-events-none opacity-0")
-            }
-          >
-            <Board />
+      <div
+        ref={trackRef}
+        onScroll={onScroll}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onPointerEnter={stopTimer}
+        onPointerLeave={startTimer}
+        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {LANDING_BOARDS.map((board) => (
+          <div key={board.key} className="w-full shrink-0 snap-center px-0.5">
+            <LandingBoard board={board} />
           </div>
         ))}
       </div>
 
-      {/* Subtle progress dots. */}
       <div className="mt-4 flex items-center justify-center gap-1.5">
-        {BOARDS.map(({ key }, i) => (
-          <span
-            key={key}
+        {LANDING_BOARDS.map((board, i) => (
+          <button
+            key={board.key}
+            type="button"
+            tabIndex={-1}
+            data-dot
+            data-active={i === active}
+            onClick={() => {
+              stopTimer();
+              scrollToIndex(i);
+              startTimer();
+            }}
             className={
               "size-1.5 rounded-full transition-colors duration-500 " +
               (i === active ? "bg-primary" : "bg-border")
