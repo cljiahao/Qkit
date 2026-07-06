@@ -1,6 +1,7 @@
-// Sample data for the 4 landing-hero scenario boards: a plain coffee cart, a
-// queue-only ice cream cart (no prices/payment), a payment-claim flow, and a
-// rush hour with an overdue ticket.
+// Sample data for the 4 landing-hero scenario boards: two that take money (a
+// coffee cart, a payment-claim flow) and two queue-only ice cream carts with
+// topping options and no prices/payment — one calm, one a rush with an overdue
+// + aging ticket.
 
 import type { LandingBoardData } from "./landing-board";
 
@@ -42,14 +43,16 @@ export const LANDING_BOARDS: LandingBoardData[] = [
         n: "0018",
         name: "Mei",
         status: "preparing",
-        lines: [{ q: 1, name: "Single Scoop", opt: "Vanilla" }],
+        lines: [{ q: 1, name: "Single Scoop", opt: "Vanilla · Sprinkles" }],
         action: "Mark Ready",
       },
       {
         n: "0017",
         name: "Sam",
         status: "ready",
-        lines: [{ q: 2, name: "Double Scoop" }],
+        lines: [
+          { q: 2, name: "Double Scoop", opt: "Choc · Peanuts, Choc sauce" },
+        ],
         action: "Mark Picked Up",
       },
     ],
@@ -80,7 +83,7 @@ export const LANDING_BOARDS: LandingBoardData[] = [
   },
   {
     key: "rush",
-    title: "Kopitiam Cart",
+    title: "Ice Cream Cart",
     activeCount: 2,
     tickets: [
       {
@@ -88,8 +91,9 @@ export const LANDING_BOARDS: LandingBoardData[] = [
         name: "Lim",
         status: "preparing",
         age: { label: "12m", tone: "overdue" },
-        lines: [{ q: 2, name: "Milo", opt: "Iced", price: "$4.40" }],
-        total: "$4.40",
+        lines: [
+          { q: 2, name: "Double Scoop", opt: "Choc · Peanuts, Sprinkles" },
+        ],
         action: "Mark Ready",
       },
       {
@@ -97,8 +101,7 @@ export const LANDING_BOARDS: LandingBoardData[] = [
         name: "Aisha",
         status: "preparing",
         age: { label: "7m", tone: "aging" },
-        lines: [{ q: 1, name: "Kopi", price: "$1.40" }],
-        total: "$1.40",
+        lines: [{ q: 1, name: "Single Scoop", opt: "Strawberry · Choc sauce" }],
         action: "Mark Ready",
       },
     ],
