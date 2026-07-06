@@ -9,7 +9,7 @@ import { ImageUploader } from "@/components/image-uploader";
 import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
-import { parseDollarsToCents } from "@/lib/utils";
+import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { OptionGroup } from "@/lib/types";
 
@@ -21,7 +21,7 @@ interface Props {
 }
 
 function centsToDollars(cents?: number): string {
-  return cents == null ? "" : (cents / 100).toFixed(2);
+  return cents == null ? "" : centsToDollarString(cents);
 }
 
 export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
@@ -48,7 +48,8 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
     dollars: string,
   ) {
     const parsed = parseDollarsToCents(dollars);
-    if (!parsed.ok) return; // reject NaN/negative, keep prior value
+    // reject NaN/negative, keep prior value
+    if (!parsed.ok) return;
     update(index, { [field]: parsed.cents });
   }
 

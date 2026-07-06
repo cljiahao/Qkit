@@ -16,7 +16,54 @@ import {
   profileNameSchema,
   displayNameSchema,
   passwordChangeSchema,
+  parseOrderRef,
 } from "./schemas";
+
+const UUID_A = "11111111-1111-1111-1111-111111111111";
+const UUID_B = "22222222-2222-2222-2222-222222222222";
+
+describe("parseOrderRef", () => {
+  it("accepts a valid (boothId, orderNumber, token) triple", () => {
+    const r = parseOrderRef(UUID_A, "0042", UUID_B);
+    expect(r.ok).toBe(true);
+    if (r.ok)
+      expect(r.ref).toEqual({
+        boothId: UUID_A,
+        orderNumber: "0042",
+        token: UUID_B,
+      });
+  });
+
+  it("reports the booth field first when boothId is not a UUID", () => {
+    const r = parseOrderRef("not-a-uuid", "0042", UUID_B);
+    expect(r).toEqual({ ok: false, field: "booth" });
+  });
+
+  it("reports orderNumber when it's empty or too long", () => {
+    expect(parseOrderRef(UUID_A, "", UUID_B)).toEqual({
+      ok: false,
+      field: "orderNumber",
+    });
+    expect(parseOrderRef(UUID_A, "x".repeat(41), UUID_B)).toEqual({
+      ok: false,
+      field: "orderNumber",
+    });
+  });
+
+  it("reports token when it's not a UUID", () => {
+    expect(parseOrderRef(UUID_A, "0042", "nope")).toEqual({
+      ok: false,
+      field: "token",
+    });
+  });
+
+  it("first failure wins (booth before token)", () => {
+    expect(parseOrderRef("bad", "0042", "also-bad")).toEqual({
+      ok: false,
+      field: "booth",
+    });
+  });
+});
 
 describe("loginSchema", () => {
   it("accepts a valid email + 8-char password", () => {

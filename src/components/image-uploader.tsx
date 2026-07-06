@@ -11,7 +11,8 @@ import { resizeToWebp } from "@/lib/image-resize";
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 // Generous source cap — we resize + re-encode to WebP before upload, so big
 // phone photos are fine; this only blocks absurd files.
-const MAX_BYTES = 15 * 1024 * 1024; // 15 MB
+// 15 MB
+const MAX_BYTES = 15 * 1024 * 1024;
 // Longest-side target per use: a wide banner vs a small square product photo.
 const MAX_DIM = { banner: 1600, thumb: 1000 } as const;
 

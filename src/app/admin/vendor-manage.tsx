@@ -29,8 +29,10 @@ export function VendorManage({ vendor }: { vendor: AdminVendorRow }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [note, setNote] = useState("");
-  const [amount, setAmount] = useState(""); // $ collected; blank = free comp
-  const [startDate, setStartDate] = useState(""); // "YYYY-MM-DD"; blank = now
+  // $ collected; blank = free comp
+  const [amount, setAmount] = useState("");
+  // "YYYY-MM-DD"; blank = now
+  const [startDate, setStartDate] = useState("");
   const [days, setDays] = useState("1");
   // Snapshot once (lazy init avoids an impure Date.now() during render).
   const [now] = useState(() => Date.now());

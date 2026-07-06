@@ -35,7 +35,8 @@ interface Props {
   token: string;
   initialStatus: OrderStatus;
   boothName: string;
-  placedAt: string; // ISO created_at, for the "placed N min ago" stamp
+  // ISO created_at, for the "placed N min ago" stamp
+  placedAt: string;
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, string> = {

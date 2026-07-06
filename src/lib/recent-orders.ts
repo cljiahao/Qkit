@@ -13,7 +13,8 @@ export interface RecentOrder {
   // Per-order access token (gates the status page). Optional: entries stored
   // before this existed simply can't deep-link (they'll 404 on the token check).
   token?: string;
-  placedAt: number; // epoch ms
+  // epoch ms
+  placedAt: number;
   // Compact snapshot of the order's lines, so the list can offer "Reorder"
   // without a server round-trip. Optional: entries placed before this existed
   // (and any future write that omits it) simply have no reorder button.

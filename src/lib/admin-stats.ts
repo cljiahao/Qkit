@@ -19,10 +19,14 @@ export type EventSummary = {
 };
 
 export type ActivationFunnel = {
-  signedUp: number; // vendors
-  withBooth: number; // vendors with ≥1 booth
-  withOrder: number; // vendors with ≥1 order
-  pro: number; // vendors on the Pro plan
+  // vendors
+  signedUp: number;
+  // vendors with ≥1 booth
+  withBooth: number;
+  // vendors with ≥1 order
+  withOrder: number;
+  // vendors on the Pro plan
+  pro: number;
 };
 
 /**

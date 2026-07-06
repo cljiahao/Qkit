@@ -10,8 +10,10 @@ export type ReviewRow = {
 };
 
 export type ReviewSummary = {
-  count: number; // rated responses
-  average: number | null; // mean rating (1 dp), null when none
+  // rated responses
+  count: number;
+  // mean rating (1 dp), null when none
+  average: number | null;
   // Count per star 1..5.
   distribution: Record<1 | 2 | 3 | 4 | 5, number>;
   // Most recent comments (rating optional), newest first.

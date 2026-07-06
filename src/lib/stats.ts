@@ -27,7 +27,8 @@ export type TopItem = {
 };
 
 export type HourBucket = {
-  hour: number; // 0–23, SGT
+  // 0–23, SGT
+  hour: number;
   orders: number;
   revenue_cents: number;
 };
@@ -38,7 +39,8 @@ export type GrossMargin = {
   revenue_cents: number;
   cost_cents: number;
   profit_cents: number;
-  marginPct: number; // profit / revenue * 100
+  // profit / revenue * 100
+  marginPct: number;
 };
 
 export type StatsSummary = {
@@ -46,23 +48,30 @@ export type StatsSummary = {
   orderCount: number;
   aov_cents: number;
   cancelled: number;
-  completed: number; // orders that reached the completed state
+  // orders that reached the completed state
+  completed: number;
   // Refunds = orders that were confirmed-paid then cancelled (money collected,
   // then returned). Surfaced for the trail; revenue_cents already excludes them.
   refunds_cents: number;
   refundCount: number;
-  fulfilmentRate: number; // 0..1 — completed / (completed + cancelled)
+  // 0..1 — completed / (completed + cancelled)
+  fulfilmentRate: number;
   // FULL per-item aggregation (quantity-sorted, capped at ITEM_CAP for safety).
   // Deliberately NOT pre-sliced to a single metric's top-N: each consumer
   // re-ranks by its own metric (TopItems by volume/revenue, MarginTable by
   // profit, the sales export by its own bound) so a low-volume but
   // high-revenue/high-margin item is never dropped before they see it.
   topItems: TopItem[];
-  hourly: HourBucket[]; // always 24 entries, hour 0..23
-  busiestHour: number | null; // hour with the most orders, null if none
-  dayHour: number[][]; // [7][24] order counts; row 0 = Mon (SGT)
-  optionBreakdown: OptionCount[]; // most-selected customization choices
-  grossMargin: GrossMargin | null; // null when no item carries a cost
+  // always 24 entries, hour 0..23
+  hourly: HourBucket[];
+  // hour with the most orders, null if none
+  busiestHour: number | null;
+  // [7][24] order counts; row 0 = Mon (SGT)
+  dayHour: number[][];
+  // most-selected customization choices
+  optionBreakdown: OptionCount[];
+  // null when no item carries a cost
+  grossMargin: GrossMargin | null;
 };
 
 /** Label an order line by name plus its selected options, e.g. "Kopi · Iced". */
@@ -149,7 +158,8 @@ function waitOf(o: StatsOrder): number | null {
   const ready = Date.parse(o.ready_at);
   if (!Number.isFinite(created) || !Number.isFinite(ready)) return null;
   const wait = (ready - created) / 1000;
-  return wait >= 0 ? wait : null; // guard clock skew
+  // guard clock skew
+  return wait >= 0 ? wait : null;
 }
 
 /**
