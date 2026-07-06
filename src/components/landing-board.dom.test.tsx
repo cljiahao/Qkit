@@ -30,6 +30,19 @@ describe("LANDING_BOARDS", () => {
     const rush = LANDING_BOARDS.find((b) => b.key === "rush")!;
     expect(rush.tickets.some((t) => t.age?.tone === "overdue")).toBe(true);
   });
+  it("every board has exactly 2 tickets (uniform height)", () => {
+    for (const b of LANDING_BOARDS) expect(b.tickets).toHaveLength(2);
+  });
+  it("has 2 priced (money) boards and 2 queue-only boards", () => {
+    const priced = LANDING_BOARDS.filter((b) =>
+      b.tickets.some((t) => t.total !== undefined),
+    ).map((b) => b.key);
+    const queueOnly = LANDING_BOARDS.filter((b) =>
+      b.tickets.every((t) => t.total === undefined && t.payment === undefined),
+    ).map((b) => b.key);
+    expect(priced).toEqual(["coffee", "payment"]);
+    expect(queueOnly).toEqual(["icecream", "rush"]);
+  });
 });
 
 describe("LandingBoard", () => {
