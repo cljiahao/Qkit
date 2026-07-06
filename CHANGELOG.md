@@ -49,6 +49,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **More of the UI respects reduced-motion and screen readers.** Under
+  `prefers-reduced-motion` the always-on `animate-ping`/`pulse`/`spin` utilities
+  (the live board's pulsing "active" dot, skeleton shimmers, spinners) now stop
+  looping instead of running for a whole shift. Added missing accessible names:
+  the working-hours time inputs (per weekday "opens"/"closes"), the support and
+  feedback textareas, the support category radiogroup, and the order-card age
+  chip now announces its overdue/aging state instead of conveying it by colour
+  alone.
 - **The landing page no longer overflows sideways on mobile.** The hero
   order-chit carousel's scroll track had no width constraint, so as a grid child
   (`min-width: auto`) it reported its full four-board width as its minimum and

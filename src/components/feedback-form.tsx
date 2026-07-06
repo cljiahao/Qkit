@@ -128,6 +128,7 @@ export function FeedbackForm({
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        aria-label={prompt ?? "Your feedback"}
         placeholder="Anything we can improve? (optional)"
         rows={3}
         maxLength={2000}

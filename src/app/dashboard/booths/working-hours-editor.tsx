@@ -108,6 +108,7 @@ export function WorkingHoursEditor({
             <span className="text-muted-foreground">Opens</span>
             <input
               type="time"
+              aria-label="Opens"
               value={dailyOpen}
               onChange={(e) => emitDaily(e.target.value, dailyClose)}
               className={timeInputClass}
@@ -115,6 +116,7 @@ export function WorkingHoursEditor({
             <span className="text-muted-foreground">Closes</span>
             <input
               type="time"
+              aria-label="Closes"
               value={dailyClose}
               onChange={(e) => emitDaily(dailyOpen, e.target.value)}
               className={timeInputClass}
@@ -156,6 +158,7 @@ export function WorkingHoursEditor({
                   <div className="flex items-center gap-1.5 text-sm">
                     <input
                       type="time"
+                      aria-label={`${label} opens`}
                       value={win.open}
                       onChange={(e) =>
                         setDay(key, { open: e.target.value, close: win.close })
@@ -165,6 +168,7 @@ export function WorkingHoursEditor({
                     <span className="text-muted-foreground">–</span>
                     <input
                       type="time"
+                      aria-label={`${label} closes`}
                       value={win.close}
                       onChange={(e) =>
                         setDay(key, { open: win.open, close: e.target.value })
