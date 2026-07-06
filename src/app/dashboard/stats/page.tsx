@@ -94,15 +94,21 @@ async function fetchAllTimeTotals(
 
 /**
  * All customer reviews for this vendor's booths, newest first. RLS
- * (feedback_vendor_read_own) returns only feedback for booths this vendor owns.
+ * (feedback_vendor_read_own) already restricts rows to booths this vendor owns;
+ * the explicit `.in("booth_id", …)` lets Postgres use the feedback(booth_id,
+ * created_at) index instead of scanning platform-wide feedback to apply the RLS
+ * membership filter per row, and keeps the 500-row cap on THIS vendor's reviews.
  */
 async function fetchReviewRows(
   supabase: SupabaseClient<Database>,
+  boothIds: string[],
 ): Promise<ReviewRow[]> {
+  if (!boothIds.length) return [];
   const { data } = await supabase
     .from("feedback")
     .select("rating, message, order_number, booth_id, created_at")
     .eq("source", "customer")
+    .in("booth_id", boothIds)
     .order("created_at", { ascending: false })
     .limit(500);
   // No cast: the select column list matches the generated `feedback` Row, so the
@@ -132,7 +138,7 @@ async function fetchEventReviewRows(
     (orderKeys ?? []).map((o) => `${o.booth_id}::${o.order_number}`),
   );
   if (inEvent.size === 0) return [];
-  const rows = await fetchReviewRows(supabase);
+  const rows = await fetchReviewRows(supabase, boothIds);
   return rows.filter(
     (r) => r.order_number && inEvent.has(`${r.booth_id}::${r.order_number}`),
   );
@@ -266,7 +272,7 @@ export default async function StatsPage({ searchParams }: Props) {
   const priorCutoff = new Date(now - 2 * days * MS_PER_DAY).toISOString();
   const [orders, reviewRows, allTime, priorOrders] = await Promise.all([
     fetchOrders(supabaseEarly, queryIds, cutoff),
-    fetchReviewRows(supabaseEarly),
+    fetchReviewRows(supabaseEarly, allBoothIds),
     fetchAllTimeTotals(supabaseEarly, allBoothIds),
     wantPrior
       ? fetchOrders(supabaseEarly, queryIds, priorCutoff, cutoff)
