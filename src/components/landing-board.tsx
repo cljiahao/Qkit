@@ -13,7 +13,7 @@ export type LandingBoardData = {
 
 export function LandingBoard({ board }: { board: LandingBoardData }) {
   return (
-    <div className="ticket relative w-full overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-[0_1px_0_0_var(--color-border),0_24px_48px_-32px_oklch(0.4_0.06_45/0.45)]">
+    <div className="ticket relative w-full overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-[0_1px_0_0_var(--color-border),0_24px_48px_-32px_oklch(0.4_0.06_45/0.45)] sm:p-4">
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="min-w-0">
           <p className="text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -32,7 +32,7 @@ export function LandingBoard({ board }: { board: LandingBoardData }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
         {board.tickets.map((t) => (
           <LandingTicket key={t.n} t={t} />
         ))}

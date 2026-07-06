@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LandingBoard } from "@/components/landing-board";
 import { LANDING_BOARDS } from "@/components/landing-boards";
 import { nearestIndex } from "@/lib/carousel";
+import { cn } from "@/lib/utils";
 
 const ROTATE_MS = 10_000;
 
@@ -112,7 +113,7 @@ export function HeroPreviewCarousel() {
         ))}
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-1.5">
+      <div className="mt-3 flex items-center justify-center gap-0.5">
         {LANDING_BOARDS.map((board, i) => (
           <button
             key={board.key}
@@ -125,11 +126,18 @@ export function HeroPreviewCarousel() {
               scrollToIndex(i);
               startTimer();
             }}
-            className={
-              "size-1.5 rounded-full transition-colors duration-500 " +
-              (i === active ? "bg-primary" : "bg-border")
-            }
-          />
+            // Small dot, generous tap area — a 6px dot is unmissable on desktop
+            // but far below a comfortable touch target, so the padded button
+            // gives thumbs ~24px to hit without changing the visual.
+            className="grid cursor-pointer place-items-center rounded-full p-2"
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-colors duration-500",
+                i === active ? "bg-primary" : "bg-border",
+              )}
+            />
+          </button>
         ))}
       </div>
     </div>

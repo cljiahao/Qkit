@@ -92,9 +92,13 @@ function TierBadge({ tier }: { tier: Tier }) {
 }
 
 /**
- * Dashboard nav. On a phone the page links collapse behind a burger so the bar
- * never overflows; from sm up they sit inline. The account menu (avatar + name)
- * is present at every width and carries Profile, Feedback, and Sign out.
+ * Dashboard nav — the full sticky-header row. Navigation sits on the LEFT
+ * (burger below sm, inline links from sm up); the account menu sits on the far
+ * RIGHT at every width. Keeping the two on opposite ends follows the standard
+ * mobile pattern (hamburger-left / account-right) so they never read as a
+ * cramped pair of look-alike icon buttons. The account avatar stays visible on
+ * mobile on purpose — it's a high-frequency action, not something to bury in
+ * the burger.
  */
 export function DashboardNav({
   signOut,
@@ -114,41 +118,51 @@ export function DashboardNav({
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        {/* Inline page links — sm and up */}
-        <div className="hidden items-center gap-2 sm:flex">
-          {LINKS.map((l) => (
-            <Button
-              key={l.href}
-              asChild
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "rounded-lg",
-                isActive(path, l.href) && "bg-primary/10 text-primary",
-              )}
-            >
-              <Link href={l.href} data-tour={tourAnchor(l.href)}>
-                {l.label}
-              </Link>
-            </Button>
-          ))}
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+        {/* LEFT: burger (mobile) + brand + inline links (desktop) */}
+        <div className="flex min-w-0 items-center gap-1 sm:gap-3">
+          {/* Burger — below sm, far left, opposite the account avatar */}
+          <Button
+            variant="ghost"
+            size="icon"
+            data-tour="nav-menu"
+            className="-ml-1.5 rounded-lg sm:hidden"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          </Button>
+
+          <Link
+            href="/dashboard"
+            className="font-display shrink-0 text-2xl font-semibold tracking-tight"
+          >
+            <span className="text-primary">Q</span>Kit
+          </Link>
+
+          {/* Inline page links — sm and up */}
+          <nav className="hidden items-center gap-1 sm:flex">
+            {LINKS.map((l) => (
+              <Button
+                key={l.href}
+                asChild
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "rounded-lg",
+                  isActive(path, l.href) && "bg-primary/10 text-primary",
+                )}
+              >
+                <Link href={l.href} data-tour={tourAnchor(l.href)}>
+                  {l.label}
+                </Link>
+              </Button>
+            ))}
+          </nav>
         </div>
 
-        {/* Burger — below sm (page links only) */}
-        <Button
-          variant="ghost"
-          size="icon"
-          data-tour="nav-menu"
-          className="rounded-lg sm:hidden"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </Button>
-
-        {/* Account menu — every width */}
+        {/* Account menu — every width, far right */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
