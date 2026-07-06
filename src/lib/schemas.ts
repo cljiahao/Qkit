@@ -217,6 +217,31 @@ export const orderNumberSchema = z.string().min(1).max(40);
 // enumerate other customers' orders.
 export const orderTokenSchema = z.string().uuid();
 
+export type OrderRef = { boothId: string; orderNumber: string; token: string };
+export type ParseOrderRefResult =
+  | { ok: true; ref: OrderRef }
+  | { ok: false; field: "booth" | "orderNumber" | "token" };
+
+/**
+ * Validate the (boothId, orderNumber, token) triple every customer order action
+ * receives, in one place. Returns the offending `field` on failure so callers
+ * that surface a per-field message (claim/unclaim) can, while callers that just
+ * bail to null (status/payment polls) ignore it. First failure wins.
+ */
+export function parseOrderRef(
+  boothId: string,
+  orderNumber: string,
+  token: string,
+): ParseOrderRefResult {
+  if (!orderBoothIdSchema.safeParse(boothId).success)
+    return { ok: false, field: "booth" };
+  if (!orderNumberSchema.safeParse(orderNumber).success)
+    return { ok: false, field: "orderNumber" };
+  if (!orderTokenSchema.safeParse(token).success)
+    return { ok: false, field: "token" };
+  return { ok: true, ref: { boothId, orderNumber, token } };
+}
+
 /** Parse a JSONB booths.payment value; any malformed shape degrades to null. */
 export function parsePaymentConfig(data: unknown): PaymentConfig | null {
   if (data == null) return null;

@@ -1,11 +1,7 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import {
-  orderBoothIdSchema,
-  orderNumberSchema,
-  orderTokenSchema,
-} from "@/lib/schemas";
+import { parseOrderRef } from "@/lib/schemas";
 import type { OrderStatus } from "@/lib/types";
 
 /**
@@ -19,12 +15,7 @@ export async function getOrderStatus(
   orderNumber: string,
   token: string,
 ): Promise<OrderStatus | null> {
-  if (
-    !orderBoothIdSchema.safeParse(boothId).success ||
-    !orderNumberSchema.safeParse(orderNumber).success ||
-    !orderTokenSchema.safeParse(token).success
-  )
-    return null;
+  if (!parseOrderRef(boothId, orderNumber, token).ok) return null;
 
   const supabase = await createServiceClient();
   // maybeSingle (not single): a not-yet-readable / unknown order is a normal

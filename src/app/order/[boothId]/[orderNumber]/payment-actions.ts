@@ -3,11 +3,7 @@
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import {
-  orderBoothIdSchema,
-  orderNumberSchema,
-  orderTokenSchema,
-} from "@/lib/schemas";
+import { parseOrderRef } from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
 
@@ -22,12 +18,7 @@ export async function getPaymentStatus(
   orderNumber: string,
   token: string,
 ): Promise<PaymentStatus | null> {
-  if (
-    !orderBoothIdSchema.safeParse(boothId).success ||
-    !orderNumberSchema.safeParse(orderNumber).success ||
-    !orderTokenSchema.safeParse(token).success
-  )
-    return null;
+  if (!parseOrderRef(boothId, orderNumber, token).ok) return null;
 
   const supabase = await createServiceClient();
   // maybeSingle + log real errors only (an unknown order is a normal null). The
@@ -55,12 +46,12 @@ export async function claimPayment(
   orderNumber: string,
   token: string,
 ): Promise<ActionResult> {
-  if (!orderBoothIdSchema.safeParse(boothId).success)
-    return { success: false, error: "Invalid booth" };
-  if (!orderNumberSchema.safeParse(orderNumber).success)
-    return { success: false, error: "Invalid order" };
-  if (!orderTokenSchema.safeParse(token).success)
-    return { success: false, error: "Invalid order" };
+  const parsed = parseOrderRef(boothId, orderNumber, token);
+  if (!parsed.ok)
+    return {
+      success: false,
+      error: parsed.field === "booth" ? "Invalid booth" : "Invalid order",
+    };
 
   const supabase = await createServiceClient();
 
@@ -116,12 +107,12 @@ export async function unclaimPayment(
   orderNumber: string,
   token: string,
 ): Promise<ActionResult> {
-  if (!orderBoothIdSchema.safeParse(boothId).success)
-    return { success: false, error: "Invalid booth" };
-  if (!orderNumberSchema.safeParse(orderNumber).success)
-    return { success: false, error: "Invalid order" };
-  if (!orderTokenSchema.safeParse(token).success)
-    return { success: false, error: "Invalid order" };
+  const parsed = parseOrderRef(boothId, orderNumber, token);
+  if (!parsed.ok)
+    return {
+      success: false,
+      error: parsed.field === "booth" ? "Invalid booth" : "Invalid order",
+    };
 
   const supabase = await createServiceClient();
 
