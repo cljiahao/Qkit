@@ -11,6 +11,9 @@ interface Props {
   source: "customer" | "vendor";
   boothId?: string;
   orderNumber?: string;
+  // The order's access token — sent with customer feedback so the server can
+  // verify the reviewer actually placed this order.
+  token?: string;
   prompt?: string;
   // "stars" = 1–5 (customer order rating); "nps" = 0–10 recommend score
   // (vendor → QKit loyalty). Defaults to stars.
@@ -22,6 +25,7 @@ export function FeedbackForm({
   source,
   boothId,
   orderNumber,
+  token,
   prompt,
   metric = "stars",
 }: Props) {
@@ -47,6 +51,7 @@ export function FeedbackForm({
         source,
         boothId,
         orderNumber,
+        token,
         rating: metric === "stars" && score > 0 ? score : undefined,
         nps: metric === "nps" && score >= 0 ? score : undefined,
         message: message.trim() || undefined,

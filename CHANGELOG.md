@@ -47,6 +47,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   model) instead of silently vanishing from revenue — surfaced on the stats KPI
   band, the `SalesSummaryV1` API, and the CSV export.
 
+### Security
+
+- **Customer reviews can no longer be forged for a booth you never ordered
+  from.** `submit_feedback` accepted a 1-5★ rating against any `booth_id` +
+  `order_number` with no proof of an order (the only throttle was a spoofable,
+  fail-open per-IP limit), so a booth's public rating could be review-bombed at
+  scale. Customer feedback now carries the order's per-order access token, and
+  the RPC rejects any review whose `(booth_id, order_number, access_token)`
+  doesn't match a real order — the same unguessable token the status page
+  already requires. Vendor feedback (stamped from the signed-in id) is
+  unchanged. (Migration `0048`.)
+
 ### Fixed
 
 - **The landing page no longer overflows sideways on mobile.** The hero

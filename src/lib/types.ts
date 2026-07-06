@@ -533,6 +533,7 @@ export interface Database {
           p_source: string;
           p_booth_id?: string;
           p_order_number?: string;
+          p_access_token?: string;
           p_rating?: number;
           p_nps?: number;
           p_message?: string;

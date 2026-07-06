@@ -38,6 +38,9 @@ export async function submitFeedback(
     p_source: d.source,
     p_booth_id: d.boothId ?? undefined,
     p_order_number: d.orderNumber ?? undefined,
+    // Customer feedback is authorized by the order's access token; the RPC
+    // rejects a customer review whose (booth, order, token) doesn't match.
+    p_access_token: d.token ?? undefined,
     p_rating: d.rating ?? undefined,
     p_nps: d.nps ?? undefined,
     p_message: d.message && d.message.length > 0 ? d.message : undefined,
