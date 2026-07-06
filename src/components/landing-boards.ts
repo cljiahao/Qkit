@@ -81,7 +81,7 @@ export const LANDING_BOARDS: LandingBoardData[] = [
   {
     key: "rush",
     title: "Kopitiam Cart",
-    activeCount: 3,
+    activeCount: 2,
     tickets: [
       {
         n: "0056",
@@ -98,15 +98,6 @@ export const LANDING_BOARDS: LandingBoardData[] = [
         status: "preparing",
         age: { label: "7m", tone: "aging" },
         lines: [{ q: 1, name: "Kopi", price: "$1.40" }],
-        total: "$1.40",
-        action: "Mark Ready",
-      },
-      {
-        n: "0058",
-        name: "Tan",
-        status: "preparing",
-        age: { label: "1m", tone: "normal" },
-        lines: [{ q: 1, name: "Teh", price: "$1.40" }],
         total: "$1.40",
         action: "Mark Ready",
       },
