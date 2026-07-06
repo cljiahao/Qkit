@@ -34,6 +34,23 @@ describe("submitFeedback", () => {
     expect(call?.[1]).toMatchObject({ p_source: "customer", p_rating: 5 });
   });
 
+  it("threads the order access token through for customer feedback", async () => {
+    allow();
+    const res = await submitFeedback({
+      source: "customer",
+      boothId: "11111111-1111-1111-1111-111111111111",
+      orderNumber: "0042",
+      token: "22222222-2222-2222-2222-222222222222",
+      rating: 5,
+    });
+    expect(res).toEqual({ success: true });
+
+    const call = rpc.mock.calls.find((c) => c[0] === "submit_feedback");
+    expect(call?.[1]).toMatchObject({
+      p_access_token: "22222222-2222-2222-2222-222222222222",
+    });
+  });
+
   it("passes source=vendor through so the RPC can stamp the caller's id", async () => {
     allow();
     const res = await submitFeedback({ source: "vendor", nps: 9 });

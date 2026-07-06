@@ -163,6 +163,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           source="customer"
           boothId={boothId}
           orderNumber={orderNumber}
+          token={token}
           prompt="How was ordering here?"
         />
       </div>

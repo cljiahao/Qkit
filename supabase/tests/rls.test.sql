@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(75);
+select plan(76);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -584,9 +584,23 @@ select throws_like(
   '%ORDER_INVALID%',
   'place_order rejects an option not in the item''s option groups (V3)');
 
--- submit_feedback: the only feedback insert path (public policy dropped). Assert
--- anon can still reach the RPC (its EXECUTE grant) as a customer, then verify the
--- written row as the privileged role (anon has no direct feedback SELECT).
+-- submit_feedback: the only feedback insert path (public policy dropped).
+-- Customer feedback is bound to the order's access token (0048) — a review must
+-- carry the (booth_id, order_number, access_token) of a real order, so nobody
+-- can rate a booth they never ordered from. Stash the real order's number +
+-- token (readable only as the privileged role — anon has no orders SELECT) into
+-- transaction-local GUCs, then submit as anon carrying them.
+reset role;
+select set_config('test.ord_num',
+  (select order_number from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '11111111-1111-1111-1111-111111111111'),
+  true);
+select set_config('test.ord_tok',
+  (select access_token::text from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '11111111-1111-1111-1111-111111111111'),
+  true);
 set local role anon;
 select set_config(
   'request.jwt.claims',
@@ -594,8 +608,18 @@ select set_config(
   true);
 select lives_ok(
   $$ select qkit.submit_feedback('customer',
-       '00000000-0000-0000-0000-0000000b0004'::uuid, null, 5, null, 'Great!') $$,
-  'submit_feedback inserts an anonymous customer review');
+       '00000000-0000-0000-0000-0000000b0004'::uuid,
+       current_setting('test.ord_num'), 5, null, 'Great!',
+       current_setting('test.ord_tok')::uuid) $$,
+  'submit_feedback accepts a customer review bound to a real order token');
+-- A mismatched token (the review-bomb path) is rejected.
+select throws_like(
+  $$ select qkit.submit_feedback('customer',
+       '00000000-0000-0000-0000-0000000b0004'::uuid,
+       current_setting('test.ord_num'), 1, null, 'Review bomb',
+       gen_random_uuid()) $$,
+  '%FEEDBACK_UNAUTHORIZED%',
+  'submit_feedback rejects customer feedback whose token does not match an order');
 reset role;
 select is(
   (select count(*)::int from qkit.feedback

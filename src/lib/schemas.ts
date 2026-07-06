@@ -294,6 +294,9 @@ export const feedbackSchema = z
     source: z.enum(["customer", "vendor"]),
     boothId: z.string().uuid().optional(),
     orderNumber: z.string().max(40).optional(),
+    // Per-order access token — proves a customer reviewer actually placed the
+    // order (the RPC rejects customer feedback whose token doesn't match).
+    token: z.string().uuid().optional(),
     // customer order rating
     rating: z.number().int().min(1).max(5).optional(),
     // vendor → QKit loyalty
