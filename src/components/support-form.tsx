@@ -54,7 +54,11 @@ export function SupportForm() {
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <div>
         <p className="mb-2 text-sm font-medium">What&apos;s it about?</p>
-        <div className="grid grid-cols-2 gap-1.5" role="radiogroup">
+        <div
+          className="grid grid-cols-2 gap-1.5"
+          role="radiogroup"
+          aria-label="What's it about?"
+        >
           {CATEGORIES.map((c) => (
             <button
               key={c.value}
@@ -77,6 +81,7 @@ export function SupportForm() {
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
+        aria-label="Describe the problem"
         placeholder="What happened? The more detail, the faster we can help."
         rows={4}
         maxLength={2000}
