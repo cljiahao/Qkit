@@ -43,6 +43,12 @@ describe("LANDING_BOARDS", () => {
     expect(priced).toEqual(["coffee", "payment"]);
     expect(queueOnly).toEqual(["icecream", "rush"]);
   });
+  it("one ice-cream cart is collapsed, the other expanded", () => {
+    const ice = LANDING_BOARDS.find((b) => b.key === "icecream")!;
+    const rush = LANDING_BOARDS.find((b) => b.key === "rush")!;
+    expect(ice.tickets.every((t) => t.optionsView === "collapsed")).toBe(true);
+    expect(rush.tickets.every((t) => t.optionsView === "expanded")).toBe(true);
+  });
 });
 
 describe("LandingBoard", () => {

@@ -43,15 +43,33 @@ export const LANDING_BOARDS: LandingBoardData[] = [
         n: "0018",
         name: "Mei",
         status: "preparing",
-        lines: [{ q: 1, name: "Single Scoop", opt: "Vanilla · Sprinkles" }],
+        optionsView: "collapsed",
+        lines: [
+          {
+            q: 1,
+            name: "Single Scoop",
+            options: [
+              { group: "Flavour", choice: "Vanilla" },
+              { group: "Toppings", choice: "Sprinkles" },
+            ],
+          },
+        ],
         action: "Mark Ready",
       },
       {
         n: "0017",
         name: "Sam",
         status: "ready",
+        optionsView: "collapsed",
         lines: [
-          { q: 2, name: "Double Scoop", opt: "Choc · Peanuts, Choc sauce" },
+          {
+            q: 2,
+            name: "Double Scoop",
+            options: [
+              { group: "Flavour", choice: "Chocolate" },
+              { group: "Toppings", choice: "Peanuts, Choc sauce" },
+            ],
+          },
         ],
         action: "Mark Picked Up",
       },
@@ -91,8 +109,16 @@ export const LANDING_BOARDS: LandingBoardData[] = [
         name: "Lim",
         status: "preparing",
         age: { label: "12m", tone: "overdue" },
+        optionsView: "expanded",
         lines: [
-          { q: 2, name: "Double Scoop", opt: "Choc · Peanuts, Sprinkles" },
+          {
+            q: 2,
+            name: "Double Scoop",
+            options: [
+              { group: "Flavour", choice: "Chocolate" },
+              { group: "Toppings", choice: "Peanuts, Sprinkles" },
+            ],
+          },
         ],
         action: "Mark Ready",
       },
@@ -101,7 +127,17 @@ export const LANDING_BOARDS: LandingBoardData[] = [
         name: "Aisha",
         status: "preparing",
         age: { label: "7m", tone: "aging" },
-        lines: [{ q: 1, name: "Single Scoop", opt: "Strawberry · Choc sauce" }],
+        optionsView: "expanded",
+        lines: [
+          {
+            q: 1,
+            name: "Single Scoop",
+            options: [
+              { group: "Flavour", choice: "Strawberry" },
+              { group: "Toppings", choice: "Choc sauce" },
+            ],
+          },
+        ],
         action: "Mark Ready",
       },
     ],
