@@ -208,6 +208,15 @@ body {
   .fade-rise {
     animation: none;
   }
+  /* Tailwind's always-on animation utilities don't self-respect the
+     preference: the live board's pulsing "N active" dot, skeleton shimmers,
+     and spinners would loop for a whole shift in a motion-sensitive vendor's
+     face. Stop the looping (icons/dots stay visible, just static). */
+  .animate-ping,
+  .animate-pulse,
+  .animate-spin {
+    animation: none;
+  }
 }
 
 /* Smooth in-page anchor scrolling (e.g. the hero "See how" jump to #how),

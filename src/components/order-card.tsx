@@ -173,6 +173,13 @@ export function OrderCard({
                     : "text-muted-foreground",
               )}
               title="Time since the order arrived"
+              aria-label={`${ageMins} minutes since arrival${
+                tone === "overdue"
+                  ? ", overdue"
+                  : tone === "aging"
+                    ? ", getting old"
+                    : ""
+              }`}
             >
               <Clock className="size-3" />
               {ageMins}m

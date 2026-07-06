@@ -46,17 +46,28 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   // Both reads key only on the route params, so fetch them together instead of
   // serially (one round-trip of latency, not two) on this hot status page. The
   // order read also matches the token, so a wrong/guessed number returns nothing.
-  const [{ data: order }, { data: booth }] = await Promise.all([
-    supabase
-      .from("orders")
-      .select("*")
-      .eq("booth_id", boothId)
-      .eq("order_number", orderNumber)
-      .eq("access_token", token)
-      .single(),
-    supabase.from("booths").select("name, payment").eq("id", boothId).single(),
-  ]);
+  const [{ data: order, error: orderError }, { data: booth }] =
+    await Promise.all([
+      supabase
+        .from("orders")
+        .select("*")
+        .eq("booth_id", boothId)
+        .eq("order_number", orderNumber)
+        .eq("access_token", token)
+        .maybeSingle(),
+      supabase
+        .from("booths")
+        .select("name, payment")
+        .eq("id", boothId)
+        .single(),
+    ]);
 
+  // A real read error must not masquerade as "order doesn't exist" — that's a
+  // false 404 stranding a customer who holds a valid link during a DB/network
+  // blip. Let the error boundary show a retryable error; only a genuine no-row
+  // (maybeSingle → null, no error) is a true 404.
+  if (orderError)
+    throw new Error(`order status read failed: ${orderError.message}`);
   if (!order) notFound();
 
   const items = parseOrderItems(order.items);
