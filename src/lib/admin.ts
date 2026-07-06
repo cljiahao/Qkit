@@ -28,13 +28,6 @@ export async function requireAdmin(): Promise<{ user: User }> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) notFound();
-
-  const { data } = await supabase
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (!data) notFound();
-
+  if (!(await isAdmin(user.id))) notFound();
   return { user };
 }

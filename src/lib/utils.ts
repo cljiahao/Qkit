@@ -23,10 +23,6 @@ export function centsToDollarString(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-export function genOrderNumber(existingCount: number): string {
-  return String(existingCount + 1).padStart(4, "0");
-}
-
 /**
  * Parse a user-typed dollar string into integer cents for storage.
  * `""` → ok with `undefined` (field cleared); a valid non-negative number → ok

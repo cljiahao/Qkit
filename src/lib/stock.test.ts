@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  hasOverStock,
-  isSoldOut,
-  overStockLines,
-  parseRemaining,
-  remainingFor,
-} from "./stock";
+import { parseRemaining, remainingFor } from "./stock";
 
 describe("parseRemaining", () => {
   it("keeps numeric entries, floors negatives at 0", () => {
@@ -29,48 +23,5 @@ describe("remainingFor", () => {
 
   it("returns 0 (not null) for a depleted capped item", () => {
     expect(remainingFor({ a: 0 }, "a")).toBe(0);
-  });
-});
-
-describe("isSoldOut", () => {
-  it("sold out only when a capped item hits 0", () => {
-    expect(isSoldOut({ a: 0 }, "a")).toBe(true);
-    expect(isSoldOut({ a: 1 }, "a")).toBe(false);
-    expect(isSoldOut({}, "a")).toBe(false); // uncapped never sold out
-  });
-});
-
-describe("overStockLines", () => {
-  it("flags lines exceeding the cap, ignores uncapped items", () => {
-    const remaining = { a: 2 };
-    expect(
-      overStockLines([{ menuItemId: "a", quantity: 3 }], remaining),
-    ).toEqual(["a"]);
-    expect(
-      overStockLines([{ menuItemId: "a", quantity: 2 }], remaining),
-    ).toEqual([]);
-    expect(
-      overStockLines([{ menuItemId: "b", quantity: 99 }], remaining),
-    ).toEqual([]);
-  });
-
-  it("aggregates quantity across option-variant lines of the same item", () => {
-    const remaining = { a: 3 };
-    const lines = [
-      { menuItemId: "a", quantity: 2 },
-      { menuItemId: "a", quantity: 2 },
-    ];
-    expect(overStockLines(lines, remaining)).toEqual(["a"]);
-  });
-});
-
-describe("hasOverStock", () => {
-  it("is true iff some line is over", () => {
-    expect(hasOverStock([{ menuItemId: "a", quantity: 5 }], { a: 1 })).toBe(
-      true,
-    );
-    expect(hasOverStock([{ menuItemId: "a", quantity: 1 }], { a: 1 })).toBe(
-      false,
-    );
   });
 });
