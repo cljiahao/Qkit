@@ -94,7 +94,12 @@ export function HeroPreviewCarousel() {
   };
 
   return (
-    <div aria-hidden>
+    // min-w-0 is load-bearing: as a grid/flex child this wrapper defaults to
+    // min-width:auto, which would report the scroll track's full 4-board width
+    // as its minimum and stretch the whole page wide (horizontal overflow →
+    // pinch-zoom on mobile). min-w-0 lets it shrink to the column so the track
+    // actually clips and scrolls.
+    <div aria-hidden className="w-full min-w-0">
       <div
         ref={trackRef}
         onScroll={onScroll}
@@ -104,7 +109,7 @@ export function HeroPreviewCarousel() {
         onPointerCancel={endDrag}
         onPointerEnter={stopTimer}
         onPointerLeave={startTimer}
-        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex w-full min-w-0 snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {LANDING_BOARDS.map((board) => (
           <div key={board.key} className="w-full shrink-0 snap-center px-0.5">
