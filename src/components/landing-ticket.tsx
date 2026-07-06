@@ -4,12 +4,15 @@
 // (not this component) carries aria-hidden since these are decorative.
 
 import { cn } from "@/lib/utils";
-import { Clock } from "lucide-react";
+import { ChevronDown, Clock } from "lucide-react";
+
+export type TicketOption = { group: string; choice: string };
 
 export type TicketLine = {
   q: number;
   name: string;
   opt?: string;
+  options?: TicketOption[];
   price?: string;
 };
 
@@ -22,6 +25,11 @@ export type LandingTicketData = {
   lines: TicketLine[];
   total?: string;
   action?: string;
+  // When set, the chit mirrors the real card's options control: "collapsed"
+  // shows a "Show options" affordance + a joined one-line summary; "expanded"
+  // shows "Hide options" + each line's options broken out into group→choice
+  // rows. Requires lines to carry `options`.
+  optionsView?: "collapsed" | "expanded";
 };
 
 const STATUS_LABEL = {
@@ -48,6 +56,8 @@ export function LandingTicket({ t }: { t: LandingTicketData }) {
         : t.age?.tone === "aging"
           ? "ticket-aging"
           : "border-border";
+
+  const expanded = t.optionsView === "expanded";
 
   return (
     <div
@@ -117,14 +127,47 @@ export function LandingTicket({ t }: { t: LandingTicketData }) {
                 </span>
               )}
             </div>
-            {l.opt && (
-              <p className="truncate pl-4 text-[0.7rem] text-muted-foreground">
-                {l.opt}
-              </p>
+            {l.options && l.options.length > 0 ? (
+              expanded ? (
+                <ul className="mt-0.5 space-y-0.5 pl-4">
+                  {l.options.map((o, j) => (
+                    <li
+                      key={j}
+                      className="flex justify-between gap-3 text-[0.7rem]"
+                    >
+                      <span className="font-medium text-foreground/70">
+                        {o.group}:
+                      </span>
+                      <span className="text-right text-foreground/90">
+                        {o.choice}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="truncate pl-4 text-[0.7rem] text-muted-foreground">
+                  {l.options.map((o) => o.choice).join(" · ")}
+                </p>
+              )
+            ) : (
+              l.opt && (
+                <p className="truncate pl-4 text-[0.7rem] text-muted-foreground">
+                  {l.opt}
+                </p>
+              )
             )}
           </div>
         ))}
       </div>
+
+      {t.optionsView && (
+        <div className="px-3 pb-1">
+          <span className="flex w-full items-center justify-center gap-1 rounded-md py-1 text-[0.7rem] font-medium text-muted-foreground">
+            <ChevronDown className={cn("size-3.5", expanded && "rotate-180")} />
+            {expanded ? "Hide options" : "Show options"}
+          </span>
+        </div>
+      )}
 
       {t.total && (
         <>
