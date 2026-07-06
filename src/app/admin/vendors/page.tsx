@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { latestActivePassByVendor, summarizeVendors } from "@/lib/admin-stats";
 import {
   buildVendorHealth,
+  passHoursLeft,
   statusRank,
   type VendorLite,
 } from "@/lib/admin-vendor-health";
@@ -66,9 +67,7 @@ export default async function AdminVendorsPage() {
         name: v.name,
         plan: v.plan,
         created_at: v.created_at,
-        passHoursLeft: expiry
-          ? Math.max(0, Math.round((Date.parse(expiry) - now) / 3_600_000))
-          : null,
+        passHoursLeft: passHoursLeft(expiry, now),
         status: h.status,
         orders7d: h.orders7d,
         lastOrderAt: h.lastOrderAt,

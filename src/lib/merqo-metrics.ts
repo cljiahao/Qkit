@@ -1,7 +1,6 @@
 import type { Plan } from "@/lib/types";
 import { summarizeVendors, activationFunnel } from "@/lib/admin-stats";
-
-const DAY = 24 * 60 * 60 * 1000;
+import { MS_PER_DAY } from "@/lib/utils";
 
 export type MerqoMetrics = {
   revenue_cents_30d: number;
@@ -39,9 +38,9 @@ export type MerqoMetricsInput = {
 export function computeMerqoMetrics(input: MerqoMetricsInput): MerqoMetrics {
   const { nowMs, vendors, booths, orders, payments, pendingUpgradeCount } =
     input;
-  const cutoff30d = new Date(nowMs - 30 * DAY).toISOString();
-  const cutoff7d = new Date(nowMs - 7 * DAY).toISOString();
-  const cutoff14d = new Date(nowMs - 14 * DAY).toISOString();
+  const cutoff30d = new Date(nowMs - 30 * MS_PER_DAY).toISOString();
+  const cutoff7d = new Date(nowMs - 7 * MS_PER_DAY).toISOString();
+  const cutoff14d = new Date(nowMs - 14 * MS_PER_DAY).toISOString();
 
   const revenue_cents_30d = payments
     .filter((p) => p.created_at >= cutoff30d)
