@@ -147,5 +147,10 @@
       "Read(*.tsbuildinfo)"
     ]
   },
+  "skillOverrides": {
+    "templatecentral:add": "off",
+    "templatecentral:scaffold": "off",
+    "templatecentral:migrate": "off"
+  },
   "skillListingBudgetFraction": 0.02
 }
