@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { computeMerqoMetrics } from "@/lib/merqo-metrics";
@@ -12,7 +13,14 @@ function bearerOk(request: Request): boolean {
   const header = request.headers.get("authorization") ?? "";
   const prefix = "Bearer ";
   if (!header.startsWith(prefix)) return false;
-  return header.slice(prefix.length) === secret;
+  // Constant-time compare so the endpoint doesn't leak the secret one byte at a
+  // time via response timing. timingSafeEqual requires equal-length buffers, so
+  // gate on length first (length is not itself sensitive here).
+  const provided = Buffer.from(header.slice(prefix.length));
+  const expected = Buffer.from(secret);
+  return (
+    provided.length === expected.length && timingSafeEqual(provided, expected)
+  );
 }
 
 export async function GET(request: Request) {
@@ -22,20 +30,21 @@ export async function GET(request: Request) {
 
   const supabase = await createServiceClient();
 
-  const vendorsRes = await supabase
-    .from("vendors")
-    .select("id, plan, created_at");
-  const boothsRes = await supabase.from("booths").select("id, vendor_id");
-  const ordersRes = await supabase
-    .from("orders")
-    .select("booth_id, status, total_cents, created_at");
-  const paymentsRes = await supabase
-    .from("payments")
-    .select("amount_cents, created_at");
-  const pendingRes = await supabase
-    .from("purchase_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "pending");
+  // Five independent reads — issue them concurrently so endpoint latency is one
+  // round-trip, not the sum of five.
+  const [vendorsRes, boothsRes, ordersRes, paymentsRes, pendingRes] =
+    await Promise.all([
+      supabase.from("vendors").select("id, plan, created_at"),
+      supabase.from("booths").select("id, vendor_id"),
+      supabase
+        .from("orders")
+        .select("booth_id, status, total_cents, created_at"),
+      supabase.from("payments").select("amount_cents, created_at"),
+      supabase
+        .from("purchase_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+    ]);
 
   for (const r of [vendorsRes, boothsRes, ordersRes, paymentsRes, pendingRes]) {
     if (r.error) {

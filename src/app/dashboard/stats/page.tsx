@@ -257,13 +257,20 @@ export default async function StatsPage({ searchParams }: Props) {
     boothParam && allBoothIds.includes(boothParam) ? boothParam : "all";
   const queryIds = selectedBooth === "all" ? allBoothIds : [selectedBooth];
 
-  // Range orders, reviews, and the all-time totals are independent reads — run
-  // them together. All-time stays across every booth (allBoothIds), regardless
-  // of the selected booth/range filters, so lifetime numbers never shift.
-  const [orders, reviewRows, allTime] = await Promise.all([
+  // Range orders, reviews, all-time totals, and (Pro only) the prior-period
+  // orders are all independent reads — run them together. All-time stays across
+  // every booth (allBoothIds), regardless of the selected booth/range filters,
+  // so lifetime numbers never shift. The prior-period read is only needed for
+  // the Pro period comparison, so it's skipped otherwise.
+  const wantPrior = pro && queryIds.length > 0;
+  const priorCutoff = new Date(now - 2 * days * MS_PER_DAY).toISOString();
+  const [orders, reviewRows, allTime, priorOrders] = await Promise.all([
     fetchOrders(supabaseEarly, queryIds, cutoff),
     fetchReviewRows(supabaseEarly),
     fetchAllTimeTotals(supabaseEarly, allBoothIds),
+    wantPrior
+      ? fetchOrders(supabaseEarly, queryIds, priorCutoff, cutoff)
+      : Promise.resolve([]),
   ]);
   const summary = computeStats(orders);
   const avgWait = avgWaitSeconds(orders);
@@ -280,11 +287,8 @@ export default async function StatsPage({ searchParams }: Props) {
   let series: SeriesPoint[] | null = null;
   let waitPoints: WaitPoint[] | null = null;
   let peak = 0;
-  if (pro && queryIds.length) {
-    const priorCutoff = new Date(now - 2 * days * MS_PER_DAY).toISOString();
-    const prior = computeStats(
-      await fetchOrders(supabaseEarly, queryIds, priorCutoff, cutoff),
-    );
+  if (wantPrior) {
+    const prior = computeStats(priorOrders);
     deltas = {
       revenue: pctChange(summary.revenue_cents, prior.revenue_cents),
       orders: pctChange(summary.orderCount, prior.orderCount),
