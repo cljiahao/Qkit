@@ -65,10 +65,15 @@ export function OnboardingForm() {
                   placeholder="Mama's Kitchen"
                   autoFocus
                   className="h-12 rounded-xl text-base"
+                  aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? "name-error" : undefined}
                   {...register("name")}
                 />
                 {errors.name && (
-                  <p className="text-sm font-medium text-destructive">
+                  <p
+                    id="name-error"
+                    className="text-sm font-medium text-destructive"
+                  >
                     {errors.name.message}
                   </p>
                 )}

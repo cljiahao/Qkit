@@ -223,10 +223,15 @@ export default function LoginPage() {
                   type="email"
                   placeholder="you@example.com"
                   className="h-11 rounded-xl"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? "email-error" : undefined}
                   {...register("email")}
                 />
                 {errors.email && (
-                  <p className="text-sm font-medium text-destructive">
+                  <p
+                    id="email-error"
+                    className="text-sm font-medium text-destructive"
+                  >
                     {errors.email.message}
                   </p>
                 )}
@@ -255,10 +260,17 @@ export default function LoginPage() {
                   type="password"
                   placeholder="••••••••"
                   className="h-11 rounded-xl"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={
+                    errors.password ? "password-error" : undefined
+                  }
                   {...register("password")}
                 />
                 {errors.password && (
-                  <p className="text-sm font-medium text-destructive">
+                  <p
+                    id="password-error"
+                    className="text-sm font-medium text-destructive"
+                  >
                     {errors.password.message}
                   </p>
                 )}
