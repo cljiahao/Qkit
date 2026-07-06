@@ -269,8 +269,10 @@ export const feedbackSchema = z
     source: z.enum(["customer", "vendor"]),
     boothId: z.string().uuid().optional(),
     orderNumber: z.string().max(40).optional(),
-    rating: z.number().int().min(1).max(5).optional(), // customer order rating
-    nps: z.number().int().min(0).max(10).optional(), // vendor → QKit loyalty
+    // customer order rating
+    rating: z.number().int().min(1).max(5).optional(),
+    // vendor → QKit loyalty
+    nps: z.number().int().min(0).max(10).optional(),
     message: z.string().trim().max(2000).optional(),
   })
   // Require at least a score (rating or NPS) or a non-empty message.

@@ -53,16 +53,24 @@ export function buildPayNowPayload(args: {
   const amount = (args.amountCents / 100).toFixed(2);
 
   const body =
-    tlv("00", "01") + // payload format indicator
-    tlv("01", "12") + // dynamic QR (single use)
+    // payload format indicator
+    tlv("00", "01") +
+    // dynamic QR (single use)
+    tlv("01", "12") +
     merchant +
-    tlv("52", "0000") + // merchant category code (unset)
-    tlv("53", "702") + // currency: SGD (ISO 4217 numeric)
+    // merchant category code (unset)
+    tlv("52", "0000") +
+    // currency: SGD (ISO 4217 numeric)
+    tlv("53", "702") +
     tlv("54", amount) +
-    tlv("58", "SG") + // country
-    tlv("59", args.payeeName.slice(0, 25)) + // merchant name
-    tlv("60", "Singapore") + // merchant city
-    tlv("62", tlv("01", args.reference.slice(0, 25))); // additional data: bill ref
+    // country
+    tlv("58", "SG") +
+    // merchant name
+    tlv("59", args.payeeName.slice(0, 25)) +
+    // merchant city
+    tlv("60", "Singapore") +
+    // additional data: bill ref
+    tlv("62", tlv("01", args.reference.slice(0, 25)));
 
   // CRC is computed over the body plus the CRC tag+length ("6304").
   const withCrcTag = body + "6304";

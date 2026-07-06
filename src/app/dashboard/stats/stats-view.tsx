@@ -101,7 +101,8 @@ export function StatsView({
   }
 
   // At-a-glance values, all straight from the computed summary (no live data).
-  const bestSeller = summary.topItems[0] ?? null; // quantity-sorted -> top volume
+  // quantity-sorted -> top volume
+  const bestSeller = summary.topItems[0] ?? null;
   const busiestHour = summary.busiestHour;
   const busiestOrders =
     busiestHour !== null ? (summary.hourly[busiestHour]?.orders ?? 0) : 0;

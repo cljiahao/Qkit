@@ -11,7 +11,8 @@ interface Props {
   // less (feeds). Per 2026 UX consensus.
   variant?: "pager" | "more";
   className?: string;
-  label?: string; // noun for the "more" button, e.g. "reviews"
+  // noun for the "more" button, e.g. "reviews"
+  label?: string;
 }
 
 /**

@@ -7,7 +7,8 @@ export type NpsBreakdown = {
   promoters: number;
   passives: number;
   detractors: number;
-  score: number | null; // null when there are no responses
+  // null when there are no responses
+  score: number | null;
 };
 
 export function npsBreakdown(scores: number[]): NpsBreakdown {

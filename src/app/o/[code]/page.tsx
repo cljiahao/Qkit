@@ -40,7 +40,8 @@ export default async function OrderEntryPage({ params }: Props) {
     return <ExpiredCode variant="error" />;
   }
   const parsed = boothForOrder.safeParse(data);
-  if (!parsed.success) return <ExpiredCode />; // null/unresolved code → hard block
+  // null/unresolved code → hard block
+  if (!parsed.success) return <ExpiredCode />;
   const booth = parsed.data;
 
   const available = parseMenuItems(booth.menu_items);

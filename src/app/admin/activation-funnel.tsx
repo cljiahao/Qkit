@@ -9,7 +9,8 @@ const STAGES = [
 
 /** Vendor activation funnel with drop-off bars + step-conversion %. */
 export function ActivationFunnelView({ funnel }: { funnel: ActivationFunnel }) {
-  const top = funnel.signedUp || 1; // width basis; avoid divide-by-zero
+  // width basis; avoid divide-by-zero
+  const top = funnel.signedUp || 1;
 
   return (
     <section className="rounded-xl border border-border bg-card p-5">

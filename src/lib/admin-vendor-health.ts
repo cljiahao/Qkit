@@ -8,12 +8,18 @@ import { MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
  * act on is more honest. First matching rule wins, most-urgent first.
  */
 export type VendorStatus =
-  | "attention" // an open help request, or a billing inconsistency
-  | "expiring" // a live pass ends within 48h
-  | "stuck" // onboarding stalled, or paying (Pro) with nothing to show
-  | "quiet" // was active, gone silent
-  | "new" // just signed up, still onboarding
-  | "healthy"; // took an order recently
+  // an open help request, or a billing inconsistency
+  | "attention"
+  // a live pass ends within 48h
+  | "expiring"
+  // onboarding stalled, or paying (Pro) with nothing to show
+  | "stuck"
+  // was active, gone silent
+  | "quiet"
+  // just signed up, still onboarding
+  | "new"
+  // took an order recently
+  | "healthy";
 
 export type VendorLite = {
   id: string;

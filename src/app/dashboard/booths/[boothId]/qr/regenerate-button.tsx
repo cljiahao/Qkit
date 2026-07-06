@@ -72,7 +72,8 @@ export function RegenerateButton({
             <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
-                e.preventDefault(); // keep the dialog open until the action resolves
+                // keep the dialog open until the action resolves
+                e.preventDefault();
                 confirm();
               }}
               disabled={pending}

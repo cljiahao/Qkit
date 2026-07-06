@@ -13,7 +13,8 @@ function Stars({ value }: { value: number }) {
   return (
     <span className="inline-flex">
       {Array.from({ length: 5 }, (_, i) => {
-        const fill = Math.max(0, Math.min(1, value - i)); // 0..1 for this star
+        // 0..1 for this star
+        const fill = Math.max(0, Math.min(1, value - i));
         return (
           <span key={i} className="relative inline-block">
             <Star className="size-3.5 text-muted-foreground/30" />
@@ -135,9 +136,12 @@ function BoothDetail({ summary }: { summary: ReviewSummary }) {
 interface Props {
   groups: BoothReviews[];
   overall: ReviewSummary;
-  selected: string; // "all" or a booth id (follows the page's booth filter)
-  range?: string; // preserved on drill-in links
-  linkable?: boolean; // per-booth rows link to that booth (off in event view)
+  // "all" or a booth id (follows the page's booth filter)
+  selected: string;
+  // preserved on drill-in links
+  range?: string;
+  // per-booth rows link to that booth (off in event view)
+  linkable?: boolean;
 }
 
 /**

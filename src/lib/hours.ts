@@ -6,13 +6,16 @@ import {
   type WeekdayKey,
 } from "@/lib/tz";
 
-export type DayWindow = { open: string; close: string }; // "HH:MM"
+// "HH:MM"
+export type DayWindow = { open: string; close: string };
 
 // Discriminated so the editor can round-trip the vendor's chosen mode.
 export type BoothHours =
-  | null // no restriction — open whenever is_active
+  // no restriction — open whenever is_active
+  | null
   | { mode: "daily"; open: string; close: string }
-  | { mode: "weekly"; days: Record<WeekdayKey, DayWindow | null> }; // null day = closed
+  // null day = closed
+  | { mode: "weekly"; days: Record<WeekdayKey, DayWindow | null> };
 
 function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(":");
