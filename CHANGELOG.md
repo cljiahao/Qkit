@@ -49,6 +49,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Dashboard nav reads clearly on a phone.** The burger and the account avatar
+  used to sit crammed together on the right as two look-alike icon buttons. They
+  now split to opposite ends — navigation burger far left, account far right
+  (the standard hamburger-left / account-right mobile pattern) — with the avatar
+  staying visible at every width since it's a high-frequency action. The hero
+  order-chit carousel also tightens its padding on small screens and gives its
+  dots a comfortable touch target.
 - **Subscription revenue isn't double-counted** when an admin re-submits (or
   double-clicks) an already-Pro vendor — the payment is recorded only on a real
   free→Pro transition.
