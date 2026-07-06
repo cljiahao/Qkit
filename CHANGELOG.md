@@ -61,6 +61,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Vendor stats reviews scale with your own data, not the whole platform.** The
+  reviews query leaned on RLS alone to scope to your booths and had no
+  `feedback(booth_id)` index, so it walked platform-wide customer feedback each
+  stats load. It now filters `.in("booth_id", …)` against a new
+  `feedback(booth_id, created_at DESC)` index (migration `0049`), and the 500-row
+  cap applies to your reviews instead of silently dropping yours past the
+  platform's newest 500.
 - **The landing page no longer overflows sideways on mobile.** The hero
   order-chit carousel's scroll track had no width constraint, so as a grid child
   (`min-width: auto`) it reported its full four-board width as its minimum and
