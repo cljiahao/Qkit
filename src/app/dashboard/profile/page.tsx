@@ -1,10 +1,11 @@
-import { requireVendor } from "@/lib/supabase/get-vendor";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { ProfileForm } from "./profile-form";
 
 export const revalidate = 0;
 
 export default async function ProfilePage() {
-  const { user, vendor } = await requireVendor();
+  // Same primed entitlement cache as the layout — avoids a second vendor read.
+  const { user, vendor } = await requireEntitledVendor();
 
   // display_name and avatar_url are arbitrary JSON on the auth user — read
   // defensively. avatar_url is the vendor's optional custom profile icon.

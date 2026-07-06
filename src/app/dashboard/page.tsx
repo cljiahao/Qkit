@@ -1,5 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server";
-import { requireVendor } from "@/lib/supabase/get-vendor";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { parseBoothHours } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
 import { RealtimeOrderBoard } from "./realtime-order-board";
@@ -8,7 +8,9 @@ import type { Order } from "@/lib/types";
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  const { vendor } = await requireVendor();
+  // Reuse the entitlement cache the layout already primed (same React.cache),
+  // so this doesn't add a second vendor-row round-trip via getVendor.
+  const { vendor } = await requireEntitledVendor();
 
   const supabase = await createServerClient();
 
