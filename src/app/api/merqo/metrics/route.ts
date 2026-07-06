@@ -7,7 +7,8 @@ export const revalidate = 0;
 
 function bearerOk(request: Request): boolean {
   const secret = process.env.MERQO_METRICS_SECRET;
-  if (!secret) return false; // never allow an unset secret to authorize
+  // never allow an unset secret to authorize
+  if (!secret) return false;
   const header = request.headers.get("authorization") ?? "";
   const prefix = "Bearer ";
   if (!header.startsWith(prefix)) return false;

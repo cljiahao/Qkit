@@ -50,7 +50,8 @@ export function RealtimeOrderBoard({
   const boothIds = booths.map((b) => b.id);
   const [filter, setFilter] = useState<BoothFilter>("all");
   const [soundOn, setSoundOn] = useState(false);
-  const [away, setAway] = useState(0); // new orders that arrived while hidden
+  // new orders that arrived while hidden
+  const [away, setAway] = useState(0);
   const originalTitle = useRef("");
 
   // Restore the sound preference + remember the tab title (post-hydration).
@@ -86,7 +87,8 @@ export function RealtimeOrderBoard({
       const next = !on;
       localStorage.setItem("qkit:sound", next ? "on" : "off");
       if (next) {
-        unlockAudio(); // this tap unlocks the shared AudioContext
+        // this tap unlocks the shared AudioContext
+        unlockAudio();
         void playReadyChime();
       }
       return next;

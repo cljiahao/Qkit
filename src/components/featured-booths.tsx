@@ -5,9 +5,12 @@
 // hidden. No fabricated testimonials ever.
 
 export type FeaturedBooth = {
-  name: string; // stall name
-  quote: string; // vendor-approved quote
-  by: string; // attribution, e.g. "Ada · Kopitiam Cart"
+  // stall name
+  name: string;
+  // vendor-approved quote
+  quote: string;
+  // attribution, e.g. "Ada · Kopitiam Cart"
+  by: string;
 };
 
 export function FeaturedBooths({ featured }: { featured: FeaturedBooth[] }) {

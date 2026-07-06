@@ -25,7 +25,8 @@ export function ZoomableImage({ src, alt, sizes }: Props) {
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden"; // no scroll behind the lightbox
+    // no scroll behind the lightbox
+    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;

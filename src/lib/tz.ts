@@ -43,7 +43,8 @@ const WEEKDAY_MAP: Record<string, WeekdayKey> = {
 // stats hot path.
 const SGT_FORMAT = new Intl.DateTimeFormat("en-US", {
   timeZone: BOOTH_TZ,
-  hourCycle: "h23", // 00–23; avoids the "24:00" some engines emit at midnight
+  // 00–23; avoids the "24:00" some engines emit at midnight
+  hourCycle: "h23",
   hour: "2-digit",
   minute: "2-digit",
   weekday: "short",

@@ -49,7 +49,8 @@ export function orderProgressIndex(status: OrderStatus): number {
     case "completed":
       return 2;
     default:
-      return -1; // cancelled — no progress
+      // cancelled — no progress
+      return -1;
   }
 }
 

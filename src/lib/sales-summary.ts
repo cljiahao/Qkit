@@ -10,9 +10,12 @@ import { centsToDollarString } from "@/lib/utils";
 
 export type SalesSummaryV1 = {
   version: 1;
-  generated_at: string; // ISO 8601, supplied by the caller
-  range: string; // "24h" | "7d" | "30d" | "90d"
-  booth_id: string; // a booth id, or "all"
+  // ISO 8601, supplied by the caller
+  generated_at: string;
+  // "24h" | "7d" | "30d" | "90d"
+  range: string;
+  // a booth id, or "all"
+  booth_id: string;
   revenue_cents: number;
   order_count: number;
   aov_cents: number;
@@ -21,7 +24,8 @@ export type SalesSummaryV1 = {
   // Additive since v1 shipped; already excluded from revenue_cents.
   refunds_cents: number;
   refund_count: number;
-  fulfilment_rate: number; // 0..1
+  // 0..1
+  fulfilment_rate: number;
   gross_margin: {
     revenue_cents: number;
     cost_cents: number;

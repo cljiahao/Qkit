@@ -113,7 +113,8 @@ export function unlockAudio(): void {
 
 // G5 · C6 · E6 (major triad), rising, then the triad again.
 const CHIME_NOTES = [784, 1047, 1319, 784, 1047, 1319];
-const NOTE_SPACING = 0.2; // seconds between note onsets (no overlap → no clip)
+// seconds between note onsets (no overlap → no clip)
+const NOTE_SPACING = 0.2;
 const NOTE_DURATION = 0.22;
 const PEAK_GAIN = 0.32;
 

@@ -48,7 +48,8 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
     dollars: string,
   ) {
     const parsed = parseDollarsToCents(dollars);
-    if (!parsed.ok) return; // reject NaN/negative, keep prior value
+    // reject NaN/negative, keep prior value
+    if (!parsed.ok) return;
     update(index, { [field]: parsed.cents });
   }
 
