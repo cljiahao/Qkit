@@ -49,6 +49,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The landing page no longer overflows sideways on mobile.** The hero
+  order-chit carousel's scroll track had no width constraint, so as a grid child
+  (`min-width: auto`) it reported its full four-board width as its minimum and
+  stretched the whole document past the viewport — the page rendered ~744px wide
+  on a 375px phone, letting you pinch-zoom out and throwing every section's width
+  off. Constraining the track with `min-w-0` / `w-full` lets it clip and scroll
+  as intended; the document now matches the viewport exactly.
 - **Dashboard nav reads clearly on a phone.** The burger and the account avatar
   used to sit crammed together on the right as two look-alike icon buttons. They
   now split to opposite ends — navigation burger far left, account far right
