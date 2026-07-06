@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildVendorHealth,
+  passHoursLeft,
   statusRank,
   vendorStatus,
   type BoothLite,
@@ -26,6 +27,23 @@ function signals(over: Partial<Parameters<typeof vendorStatus>[0]> = {}) {
     ...over,
   };
 }
+
+describe("passHoursLeft", () => {
+  it("returns null when there is no pass expiry", () => {
+    expect(passHoursLeft(null, NOW)).toBeNull();
+    expect(passHoursLeft(undefined, NOW)).toBeNull();
+  });
+
+  it("rounds remaining time to whole hours", () => {
+    expect(passHoursLeft(hoursFromNow(5), NOW)).toBe(5);
+    expect(passHoursLeft(hoursFromNow(5.4), NOW)).toBe(5);
+    expect(passHoursLeft(hoursFromNow(5.6), NOW)).toBe(6);
+  });
+
+  it("floors an already-expired pass at 0 rather than going negative", () => {
+    expect(passHoursLeft(hoursFromNow(-3), NOW)).toBe(0);
+  });
+});
 
 describe("vendorStatus", () => {
   it("attention wins over everything when a help request is open", () => {

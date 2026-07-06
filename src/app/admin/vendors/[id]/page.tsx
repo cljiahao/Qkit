@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Circle } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import { latestActivePassByVendor } from "@/lib/admin-stats";
-import { buildVendorHealth } from "@/lib/admin-vendor-health";
+import { buildVendorHealth, passHoursLeft } from "@/lib/admin-vendor-health";
 import { cn, formatPrice, MS_PER_DAY } from "@/lib/utils";
 import { Stat } from "../../stat";
 import { StatusChip } from "../../vendor-status";
@@ -113,9 +113,7 @@ export default async function AdminVendorDetailPage({
       (min, o) => (min === null || o.created_at < min ? o.created_at : min),
       null,
     ) ?? null;
-  const passLeftHours = passExpiresAt
-    ? Math.max(0, Math.round((Date.parse(passExpiresAt) - now) / 3_600_000))
-    : null;
+  const passLeftHours = passHoursLeft(passExpiresAt, now);
   const daysSinceLast = health.lastOrderAt
     ? Math.round((now - Date.parse(health.lastOrderAt)) / MS_PER_DAY)
     : null;

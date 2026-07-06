@@ -1,5 +1,5 @@
 import type { Plan } from "@/lib/types";
-import { MS_PER_DAY } from "@/lib/utils";
+import { MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
 
 /**
  * Per-vendor health as a small set of banded statuses — not a synthetic 0-100
@@ -40,7 +40,7 @@ export type VendorHealthRow = {
 const NEW_DAYS = 3;
 const STUCK_DAYS = 3;
 const QUIET_DAYS = 14;
-const EXPIRING_MS = 48 * 3_600_000;
+const EXPIRING_MS = 48 * MS_PER_HOUR;
 
 const RANK: Record<VendorStatus, number> = {
   attention: 0,
@@ -54,6 +54,18 @@ const RANK: Record<VendorStatus, number> = {
 /** Triage sort key for a status — lower is more urgent. */
 export function statusRank(status: VendorStatus): number {
   return RANK[status];
+}
+
+/**
+ * Whole hours remaining on a live pass, floored at 0; null when the vendor has
+ * no currently-live pass. Shared by the admin vendor list and detail views.
+ */
+export function passHoursLeft(
+  expiryIso: string | null | undefined,
+  nowMs: number,
+): number | null {
+  if (!expiryIso) return null;
+  return Math.max(0, Math.round((Date.parse(expiryIso) - nowMs) / MS_PER_HOUR));
 }
 
 type Signals = {
