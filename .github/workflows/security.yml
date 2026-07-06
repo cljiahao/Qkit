@@ -54,6 +54,11 @@ jobs:
   codeql:
     name: CodeQL (javascript-typescript)
     runs-on: ubuntu-latest
+    # Code scanning is free only on PUBLIC repos (or private with paid GitHub
+    # Advanced Security). This repo is private on the free tier, so the SARIF
+    # upload errors "Code scanning is not enabled". Skip on private; the job
+    # self-enables if the repo is ever made public.
+    if: ${{ github.event.repository.private == false }}
     permissions:
       contents: read
       security-events: write
