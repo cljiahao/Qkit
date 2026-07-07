@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -125,9 +126,13 @@ export default function LoginPage() {
       <main className="min-h-screen flex items-center justify-center p-5">
         <div className="w-full max-w-md text-center">
           <div className="ticket overflow-hidden rounded-2xl border border-border px-7 py-10 shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]">
-            <span className="font-display inline-flex items-baseline gap-0.5 text-2xl font-semibold tracking-tight">
+            <Link
+              href="/"
+              aria-label="QKit home"
+              className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
+            >
               <span className="text-primary">Q</span>Kit
-            </span>
+            </Link>
             <h1 className="font-display mt-6 text-3xl font-semibold leading-tight">
               Check your email
             </h1>
@@ -172,9 +177,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand lockup */}
         <div className="mb-8 text-center">
-          <span className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight">
+          <Link
+            href="/"
+            aria-label="QKit home"
+            className="font-display inline-flex items-baseline gap-0.5 text-4xl font-semibold tracking-tight transition-opacity hover:opacity-80"
+          >
             <span className="text-primary">Q</span>Kit
-          </span>
+          </Link>
           <p className="mt-1 text-sm text-muted-foreground">
             Run your booth. Watch orders land live.
           </p>
