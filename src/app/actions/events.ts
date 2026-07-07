@@ -6,7 +6,16 @@ import type { Json } from "@/lib/types";
 
 // Allowlist of trackable events. Reject anything else so the table can't be
 // stuffed with arbitrary types from the client.
-const eventTypeSchema = z.enum(["landing_cta", "upgrade_cta"]);
+// - landing_cta / upgrade_cta: marketing-funnel CTA clicks.
+// - booth_view / order_placed: the customer ordering funnel — a QR landing
+//   (OrderForm mount) and a successful order. Their ratio is the scan→order
+//   conversion the pilot measures. Both carry `{ boothId }` in metadata.
+const eventTypeSchema = z.enum([
+  "landing_cta",
+  "upgrade_cta",
+  "booth_view",
+  "order_placed",
+]);
 export type EventType = z.infer<typeof eventTypeSchema>;
 
 /**

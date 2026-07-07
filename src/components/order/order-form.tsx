@@ -26,6 +26,7 @@ import { reconcileReorder } from "@/lib/reorder";
 import { takeReorder } from "@/lib/reorder-handoff";
 import { remainingFor, type Remaining } from "@/lib/stock";
 import { placeOrder } from "@/app/o/[code]/actions";
+import { logEvent } from "@/app/actions/events";
 import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
 
 interface Props {
@@ -58,6 +59,13 @@ export function OrderForm({
   } = useForm<{ customerName: string }>({
     resolver: zodResolver(placeOrderSchema.pick({ customerName: true })),
   });
+
+  // Funnel: a QR landing (this form mounted). Fire-and-forget; paired with the
+  // order_placed event to measure scan→order. Coarse — a refresh or back-nav
+  // re-counts a view — which is fine for the pilot conversion signal.
+  useEffect(() => {
+    void logEvent("booth_view", { boothId });
+  }, [boothId]);
 
   // Seed the cart on mount. A "reorder" handoff (explicit intent from the status
   // / recent-orders pages, read-once) wins; otherwise restore an in-progress
