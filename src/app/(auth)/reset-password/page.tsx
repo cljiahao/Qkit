@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const revalidate = 0;
@@ -8,9 +9,13 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md">
         {/* Brand lockup */}
         <div className="mb-8 text-center">
-          <span className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight">
+          <Link
+            href="/"
+            aria-label="QKit home"
+            className="font-display inline-flex items-baseline gap-0.5 text-4xl font-semibold tracking-tight transition-opacity hover:opacity-80"
+          >
             <span className="text-primary">Q</span>Kit
-          </span>
+          </Link>
           <p className="mt-1 text-sm text-muted-foreground">
             Choose a new password for your account.
           </p>

@@ -136,7 +136,8 @@ export function DashboardNav({
 
           <Link
             href="/dashboard"
-            className="font-display shrink-0 text-2xl font-semibold tracking-tight"
+            aria-label="QKit dashboard home"
+            className="font-display shrink-0 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit
           </Link>

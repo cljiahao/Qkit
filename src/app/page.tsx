@@ -304,9 +304,13 @@ export default async function LandingPage() {
     <div className="min-h-screen">
       {/* Header */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <span className="font-display inline-flex items-baseline gap-0.5 text-2xl font-semibold tracking-tight">
+        <Link
+          href="/"
+          aria-label="QKit home"
+          className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
+        >
           <span className="text-primary">Q</span>Kit
-        </span>
+        </Link>
         <div className="flex items-center gap-2">
           {user ? (
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
