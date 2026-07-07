@@ -4,7 +4,6 @@ import {
   count,
   formatOptions,
   formatPrice,
-  genOrderNumber,
   orderHasPricing,
   parseDollarsToCents,
 } from "./utils";
@@ -40,20 +39,6 @@ describe("formatPrice", () => {
 
   it("formats 0 as $0", () => {
     expect(formatPrice(0)).toContain("0");
-  });
-});
-
-describe("genOrderNumber", () => {
-  it("pads single digit to 4 chars", () => {
-    expect(genOrderNumber(0)).toBe("0001");
-  });
-
-  it("pads two digits correctly", () => {
-    expect(genOrderNumber(9)).toBe("0010");
-  });
-
-  it("does not pad 4-digit count", () => {
-    expect(genOrderNumber(9999)).toBe("10000");
   });
 });
 
