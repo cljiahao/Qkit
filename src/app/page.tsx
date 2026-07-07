@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LandingCta } from "@/components/landing-cta";
 import { HeroPreviewCarousel } from "@/components/hero-preview-carousel";
 import { FeaturedBooths } from "@/components/featured-booths";
+import { BackToTop } from "@/components/back-to-top";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_PRICING } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
@@ -301,17 +302,25 @@ export default async function LandingPage() {
   const primaryLabel = user ? "Go to dashboard" : "Get started";
 
   return (
-    <div className="min-h-screen">
+    <div id="top" className="min-h-screen">
       {/* Header */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link
-          href="/"
-          aria-label="QKit home"
+          href="/#top"
+          aria-label="QKit home — back to top"
           className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
         >
           <span className="text-primary">Q</span>Kit
         </Link>
         <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden rounded-lg sm:inline-flex"
+          >
+            <Link href="#faq">FAQ</Link>
+          </Button>
           {user ? (
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
               <Link href="/dashboard">Dashboard</Link>
@@ -560,7 +569,7 @@ export default async function LandingPage() {
       {/* FAQ: two groups side by side on wide screens. The marketing questions
           and the vendor troubleshooting each read as their own receipt column,
           with a perforation tear line between every question and its answer. */}
-      <section className="mx-auto max-w-5xl px-5 py-16">
+      <section id="faq" className="mx-auto max-w-5xl px-5 py-16">
         <div className="grid gap-x-10 gap-y-14 lg:grid-cols-2">
           {/* Marketing questions */}
           <div>
@@ -605,8 +614,8 @@ export default async function LandingPage() {
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-6 text-sm text-muted-foreground sm:flex-row">
           <Link
-            href="/"
-            aria-label="QKit home"
+            href="/#top"
+            aria-label="QKit home — back to top"
             className="font-display text-xl font-semibold text-foreground transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit
@@ -617,6 +626,8 @@ export default async function LandingPage() {
           </Link>
         </div>
       </footer>
+
+      <BackToTop />
     </div>
   );
 }
