@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
+import { logEvent } from "@/app/actions/events";
 import type { ActionResult } from "@/lib/action-result";
 
 type Result = ActionResult<{
@@ -84,6 +85,11 @@ export async function placeOrder(
       error: "Could not place order. Please try again.",
     };
   }
+  // Funnel: an order landed. Paired with booth_view (QR landing) to measure
+  // scan→order conversion. logEvent is best-effort and never throws, so awaiting
+  // it can't fail a placed order.
+  await logEvent("order_placed", { boothId: out.data.booth_id });
+
   return {
     success: true,
     orderNumber: out.data.order_number,
