@@ -603,10 +603,14 @@ export default async function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row">
-          <span className="font-display text-base font-semibold text-foreground">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-6 text-sm text-muted-foreground sm:flex-row">
+          <Link
+            href="/"
+            aria-label="QKit home"
+            className="font-display text-xl font-semibold text-foreground transition-opacity hover:opacity-80"
+          >
             <span className="text-primary">Q</span>Kit
-          </span>
+          </Link>
           <span>Built for booths. Made in Singapore.</span>
           <Link href="/login" className="hover:text-foreground">
             Vendor sign in →
