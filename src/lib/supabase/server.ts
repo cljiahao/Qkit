@@ -3,6 +3,7 @@ import {
   type CookieMethodsServer,
 } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { publicEnv } from "@/lib/env";
 import type { Database } from "@/lib/types";
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
@@ -30,8 +31,8 @@ export async function createServerClient() {
   const cookieStore = await cookies();
 
   return createSSRClient<Database, "qkit">(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    publicEnv.supabaseUrl,
+    publicEnv.supabasePublishableKey,
     {
       cookies: cookieMethods(cookieStore),
       db: { schema: "qkit" },
@@ -46,16 +47,19 @@ export async function createServerClient() {
 // admin writes (license inserts denied, cross-vendor updates match 0 rows). An
 // empty cookie adapter means the secret key drives auth → true RLS bypass.
 export async function createServiceClient() {
-  return createSSRClient<Database, "qkit">(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-    {
-      cookies: { getAll: () => [], setAll: () => {} },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-      db: { schema: "qkit" },
+  // Validated inline (not in lib/env, which is client-importable) so the secret
+  // never enters a module the browser bundle could reach.
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  if (!secretKey)
+    throw new Error(
+      "Missing required environment variable: SUPABASE_SECRET_KEY",
+    );
+  return createSSRClient<Database, "qkit">(publicEnv.supabaseUrl, secretKey, {
+    cookies: { getAll: () => [], setAll: () => {} },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
     },
-  );
+    db: { schema: "qkit" },
+  });
 }
