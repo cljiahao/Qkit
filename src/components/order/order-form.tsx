@@ -487,10 +487,17 @@ export function OrderForm({
           id="customerName"
           placeholder="So we can call you when it's ready"
           className="h-12 rounded-xl text-base"
+          aria-invalid={!!errors.customerName}
+          aria-describedby={
+            errors.customerName ? "customerName-error" : undefined
+          }
           {...register("customerName")}
         />
         {errors.customerName && (
-          <p className="text-sm font-medium text-destructive">
+          <p
+            id="customerName-error"
+            className="text-sm font-medium text-destructive"
+          >
             {errors.customerName.message}
           </p>
         )}

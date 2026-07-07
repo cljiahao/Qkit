@@ -90,9 +90,15 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
           </div>
 
           {/* single / multi toggle */}
-          <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
+          <div
+            role="radiogroup"
+            aria-label="How many options a customer can pick"
+            className="inline-flex rounded-lg border border-border p-0.5 text-sm"
+          >
             <button
               type="button"
+              role="radio"
+              aria-checked={!group.multiple}
               onClick={() => updateGroup(gi, { multiple: false })}
               className={`rounded-md px-3 py-1 font-medium transition-colors ${
                 !group.multiple
@@ -104,6 +110,8 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
             </button>
             <button
               type="button"
+              role="radio"
+              aria-checked={group.multiple ?? false}
               onClick={() => updateGroup(gi, { multiple: true })}
               className={`rounded-md px-3 py-1 font-medium transition-colors ${
                 group.multiple
