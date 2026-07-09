@@ -74,24 +74,16 @@ describe("SettingsForm thresholds", () => {
 });
 
 describe("SettingsForm sound", () => {
-  it("selecting a preset saves immediately", async () => {
+  it("selecting a preset previews it and saves immediately", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />);
 
     await user.click(screen.getByRole("radio", { name: "Bell" }));
+    expect(playSound).toHaveBeenCalledWith("bell");
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ sound_id: "bell" }),
     );
-  });
-
-  it("preview plays the selected sound without saving", async () => {
-    const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} />);
-
-    await user.click(screen.getByRole("button", { name: /preview/i }));
-    expect(playSound).toHaveBeenCalledWith("chime");
-    expect(updateBoardSettings).not.toHaveBeenCalled();
   });
 });
 

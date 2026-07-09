@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { SettingsForm } from "./settings-form";
 
@@ -9,6 +11,12 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-lg space-y-8">
       <header>
+        <Link
+          href="/dashboard"
+          className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+        >
+          <ArrowLeft className="size-3.5" /> Back to board
+        </Link>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Live orders
         </p>

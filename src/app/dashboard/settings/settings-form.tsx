@@ -99,6 +99,10 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
 
   function chooseSound(id: SoundId) {
     setSoundId(id);
+    // Play it right on click — a separate "switch, then press Preview" step
+    // is one tap too many just to hear what you picked.
+    unlockAudio();
+    void playSound(id);
     return runSound(async () => {
       const res = await updateBoardSettings({
         aging_min: Number(agingMin),
@@ -112,11 +116,6 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       }
       router.refresh();
     });
-  }
-
-  function previewSound(id: SoundId) {
-    unlockAudio();
-    void playSound(id);
   }
 
   function toggleDesktopNotify() {
@@ -248,16 +247,6 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             </button>
           ))}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => previewSound(soundId)}
-          disabled={soundId === "none"}
-          className="rounded-lg"
-        >
-          Preview
-        </Button>
       </Section>
 
       <Section
@@ -273,8 +262,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
           className={cn(
             "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
             desktopNotify
-              ? "border-primary/40 bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:bg-secondary",
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+              : "border-destructive/40 bg-destructive/[0.05] text-destructive",
           )}
         >
           {desktopNotify ? "On" : "Off"}
