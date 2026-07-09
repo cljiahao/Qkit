@@ -128,6 +128,15 @@ a conscious choice — don't let a future drift-check "fix" them):
 
 Adopted: build-artefact `Read` denies in `settings.json` (context hygiene, 5.4).
 
+**Cherry-picked 5.8 comment gate (2026-07-10):** not a full 5.7→5.9 re-review,
+just this one delta. `no-inline-comments` flipped `warn` → `error` (own-line
+comments only, ignore-pattern for `eslint-`/`@ts-`/`prettier-`/coverage
+directives) and `sonarjs/no-commented-code` added at `error` (blocks
+committing dead commented-out code) — `eslint-plugin-sonarjs` is a new
+devDependency. Both hard-block `pnpm check`/CI now. Test files and `scripts/`
+keep `no-inline-comments` off (unchanged rationale: table-driven fixtures read
+better with a trailing note).
+
 ## AI Harness
 
 PreToolUse: blocks secret files (exit 2): `.env*` (except `.env.example`),

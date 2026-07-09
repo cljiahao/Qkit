@@ -47,7 +47,8 @@ describe("servableBoothIds", () => {
 
 describe("isBoothPaused", () => {
   it("active-but-unservable is paused; servable + inactive are not", () => {
-    const servable = servableBoothIds(booths, ENTITLEMENTS.free); // {a}
+    // only booth "a" is servable on the free plan
+    const servable = servableBoothIds(booths, ENTITLEMENTS.free);
     expect(isBoothPaused(b("c", true, "2026-03-01T00:00:00Z"), servable)).toBe(
       true,
     );

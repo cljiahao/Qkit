@@ -4,7 +4,7 @@
   "adapted": "Next 16 + Supabase (auth/db/realtime) — not better-auth/Drizzle",
   "seeded_at": "2026-06-05",
   "reviewed_at": "2026-07-03",
-  "review_note": "Reviewed 5.0→5.7 delta; adopted build-artefact Read-denies. Deliberately NOT adopted (Supabase-variant divergence): pino route-logging enforcement (pino removed as unused; API logs via console.error), lefthook (uses husky/lint-staged), better-auth/Drizzle add-skills, tc CI/harness-verifier layer (has bespoke CI + no .harness-base). migrate Phase-5 re-sync N/A: no .harness-base merge base (seeded pre-5.3).",
+  "review_note": "Reviewed 5.0→5.7 delta; adopted build-artefact Read-denies. Deliberately NOT adopted (Supabase-variant divergence): pino route-logging enforcement (pino removed as unused; API logs via console.error), lefthook (uses husky/lint-staged), better-auth/Drizzle add-skills, tc CI/harness-verifier layer (has bespoke CI + no .harness-base). migrate Phase-5 re-sync N/A: no .harness-base merge base (seeded pre-5.3). 2026-07-10: cherry-picked the 5.8 hard comment gate (no-inline-comments error + sonarjs/no-commented-code) independent of a full 5.7→5.9 re-review; templatecentral_version left at 5.7.0 since the rest of that delta hasn't been audited.",
   "seeded_files": {
     "AGENTS.md": {
       "origin_hash": "d10ac19c1a813cc53c9d3d69d3845979703349b139609ab2011ceaac66deb74b",
