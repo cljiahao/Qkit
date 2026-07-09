@@ -298,7 +298,7 @@ export default async function LandingPage() {
     pricing.monthly_cents > 0 ? formatPrice(pricing.monthly_cents) : null;
   const paidMode = passPrice !== null || monthlyPrice !== null;
 
-  const primaryHref = user ? "/dashboard" : "/login";
+  const primaryHref = user ? "/dashboard" : "/login?mode=signup";
   const primaryLabel = user ? "Go to dashboard" : "Get started";
 
   return (
@@ -331,7 +331,7 @@ export default async function LandingPage() {
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button asChild size="sm" className="rounded-lg">
-                <Link href="/login">Get started</Link>
+                <Link href="/login?mode=signup">Get started</Link>
               </Button>
             </>
           )}
