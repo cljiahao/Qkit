@@ -16,6 +16,7 @@ import {
   profileNameSchema,
   displayNameSchema,
   passwordChangeSchema,
+  boardSettingsSchema,
   parseOrderRef,
 } from "./schemas";
 
@@ -184,6 +185,43 @@ describe("passwordChangeSchema", () => {
     if (!res.success) {
       expect(res.error.issues[0]?.path).toEqual(["confirm"]);
     }
+  });
+});
+
+describe("boardSettingsSchema", () => {
+  const valid = {
+    aging_min: 5,
+    overdue_min: 10,
+    sound_id: "chime" as const,
+    desktop_notify: false,
+  };
+
+  it("accepts the default shape", () => {
+    expect(boardSettingsSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects overdue_min <= aging_min", () => {
+    const res = boardSettingsSchema.safeParse({
+      ...valid,
+      aging_min: 10,
+      overdue_min: 10,
+    });
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.issues[0]?.path).toEqual(["overdue_min"]);
+    }
+  });
+
+  it("rejects an unknown sound_id", () => {
+    expect(
+      boardSettingsSchema.safeParse({ ...valid, sound_id: "airhorn" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a threshold over the 240min cap", () => {
+    expect(
+      boardSettingsSchema.safeParse({ ...valid, overdue_min: 241 }).success,
+    ).toBe(false);
   });
 });
 

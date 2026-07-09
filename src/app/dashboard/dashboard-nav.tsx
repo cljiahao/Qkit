@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   MessageSquarePlus,
+  Settings,
   User,
   X,
 } from "lucide-react";
@@ -213,6 +214,12 @@ export function DashboardNav({
               <Link href="/dashboard/profile" className="cursor-pointer">
                 <User className="size-4" />
                 Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/settings" className="cursor-pointer">
+                <Settings className="size-4" />
+                Board settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem

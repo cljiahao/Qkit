@@ -57,15 +57,19 @@ export function orderProgressIndex(status: OrderStatus): number {
 export type AgeTone = "fresh" | "aging" | "overdue";
 
 /**
- * Ticket-aging tone for the live board, relative to a prep-time target (default
- * 10 min, per KDS norms). < half the target = fresh, up to the target = aging,
- * at/over = overdue. Pair the tone with the elapsed text + an icon in the UI —
- * never rely on color alone (WCAG 1.4.1). Pure.
+ * Ticket-aging tone for the live board. Defaults (5 min aging, 10 min overdue)
+ * match the stock board_settings default; a vendor can set both independently
+ * from /dashboard/settings. Pair the tone with the elapsed text + an icon in
+ * the UI — never rely on color alone (WCAG 1.4.1). Pure.
  */
-export function orderAgeTone(elapsedMs: number, targetMin = 10): AgeTone {
+export function orderAgeTone(
+  elapsedMs: number,
+  agingMin = 5,
+  overdueMin = 10,
+): AgeTone {
   const min = elapsedMs / 60_000;
-  if (min < targetMin / 2) return "fresh";
-  if (min < targetMin) return "aging";
+  if (min < agingMin) return "fresh";
+  if (min < overdueMin) return "aging";
   return "overdue";
 }
 

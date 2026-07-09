@@ -11,6 +11,8 @@
 // Permission is requested only from an explicit user gesture, never auto-prompted
 // on load (web.dev "just-in-time / double opt-in" guidance).
 
+import type { SoundId } from "@/lib/types";
+
 export function isNotifySupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
 }
@@ -29,25 +31,15 @@ export async function requestNotifyPermission(): Promise<NotificationPermission 
 }
 
 /**
- * Show the "order ready" popup. Prefers the service worker's showNotification
- * (the only form Android Chrome allows — the page-level `new Notification()`
- * constructor throws there); falls back to the constructor on desktop, where it
- * still works without a controlling SW. Silent no-op when unsupported/denied.
+ * Show a system popup. Prefers the service worker's showNotification (the only
+ * form Android Chrome allows — the page-level `new Notification()` constructor
+ * throws there); falls back to the constructor on desktop, where it still
+ * works without a controlling SW. Silent no-op if both paths fail.
  */
-export async function fireReadyNotification(
-  boothName: string,
-  orderNumber: string,
-  url?: string,
+async function showNotification(
+  title: string,
+  options: NotificationOptions,
 ): Promise<void> {
-  if (!isNotifySupported() || Notification.permission !== "granted") return;
-  const title = `Order #${orderNumber} is ready`;
-  const options: NotificationOptions = {
-    body: `${boothName} — please collect it now.`,
-    // Same tag coalesces repeats into one popup if the effect re-fires.
-    tag: `qkit-order-${orderNumber}`,
-    data: { url: url ?? "/" },
-  };
-
   // SW path — required on Android Chrome. `controller` set means an active SW is
   // controlling this page, so `ready` resolves immediately (it would hang if no
   // SW were ever registered).
@@ -68,6 +60,38 @@ export async function fireReadyNotification(
   } catch {
     // Page-level constructor is illegal on some engines (Android Chrome) — ignore.
   }
+}
+
+/** "Your order is ready" popup for the customer status page. */
+export async function fireReadyNotification(
+  boothName: string,
+  orderNumber: string,
+  url?: string,
+): Promise<void> {
+  if (!isNotifySupported() || Notification.permission !== "granted") return;
+  await showNotification(`Order #${orderNumber} is ready`, {
+    body: `${boothName} — please collect it now.`,
+    // Same tag coalesces repeats into one popup if the effect re-fires.
+    tag: `qkit-order-${orderNumber}`,
+    data: { url: url ?? "/" },
+  });
+}
+
+/**
+ * "New order" popup for the vendor board (opt-in via board_settings.desktop_notify,
+ * only fired while the tab is backgrounded — see realtime-order-board.tsx).
+ */
+export async function fireNewOrderNotification(
+  boothName: string,
+  orderNumber: string,
+  url?: string,
+): Promise<void> {
+  if (!isNotifySupported() || Notification.permission !== "granted") return;
+  await showNotification(`New order #${orderNumber}`, {
+    body: `${boothName} — tap to view.`,
+    tag: `qkit-new-order-${orderNumber}`,
+    data: { url: url ?? "/dashboard" },
+  });
 }
 
 type AudioCtor = typeof AudioContext;
@@ -105,40 +129,62 @@ export function unlockAudio(): void {
   if (ctx && ctx.state === "suspended") void ctx.resume?.();
 }
 
-// A bright rising arpeggio played twice — loud and long enough to catch a
-// customer not staring at the screen. Triangle waves carry more harmonics than
-// sine, so they read louder at the same gain. ~1.2s total. Awaits resume first
-// so a context suspended by backgrounding wakes before the notes are scheduled.
-// Returns true if it scheduled sound, false on any failure.
+// Schedules a sequence of notes on the shared context — the engine behind
+// every board sound preset. Triangle waves carry more harmonics than sine, so
+// they read louder at the same gain. Awaits resume first so a context
+// suspended by backgrounding wakes before the notes are scheduled. Returns
+// true if it scheduled sound, false on any failure.
+function playNotes(notes: number[], noteDuration: number): Promise<boolean> {
+  const ctx = sharedCtx();
+  if (!ctx) return Promise.resolve(false);
+  return (async () => {
+    try {
+      if (ctx.state === "suspended") await ctx.resume();
+      const start = ctx.currentTime;
+      notes.forEach((freq, i) => {
+        const at = start + i * NOTE_SPACING;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + noteDuration);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(at);
+        osc.stop(at + noteDuration + 0.02);
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+}
 
-// G5 · C6 · E6 (major triad), rising, then the triad again.
-const CHIME_NOTES = [784, 1047, 1319, 784, 1047, 1319];
 // seconds between note onsets (no overlap → no clip)
 const NOTE_SPACING = 0.2;
 const NOTE_DURATION = 0.22;
 const PEAK_GAIN = 0.32;
 
+// G5 · C6 · E6 (major triad), rising, then the triad again. ~1.2s total — loud
+// and long enough to catch a customer/vendor not staring at the screen.
+const CHIME_NOTES = [784, 1047, 1319, 784, 1047, 1319];
+// Single low tone, longer decay — a plainer, less "arcade" alert.
+const BELL_NOTES = [523];
+const BELL_DURATION = 0.9;
+
 export async function playReadyChime(): Promise<boolean> {
-  const ctx = sharedCtx();
-  if (!ctx) return false;
-  try {
-    if (ctx.state === "suspended") await ctx.resume();
-    const start = ctx.currentTime;
-    CHIME_NOTES.forEach((freq, i) => {
-      const at = start + i * NOTE_SPACING;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + NOTE_DURATION);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(at);
-      osc.stop(at + NOTE_DURATION + 0.02);
-    });
-    return true;
-  } catch {
-    return false;
+  return playNotes(CHIME_NOTES, NOTE_DURATION);
+}
+
+/** Play a vendor's chosen new-order sound preset. "none" is a silent no-op. */
+export async function playSound(soundId: SoundId): Promise<boolean> {
+  switch (soundId) {
+    case "chime":
+      return playNotes(CHIME_NOTES, NOTE_DURATION);
+    case "bell":
+      return playNotes(BELL_NOTES, BELL_DURATION);
+    case "none":
+      return true;
   }
 }

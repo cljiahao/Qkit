@@ -349,9 +349,25 @@ export const passwordChangeSchema = z
     path: ["confirm"],
   });
 
+// Live-order-board preferences (vendors.board_settings). Minutes are capped
+// generously (240 = 4hr) — this isn't a hard product limit, just a guard
+// against fat-fingered values that would make the aging system meaningless.
+export const boardSettingsSchema = z
+  .object({
+    aging_min: z.number().int().min(1).max(240),
+    overdue_min: z.number().int().min(1).max(240),
+    sound_id: z.enum(["chime", "bell", "none"]),
+    desktop_notify: z.boolean(),
+  })
+  .refine((d) => d.overdue_min > d.aging_min, {
+    message: "Overdue must be later than amber",
+    path: ["overdue_min"],
+  });
+
 export type ProfileNameInput = z.infer<typeof profileNameSchema>;
 export type DisplayNameInput = z.infer<typeof displayNameSchema>;
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>;
+export type BoardSettingsInput = z.infer<typeof boardSettingsSchema>;
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type PlaceOrderInput = z.infer<typeof placeOrderSchema>;

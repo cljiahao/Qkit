@@ -105,7 +105,7 @@ describe("sortActiveOrders", () => {
 });
 
 describe("orderAgeTone", () => {
-  it("fresh < half target, aging up to target, overdue at/over (10m default)", () => {
+  it("fresh below aging, aging up to overdue, overdue at/over (5m/10m defaults)", () => {
     expect(orderAgeTone(2 * MIN)).toBe("fresh");
     expect(orderAgeTone(4 * MIN)).toBe("fresh");
     expect(orderAgeTone(5 * MIN)).toBe("aging");
@@ -114,9 +114,10 @@ describe("orderAgeTone", () => {
     expect(orderAgeTone(30 * MIN)).toBe("overdue");
   });
 
-  it("respects a custom target", () => {
-    expect(orderAgeTone(2 * MIN, 4)).toBe("aging");
-    expect(orderAgeTone(4 * MIN, 4)).toBe("overdue");
+  it("respects independent aging/overdue thresholds", () => {
+    expect(orderAgeTone(3 * MIN, 2, 4)).toBe("aging");
+    expect(orderAgeTone(4 * MIN, 2, 4)).toBe("overdue");
+    expect(orderAgeTone(1 * MIN, 2, 4)).toBe("fresh");
   });
 });
 

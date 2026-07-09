@@ -16,6 +16,19 @@ export type OrderStatus =
 
 export type Plan = "free" | "pro";
 
+export type SoundId = "chime" | "bell" | "none";
+
+// Vendor live-order-board preferences (qkit.vendors.board_settings jsonb).
+// Defaults here must match the column default in migration 0050.
+export type BoardSettings = {
+  // Amber threshold, minutes since order created.
+  aging_min: number;
+  // Red threshold, minutes; must be > aging_min.
+  overdue_min: number;
+  sound_id: SoundId;
+  desktop_notify: boolean;
+};
+
 export type PaymentStatus =
   | "not_required"
   | "pending"
@@ -87,6 +100,7 @@ export interface Database {
           plan: Plan;
           created_at: string;
           tour_seen_at: string | null;
+          board_settings: BoardSettings;
         };
         Insert: {
           id: string;
@@ -94,6 +108,7 @@ export interface Database {
           plan?: Plan;
           created_at?: string;
           tour_seen_at?: string | null;
+          board_settings?: BoardSettings;
         };
         Update: {
           id?: string;
@@ -101,6 +116,7 @@ export interface Database {
           plan?: Plan;
           created_at?: string;
           tour_seen_at?: string | null;
+          board_settings?: BoardSettings;
         };
         Relationships: [];
       };

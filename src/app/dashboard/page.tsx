@@ -57,6 +57,7 @@ export default async function DashboardPage() {
     <RealtimeOrderBoard
       booths={boothViews}
       initialOrders={orders}
+      boardSettings={vendor.board_settings}
       loadError={loadError}
     />
   );

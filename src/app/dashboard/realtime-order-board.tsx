@@ -2,16 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, BellOff, Plus } from "lucide-react";
+import { Plus, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { isTerminal, sortActiveOrders } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
-import { playReadyChime, unlockAudio } from "@/lib/order-alerts";
+import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { cn } from "@/lib/utils";
-import type { Order } from "@/lib/types";
+import type { BoardSettings, Order } from "@/lib/types";
 
 type BoothView = {
   id: string;
@@ -23,6 +23,7 @@ type BoothView = {
 interface Props {
   booths: BoothView[];
   initialOrders: Order[];
+  boardSettings: BoardSettings;
   // The initial server-side read errored — the board may be missing in-flight
   // orders, so warn instead of silently showing "All clear".
   loadError?: boolean;
@@ -45,19 +46,18 @@ function LoadErrorBanner() {
 export function RealtimeOrderBoard({
   booths,
   initialOrders,
+  boardSettings,
   loadError = false,
 }: Props) {
   const boothIds = booths.map((b) => b.id);
+  const boothName = new Map(booths.map((b) => [b.id, b.name]));
   const [filter, setFilter] = useState<BoothFilter>("all");
-  const [soundOn, setSoundOn] = useState(false);
   // new orders that arrived while hidden
   const [away, setAway] = useState(0);
   const originalTitle = useRef("");
 
-  // Restore the sound preference + remember the tab title (post-hydration).
+  // Remember the tab title (post-hydration) so the away-badge can restore it.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSoundOn(localStorage.getItem("qkit:sound") === "on");
     originalTitle.current = document.title;
   }, []);
 
@@ -77,22 +77,17 @@ export function RealtimeOrderBoard({
   }, [away]);
 
   function handleNewOrder(order: Order) {
-    if (soundOn) void playReadyChime();
+    void playSound(boardSettings.sound_id);
     toast(`New order #${order.order_number} · ${order.customer_name}`);
-    if (document.hidden) setAway((n) => n + 1);
-  }
-
-  function toggleSound() {
-    setSoundOn((on) => {
-      const next = !on;
-      localStorage.setItem("qkit:sound", next ? "on" : "off");
-      if (next) {
-        // this tap unlocks the shared AudioContext
-        unlockAudio();
-        void playReadyChime();
+    if (document.hidden) {
+      setAway((n) => n + 1);
+      if (boardSettings.desktop_notify) {
+        void fireNewOrderNotification(
+          boothName.get(order.booth_id) ?? "QKit",
+          order.order_number,
+        );
       }
-      return next;
-    });
+    }
   }
 
   const { orders, status: liveStatus } = useRealtimeOrders(
@@ -100,8 +95,6 @@ export function RealtimeOrderBoard({
     initialOrders,
     handleNewOrder,
   );
-
-  const boothName = new Map(booths.map((b) => [b.id, b.name]));
 
   const active = sortActiveOrders(orders.filter((o) => !isTerminal(o.status)));
   const activeCountFor = (id: string) =>
@@ -177,27 +170,17 @@ export function RealtimeOrderBoard({
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-pressed={soundOn}
-            title={soundOn ? "New-order sound on" : "New-order sound off"}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors",
-              soundOn
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:bg-secondary",
-            )}
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            title="Board settings"
+            className="rounded-full"
           >
-            {soundOn ? (
-              <Bell className="size-3.5" />
-            ) : (
-              <BellOff className="size-3.5" />
-            )}
-            <span className="hidden sm:inline">
-              {soundOn ? "Sound on" : "Sound off"}
-            </span>
-          </button>
+            <Link href="/dashboard/settings" aria-label="Board settings">
+              <SettingsIcon className="size-3.5" />
+            </Link>
+          </Button>
           {soleBooth && !soleBooth.open && (
             <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1.5 text-sm font-semibold text-muted-foreground">
               Closed
@@ -263,6 +246,8 @@ export function RealtimeOrderBoard({
               key={order.id}
               order={order}
               boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
+              agingMin={boardSettings.aging_min}
+              overdueMin={boardSettings.overdue_min}
             />
           ))}
         </div>

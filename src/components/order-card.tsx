@@ -59,9 +59,15 @@ function PaymentBadge({ status }: { status: Order["payment_status"] }) {
 export function OrderCard({
   order,
   boothName,
+  agingMin,
+  overdueMin,
 }: {
   order: Order;
   boothName?: string;
+  // Vendor-configurable board_settings thresholds (see /dashboard/settings).
+  // Fall through to orderAgeTone's own defaults when not supplied.
+  agingMin?: number;
+  overdueMin?: number;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   // Resync to the (realtime-updated) prop when it actually changes value, so a
@@ -85,7 +91,7 @@ export function OrderCard({
   // at a glance how long an order has waited against a ~10-min prep target.
   const nowMs = useNow(30_000, !isTerminal(status));
   const elapsedMs = nowMs - Date.parse(order.created_at);
-  const tone = orderAgeTone(elapsedMs);
+  const tone = orderAgeTone(elapsedMs, agingMin, overdueMin);
   const ageMins = elapsedMinutes(elapsedMs);
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);

@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  fireNewOrderNotification,
   fireReadyNotification,
   isNotifySupported,
   notifyPermission,
   playReadyChime,
+  playSound,
   requestNotifyPermission,
   unlockAudio,
 } from "./order-alerts";
@@ -132,6 +134,23 @@ describe("fireReadyNotification", () => {
   });
 });
 
+describe("fireNewOrderNotification", () => {
+  it("does nothing when permission is not granted", async () => {
+    const ctor = installNotification("default");
+    await fireNewOrderNotification("Booth", "0001");
+    expect(ctor).not.toHaveBeenCalled();
+  });
+
+  it("constructs a distinct-tag notification when granted", async () => {
+    const ctor = installNotification("granted");
+    await fireNewOrderNotification("Mama's Kitchen", "0042");
+    expect(ctor).toHaveBeenCalledWith(
+      "New order #0042",
+      expect.objectContaining({ tag: "qkit-new-order-0042" }),
+    );
+  });
+});
+
 describe("playReadyChime + unlockAudio", () => {
   it("returns false when no AudioContext exists", async () => {
     vi.stubGlobal("window", {});
@@ -170,5 +189,25 @@ describe("playReadyChime + unlockAudio", () => {
     });
     vi.stubGlobal("window", { AudioContext: Ctor });
     expect(await playReadyChime()).toBe(false);
+  });
+});
+
+describe("playSound", () => {
+  it("chime schedules the same 6-note sequence as playReadyChime", async () => {
+    const { ctx } = mockAudio("running");
+    expect(await playSound("chime")).toBe(true);
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(6);
+  });
+
+  it("bell schedules a single note", async () => {
+    const { ctx } = mockAudio("running");
+    expect(await playSound("bell")).toBe(true);
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(1);
+  });
+
+  it("none is a silent no-op (no AudioContext touched)", async () => {
+    const { Ctor } = mockAudio("running");
+    expect(await playSound("none")).toBe(true);
+    expect(Ctor).not.toHaveBeenCalled();
   });
 });
