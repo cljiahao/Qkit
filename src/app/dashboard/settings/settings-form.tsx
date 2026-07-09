@@ -132,7 +132,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
           const result = await requestNotifyPermission();
           if (result !== "granted") {
             toast.error(
-              "Notifications blocked — enable them for this site in your browser settings, then try again.",
+              "Notifications blocked. Enable them for this site in your browser settings, then try again.",
             );
             return;
           }
@@ -160,8 +160,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
 
   const thresholdsUnchanged =
     agingMin === String(initial.aging_min) &&
-    overdueMin === String(initial.overdue_min) &&
-    soundId === initial.sound_id;
+    overdueMin === String(initial.overdue_min);
 
   return (
     <div className="lg:columns-2 lg:gap-5">
@@ -253,7 +252,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       <Section
         icon={<Bell className="size-5" />}
         title="Notifications"
-        description="A popup for a new order when this tab is backgrounded. Works on Android and desktop browsers — on iPhone/iPad, add QKit to your Home Screen first (a regular Safari tab can't show these)."
+        description="A popup for a new order when this tab is backgrounded. Works on Android and desktop browsers. On iPhone or iPad, add QKit to your Home Screen first, since a regular Safari tab can't show these."
       >
         <button
           type="button"
@@ -264,14 +263,14 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
             desktopNotify
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
-              : "border-destructive/40 bg-destructive/[0.05] text-destructive",
+              : "border-destructive/40 bg-destructive/10 text-destructive",
           )}
         >
           {desktopNotify ? "On" : "Off"}
         </button>
         {desktopNotify && notifyPermission() !== "granted" && (
           <p className="text-xs text-muted-foreground">
-            Permission isn&apos;t granted in this browser — this device
+            Permission isn&apos;t granted in this browser. This device
             won&apos;t show popups until you re-enable it here.
           </p>
         )}

@@ -129,6 +129,29 @@ export function unlockAudio(): void {
   if (ctx && ctx.state === "suspended") void ctx.resume?.();
 }
 
+// Notes still ringing from a previous playNotes call on a given context —
+// tracked so a rapid re-trigger (spamming sound presets) cuts the old ones
+// off instead of layering into a cacophony. Keyed by context so tests, which
+// stub a fresh context per case, never see stale entries from another test.
+const activeNotesByCtx = new WeakMap<
+  AudioContext,
+  { osc: OscillatorNode; gain: GainNode }[]
+>();
+
+function stopActiveNotes(ctx: AudioContext): void {
+  const now = ctx.currentTime;
+  for (const { osc, gain } of activeNotesByCtx.get(ctx) ?? []) {
+    try {
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(0.0001, now);
+      osc.stop(now + 0.02);
+    } catch {
+      // already stopped
+    }
+  }
+  activeNotesByCtx.set(ctx, []);
+}
+
 // Schedules a sequence of notes on the shared context — the engine behind
 // every board sound preset. Triangle waves carry more harmonics than sine, so
 // they read louder at the same gain. Awaits resume first so a context
@@ -144,7 +167,9 @@ function playNotes(
   return (async () => {
     try {
       if (ctx.state === "suspended") await ctx.resume();
+      stopActiveNotes(ctx);
       const start = ctx.currentTime;
+      const scheduled: { osc: OscillatorNode; gain: GainNode }[] = [];
       notes.forEach((freq, i) => {
         const at = start + i * spacing;
         const osc = ctx.createOscillator();
@@ -157,7 +182,9 @@ function playNotes(
         osc.connect(gain).connect(ctx.destination);
         osc.start(at);
         osc.stop(at + noteDuration + 0.02);
+        scheduled.push({ osc, gain });
       });
+      activeNotesByCtx.set(ctx, scheduled);
       return true;
     } catch {
       return false;
@@ -177,11 +204,12 @@ const CHIME_NOTES = [784, 1047, 1319, 784, 1047, 1319];
 const BELL_NOTES = [523, 523];
 const BELL_DURATION = 0.35;
 const BELL_SPACING = 0.5;
-// Single high, short tone — the quiet/subtle option.
+// Single high tone with a long decay — the quiet/subtle option.
 const DING_NOTES = [1568];
-const DING_DURATION = 0.3;
-// Two low, long tones, further apart than the bell — a deliberate "honk honk".
-const HORN_NOTES = [294, 294];
+const DING_DURATION = 0.75;
+// Two bright, brassy tones, further apart than the bell — a deliberate
+// "honk honk" pitched like an actual car horn rather than a low buzz.
+const HORN_NOTES = [440, 440];
 const HORN_DURATION = 0.55;
 const HORN_SPACING = 0.65;
 // Three quick ascending beeps — the most urgent-sounding preset.

@@ -17,6 +17,7 @@ function mockAudio(state: AudioContextState = "running") {
       gain: {
         setValueAtTime: vi.fn(),
         exponentialRampToValueAtTime: vi.fn(),
+        cancelScheduledValues: vi.fn(),
       },
       connect: vi.fn(),
     };
@@ -227,5 +228,13 @@ describe("playSound", () => {
     const { Ctor } = mockAudio("running");
     expect(await playSound("none")).toBe(true);
     expect(Ctor).not.toHaveBeenCalled();
+  });
+
+  it("cuts off notes still ringing from a rapid re-trigger", async () => {
+    const { ctx } = mockAudio("running");
+    await playSound("chime");
+    const firstOsc = ctx.createOscillator.mock.results[0].value;
+    await playSound("bell");
+    expect(firstOsc.stop).toHaveBeenCalled();
   });
 });
