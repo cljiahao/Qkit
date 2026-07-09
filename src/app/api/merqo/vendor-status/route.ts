@@ -7,13 +7,16 @@ import type { Plan } from "@/lib/types";
 
 export const revalidate = 0;
 
-// Verbatim copy of api/merqo/metrics/route.ts's bearerOk — keep in lockstep.
 function bearerOk(request: Request): boolean {
   const secret = process.env.MERQO_METRICS_SECRET;
+  // never allow an unset secret to authorize
   if (!secret) return false;
   const header = request.headers.get("authorization") ?? "";
   const prefix = "Bearer ";
   if (!header.startsWith(prefix)) return false;
+  // Constant-time compare so the endpoint doesn't leak the secret one byte at a
+  // time via response timing. timingSafeEqual requires equal-length buffers, so
+  // gate on length first (length is not itself sensitive here).
   const provided = Buffer.from(header.slice(prefix.length));
   const expected = Buffer.from(secret);
   return (
@@ -42,6 +45,13 @@ export async function GET(request: Request) {
     supabase.auth.admin.listUsers({ perPage: 1000 }),
     supabase.from("vendors").select("id, plan"),
   ]);
+  if (usersRes.error) {
+    console.error("merqo vendor-status: read failed", usersRes.error.message);
+    return NextResponse.json(
+      { error: "Upstream unavailable" },
+      { status: 503 },
+    );
+  }
   if (vendorsRes.error) {
     console.error("merqo vendor-status: read failed", vendorsRes.error.message);
     return NextResponse.json(
