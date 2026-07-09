@@ -134,7 +134,11 @@ export function unlockAudio(): void {
 // they read louder at the same gain. Awaits resume first so a context
 // suspended by backgrounding wakes before the notes are scheduled. Returns
 // true if it scheduled sound, false on any failure.
-function playNotes(notes: number[], noteDuration: number): Promise<boolean> {
+function playNotes(
+  notes: number[],
+  noteDuration: number,
+  spacing: number = NOTE_SPACING,
+): Promise<boolean> {
   const ctx = sharedCtx();
   if (!ctx) return Promise.resolve(false);
   return (async () => {
@@ -142,7 +146,7 @@ function playNotes(notes: number[], noteDuration: number): Promise<boolean> {
       if (ctx.state === "suspended") await ctx.resume();
       const start = ctx.currentTime;
       notes.forEach((freq, i) => {
-        const at = start + i * NOTE_SPACING;
+        const at = start + i * spacing;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "triangle";
@@ -169,9 +173,21 @@ const PEAK_GAIN = 0.32;
 // G5 · C6 · E6 (major triad), rising, then the triad again. ~1.2s total — loud
 // and long enough to catch a customer/vendor not staring at the screen.
 const CHIME_NOTES = [784, 1047, 1319, 784, 1047, 1319];
-// Single low tone, longer decay — a plainer, less "arcade" alert.
-const BELL_NOTES = [523];
-const BELL_DURATION = 0.9;
+// Two low tones, clearly separated — "toot toot".
+const BELL_NOTES = [523, 523];
+const BELL_DURATION = 0.35;
+const BELL_SPACING = 0.5;
+// Single high, short tone — the quiet/subtle option.
+const DING_NOTES = [1568];
+const DING_DURATION = 0.3;
+// Two low, long tones, further apart than the bell — a deliberate "honk honk".
+const HORN_NOTES = [294, 294];
+const HORN_DURATION = 0.55;
+const HORN_SPACING = 0.65;
+// Three quick ascending beeps — the most urgent-sounding preset.
+const TRIPLE_NOTES = [880, 988, 1109];
+const TRIPLE_DURATION = 0.15;
+const TRIPLE_SPACING = 0.18;
 
 export async function playReadyChime(): Promise<boolean> {
   return playNotes(CHIME_NOTES, NOTE_DURATION);
@@ -183,7 +199,13 @@ export async function playSound(soundId: SoundId): Promise<boolean> {
     case "chime":
       return playNotes(CHIME_NOTES, NOTE_DURATION);
     case "bell":
-      return playNotes(BELL_NOTES, BELL_DURATION);
+      return playNotes(BELL_NOTES, BELL_DURATION, BELL_SPACING);
+    case "ding":
+      return playNotes(DING_NOTES, DING_DURATION);
+    case "horn":
+      return playNotes(HORN_NOTES, HORN_DURATION, HORN_SPACING);
+    case "triple":
+      return playNotes(TRIPLE_NOTES, TRIPLE_DURATION, TRIPLE_SPACING);
     case "none":
       return true;
   }

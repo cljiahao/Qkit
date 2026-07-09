@@ -1,6 +1,5 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
+import { BackButton } from "@/components/back-button";
 import { SettingsForm } from "./settings-form";
 
 export const revalidate = 0;
@@ -9,14 +8,11 @@ export default async function SettingsPage() {
   const { vendor } = await requireEntitledVendor();
 
   return (
-    <div className="mx-auto max-w-lg space-y-8">
+    <div className="mx-auto max-w-lg space-y-8 lg:max-w-4xl">
       <header>
-        <Link
-          href="/dashboard"
-          className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
-        >
-          <ArrowLeft className="size-3.5" /> Back to board
-        </Link>
+        <div className="mb-2 -ml-2.5">
+          <BackButton href="/dashboard" label="Back to board" />
+        </div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Live orders
         </p>

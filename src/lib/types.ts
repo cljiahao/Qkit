@@ -16,7 +16,7 @@ export type OrderStatus =
 
 export type Plan = "free" | "pro";
 
-export type SoundId = "chime" | "bell" | "none";
+export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
 
 // Vendor live-order-board preferences (qkit.vendors.board_settings jsonb).
 // Defaults here must match the column default in migration 0050.

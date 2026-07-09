@@ -40,7 +40,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="ticket overflow-hidden rounded-2xl border border-border px-6 py-6 shadow-[0_2px_0_0_var(--color-border)]">
+    <section className="ticket mb-5 break-inside-avoid-column overflow-hidden rounded-2xl border border-border px-6 py-6 shadow-[0_2px_0_0_var(--color-border)]">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           {icon}
@@ -171,7 +171,7 @@ export function ProfileForm({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="lg:columns-2 lg:gap-5">
       <Section
         icon={<Store className="size-5" />}
         eyebrow="Shown to customers"

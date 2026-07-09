@@ -356,7 +356,7 @@ export const boardSettingsSchema = z
   .object({
     aging_min: z.number().int().min(1).max(240),
     overdue_min: z.number().int().min(1).max(240),
-    sound_id: z.enum(["chime", "bell", "none"]),
+    sound_id: z.enum(["chime", "bell", "ding", "horn", "triple", "none"]),
     desktop_notify: z.boolean(),
   })
   .refine((d) => d.overdue_min > d.aging_min, {

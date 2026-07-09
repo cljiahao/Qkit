@@ -199,10 +199,28 @@ describe("playSound", () => {
     expect(ctx.createOscillator).toHaveBeenCalledTimes(6);
   });
 
-  it("bell schedules a single note", async () => {
+  it("bell schedules two notes (toot toot)", async () => {
     const { ctx } = mockAudio("running");
     expect(await playSound("bell")).toBe(true);
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(2);
+  });
+
+  it("ding schedules a single note", async () => {
+    const { ctx } = mockAudio("running");
+    expect(await playSound("ding")).toBe(true);
     expect(ctx.createOscillator).toHaveBeenCalledTimes(1);
+  });
+
+  it("horn schedules two notes", async () => {
+    const { ctx } = mockAudio("running");
+    expect(await playSound("horn")).toBe(true);
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(2);
+  });
+
+  it("triple schedules three notes", async () => {
+    const { ctx } = mockAudio("running");
+    expect(await playSound("triple")).toBe(true);
+    expect(ctx.createOscillator).toHaveBeenCalledTimes(3);
   });
 
   it("none is a silent no-op (no AudioContext touched)", async () => {

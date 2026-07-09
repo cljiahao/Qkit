@@ -23,6 +23,9 @@ import { updateBoardSettings } from "./actions";
 const SOUND_OPTIONS: { id: SoundId; label: string }[] = [
   { id: "chime", label: "Chime" },
   { id: "bell", label: "Bell" },
+  { id: "ding", label: "Ding" },
+  { id: "horn", label: "Horn" },
+  { id: "triple", label: "Triple beep" },
   { id: "none", label: "Off" },
 ];
 
@@ -42,7 +45,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="ticket overflow-hidden rounded-2xl border border-border px-6 py-6 shadow-[0_2px_0_0_var(--color-border)]">
+    <section className="ticket mb-5 break-inside-avoid-column overflow-hidden rounded-2xl border border-border px-6 py-6 shadow-[0_2px_0_0_var(--color-border)]">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           {icon}
@@ -150,9 +153,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         setDesktopNotify(!next);
         return;
       }
-      toast.success(
-        next ? "Desktop notifications on" : "Desktop notifications off",
-      );
+      toast.success(next ? "Notifications on" : "Notifications off");
       router.refresh();
     });
   }
@@ -163,7 +164,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
     soundId === initial.sound_id;
 
   return (
-    <div className="space-y-5">
+    <div className="lg:columns-2 lg:gap-5">
       <Section
         icon={<Clock className="size-5" />}
         title="Attention thresholds"
@@ -251,8 +252,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
 
       <Section
         icon={<Bell className="size-5" />}
-        title="Desktop notifications"
-        description="A system popup for a new order when this tab is backgrounded."
+        title="Notifications"
+        description="A popup for a new order when this tab is backgrounded. Works on Android and desktop browsers — on iPhone/iPad, add QKit to your Home Screen first (a regular Safari tab can't show these)."
       >
         <button
           type="button"
