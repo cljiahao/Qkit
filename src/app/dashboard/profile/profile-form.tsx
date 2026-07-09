@@ -15,6 +15,7 @@ import {
   displayNameSchema,
   passwordChangeSchema,
 } from "@/lib/schemas";
+import { FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";
 import { updateStallName } from "./actions";
 
 interface Props {
@@ -59,10 +60,6 @@ function Section({
     </section>
   );
 }
-
-const labelClass =
-  "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
-const errorClass = "text-sm font-medium text-destructive";
 
 export function ProfileForm({
   stallName,
@@ -179,7 +176,7 @@ export function ProfileForm({
         description="The name on your booth page and order tickets."
       >
         <div className="space-y-2">
-          <Label htmlFor="stall-name" className={labelClass}>
+          <Label htmlFor="stall-name" className={FORM_LABEL_CLASS}>
             Stall name
           </Label>
           <Input
@@ -192,7 +189,7 @@ export function ProfileForm({
             aria-describedby={nameError ? "stall-name-error" : undefined}
           />
           {nameError && (
-            <p id="stall-name-error" className={errorClass}>
+            <p id="stall-name-error" className={FORM_ERROR_CLASS}>
               {nameError}
             </p>
           )}
@@ -236,7 +233,7 @@ export function ProfileForm({
         description="How QKit addresses you. Customers never see this."
       >
         <div className="space-y-2">
-          <Label htmlFor="display-name" className={labelClass}>
+          <Label htmlFor="display-name" className={FORM_LABEL_CLASS}>
             Display name
           </Label>
           <Input
@@ -250,13 +247,13 @@ export function ProfileForm({
             aria-describedby={displayError ? "display-name-error" : undefined}
           />
           {displayError && (
-            <p id="display-name-error" className={errorClass}>
+            <p id="display-name-error" className={FORM_ERROR_CLASS}>
               {displayError}
             </p>
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email" className={labelClass}>
+          <Label htmlFor="email" className={FORM_LABEL_CLASS}>
             Email
           </Label>
           <Input
@@ -289,7 +286,7 @@ export function ProfileForm({
         description="Set a new password. At least 8 characters."
       >
         <div className="space-y-2">
-          <Label htmlFor="new-password" className={labelClass}>
+          <Label htmlFor="new-password" className={FORM_LABEL_CLASS}>
             New password
           </Label>
           <Input
@@ -303,7 +300,7 @@ export function ProfileForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm-password" className={labelClass}>
+          <Label htmlFor="confirm-password" className={FORM_LABEL_CLASS}>
             Confirm new password
           </Label>
           <Input
@@ -318,7 +315,7 @@ export function ProfileForm({
             aria-describedby={pwError ? "confirm-password-error" : undefined}
           />
           {pwError && (
-            <p id="confirm-password-error" className={errorClass}>
+            <p id="confirm-password-error" className={FORM_ERROR_CLASS}>
               {pwError}
             </p>
           )}

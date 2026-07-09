@@ -16,7 +16,7 @@ import {
   requestNotifyPermission,
   unlockAudio,
 } from "@/lib/order-alerts";
-import { cn } from "@/lib/utils";
+import { cn, FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { BoardSettings, SoundId } from "@/lib/types";
 import { updateBoardSettings } from "./actions";
 
@@ -28,10 +28,6 @@ const SOUND_OPTIONS: { id: SoundId; label: string }[] = [
   { id: "triple", label: "Triple beep" },
   { id: "none", label: "Off" },
 ];
-
-const labelClass =
-  "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
-const errorClass = "text-sm font-medium text-destructive";
 
 function Section({
   icon,
@@ -171,7 +167,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="aging-min" className={labelClass}>
+            <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
               Turn amber after
             </Label>
             <div className="flex items-center gap-2">
@@ -192,7 +188,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="overdue-min" className={labelClass}>
+            <Label htmlFor="overdue-min" className={FORM_LABEL_CLASS}>
               Turn red after
             </Label>
             <div className="flex items-center gap-2">
@@ -214,7 +210,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
           </div>
         </div>
         {thresholdError && (
-          <p id="threshold-error" className={errorClass}>
+          <p id="threshold-error" className={FORM_ERROR_CLASS}>
             {thresholdError}
           </p>
         )}

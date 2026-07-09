@@ -10,13 +10,12 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { passwordChangeSchema } from "@/lib/schemas";
+import { FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";
 
 type SessionState = "checking" | "ready" | "no-session";
 
 const cardClass =
   "ticket overflow-hidden rounded-2xl border border-border px-7 py-8 shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]";
-const labelClass =
-  "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 
 /**
  * Sets a new password on the recovery session established by /auth/callback
@@ -112,7 +111,7 @@ export function ResetPasswordForm() {
         className="mt-6 space-y-5"
       >
         <div className="space-y-2">
-          <Label htmlFor="new-password" className={labelClass}>
+          <Label htmlFor="new-password" className={FORM_LABEL_CLASS}>
             New password
           </Label>
           <Input
@@ -126,7 +125,7 @@ export function ResetPasswordForm() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm-password" className={labelClass}>
+          <Label htmlFor="confirm-password" className={FORM_LABEL_CLASS}>
             Confirm new password
           </Label>
           <Input
@@ -138,9 +137,7 @@ export function ResetPasswordForm() {
             onChange={(e) => setConfirm(e.target.value)}
             className="h-11 rounded-xl"
           />
-          {error && (
-            <p className="text-sm font-medium text-destructive">{error}</p>
-          )}
+          {error && <p className={FORM_ERROR_CLASS}>{error}</p>}
         </div>
         <Button
           type="submit"

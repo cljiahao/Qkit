@@ -2,7 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
 type Kind = "none" | "pointer" | "paynow";
@@ -32,9 +32,6 @@ const OPTIONS: { k: Kind; label: string; hint: string }[] = [
     hint: "Use your own payment link, or upload a QR you already have.",
   },
 ];
-
-const labelClass =
-  "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
 
 export function PaymentSection({
   value,
@@ -101,7 +98,7 @@ export function PaymentSection({
       {kind === "paynow" && (
         <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4">
           <div className="space-y-2">
-            <Label htmlFor="pn-name" className={labelClass}>
+            <Label htmlFor="pn-name" className={FORM_LABEL_CLASS}>
               Payee name
             </Label>
             <Input
@@ -120,7 +117,7 @@ export function PaymentSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="pn-uen" className={labelClass}>
+            <Label htmlFor="pn-uen" className={FORM_LABEL_CLASS}>
               UEN
             </Label>
             <Input
@@ -147,7 +144,7 @@ export function PaymentSection({
       {kind === "pointer" && (
         <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4">
           <div className="space-y-2">
-            <Label htmlFor="pt-label" className={labelClass}>
+            <Label htmlFor="pt-label" className={FORM_LABEL_CLASS}>
               Button label
             </Label>
             <Input
@@ -166,7 +163,7 @@ export function PaymentSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="pt-url" className={labelClass}>
+            <Label htmlFor="pt-url" className={FORM_LABEL_CLASS}>
               Payment link
             </Label>
             <Input
