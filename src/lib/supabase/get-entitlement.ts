@@ -4,7 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
 import { getEntitlement, type Entitlement } from "@/lib/plan";
 import type { User } from "@supabase/supabase-js";
-import type { Vendor } from "@/lib/types";
+import { DEFAULT_BOARD_SETTINGS, type Vendor } from "@/lib/types";
 
 /**
  * Resolve the current vendor's effective entitlement (plan + any live license).
@@ -61,6 +61,13 @@ export const loadEntitlement = cache(
     if (vendorError) {
       console.error("loadEntitlement: vendor read failed", vendorError.message);
       throw new Error("vendor lookup failed");
+    }
+
+    // board_settings can be missing if migration 0050 hasn't reached this DB
+    // yet (deploy and migrate aren't atomic) — fall back rather than crash
+    // every board render.
+    if (vendor && !vendor.board_settings) {
+      vendor.board_settings = DEFAULT_BOARD_SETTINGS;
     }
 
     const licenseExpiresAt = vendor ? (license?.expires_at ?? null) : null;

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
 import type { User } from "@supabase/supabase-js";
-import type { Vendor } from "@/lib/types";
+import { DEFAULT_BOARD_SETTINGS, type Vendor } from "@/lib/types";
 
 /**
  * Single source of truth for the auth/onboarding gate.
@@ -33,6 +33,13 @@ export const getVendor = cache(
     if (error) {
       console.error("getVendor: vendor read failed", error.message);
       throw new Error("vendor lookup failed");
+    }
+
+    // board_settings can be missing if migration 0050 hasn't reached this DB
+    // yet (deploy and migrate aren't atomic) — fall back rather than crash
+    // every board render.
+    if (vendor && !vendor.board_settings) {
+      vendor.board_settings = DEFAULT_BOARD_SETTINGS;
     }
 
     return { user, vendor: vendor ?? null };

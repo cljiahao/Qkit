@@ -29,6 +29,17 @@ export type BoardSettings = {
   desktop_notify: boolean;
 };
 
+// Falls back to this until migration 0050 (board_settings column) has been
+// applied to the environment's DB — app deploy and DB migration aren't
+// atomic, so a vendor row can briefly lack the column even though this type
+// says it's required.
+export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
+  aging_min: 5,
+  overdue_min: 10,
+  sound_id: "chime",
+  desktop_notify: false,
+};
+
 export type PaymentStatus =
   | "not_required"
   | "pending"
