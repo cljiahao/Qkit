@@ -153,10 +153,11 @@ function stopActiveNotes(ctx: AudioContext): void {
 }
 
 // Schedules a sequence of notes on the shared context — the engine behind
-// every board sound preset. Triangle waves carry more harmonics than sine, so
-// they read louder at the same gain. Awaits resume first so a context
-// suspended by backgrounding wakes before the notes are scheduled. Returns
-// true if it scheduled sound, false on any failure.
+// every board sound preset. Square waves carry a full stack of odd harmonics
+// (triangle's roll off fast, reading thin/hollow next to stall noise) — that's
+// what gives an alert its "solid", cut-through-a-crowd character. Awaits
+// resume first so a context suspended by backgrounding wakes before the notes
+// are scheduled. Returns true if it scheduled sound, false on any failure.
 function playNotes(
   notes: number[],
   noteDuration: number,
@@ -174,7 +175,7 @@ function playNotes(
         const at = start + i * spacing;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = "triangle";
+        osc.type = "square";
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(0.0001, at);
         gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, at + 0.02);
@@ -195,7 +196,7 @@ function playNotes(
 // seconds between note onsets (no overlap → no clip)
 const NOTE_SPACING = 0.2;
 const NOTE_DURATION = 0.22;
-const PEAK_GAIN = 0.32;
+const PEAK_GAIN = 0.4;
 
 // G5 · C6 · E6 (major triad), rising, then the triad again. ~1.2s total — loud
 // and long enough to catch a customer/vendor not staring at the screen.
