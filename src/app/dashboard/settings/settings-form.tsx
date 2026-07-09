@@ -183,6 +183,10 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 value={agingMin}
                 onChange={(e) => setAgingMin(e.target.value)}
                 className="h-11 rounded-xl"
+                aria-invalid={!!thresholdError}
+                aria-describedby={
+                  thresholdError ? "threshold-error" : undefined
+                }
               />
               <span className="text-sm text-muted-foreground">min</span>
             </div>
@@ -200,12 +204,20 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 value={overdueMin}
                 onChange={(e) => setOverdueMin(e.target.value)}
                 className="h-11 rounded-xl"
+                aria-invalid={!!thresholdError}
+                aria-describedby={
+                  thresholdError ? "threshold-error" : undefined
+                }
               />
               <span className="text-sm text-muted-foreground">min</span>
             </div>
           </div>
         </div>
-        {thresholdError && <p className={errorClass}>{thresholdError}</p>}
+        {thresholdError && (
+          <p id="threshold-error" className={errorClass}>
+            {thresholdError}
+          </p>
+        )}
         <div className="flex justify-end">
           <Button
             type="button"

@@ -188,8 +188,14 @@ export function ProfileForm({
             maxLength={100}
             onChange={(e) => setName(e.target.value)}
             className="h-11 rounded-xl"
+            aria-invalid={!!nameError}
+            aria-describedby={nameError ? "stall-name-error" : undefined}
           />
-          {nameError && <p className={errorClass}>{nameError}</p>}
+          {nameError && (
+            <p id="stall-name-error" className={errorClass}>
+              {nameError}
+            </p>
+          )}
         </div>
         <div className="flex justify-end">
           <Button
@@ -240,8 +246,14 @@ export function ProfileForm({
             placeholder="e.g. Aisha"
             onChange={(e) => setDisplay(e.target.value)}
             className="h-11 rounded-xl"
+            aria-invalid={!!displayError}
+            aria-describedby={displayError ? "display-name-error" : undefined}
           />
-          {displayError && <p className={errorClass}>{displayError}</p>}
+          {displayError && (
+            <p id="display-name-error" className={errorClass}>
+              {displayError}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email" className={labelClass}>
@@ -302,8 +314,14 @@ export function ProfileForm({
             placeholder="••••••••"
             onChange={(e) => setConfirm(e.target.value)}
             className="h-11 rounded-xl"
+            aria-invalid={!!pwError}
+            aria-describedby={pwError ? "confirm-password-error" : undefined}
           />
-          {pwError && <p className={errorClass}>{pwError}</p>}
+          {pwError && (
+            <p id="confirm-password-error" className={errorClass}>
+              {pwError}
+            </p>
+          )}
         </div>
         <div className="flex justify-end">
           <Button
