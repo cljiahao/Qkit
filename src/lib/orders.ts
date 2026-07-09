@@ -1,4 +1,11 @@
-import type { Order, OrderStatus, PaymentStatus } from "@/lib/types";
+import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
+
+// Explicit column list for every vendor-board order read (initial load +
+// realtime resync) — omits access_token, the customer's own status-page
+// secret, which the board never needs (least privilege). Single source so
+// the two read sites can't drift out of sync with each other.
+export const BOARD_ORDER_COLUMNS =
+  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key" as const;
 
 // A finished order — off the active board, no further transitions. Single
 // source of truth for the "is this done" check that several views need.
@@ -131,7 +138,7 @@ export function buildAdvancePatch(
  * used rather than order_number because order numbers are per-booth and not
  * globally ordered. Pure + non-mutating.
  */
-export function sortActiveOrders(orders: Order[]): Order[] {
+export function sortActiveOrders(orders: BoardOrder[]): BoardOrder[] {
   return [...orders].sort((a, b) => {
     const rank = STATUS_RANK[a.status] - STATUS_RANK[b.status];
     if (rank !== 0) return rank;

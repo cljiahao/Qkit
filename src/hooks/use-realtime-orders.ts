@@ -6,16 +6,17 @@ import {
   applyRealtimeOrderEvent,
   parseRealtimeOrderEvent,
 } from "@/lib/realtime-orders";
-import type { Order } from "@/lib/types";
+import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
+import type { BoardOrder } from "@/lib/types";
 
 export type RealtimeStatus = "connecting" | "connected" | "disconnected";
 
 export function useRealtimeOrders(
   boothIds: string[],
-  initialOrders: Order[],
-  onInsert?: (order: Order) => void,
-): { orders: Order[]; status: RealtimeStatus } {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  initialOrders: BoardOrder[],
+  onInsert?: (order: BoardOrder) => void,
+): { orders: BoardOrder[]; status: RealtimeStatus } {
+  const [orders, setOrders] = useState<BoardOrder[]>(initialOrders);
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
   const supabase = createClient();
   const filterString = useMemo(() => boothIds.join(","), [boothIds]);
@@ -34,7 +35,7 @@ export function useRealtimeOrders(
     if (boothIds.length === 0) return;
     const { data, error } = await supabase
       .from("orders")
-      .select("*")
+      .select(BOARD_ORDER_COLUMNS)
       .in("booth_id", boothIds)
       .not("status", "in", "(completed,cancelled)")
       .order("created_at", { ascending: false });

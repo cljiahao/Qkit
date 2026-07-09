@@ -581,6 +581,9 @@ export interface Database {
 export type Vendor = Database["qkit"]["Tables"]["vendors"]["Row"];
 export type Booth = Database["qkit"]["Tables"]["booths"]["Row"];
 export type Order = Database["qkit"]["Tables"]["orders"]["Row"];
+// The vendor board's shape of an order — access_token is the customer's own
+// status-page bearer secret, which the board never reads (least privilege).
+export type BoardOrder = Omit<Order, "access_token">;
 export type License = Database["qkit"]["Tables"]["licenses"]["Row"];
 export type Pricing = Database["qkit"]["Tables"]["pricing"]["Row"];
 export type Payment = Database["qkit"]["Tables"]["payments"]["Row"];

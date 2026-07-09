@@ -29,24 +29,25 @@ function row(overrides: Partial<Order> = {}): Order {
 }
 
 describe("parseRealtimeOrderEvent", () => {
-  it("parses a valid INSERT into a typed event", () => {
-    const order = row();
+  it("parses a valid INSERT into a typed event, stripping access_token", () => {
+    const { access_token: _accessToken, ...expected } = row();
     const event = parseRealtimeOrderEvent({
       eventType: "INSERT",
-      new: order,
+      new: row(),
       old: {},
     });
-    expect(event).toEqual({ type: "INSERT", order });
+    expect(event).toEqual({ type: "INSERT", order: expected });
   });
 
-  it("parses a valid UPDATE into a typed event", () => {
-    const order = row({ status: "ready", ready_at: "2026-06-12T04:05:00Z" });
+  it("parses a valid UPDATE into a typed event, stripping access_token", () => {
+    const full = row({ status: "ready", ready_at: "2026-06-12T04:05:00Z" });
+    const { access_token: _accessToken, ...expected } = full;
     const event = parseRealtimeOrderEvent({
       eventType: "UPDATE",
-      new: order,
+      new: full,
       old: {},
     });
-    expect(event).toEqual({ type: "UPDATE", order });
+    expect(event).toEqual({ type: "UPDATE", order: expected });
   });
 
   it("parses a DELETE from old.id only (no schema needed)", () => {
@@ -82,6 +83,18 @@ describe("parseRealtimeOrderEvent", () => {
     expect(
       parseRealtimeOrderEvent({ eventType: "TRUNCATE", new: row(), old: {} }),
     ).toBeNull();
+  });
+
+  it("never exposes access_token on the parsed order, even though the raw row carries it", () => {
+    const event = parseRealtimeOrderEvent({
+      eventType: "INSERT",
+      new: row(),
+      old: {},
+    });
+    expect(event?.type).toBe("INSERT");
+    expect(
+      event && "order" in event ? "access_token" in event.order : true,
+    ).toBe(false);
   });
 });
 

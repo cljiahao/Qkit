@@ -1,11 +1,11 @@
 import { orderRowSchema } from "@/lib/schemas";
-import type { Order } from "@/lib/types";
+import type { BoardOrder } from "@/lib/types";
 
 /** A validated realtime change, ready to fold into the order list. */
 export type RealtimeOrderEvent =
   | { type: "DELETE"; id: string }
-  | { type: "INSERT"; order: Order }
-  | { type: "UPDATE"; order: Order };
+  | { type: "INSERT"; order: BoardOrder }
+  | { type: "UPDATE"; order: BoardOrder };
 
 /** The slice of a Supabase realtime payload this module reads. */
 export type RawOrderChange = {
@@ -29,11 +29,16 @@ export function parseRealtimeOrderEvent(
   }
   const parsed = orderRowSchema.safeParse(payload.new);
   if (!parsed.success) return null;
+  // Postgres replication broadcasts the full row regardless of any REST-side
+  // column selection — strip the customer's status-page secret here so it
+  // never lands in the board's state, closing the one path column-narrowing
+  // the REST queries can't.
+  const { access_token: _accessToken, ...order } = parsed.data;
   if (payload.eventType === "INSERT") {
-    return { type: "INSERT", order: parsed.data };
+    return { type: "INSERT", order };
   }
   if (payload.eventType === "UPDATE") {
-    return { type: "UPDATE", order: parsed.data };
+    return { type: "UPDATE", order };
   }
   return null;
 }
@@ -44,9 +49,9 @@ export function parseRealtimeOrderEvent(
  * sorting beyond what the board already relies on.
  */
 export function applyRealtimeOrderEvent(
-  prev: Order[],
+  prev: BoardOrder[],
   event: RealtimeOrderEvent,
-): Order[] {
+): BoardOrder[] {
   switch (event.type) {
     case "DELETE":
       return prev.filter((o) => o.id !== event.id);

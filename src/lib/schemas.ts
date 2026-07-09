@@ -433,8 +433,10 @@ export const orderRowSchema = z.object({
   completed_at: z.string().nullable(),
   updated_at: z.string(),
   idempotency_key: z.string().nullable(),
-  // The vendor board never reads this, but Order carries it; tolerant so a
-  // payload missing it degrades to "" instead of dropping the whole event.
+  // Parsed then immediately stripped in parseRealtimeOrderEvent — the board
+  // never reads it, but the raw Postgres row always carries it, so it must
+  // parse here first. Tolerant so a payload missing it degrades to "" instead
+  // of dropping the whole event.
   access_token: z.string().catch(""),
 });
 

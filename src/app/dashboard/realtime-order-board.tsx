@@ -11,7 +11,7 @@ import { isTerminal, sortActiveOrders } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { cn } from "@/lib/utils";
-import type { BoardSettings, Order } from "@/lib/types";
+import type { BoardOrder, BoardSettings } from "@/lib/types";
 
 type BoothView = {
   id: string;
@@ -22,7 +22,7 @@ type BoothView = {
 
 interface Props {
   booths: BoothView[];
-  initialOrders: Order[];
+  initialOrders: BoardOrder[];
   boardSettings: BoardSettings;
   // The initial server-side read errored — the board may be missing in-flight
   // orders, so warn instead of silently showing "All clear".
@@ -76,7 +76,7 @@ export function RealtimeOrderBoard({
     else if (originalTitle.current) document.title = originalTitle.current;
   }, [away]);
 
-  function handleNewOrder(order: Order) {
+  function handleNewOrder(order: BoardOrder) {
     void playSound(boardSettings.sound_id);
     toast(`New order #${order.order_number} · ${order.customer_name}`);
     if (document.hidden) {

@@ -33,9 +33,9 @@ import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { Banknote, ChevronDown, Clock } from "lucide-react";
-import type { Order, OrderStatus } from "@/lib/types";
+import type { BoardOrder, OrderStatus } from "@/lib/types";
 
-function PaymentBadge({ status }: { status: Order["payment_status"] }) {
+function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   if (status === "not_required") return null;
   const map = {
     pending: { label: "Unpaid", cls: "bg-secondary text-muted-foreground" },
@@ -62,7 +62,7 @@ export function OrderCard({
   agingMin,
   overdueMin,
 }: {
-  order: Order;
+  order: BoardOrder;
   boothName?: string;
   // Vendor-configurable board_settings thresholds (see /dashboard/settings).
   // Fall through to orderAgeTone's own defaults when not supplied.

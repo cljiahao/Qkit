@@ -2,8 +2,9 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { parseBoothHours } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
+import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
 import { RealtimeOrderBoard } from "./realtime-order-board";
-import type { Order } from "@/lib/types";
+import type { BoardOrder } from "@/lib/types";
 
 export const revalidate = 0;
 
@@ -35,12 +36,12 @@ export default async function DashboardPage() {
 
   const boothIds = (booths ?? []).map((b) => b.id);
 
-  let orders: Order[] = [];
+  let orders: BoardOrder[] = [];
   let ordersErr = null;
   if (boothIds.length) {
     const { data, error } = await supabase
       .from("orders")
-      .select("*")
+      .select(BOARD_ORDER_COLUMNS)
       .in("booth_id", boothIds)
       .not("status", "in", "(completed,cancelled)")
       .order("created_at", { ascending: false });
