@@ -85,7 +85,8 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
 - No secrets in `NEXT_PUBLIC_*`. `NEXT_PUBLIC_SUPABASE_*` are inlined at build —
   rebuild after changing them.
 - `@supabase/ssr` and `@supabase/supabase-js` versions must stay compatible
-  (ssr 0.10.x ↔ supabase-js 2.10x) or every query degrades to `never`.
+  (currently ssr 0.10.x ↔ supabase-js 2.48.x — check package.json, not this
+  number, since both get bumped) or every query degrades to `never`.
 - After editing the schema, update both `supabase/migrations/` and `src/lib/types.ts`
   (or run `supabase gen types typescript` once the CLI is installed).
 
@@ -106,8 +107,7 @@ templateCentral has **no Supabase support** (auth=better-auth, db=Drizzle/Kysely
 no realtime). Use only the stack-agnostic ones here:
 | Skill | When to use |
 |-------|-------------|
-| `templatecentral:standards` | naming/validation drift check |
-| `templatecentral:audit` | structural audit (expect Supabase-vs-tc drift findings) |
+| `templatecentral:standards` | naming/validation/drift-check (expect Supabase-vs-tc drift findings) |
 
 Do **not** run `templatecentral:add (auth)` or `(database)` — they install
 better-auth / Drizzle and will break RLS + realtime.
