@@ -1,4 +1,5 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
 import {
@@ -14,11 +15,15 @@ import { DEFAULT_PRICING } from "@/lib/pricing";
 import { type AdminVendorRow } from "./vendor-manage";
 import { PricingForm } from "./pricing-form";
 import { ActivationFunnelView } from "./activation-funnel";
-import { TrendChart } from "../dashboard/stats/trend-chart";
 import { Paginated } from "@/components/paginated";
 import { Stat } from "./stat";
 import { ResolveRequestButton } from "./resolve-request-button";
 import { ResolveMessageButton } from "./resolve-message-button";
+
+// Lazy-loaded: pulls in recharts, code-split out of the initial admin bundle.
+const TrendChart = dynamic(() =>
+  import("../dashboard/stats/trend-chart").then((m) => m.TrendChart),
+);
 
 const SUPPORT_CATEGORY_LABEL: Record<string, string> = {
   pass: "Event pass",

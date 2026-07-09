@@ -1,17 +1,25 @@
 import { Children } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { DollarSign, Lock, Package, Timer } from "lucide-react";
 import type { SeriesPoint, StatsSummary, WaitPoint } from "@/lib/stats";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hourLabel, rangeCaption, waitClock } from "./chart-format";
-import { ServiceSpeedChart } from "./service-speed-chart";
 import { KpiRow, StatTile } from "./kpi-row";
 import { ExportButton } from "./export-button";
-import { TrendChart } from "./trend-chart";
 import { BusyHeatmap } from "./busy-heatmap";
-import { TopItems } from "./top-items";
 import { OptionsBreakdown } from "./options-breakdown";
 import { MarginTable } from "./margin-table";
+
+// Lazy-loaded: each pulls in recharts, the heaviest dep on this page. Code-split
+// out of the initial bundle rather than paid on every stats-page visit.
+const ServiceSpeedChart = dynamic(() =>
+  import("./service-speed-chart").then((m) => m.ServiceSpeedChart),
+);
+const TrendChart = dynamic(() =>
+  import("./trend-chart").then((m) => m.TrendChart),
+);
+const TopItems = dynamic(() => import("./top-items").then((m) => m.TopItems));
 
 type Deltas = {
   revenue: number | null;
