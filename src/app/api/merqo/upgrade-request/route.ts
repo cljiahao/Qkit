@@ -110,9 +110,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   }
 
+  if (vendorId === null) {
+    return NextResponse.json(
+      { success: false, error: "No matching vendor" },
+      { status: 404 },
+    );
+  }
+
   const insertRes = await supabase
     .from("purchase_requests")
-    .insert({ vendor_id: vendorId!, kind: "monthly" });
+    .insert({ vendor_id: vendorId, kind: "monthly" });
   if (insertRes.error) {
     console.error(
       "merqo upgrade-request: insert failed",
