@@ -177,9 +177,11 @@ export default async function PlanPage() {
         </p>
       )}
 
-      {/* Three-rung comparison */}
+      {/* Three-rung comparison. Header and every row use the same fixed
+          column widths (not "auto") so the Free/Pass/Pro ticks line up under
+          their headers regardless of each row being its own grid instance. */}
       <div className="overflow-hidden rounded-2xl border border-border">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-5 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-[1fr_2.75rem_2.75rem_2.75rem] gap-x-5 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <span>Feature</span>
           <span className="text-center">Free</span>
           <span className="text-center">Pass</span>
@@ -188,7 +190,7 @@ export default async function PlanPage() {
         {FEATURES.map((f) => (
           <div
             key={f.label}
-            className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-5 border-t border-border px-5 py-3 text-sm"
+            className="grid grid-cols-[1fr_2.75rem_2.75rem_2.75rem] items-center gap-x-5 border-t border-border px-5 py-3 text-sm"
           >
             <span>{f.label}</span>
             <Cell on={f.free} />
