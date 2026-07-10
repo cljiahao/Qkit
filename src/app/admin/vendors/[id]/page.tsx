@@ -46,34 +46,38 @@ export default async function AdminVendorDetailPage({
   const { id } = await params;
   const supabase = await createServerClient();
 
-  const { data: vendor } = await supabase
-    .from("vendors")
-    .select("id, name, plan, created_at")
-    .eq("id", id)
-    .maybeSingle();
-  if (!vendor) notFound();
-
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
 
-  // Scoped reads for this one vendor (never the fleet fetch-all).
-  const [{ data: booths }, { data: licenses }, { data: messages }] =
-    await Promise.all([
-      supabase
-        .from("booths")
-        .select("id, name, is_active, created_at")
-        .eq("vendor_id", id),
-      supabase
-        .from("licenses")
-        .select("vendor_id, valid_from, expires_at, note")
-        .eq("vendor_id", id)
-        .order("valid_from", { ascending: false }),
-      supabase
-        .from("support_messages")
-        .select("id, category, body, status, created_at")
-        .eq("vendor_id", id)
-        .order("created_at", { ascending: false }),
-    ]);
+  // All four scoped to this one vendor (never the fleet fetch-all) and
+  // independent of each other — one round trip instead of vendor-then-rest.
+  const [
+    { data: vendor },
+    { data: booths },
+    { data: licenses },
+    { data: messages },
+  ] = await Promise.all([
+    supabase
+      .from("vendors")
+      .select("id, name, plan, created_at")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("booths")
+      .select("id, name, is_active, created_at")
+      .eq("vendor_id", id),
+    supabase
+      .from("licenses")
+      .select("vendor_id, valid_from, expires_at, note")
+      .eq("vendor_id", id)
+      .order("valid_from", { ascending: false }),
+    supabase
+      .from("support_messages")
+      .select("id, category, body, status, created_at")
+      .eq("vendor_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
+  if (!vendor) notFound();
 
   const boothRows = booths ?? [];
   const boothIds = boothRows.map((b) => b.id);
