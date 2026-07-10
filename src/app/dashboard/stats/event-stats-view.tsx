@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { computeStats, windowSeries } from "@/lib/stats";
-import { MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
+import { bucketPlan, computeStats, windowSeries } from "@/lib/stats";
+import { MS_PER_DAY } from "@/lib/utils";
 import { shortDay } from "@/lib/tz";
 import { eventLabel, type EventLicense } from "@/lib/events";
 import { groupReviewsByBooth, summarizeReviews } from "@/lib/reviews";
@@ -36,14 +36,9 @@ export async function EventStatsView({
     1,
     Math.ceil((Date.parse(to) - Date.parse(from)) / MS_PER_DAY),
   );
-  // Sub-day event → hourly buckets; multi-day → one slot per day. Anchored to
-  // the window end so the trend lines up with the event, not "now".
-  const series = windowSeries(
-    orders,
-    Date.parse(to),
-    spanDays === 1 ? 24 : spanDays,
-    spanDays === 1 ? MS_PER_HOUR : MS_PER_DAY,
-  );
+  // Anchored to the window end so the trend lines up with the event, not "now".
+  const { buckets, bucketMs } = bucketPlan(spanDays);
+  const series = windowSeries(orders, Date.parse(to), buckets, bucketMs);
   // Reviews for orders placed during this event — by order date, so late
   // reviews (written after the event ended) still belong to it.
   const eventRows = await fetchEventReviewRows(supabase, allBoothIds, from, to);

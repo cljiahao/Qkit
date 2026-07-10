@@ -1,4 +1,5 @@
 import {
+  bucketPlan,
   computeStats,
   pctChange,
   windowSeries,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/stats";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
-import { MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
+import { MS_PER_DAY } from "@/lib/utils";
 import { groupReviewsByBooth, summarizeReviews } from "@/lib/reviews";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
@@ -135,9 +136,7 @@ export default async function StatsPage({ searchParams }: Props) {
       orders: pctChange(summary.orderCount, prior.orderCount),
       aov: pctChange(summary.aov_cents, prior.aov_cents),
     };
-    // 24h → 24 hourly slots; multi-day → one slot per day.
-    const buckets = days === 1 ? 24 : days;
-    const bucketMs = days === 1 ? MS_PER_HOUR : MS_PER_DAY;
+    const { buckets, bucketMs } = bucketPlan(days);
     series = windowSeries(orders, now, buckets, bucketMs);
     waitPoints = waitSeries(orders, now, buckets, bucketMs);
     peak = peakThroughput(orders);

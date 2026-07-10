@@ -1,6 +1,16 @@
 import type { OrderItem, OrderStatus, PaymentStatus } from "@/lib/types";
-import { formatOptions, MS_PER_HOUR } from "@/lib/utils";
+import { formatOptions, MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
 import { sgtHour, sgtWeekday, WEEKDAY_ORDER } from "@/lib/tz";
+
+/** A 1-day span buckets hourly; anything longer buckets one slot per day. */
+export function bucketPlan(days: number): {
+  buckets: number;
+  bucketMs: number;
+} {
+  return days === 1
+    ? { buckets: 24, bucketMs: MS_PER_HOUR }
+    : { buckets: days, bucketMs: MS_PER_DAY };
+}
 
 // Empty-data convention across this module: rates and waits return `null` (the
 // UI renders "—", never a misleading 0), while money and counts return `0`.
