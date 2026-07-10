@@ -57,7 +57,7 @@ describe("PaymentSection", () => {
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
 
-  it("offers a QR image upload alongside the payment link for 'pointer'", () => {
+  it("defaults 'pointer' to the payment-link field, not the QR uploader", () => {
     const onChange = vi.fn();
     render(<Host initial={null} onChange={onChange} />);
     fireEvent.click(
@@ -65,30 +65,53 @@ describe("PaymentSection", () => {
     );
     expect(screen.getByLabelText("Payment link")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /add photo/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /add photo/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("keeps an existing qr_image_url when the label changes", () => {
+  it("switches to the QR uploader and clears the link when that sub-option is picked", () => {
+    const onChange = vi.fn();
+    render(
+      <Host
+        initial={{ kind: "pointer", label: "Pay", url: "https://pay.me/x" }}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "QR image" }));
+    expect(screen.queryByLabelText("Payment link")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /add photo/i }),
+    ).toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith({
+      kind: "pointer",
+      label: "Pay",
+      url: undefined,
+      qr_image_url: undefined,
+    });
+  });
+
+  it("switches back to the link field and clears qr_image_url", () => {
     const onChange = vi.fn();
     render(
       <Host
         initial={{
           kind: "pointer",
-          label: "",
+          label: "Scan to pay",
           qr_image_url: "https://example.com/qr.webp",
         }}
         onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByLabelText(/Button label/i), {
-      target: { value: "Scan to pay" },
-    });
+    // No url and a qr_image_url set → starts in QR mode.
+    expect(screen.queryByLabelText("Payment link")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Payment link" }));
+    expect(screen.getByLabelText("Payment link")).toBeInTheDocument();
     expect(onChange).toHaveBeenLastCalledWith({
       kind: "pointer",
       label: "Scan to pay",
       url: undefined,
-      qr_image_url: "https://example.com/qr.webp",
+      qr_image_url: undefined,
     });
   });
 });

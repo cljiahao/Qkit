@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ImageUploader } from "@/components/image-uploader";
@@ -7,6 +8,7 @@ import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
 type Kind = "none" | "pointer" | "paynow";
+type PointerMode = "link" | "qr";
 
 function kindOf(v: PaymentConfig | null): Kind {
   if (!v) return "none";
@@ -47,11 +49,34 @@ export function PaymentSection({
   const paynow = value?.kind === "paynow" ? value : null;
   const pointer = value?.kind === "pointer" ? value : null;
 
+  // Which pointer field is live. A vendor can only ever use one at a time
+  // (renderCheckout picks url over qr_image_url when both happen to be set),
+  // so the editor shows exactly one instead of both plus a footnote about
+  // which one wins.
+  const [pointerMode, setPointerMode] = useState<PointerMode>(() =>
+    pointer?.qr_image_url && !pointer?.url ? "qr" : "link",
+  );
+
   function pick(next: Kind) {
     if (next === "none") onChange(null);
     else if (next === "paynow")
       onChange({ kind: "paynow", payee_name: "", uen: "" });
-    else onChange({ kind: "pointer", label: "", url: "" });
+    else {
+      setPointerMode("link");
+      onChange({ kind: "pointer", label: "", url: "" });
+    }
+  }
+
+  function pickPointerMode(next: PointerMode) {
+    setPointerMode(next);
+    // Clear the field for the mode being left, so the data never carries
+    // stale url + qr_image_url at once.
+    onChange({
+      kind: "pointer",
+      label: pointer?.label ?? "",
+      url: next === "link" ? pointer?.url : undefined,
+      qr_image_url: next === "qr" ? pointer?.qr_image_url : undefined,
+    });
   }
 
   return (
@@ -146,69 +171,99 @@ export function PaymentSection({
 
       {kind === "pointer" && (
         <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4">
-          <div className="space-y-2">
-            <Label htmlFor="pt-label" className={FORM_LABEL_CLASS}>
-              Button label
-            </Label>
-            <Input
-              id="pt-label"
-              value={pointer?.label ?? ""}
-              placeholder="Pay with PayLah"
-              className="h-12 rounded-xl"
-              onChange={(e) =>
-                onChange({
-                  kind: "pointer",
-                  label: e.target.value,
-                  url: pointer?.url,
-                  qr_image_url: pointer?.qr_image_url,
-                })
-              }
-            />
+          <div
+            role="radiogroup"
+            aria-label="Payment link or QR image"
+            className="inline-flex rounded-lg border border-border p-0.5 text-sm"
+          >
+            {(
+              [
+                { m: "link", label: "Payment link" },
+                { m: "qr", label: "QR image" },
+              ] as const
+            ).map(({ m, label }) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={pointerMode === m}
+                onClick={() => pickPointerMode(m)}
+                className={cn(
+                  "rounded-md px-3 py-1 font-medium transition-colors",
+                  pointerMode === m
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="pt-url" className={FORM_LABEL_CLASS}>
-              Payment link
-            </Label>
-            <Input
-              id="pt-url"
-              value={pointer?.url ?? ""}
-              placeholder="https://…"
-              className="h-12 rounded-xl"
-              onChange={(e) =>
-                onChange({
-                  kind: "pointer",
-                  label: pointer?.label ?? "",
-                  url: e.target.value || undefined,
-                  qr_image_url: pointer?.qr_image_url,
-                })
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              Any https link: a Qashier/HitPay/GrabPay checkout, your
-              bank&apos;s payment page, or a Stripe Payment Link.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label className={FORM_LABEL_CLASS}>Or a QR image</Label>
-            <ImageUploader
-              vendorId={vendorId}
-              variant="thumb"
-              value={pointer?.qr_image_url ?? null}
-              onChange={(url) =>
-                onChange({
-                  kind: "pointer",
-                  label: pointer?.label ?? "",
-                  url: pointer?.url,
-                  qr_image_url: url ?? undefined,
-                })
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              A static QR you already have: your GrabPay, PayLah, or bank QR
-              code, photographed or screenshotted. Shown if no payment link is
-              set above.
-            </p>
-          </div>
+
+          {pointerMode === "link" ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="pt-label" className={FORM_LABEL_CLASS}>
+                  Button label
+                </Label>
+                <Input
+                  id="pt-label"
+                  value={pointer?.label ?? ""}
+                  placeholder="Pay with PayLah"
+                  className="h-12 rounded-xl"
+                  onChange={(e) =>
+                    onChange({
+                      kind: "pointer",
+                      label: e.target.value,
+                      url: pointer?.url,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pt-url" className={FORM_LABEL_CLASS}>
+                  Payment link
+                </Label>
+                <Input
+                  id="pt-url"
+                  value={pointer?.url ?? ""}
+                  placeholder="https://…"
+                  className="h-12 rounded-xl"
+                  onChange={(e) =>
+                    onChange({
+                      kind: "pointer",
+                      label: pointer?.label ?? "",
+                      url: e.target.value || undefined,
+                    })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Any https link: a Qashier/HitPay/GrabPay checkout, your
+                  bank&apos;s payment page, or a Stripe Payment Link.
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <Label className={FORM_LABEL_CLASS}>QR image</Label>
+              <ImageUploader
+                vendorId={vendorId}
+                variant="thumb"
+                value={pointer?.qr_image_url ?? null}
+                onChange={(url) =>
+                  onChange({
+                    kind: "pointer",
+                    label: pointer?.label ?? "",
+                    qr_image_url: url ?? undefined,
+                  })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                A static QR you already have: your GrabPay, PayLah, or bank QR
+                code, photographed or screenshotted.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </fieldset>
