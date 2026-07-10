@@ -1,7 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { createServerClient } from "@/lib/supabase/server";
-import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
-import { parseOrderItems } from "@/lib/schemas";
 import {
   computeStats,
   pctChange,
@@ -10,24 +6,18 @@ import {
   waitSeries,
   peakThroughput,
   type SeriesPoint,
-  type StatsOrder,
   type WaitPoint,
 } from "@/lib/stats";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { createServerClient } from "@/lib/supabase/server";
+import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
-import { shortDay } from "@/lib/tz";
-import { eventLabel } from "@/lib/events";
-import {
-  groupReviewsByBooth,
-  summarizeReviews,
-  type ReviewRow,
-} from "@/lib/reviews";
-import type { Database } from "@/lib/types";
+import { groupReviewsByBooth, summarizeReviews } from "@/lib/reviews";
 import { StatsControls } from "./stats-controls";
 import { StatsView } from "./stats-view";
 import { EventsPanel } from "./events-panel";
 import { ReviewsCard } from "./reviews-card";
+import { EventStatsView } from "./event-stats-view";
+import { fetchOrders, fetchAllTimeTotals, fetchReviewRows } from "./queries";
 
 export const revalidate = 0;
 
@@ -40,108 +30,6 @@ const RANGE_DAYS: Record<string, number> = {
 
 interface Props {
   searchParams: Promise<{ range?: string; booth?: string; event?: string }>;
-}
-
-/** Fetch this vendor's orders for a window [gte, lt). RLS scopes to the vendor. */
-async function fetchOrders(
-  supabase: SupabaseClient<Database>,
-  boothIds: string[],
-  gte: string,
-  lt?: string,
-): Promise<StatsOrder[]> {
-  if (!boothIds.length) return [];
-  let query = supabase
-    .from("orders")
-    .select("status, total_cents, items, created_at, ready_at, payment_status")
-    .in("booth_id", boothIds)
-    .gte("created_at", gte);
-  if (lt) query = query.lt("created_at", lt);
-  const { data } = await query;
-  return (data ?? []).map((row) => ({
-    status: row.status,
-    total_cents: row.total_cents,
-    items: parseOrderItems(row.items),
-    created_at: row.created_at,
-    ready_at: row.ready_at,
-    payment_status: row.payment_status,
-  }));
-}
-
-/**
- * Lifetime totals across the vendor's booths — order count and revenue earned,
- * non-cancelled (`status <> 'cancelled'`, so completed and in-flight both
- * count). Deliberately NOT range- or booth-filtered: it's the "since you
- * started, every booth" number, kept separate from the range KPIs. Selects just
- * `total_cents` and reduces in-process (count = row count) so there's no
- * dependency on a PostgREST aggregate. RLS scopes rows to this vendor.
- */
-async function fetchAllTimeTotals(
-  supabase: SupabaseClient<Database>,
-  boothIds: string[],
-): Promise<{ orders: number; revenue_cents: number }> {
-  if (!boothIds.length) return { orders: 0, revenue_cents: 0 };
-  const { data } = await supabase
-    .from("orders")
-    .select("total_cents")
-    .in("booth_id", boothIds)
-    .neq("status", "cancelled");
-  const rows = data ?? [];
-  return {
-    orders: rows.length,
-    revenue_cents: rows.reduce((sum, r) => sum + r.total_cents, 0),
-  };
-}
-
-/**
- * All customer reviews for this vendor's booths, newest first. RLS
- * (feedback_vendor_read_own) already restricts rows to booths this vendor owns;
- * the explicit `.in("booth_id", …)` lets Postgres use the feedback(booth_id,
- * created_at) index instead of scanning platform-wide feedback to apply the RLS
- * membership filter per row, and keeps the 500-row cap on THIS vendor's reviews.
- */
-async function fetchReviewRows(
-  supabase: SupabaseClient<Database>,
-  boothIds: string[],
-): Promise<ReviewRow[]> {
-  if (!boothIds.length) return [];
-  const { data } = await supabase
-    .from("feedback")
-    .select("rating, message, order_number, booth_id, created_at")
-    .eq("source", "customer")
-    .in("booth_id", boothIds)
-    .order("created_at", { ascending: false })
-    .limit(500);
-  // No cast: the select column list matches the generated `feedback` Row, so the
-  // typed client already infers ReviewRow[] — parse-don't-cast holds by inference.
-  return data ?? [];
-}
-
-/**
- * Reviews for orders PLACED within [from, to) — keyed by the order's date, not
- * the review's. A customer who reviews days late (after the event has ended)
- * still counts toward that event, because the order belongs to it.
- */
-async function fetchEventReviewRows(
-  supabase: SupabaseClient<Database>,
-  boothIds: string[],
-  from: string,
-  to: string,
-): Promise<ReviewRow[]> {
-  if (!boothIds.length) return [];
-  const { data: orderKeys } = await supabase
-    .from("orders")
-    .select("booth_id, order_number")
-    .in("booth_id", boothIds)
-    .gte("created_at", from)
-    .lt("created_at", to);
-  const inEvent = new Set(
-    (orderKeys ?? []).map((o) => `${o.booth_id}::${o.order_number}`),
-  );
-  if (inEvent.size === 0) return [];
-  const rows = await fetchReviewRows(supabase, boothIds);
-  return rows.filter(
-    (r) => r.order_number && inEvent.has(`${r.booth_id}::${r.order_number}`),
-  );
 }
 
 export default async function StatsPage({ searchParams }: Props) {
@@ -173,72 +61,19 @@ export default async function StatsPage({ searchParams }: Props) {
   const allBoothIds = boothList.map((b) => b.id);
   const events = licenses ?? [];
 
-  // ── Per-event view: a paid window's FULL stats, ungated (they paid). ─────────
+  // Per-event view: a paid window's FULL stats, ungated (they paid) — a
+  // distinct "revisit a past event" page, not the live range/today view.
   const activeEvent = eventParam
     ? events.find((e) => e.id === eventParam)
     : undefined;
   if (activeEvent) {
-    const from = activeEvent.valid_from;
-    const to = activeEvent.expires_at;
-    const orders = await fetchOrders(supabaseEarly, allBoothIds, from, to);
-    const summary = computeStats(orders);
-    const spanDays = Math.max(
-      1,
-      Math.ceil((Date.parse(to) - Date.parse(from)) / MS_PER_DAY),
-    );
-    // Sub-day event → hourly buckets; multi-day → one slot per day. Anchored to
-    // the window end so the trend lines up with the event, not "now".
-    const series = windowSeries(
-      orders,
-      Date.parse(to),
-      spanDays === 1 ? 24 : spanDays,
-      spanDays === 1 ? MS_PER_HOUR : MS_PER_DAY,
-    );
-    // Reviews for orders placed during this event — by order date, so late
-    // reviews (written after the event ended) still belong to it.
-    const eventRows = await fetchEventReviewRows(
-      supabaseEarly,
-      allBoothIds,
-      from,
-      to,
-    );
-    const eventGroups = groupReviewsByBooth(eventRows, boothList);
-    const eventOverall = summarizeReviews(eventRows);
     return (
-      <div className="space-y-7">
-        <div>
-          <Link
-            href="/dashboard/stats"
-            className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
-          >
-            <ArrowLeft className="size-3.5" /> All stats
-          </Link>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Event · {shortDay(Date.parse(from))} – {shortDay(Date.parse(to))} ·
-            always available
-          </p>
-          <h1 className="font-display text-4xl font-semibold leading-none">
-            {eventLabel(activeEvent)}
-          </h1>
-        </div>
-        {/* Paid window → full stats regardless of current plan. Hide the trend
-            chart for an empty (zero-revenue) event. */}
-        <StatsView
-          summary={summary}
-          deltas={null}
-          series={summary.revenue_cents > 0 ? series : null}
-          range="event"
-          boothId="all"
-          pro
-        />
-
-        <ReviewsCard
-          groups={eventGroups}
-          overall={eventOverall}
-          selected="all"
-          linkable={false}
-        />
-      </div>
+      <EventStatsView
+        supabase={supabaseEarly}
+        activeEvent={activeEvent}
+        boothList={boothList}
+        allBoothIds={allBoothIds}
+      />
     );
   }
 
