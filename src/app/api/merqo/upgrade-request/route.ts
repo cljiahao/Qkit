@@ -44,12 +44,20 @@ export async function POST(request: Request) {
 
   const supabase = await createServiceClient();
 
+  // Known limitation: listUsers paginates but we only fetch page 1 (1000 users max).
+  // Once qkit has >1000 auth users, vendors past this page silently resolve as
+  // not_found. TODO: implement pagination to fetch all pages.
   const usersRes = await supabase.auth.admin.listUsers({ perPage: 1000 });
   if (usersRes.error) {
     console.error("merqo upgrade-request: read failed", usersRes.error.message);
     return NextResponse.json(
       { success: false, error: "Upstream unavailable" },
       { status: 503 },
+    );
+  }
+  if (usersRes.data?.users.length === 1000) {
+    console.error(
+      "merqo upgrade-request: listUsers returned a full page (1000) — pagination not implemented, some vendors past this page may resolve as not_found",
     );
   }
 
