@@ -2,6 +2,7 @@
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { ImageUploader } from "@/components/image-uploader";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
@@ -29,14 +30,16 @@ const OPTIONS: { k: Kind; label: string; hint: string }[] = [
   {
     k: "pointer",
     label: "Payment link or QR image",
-    hint: "Use your own payment link, or upload a QR you already have.",
+    hint: "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, your bank's own QR — any of them work here.",
   },
 ];
 
 export function PaymentSection({
+  vendorId,
   value,
   onChange,
 }: {
+  vendorId: string;
   value: PaymentConfig | null;
   onChange: (next: PaymentConfig | null) => void;
 }) {
@@ -181,7 +184,29 @@ export function PaymentSection({
               }
             />
             <p className="text-xs text-muted-foreground">
-              Any https link — your PayLah, bank, or Stripe payment page.
+              Any https link — a Qashier/HitPay/GrabPay checkout, your
+              bank&apos;s payment page, or a Stripe Payment Link.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label className={FORM_LABEL_CLASS}>Or a QR image</Label>
+            <ImageUploader
+              vendorId={vendorId}
+              variant="thumb"
+              value={pointer?.qr_image_url ?? null}
+              onChange={(url) =>
+                onChange({
+                  kind: "pointer",
+                  label: pointer?.label ?? "",
+                  url: pointer?.url,
+                  qr_image_url: url ?? undefined,
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              A static QR you already have — your GrabPay, PayLah, or bank QR
+              code, photographed or screenshotted. Shown if no payment link is
+              set above.
             </p>
           </div>
         </div>

@@ -169,7 +169,11 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
         entitlement={entitlement}
       />
 
-      <PaymentSection value={payment} onChange={setPayment} />
+      <PaymentSection
+        vendorId={vendorId}
+        value={payment}
+        onChange={setPayment}
+      />
 
       <div className="flex gap-3">
         <Button

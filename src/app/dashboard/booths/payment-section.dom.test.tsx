@@ -17,6 +17,7 @@ function Host({
   const [value, setValue] = useState<PaymentConfig | null>(initial);
   return (
     <PaymentSection
+      vendorId="v1"
       value={value}
       onChange={(next) => {
         setValue(next);
@@ -54,5 +55,40 @@ describe("PaymentSection", () => {
     );
     fireEvent.click(screen.getByRole("radio", { name: /No online payment/i }));
     expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("offers a QR image upload alongside the payment link for 'pointer'", () => {
+    const onChange = vi.fn();
+    render(<Host initial={null} onChange={onChange} />);
+    fireEvent.click(
+      screen.getByRole("radio", { name: /Payment link or QR image/i }),
+    );
+    expect(screen.getByLabelText("Payment link")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /add photo/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps an existing qr_image_url when the label changes", () => {
+    const onChange = vi.fn();
+    render(
+      <Host
+        initial={{
+          kind: "pointer",
+          label: "",
+          qr_image_url: "https://example.com/qr.webp",
+        }}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/Button label/i), {
+      target: { value: "Scan to pay" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      kind: "pointer",
+      label: "Scan to pay",
+      url: undefined,
+      qr_image_url: "https://example.com/qr.webp",
+    });
   });
 });
