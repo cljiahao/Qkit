@@ -45,7 +45,7 @@ export function SupportForm() {
   if (sent) {
     return (
       <div className="rounded-xl border border-border bg-card px-4 py-3 text-center text-sm text-muted-foreground">
-        Got it — we&apos;ll look into this and follow up. 🙏
+        Got it. We&apos;ll look into this and follow up. 🙏
       </div>
     );
   }

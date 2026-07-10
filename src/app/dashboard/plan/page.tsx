@@ -42,7 +42,7 @@ function Cell({ on }: { on: boolean }) {
       {on ? (
         <Check className="size-4 text-status-ready" />
       ) : (
-        <span className="text-muted-foreground/40">—</span>
+        <span className="text-muted-foreground/40">-</span>
       )}
     </span>
   );
@@ -98,7 +98,7 @@ export default async function PlanPage() {
 
       {tier === "pro" ? (
         <p className="rounded-xl border border-border bg-card px-5 py-4 text-sm text-muted-foreground">
-          You&apos;re on Pro — unlimited booths, scheduling, sold-out caps, and
+          You&apos;re on Pro. Unlimited booths, scheduling, sold-out caps, and
           full stats are unlocked. Thanks for supporting QKit.
         </p>
       ) : (
@@ -121,7 +121,7 @@ export default async function PlanPage() {
               </span>
             )}
             <p className="mt-2 flex-1 text-sm text-muted-foreground">
-              All Pro features for your event — extra booths, customization,
+              All Pro features for your event: extra booths, customization,
               auto-close, sold-out caps, and that event&apos;s stats. Pick the
               dates, pay per day. Best for the occasional market.
             </p>
@@ -172,8 +172,8 @@ export default async function PlanPage() {
       {tier !== "pro" && (
         <p className="rounded-xl border border-dashed border-border px-4 py-3 text-center text-xs text-muted-foreground">
           {paidMode
-            ? "Founding price — locks in while we're in beta. Pay by PayNow or cash; message us and we'll activate your pass. Card payments coming soon."
-            : "Free while we're in beta — message us and we'll unlock the full kit for your next event. Per-event and monthly pricing arrive with card payments."}
+            ? "Founding price, locks in while we're in beta. Pay by PayNow or cash; message us and we'll activate your pass. Card payments coming soon."
+            : "Free while we're in beta. Message us and we'll unlock the full kit for your next event. Per-event and monthly pricing arrive with card payments."}
         </p>
       )}
 

@@ -116,8 +116,8 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
 
       {items.length === 0 && (
         <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-          No items yet. Add one — price is optional (leave blank for a
-          queue-only booth).
+          No items yet. Add one, price is optional (leave blank for a queue-only
+          booth).
         </p>
       )}
 
@@ -195,7 +195,7 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
               </label>
             </div>
             <p className="-mt-1 text-xs text-muted-foreground">
-              Cost is private — used only for your profit/margin stats, never
+              Cost is private, used only for your profit/margin stats, never
               shown to customers.
             </p>
 

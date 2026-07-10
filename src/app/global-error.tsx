@@ -44,8 +44,8 @@ export default function GlobalError({
               lineHeight: 1.5,
             }}
           >
-            An unexpected error interrupted the page. Please try again — if it
-            keeps happening, refresh in a moment.
+            An unexpected error interrupted the page. Please try again, and if
+            it keeps happening, refresh in a moment.
           </p>
           <button
             type="button"

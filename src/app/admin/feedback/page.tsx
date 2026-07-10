@@ -127,7 +127,7 @@ export default async function AdminFeedbackPage() {
           </p>
           <div className="mt-2 flex items-end gap-3">
             <span className="font-display text-6xl font-semibold leading-none">
-              {nps.score ?? "—"}
+              {nps.score ?? "-"}
             </span>
             <span className="pb-1 font-mono text-sm text-muted-foreground">
               {nps.total} response{nps.total === 1 ? "" : "s"}
@@ -197,13 +197,13 @@ export default async function AdminFeedbackPage() {
             Platform CSAT
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            How customers rate ordering across every booth — your ordering-UX
+            How customers rate ordering across every booth: your ordering-UX
             health. Individual booth reviews live on each vendor&apos;s stats.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-display text-5xl font-semibold leading-none">
-            {csat.average?.toFixed(1) ?? "—"}
+            {csat.average?.toFixed(1) ?? "-"}
           </span>
           <div>
             <StarRow value={Math.round(csat.average ?? 0)} />
@@ -244,7 +244,7 @@ export default async function AdminFeedbackPage() {
               Satisfaction by vendor
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Lowest-rated first — where ordering quality needs a look. Scores
+              Lowest-rated first, where ordering quality needs a look. Scores
               only; the reviews stay with each vendor.
             </p>
           </div>

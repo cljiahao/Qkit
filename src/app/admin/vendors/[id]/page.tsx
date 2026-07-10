@@ -31,7 +31,7 @@ function Milestone({ label, at }: { label: string; at: string | null }) {
       )}
       <span className={cn(!at && "text-muted-foreground")}>{label}</span>
       <span className="ml-auto font-mono text-xs text-muted-foreground">
-        {at ? at.slice(0, 10) : "—"}
+        {at ? at.slice(0, 10) : "-"}
       </span>
     </li>
   );
@@ -153,7 +153,7 @@ export default async function AdminVendorDetailPage({
         />
         <Stat
           label="Last order"
-          value={daysSinceLast === null ? "—" : `${daysSinceLast}d ago`}
+          value={daysSinceLast === null ? "-" : `${daysSinceLast}d ago`}
           delay={180}
         />
       </div>

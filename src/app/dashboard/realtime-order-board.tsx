@@ -37,7 +37,7 @@ function LoadErrorBanner() {
       role="alert"
       className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
     >
-      Couldn&apos;t load your current orders — some in-flight orders may be
+      Couldn&apos;t load your current orders. Some in-flight orders may be
       missing. Refresh to try again.
     </div>
   );
@@ -153,8 +153,8 @@ export function RealtimeOrderBoard({
           role="status"
           className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
         >
-          Live updates interrupted — reconnecting. New orders may be delayed;
-          the board re-syncs automatically once it&apos;s back.
+          Live updates interrupted, reconnecting. New orders may be delayed; the
+          board re-syncs automatically once it&apos;s back.
         </div>
       )}
       <div
@@ -236,7 +236,7 @@ export function RealtimeOrderBoard({
         <div className="ticket mt-10 overflow-hidden rounded-2xl border border-dashed border-border py-20 text-center">
           <p className="font-display text-2xl font-semibold">All caught up</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            No active orders — standing by.
+            No active orders. Standing by.
           </p>
         </div>
       ) : (

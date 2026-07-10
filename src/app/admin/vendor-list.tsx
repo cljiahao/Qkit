@@ -70,7 +70,7 @@ export function VendorList({ vendors }: { vendors: VendorListItem[] }) {
           <Cell label="booths" value={String(v.boothCount)} />
           <Cell
             label="last order"
-            value={v.lastOrderAt ? v.lastOrderAt.slice(0, 10) : "—"}
+            value={v.lastOrderAt ? v.lastOrderAt.slice(0, 10) : "-"}
           />
           <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
         </Link>

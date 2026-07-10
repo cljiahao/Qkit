@@ -307,7 +307,7 @@ export default async function LandingPage() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link
           href="/#top"
-          aria-label="QKit home — back to top"
+          aria-label="QKit home, back to top"
           className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
         >
           <span className="text-primary">Q</span>Kit
@@ -615,7 +615,7 @@ export default async function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-6 text-sm text-muted-foreground sm:flex-row">
           <Link
             href="/#top"
-            aria-label="QKit home — back to top"
+            aria-label="QKit home, back to top"
             className="font-display text-xl font-semibold text-foreground transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit

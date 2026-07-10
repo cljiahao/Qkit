@@ -94,7 +94,7 @@ describe("OrderStatusPoller", () => {
     // Give any stray microtasks a chance to run.
     await Promise.resolve();
     expect(getOrderStatus).not.toHaveBeenCalled();
-    expect(screen.getByText("Order complete — enjoy!")).toBeInTheDocument();
+    expect(screen.getByText("Order complete, enjoy!")).toBeInTheDocument();
   });
 
   it("offers the alert opt-in, unlocks audio + requests permission on click", async () => {

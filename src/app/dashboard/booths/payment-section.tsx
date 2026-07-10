@@ -20,7 +20,7 @@ const OPTIONS: { k: Kind; label: string; hint: string }[] = [
   {
     k: "none",
     label: "No online payment",
-    hint: "Customers just join the queue — settle up at the counter.",
+    hint: "Customers just join the queue and settle up at the counter.",
   },
   {
     k: "paynow",
@@ -30,7 +30,7 @@ const OPTIONS: { k: Kind; label: string; hint: string }[] = [
   {
     k: "pointer",
     label: "Payment link or QR image",
-    hint: "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, your bank's own QR — any of them work here.",
+    hint: "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, or your bank's own QR: any of them work here.",
   },
 ];
 
@@ -59,7 +59,7 @@ export function PaymentSection({
       <div className="space-y-1">
         <legend className="font-display text-lg font-semibold">Payments</legend>
         <p className="text-sm text-muted-foreground">
-          Optional. Attach your own payment method — customers pay you directly;
+          Optional. Attach your own payment method, customers pay you directly;
           QKit never touches the money.
         </p>
       </div>
@@ -184,7 +184,7 @@ export function PaymentSection({
               }
             />
             <p className="text-xs text-muted-foreground">
-              Any https link — a Qashier/HitPay/GrabPay checkout, your
+              Any https link: a Qashier/HitPay/GrabPay checkout, your
               bank&apos;s payment page, or a Stripe Payment Link.
             </p>
           </div>
@@ -204,7 +204,7 @@ export function PaymentSection({
               }
             />
             <p className="text-xs text-muted-foreground">
-              A static QR you already have — your GrabPay, PayLah, or bank QR
+              A static QR you already have: your GrabPay, PayLah, or bank QR
               code, photographed or screenshotted. Shown if no payment link is
               set above.
             </p>

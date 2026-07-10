@@ -29,8 +29,8 @@ export function ExpiredCode({
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {isError
-          ? "We couldn't load this booth right now — please try again in a moment."
-          : "This code expired — ask the booth for the current QR."}
+          ? "We couldn't load this booth right now. Please try again in a moment."
+          : "This code expired. Ask the booth for the current QR."}
       </p>
     </div>
   );

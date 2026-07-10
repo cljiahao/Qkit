@@ -114,7 +114,7 @@ export function ImageUploader({
             {uploading ? "Optimizing…" : "Add a booth banner"}
           </span>
           <span className="text-xs">
-            JPEG, PNG, or WebP — optimized on upload
+            JPEG, PNG, or WebP, optimized on upload
           </span>
           <span className="text-xs">
             Best at a 3:1 wide ratio (e.g. 1200×400)

@@ -221,7 +221,7 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
                 <AlertDialogTitle>Delete “{initial.name}”?</AlertDialogTitle>
                 <AlertDialogDescription>
                   This permanently deletes the booth and every order placed at
-                  it. The data cannot be retrieved — this can&apos;t be undone.
+                  it. This can&apos;t be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

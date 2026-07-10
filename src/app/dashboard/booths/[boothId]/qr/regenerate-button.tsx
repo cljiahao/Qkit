@@ -40,7 +40,7 @@ export function RegenerateButton({
         toast.error(res.error ?? "Could not regenerate QR");
         return;
       }
-      toast.success("New QR generated — reprint to use it.");
+      toast.success("New QR generated, reprint to use it.");
       setOpen(false);
       router.refresh();
     });
@@ -65,7 +65,7 @@ export function RegenerateButton({
             </AlertDialogTitle>
             <AlertDialogDescription>
               Every printed or saved code for this booth stops working
-              immediately — you&apos;ll need to reprint the QR.
+              immediately. You&apos;ll need to reprint the QR.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

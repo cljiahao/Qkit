@@ -58,7 +58,7 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
                 }`}
                 title={
                   booth.paused
-                    ? "Active but paused — your plan serves one live booth at a time"
+                    ? "Active but paused: your plan serves one live booth at a time"
                     : undefined
                 }
               >

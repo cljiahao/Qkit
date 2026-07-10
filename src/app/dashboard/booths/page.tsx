@@ -67,7 +67,7 @@ export default async function BoothsPage() {
       {pausedCount > 0 && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
           <span className="text-muted-foreground">
-            Your plan serves <strong>1 live booth</strong> at a time —{" "}
+            Your plan serves <strong>1 live booth</strong> at a time, so{" "}
             {pausedCount} booth{pausedCount === 1 ? " is" : "s are"} paused for
             customers. Keep all your booths live at once with Pro or an event
             pass.

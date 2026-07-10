@@ -75,7 +75,7 @@ export default async function OrderEntryPage({ params }: Props) {
           {booth.name}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Order right here — no app, no account. Just add your name.
+          Order right here, no app, no account. Just add your name.
         </p>
       </header>
       <RecentOrders boothId={booth.booth_id} />

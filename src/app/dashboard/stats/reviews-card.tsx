@@ -76,7 +76,7 @@ function BoothDetail({ summary }: { summary: ReviewSummary }) {
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <span className="font-display text-4xl font-semibold leading-none">
-          {summary.average?.toFixed(1) ?? "—"}
+          {summary.average?.toFixed(1) ?? "-"}
         </span>
         <div>
           <Stars value={summary.average ?? 0} />
@@ -180,7 +180,7 @@ export function ReviewsCard({
           {/* Overall rollup across every booth. */}
           <div className="flex items-center gap-3">
             <span className="font-display text-4xl font-semibold leading-none">
-              {overall.average?.toFixed(1) ?? "—"}
+              {overall.average?.toFixed(1) ?? "-"}
             </span>
             <div>
               <Stars value={overall.average ?? 0} />
@@ -201,7 +201,7 @@ export function ReviewsCard({
                   </span>
                   <span className="flex shrink-0 items-center gap-1.5 text-sm">
                     <span className="font-semibold">
-                      {g.summary.average?.toFixed(1) ?? "—"}
+                      {g.summary.average?.toFixed(1) ?? "-"}
                     </span>
                     <Stars value={g.summary.average ?? 0} />
                     <span className="text-muted-foreground">

@@ -85,9 +85,7 @@ export function OrderForm({
       // A reorder that can't be fulfilled tells the customer; a persisted cart
       // whose items are all gone is dropped silently (they didn't ask for it).
       if (seed) {
-        toast.error(
-          "Those items aren't available anymore — start a new order.",
-        );
+        toast.error("Those items aren't available anymore. Start a new order.");
       } else {
         clearCart(boothId);
       }
@@ -243,7 +241,7 @@ export function OrderForm({
       try {
         result = await placeOrder(code, input, idem);
       } catch {
-        toast.error("Network issue — please try again.");
+        toast.error("Network issue. Please try again.");
         setSubmitting(false);
         return;
       }

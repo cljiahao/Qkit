@@ -113,7 +113,7 @@ export function PayPanel({
       {checkout?.type === "image" &&
         (imgError ? (
           <p className="mx-auto max-w-xs text-center text-sm text-muted-foreground">
-            The payment QR couldn&apos;t load — check your connection and
+            The payment QR couldn&apos;t load. Check your connection and
             refresh, or ask the stall to show its QR.
           </p>
         ) : (
@@ -140,7 +140,7 @@ export function PayPanel({
             aria-live="polite"
             className="text-sm font-semibold text-amber-600"
           >
-            Payment sent — waiting for the stall to confirm.
+            Payment sent, waiting for the stall to confirm.
           </p>
           <button
             type="button"

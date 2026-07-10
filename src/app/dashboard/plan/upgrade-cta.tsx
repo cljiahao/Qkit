@@ -30,7 +30,7 @@ export function UpgradeCta({
         toast.error(res.error);
         return;
       }
-      toast.success("Request sent — we'll set you up shortly.");
+      toast.success("Request sent. We'll set you up shortly.");
     });
   }
 

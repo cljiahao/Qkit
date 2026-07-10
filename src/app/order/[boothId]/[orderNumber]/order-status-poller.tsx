@@ -44,7 +44,7 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
   confirmed: "Your order has been confirmed",
   preparing: "Your order is being prepared",
   ready: "Your order is ready for pickup!",
-  completed: "Order complete — enjoy!",
+  completed: "Order complete, enjoy!",
   cancelled: "Your order was cancelled",
 };
 
@@ -234,7 +234,7 @@ export function OrderStatusPoller({
           <BellRing className="size-3.5 text-primary" />
           {notifyWorks
             ? "We'll alert you the moment it's ready"
-            : "We'll chime the moment it's ready — keep this tab open"}
+            : "We'll chime the moment it's ready (keep this tab open)"}
         </p>
       )}
     </div>

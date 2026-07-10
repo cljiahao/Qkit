@@ -7,7 +7,7 @@ describe("ExpiredCode", () => {
   it("shows the expired-code message and no order UI", () => {
     render(<ExpiredCode />);
     expect(
-      screen.getByText("This code expired — ask the booth for the current QR."),
+      screen.getByText("This code expired. Ask the booth for the current QR."),
     ).toBeInTheDocument();
     // No menu / order affordances leak onto the block screen.
     expect(screen.queryByRole("button", { name: /place order/i })).toBeNull();

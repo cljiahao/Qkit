@@ -62,7 +62,7 @@ export function WorkingHoursEditor({
           <ProLock feature="auto_close_hours" label="Pro" />
         </div>
         <p className="text-xs text-muted-foreground">
-          Schedule open/close times so orders stop automatically — no need to
+          Schedule open/close times so orders stop automatically, no need to
           flip the booth off by hand. Upgrade to set hours.
         </p>
       </div>

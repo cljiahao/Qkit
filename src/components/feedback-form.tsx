@@ -67,7 +67,7 @@ export function FeedbackForm({
   if (sent) {
     return (
       <div className="rounded-xl border border-border bg-card px-4 py-3 text-center text-sm text-muted-foreground">
-        Thanks for the feedback — it helps us improve. 🙏
+        Thanks for the feedback, it helps us improve. 🙏
       </div>
     );
   }
