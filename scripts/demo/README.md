@@ -11,7 +11,7 @@ booth — payment is the optional upgrade. Captions burned per beat, no audio.
 > The booth gains its payment method through the UI in the recording — no seed
 > change needed.
 
-Spec: [`docs/specs/2026-06-24-demo-video-generator-design.md`](../../docs/specs/2026-06-24-demo-video-generator-design.md).
+Spec: [`docs/superpowers/specs/2026-06-24-demo-video-generator-design.md`](../../docs/superpowers/specs/2026-06-24-demo-video-generator-design.md).
 
 > Status: **authored, not yet recorded** — needs Docker + local Supabase to run.
 > Implemented as `.mjs` (plain ESM + Playwright's bundled `chromium`) so it runs

@@ -112,5 +112,5 @@ the first consumer.
 
 The route comment (`route.ts:9-14`) already states the contract-frozen /
 auth-deferred intent; this doc is the fuller companion. Mirrors the structure of
-the payments seam design (`docs/specs/2026-06-28-qkit-payments-seam-design.md`):
+the payments seam design (`docs/superpowers/specs/2026-06-28-qkit-payments-seam-design.md`):
 frozen v1, deferred implementation.

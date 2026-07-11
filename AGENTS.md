@@ -172,6 +172,7 @@ Manifest: `.claude/harness.json`
 - **Inviolable rules:** `docs/constitution.md` (RLS-is-authz, service-role
   server-only, Zod boundaries, no secrets in `NEXT_PUBLIC_*`, deny-rules are a
   guardrail not a sandbox). Read it before changing auth, schema, or the harness.
-- Plan of record: `docs/plans/2026-06-05-qkit-core.md` (specs in `docs/specs/`).
+- Plan of record: `docs/superpowers/plans/2026-06-05-qkit-core.md` (specs in
+  `docs/superpowers/specs/`; roadmap/audit/task-registry meta docs in `docs/meta/`).
 - Migrated 15→16 on 2026-06-05 (`middleware.ts`→`proxy.ts`, `next lint`→eslint CLI).
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration -->
