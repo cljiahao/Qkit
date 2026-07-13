@@ -15,6 +15,7 @@ import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
 import { PayPanel } from "./pay-panel";
+import { EarnLink } from "./earn-link";
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;
@@ -57,7 +58,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
         .maybeSingle(),
       supabase
         .from("booths")
-        .select("name, payment")
+        .select("name, payment, vendor_id")
         .eq("id", boothId)
         .single(),
     ]);
@@ -180,6 +181,9 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-3 pt-8">
+        {order.status === "completed" && booth?.vendor_id && (
+          <EarnLink orderId={order.id} vendorId={booth.vendor_id} />
+        )}
         {items.length > 0 && (
           <ReorderButton
             boothId={boothId}
