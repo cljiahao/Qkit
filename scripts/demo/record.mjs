@@ -146,10 +146,10 @@ async function main() {
 
   t0 = Date.now();
 
-  // ── Beat 1: register + onboard ─────────────────────────────────────────────
-  await step("Live in one step", async () => {
+  // ── Beat 1: register ────────────────────────────────────────────────────────
+  await step("Sign up in seconds", async () => {
     await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
-    await beat(600);
+    await beat(900); // let the login page settle before the cursor moves
     await glideClick(
       page,
       page.getByRole("button", { name: "Create an account" }),
@@ -163,11 +163,15 @@ async function main() {
     );
     // enable_confirmations=false → session granted → /dashboard → /onboarding.
     await page.waitForURL(/\/onboarding/, { timeout: 15000 });
-    await beat(500);
+    await beat(700); // new page — give it a beat before typing starts
+  });
+
+  // ── Beat 1b: name the stall ─────────────────────────────────────────────────
+  await step("Name your stall", async () => {
     await slowType(page, page.locator("#name"), STALL);
     await glideClick(page, page.getByRole("button", { name: /Open my stall/ }));
     await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
-    await beat(600);
+    await beat(800);
   });
 
   // ── Beat 1.5: the built-in guided tour greets the new vendor ────────────────
@@ -205,8 +209,13 @@ async function main() {
       page.getByRole("link", { name: /Add your first booth/ }),
     );
     await page.waitForURL(/\/dashboard\/booths\/new/, { timeout: 15000 });
-    await beat(400);
+    await beat(700);
     await slowType(page, page.locator("#booth-name"), STALL);
+
+    // The Menu card sits in its own column below Name/Hours/Payment on this
+    // phone-width viewport, so it's well off-screen at this point — scroll to
+    // it smoothly instead of letting the first "Add item" click jump there.
+    await center(page, page.getByRole("button", { name: /Add item/ }).last());
 
     for (const it of ITEMS) {
       // Use the *bottom* "Add item" button (present once there's ≥1 item) so the
@@ -253,9 +262,11 @@ async function main() {
       }
     }
     await beat(300);
-    await glideClick(page, page.getByRole("button", { name: /Save booth/ }));
+    const saveBoothBtn1 = page.getByRole("button", { name: /Save booth/ });
+    await center(page, saveBoothBtn1);
+    await glideClick(page, saveBoothBtn1);
     await page.waitForURL(/\/dashboard\/booths$/, { timeout: 15000 });
-    await beat(700);
+    await beat(900);
 
     // Capture the new booth's id from its list link for beats 3-5.
     const hrefs = await page
@@ -285,7 +296,7 @@ async function main() {
     await page.goto(`${BASE}/order/${boothId}`, {
       waitUntil: "domcontentloaded",
     });
-    await beat(800);
+    await beat(1100);
     // The customizable item shows "Customize" → opens the options sheet.
     await glideClick(page, page.getByRole("button", { name: "Customize" }));
     await beat(700); // sheet slides up
@@ -308,9 +319,9 @@ async function main() {
   // ── Beat 5: the vendor sees it land live, then marks it ready ───────────────
   // This whole order ran with NO payment configured — the pure-queue flow. The
   // payment beats below then show the same booth upgraded to a payment queue.
-  await step("Orders land live — a pure queue", async () => {
+  await step("Orders land live. No payment required.", async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-    await beat(600);
+    await beat(900);
     await beat(1500); // board settles, showing Priya's order
 
     // (New-order sound now lives on the Board settings page, not an inline
@@ -354,25 +365,27 @@ async function main() {
     await page.goto(`${BASE}/dashboard/booths/${boothId}`, {
       waitUntil: "domcontentloaded",
     });
-    await beat(700);
+    await beat(1000);
     const paynow = page.getByRole("radio", { name: /PayNow QR/i });
     await center(page, paynow);
     await glideClick(page, paynow);
     await beat(350);
     await slowType(page, page.locator("#pn-name"), STALL, 40);
     await slowType(page, page.locator("#pn-uen"), "53312345A", 45);
-    await beat(350);
-    await glideClick(page, page.getByRole("button", { name: /Save booth/ }));
+    await beat(450); // hold on the filled-in fields before moving to save
+    const saveBoothBtn2 = page.getByRole("button", { name: /Save booth/ });
+    await center(page, saveBoothBtn2);
+    await glideClick(page, saveBoothBtn2);
     await page.waitForURL(/\/dashboard\/booths$/, { timeout: 15000 });
-    await beat(700);
+    await beat(900);
   });
 
   // ── Beat 7: the customer pays from their phone (PayNow QR → "I've paid") ────
-  await step("Customers pay you — you keep it all", async () => {
+  await step("Customers pay you directly. You keep it all.", async () => {
     await page.goto(`${BASE}/order/${boothId}`, {
       waitUntil: "domcontentloaded",
     });
-    await beat(700);
+    await beat(1000);
     // A plain (non-customizable) item one-taps onto the order.
     await glideClick(page, page.getByRole("button", { name: "Add" }).first());
     await beat(400);
@@ -383,9 +396,11 @@ async function main() {
     });
     await beat(900);
     // The pay panel renders a per-order PayNow QR (amount baked in).
-    await page.getByText(/scan to pay/i).waitFor({ timeout: 10000 });
+    const payBtn = page.getByRole("button", { name: /I.?ve paid/i });
+    await payBtn.waitFor({ timeout: 10000 });
+    await center(page, payBtn); // scroll the QR + button to the middle to read
     await beat(1400); // hold on the QR so it reads
-    await glideClick(page, page.getByRole("button", { name: /I.?ve paid/i }));
+    await glideClick(page, payBtn);
     await page.getByText(/payment sent/i).waitFor({ timeout: 10000 });
     await beat(900);
   });
@@ -393,7 +408,7 @@ async function main() {
   // ── Beat 8: the vendor confirms — the card glows blue, one tap to settle ────
   await step("One tap to confirm payment", async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
-    await beat(900); // board settles; the "says paid" card washes blue
+    await beat(1100); // board settles; the "says paid" card washes blue
     const confirm = page.getByRole("button", {
       name: /Confirm payment received/i,
     });
