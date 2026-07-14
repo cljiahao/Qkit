@@ -19,6 +19,16 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
+    // Client-side Supabase calls (auth, realtime) go straight from the
+    // browser to Supabase, so connect-src must allow it. In dev that's local
+    // Supabase over plain http/ws (127.0.0.1:54321); in prod it's the hosted
+    // *.supabase.co over https/wss. Keeping the dev-only entries out of the
+    // production policy avoids widening it beyond what's actually needed.
+    const connectSrc =
+      process.env.NODE_ENV === "production"
+        ? "connect-src 'self' https://*.supabase.co wss://*.supabase.co"
+        : "connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321";
+
     return [
       {
         source: "/(.*)",
@@ -52,7 +62,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              connectSrc,
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

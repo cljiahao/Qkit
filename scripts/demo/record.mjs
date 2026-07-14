@@ -290,7 +290,10 @@ async function main() {
     await glideClick(page, page.getByRole("button", { name: "Customize" }));
     await beat(700); // sheet slides up
     // Pick a non-default milk so the selection visibly changes, then add.
-    await glideClick(page, page.getByRole("button", { name: CUSTOMIZE_PICK }));
+    // Single-select choice groups render as a radiogroup (WCAG 1.4.1/4.1.2 —
+    // selection can't be color-only), so the choice's accessible role is
+    // "radio", not "button" (item-customizer.tsx).
+    await glideClick(page, page.getByRole("radio", { name: CUSTOMIZE_PICK }));
     await beat(500);
     await glideClick(page, page.getByRole("button", { name: /Add to order/ }));
     await beat(600);
@@ -310,11 +313,9 @@ async function main() {
     await beat(600);
     await beat(1500); // board settles, showing Priya's order
 
-    // Turn the new-order sound on — the bell goes active and the tap unlocks
-    // audio. (Playwright records no audio, so the chime itself is mixed in by
-    // compose.mjs at the moment the order lands.)
-    await glideClick(page, page.getByTitle(/New-order sound/));
-    await beat(300);
+    // (New-order sound now lives on the Board settings page, not an inline
+    // toggle here — skipping that beat; compose.mjs still mixes the chime in
+    // at the moment the walk-in order lands, below.)
 
     // A walk-in orders from a second (un-recorded) phone — the ticket pops in
     // live on the board through the real realtime subscription.
