@@ -43,6 +43,17 @@ const nextConfig: NextConfig = {
         ? "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com"
         : "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com http://127.0.0.1:54321";
 
+    // React's dev mode calls eval() to reconstruct stack traces across the
+    // RSC boundary — harmless and dev-only ("React will never use eval() in
+    // production mode", per the console message itself), but blocking it
+    // spams console.error on every navigation and can trip Next's dev error
+    // overlay into a full-page portal that eats every click. Production
+    // never needs 'unsafe-eval'.
+    const scriptSrc =
+      process.env.NODE_ENV === "production"
+        ? "script-src 'self' 'unsafe-inline'"
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+
     return [
       {
         source: "/(.*)",
@@ -72,7 +83,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
+              scriptSrc,
               "style-src 'self' 'unsafe-inline'",
               imgSrc,
               "font-src 'self' data:",
