@@ -113,7 +113,7 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="max-w-xl space-y-8">
+    <form onSubmit={onSubmit} className="max-w-3xl space-y-8">
       <div className="space-y-2.5">
         <Label
           htmlFor="booth-name"
@@ -130,31 +130,33 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
         />
       </div>
 
-      <div className="space-y-2.5">
-        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Banner
-        </Label>
-        <ImageUploader
-          vendorId={vendorId}
-          value={imageUrl}
-          onChange={setImageUrl}
-        />
-      </div>
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-x-5">
+        <div className="space-y-2.5">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Banner
+          </Label>
+          <ImageUploader
+            vendorId={vendorId}
+            value={imageUrl}
+            onChange={setImageUrl}
+          />
+        </div>
 
-      <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-        <input
-          type="checkbox"
-          checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
-          className="size-4 accent-[var(--color-primary)]"
-        />
-        <span className="text-sm">
-          <span className="font-medium">Active</span>
-          <span className="block text-muted-foreground">
-            Customers can only order from active booths.
+        <label className="flex items-center gap-3 self-start rounded-xl border border-border bg-card px-4 py-3">
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            className="size-4 accent-[var(--color-primary)]"
+          />
+          <span className="text-sm">
+            <span className="font-medium">Active</span>
+            <span className="block text-muted-foreground">
+              Customers can only order from active booths.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      </div>
 
       <WorkingHoursEditor
         value={hours}
