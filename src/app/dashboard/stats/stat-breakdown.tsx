@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 export type BreakdownRow = { label: string; value: string };
 
@@ -31,84 +36,77 @@ export function StatBreakdownTile({
   index?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   // pointerType guard: mouse opens on hover, touch/pen on tap. Without it iOS
   // fires a synthetic mouseenter then click on one tap, toggling open-shut.
   const lastPointer = useRef<string>("mouse");
   const hasRows = rows.length > 0;
 
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: PointerEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        setOpen(false);
-    }
-    document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
-  }, [open]);
+  function closeOnMouseLeave(pointerType: string) {
+    if (pointerType === "mouse") setOpen(false);
+  }
 
   return (
-    <div
-      ref={ref}
-      className="relative"
-      onPointerEnter={(e) => {
-        if (e.pointerType === "mouse" && hasRows) setOpen(true);
-      }}
-      onPointerLeave={(e) => {
-        if (e.pointerType === "mouse") setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        onPointerDown={(e) => {
-          lastPointer.current = e.pointerType;
-        }}
-        onClick={() => {
-          if (lastPointer.current !== "mouse" && hasRows) setOpen((o) => !o);
-        }}
-        aria-expanded={hasRows ? open : undefined}
-        className={cn(
-          "fade-rise flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
-          primary ? "border-primary/30" : "border-border",
-          hasRows ? "hover:border-primary/40" : "cursor-default",
-        )}
-        style={{ animationDelay: `${index * 60}ms` }}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <p
-            className={cn(
-              "text-[0.7rem] font-semibold uppercase tracking-wider",
-              primary ? "text-primary" : "text-muted-foreground",
-            )}
-          >
-            {label}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <button
+          type="button"
+          onPointerEnter={(e) => {
+            if (e.pointerType === "mouse" && hasRows) setOpen(true);
+          }}
+          onPointerLeave={(e) => closeOnMouseLeave(e.pointerType)}
+          onPointerDown={(e) => {
+            lastPointer.current = e.pointerType;
+          }}
+          onClick={() => {
+            if (lastPointer.current !== "mouse" && hasRows) setOpen((o) => !o);
+          }}
+          aria-expanded={hasRows ? open : undefined}
+          className={cn(
+            "fade-rise flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
+            primary ? "border-primary/30" : "border-border",
+            hasRows ? "hover:border-primary/40" : "cursor-default",
+          )}
+          style={{ animationDelay: `${index * 60}ms` }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p
+              className={cn(
+                "text-[0.7rem] font-semibold uppercase tracking-wider",
+                primary ? "text-primary" : "text-muted-foreground",
+              )}
+            >
+              {label}
+            </p>
+            <span className="flex items-center gap-1.5">
+              {deltaSlot}
+              {hasRows && (
+                <ChevronDown
+                  className={cn(
+                    "size-3.5 text-muted-foreground/50 transition-transform",
+                    open && "rotate-180",
+                  )}
+                />
+              )}
+            </span>
+          </div>
+          <p className="truncate font-mono text-2xl font-bold leading-none tabular-nums">
+            {value}
           </p>
-          <span className="flex items-center gap-1.5">
-            {deltaSlot}
-            {hasRows && (
-              <ChevronDown
-                className={cn(
-                  "size-3.5 text-muted-foreground/50 transition-transform",
-                  open && "rotate-180",
-                )}
-              />
-            )}
-          </span>
-        </div>
-        <p className="truncate font-mono text-2xl font-bold leading-none tabular-nums">
-          {value}
-        </p>
-        {caption && (
-          <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
-            {caption}
-          </p>
-        )}
-      </button>
+          {caption && (
+            <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
+              {caption}
+            </p>
+          )}
+        </button>
+      </PopoverAnchor>
 
-      {open && hasRows && (
-        <div
-          role="tooltip"
-          className="absolute inset-x-0 top-full z-20 mt-1.5 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg"
+      {hasRows && (
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          onPointerEnter={() => setOpen(true)}
+          onPointerLeave={(e) => closeOnMouseLeave(e.pointerType)}
+          className="w-[var(--radix-popper-anchor-width)] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg"
         >
           <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
             {breakdownLabel}
@@ -126,8 +124,8 @@ export function StatBreakdownTile({
               </li>
             ))}
           </ul>
-        </div>
+        </PopoverContent>
       )}
-    </div>
+    </Popover>
   );
 }
