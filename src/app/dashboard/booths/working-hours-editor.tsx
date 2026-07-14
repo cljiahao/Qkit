@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProLock } from "@/components/pro-lock";
 import type { Entitlement } from "@/lib/plan";
@@ -53,14 +52,8 @@ export function WorkingHoursEditor({
   // so hook order stays stable across renders.)
   if (!entitlement.autoCloseHours) {
     return (
-      <div className="space-y-2 rounded-xl border border-dashed border-border bg-card p-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Clock className="size-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Working hours</span>
-          </div>
-          <ProLock feature="auto_close_hours" label="Pro" />
-        </div>
+      <div className="space-y-2">
+        <ProLock feature="auto_close_hours" label="Pro" />
         <p className="text-xs text-muted-foreground">
           Schedule open/close times so orders stop automatically, no need to
           flip the booth off by hand. Upgrade to set hours.
@@ -96,12 +89,7 @@ export function WorkingHoursEditor({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <Clock className="size-4 text-muted-foreground" />
-        <span className="text-sm font-medium">Working hours</span>
-      </div>
-
+    <div className="space-y-3">
       {mode === "daily" ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
