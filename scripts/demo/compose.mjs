@@ -108,37 +108,6 @@ function main() {
     "setsar=1",
   ];
 
-  // The QR poster shows the real localhost dev link — record.mjs measured its
-  // exact text + on-screen box (in source-viewport pixels) since it can't be
-  // faked live (window.location.origin is spec-[Unforgeable]). Re-derive the
-  // same scale+pad transform the filters above just applied, so the cover box
-  // and replacement text land in the exact same spot as the real text.
-  if (meta.qrLinkMock && meta.viewport) {
-    const { box, text, startMs, endMs } = meta.qrLinkMock;
-    const { width: vw, height: vh } = meta.viewport;
-    const scale = Math.min(CANVAS_W / vw, CANVAS_H / vh);
-    const padX = (CANVAS_W - vw * scale) / 2;
-    const padY = (CANVAS_H - vh * scale) / 2;
-    const bx = box.x * scale + padX;
-    const by = box.y * scale + padY;
-    const bw = box.width * scale;
-    const bh = box.height * scale;
-    const start = (startMs / 1000).toFixed(2);
-    const end = (endMs / 1000).toFixed(2);
-    const QR_CARD_BG = "0xfefaf2"; // sampled from the ticket card's light-mode background
-    const QR_LINK_COLOR = "0x7a7168"; // ~--muted-foreground
-    vfilters.push(
-      `drawbox=x=${bx.toFixed(1)}:y=${(by - 4).toFixed(1)}:` +
-        `w=${bw.toFixed(1)}:h=${(bh + 8).toFixed(1)}:` +
-        `color=${QR_CARD_BG}:t=fill:enable='between(t,${start},${end})'`,
-      `drawtext=fontfile='${fontPath}':text='${ffEscapeText(text)}':` +
-        `fontsize=${Math.round(12 * scale)}:fontcolor=${QR_LINK_COLOR}:` +
-        `x=${bx.toFixed(1)}+(${bw.toFixed(1)}-text_w)/2:` +
-        `y=${by.toFixed(1)}+(${bh.toFixed(1)}-text_h)/2:` +
-        `enable='between(t,${start},${end})'`,
-    );
-  }
-
   // Consecutive steps share an exact boundary (step N's endMs == step N+1's
   // startMs), and ffmpeg's between(t,start,end) is inclusive on both ends —
   // so the single frame at that boundary satisfied both windows and drew two

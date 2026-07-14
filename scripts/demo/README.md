@@ -66,6 +66,11 @@ Re-run freely: step 1 makes step 2 idempotent.
 - **A beat times out?** The app markup moved — fix that beat's locator in
   `record.mjs` (selectors are pinned to login / onboarding / booth-form /
   menu-editor / order-form / order-card).
+- **QR/share-link shows `localhost`?** `window.location.origin` can't be
+  overridden from page JS (spec-`[Unforgeable]`), so the dev server used for
+  recording needs `NEXT_PUBLIC_DEMO_ORIGIN_OVERRIDE` set to the real production
+  domain, e.g. `NEXT_PUBLIC_DEMO_ORIGIN_OVERRIDE=https://qkit.merqo.sg pnpm dev`
+  (see `booth-qr-poster.tsx`). Never set this on a real dev/prod server.
 
 ## Notes
 

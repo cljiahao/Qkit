@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { orderPath } from "@/lib/booth-code";
 import { RegenerateButton } from "./regenerate-button";
 
+// Demo-recording only: shows the real production domain on the QR/share-link
+// card instead of the local dev URL, so a screen recording doesn't put
+// "localhost" on camera. window.location.origin can't be overridden from page
+// JS (spec-[Unforgeable]), so this is a build-time env override instead — see
+// scripts/demo/README.md. Never set outside a throwaway recording session.
+const DEMO_ORIGIN_OVERRIDE = process.env.NEXT_PUBLIC_DEMO_ORIGIN_OVERRIDE;
+
 interface Props {
   boothId: string;
   name: string;
@@ -32,7 +39,7 @@ export function BoothQrPoster({ boothId, name, isActive, code }: Props) {
   // no hydration mismatch and no setState-in-effect.
   const origin = useSyncExternalStore(
     () => () => {},
-    () => window.location.origin,
+    () => DEMO_ORIGIN_OVERRIDE || window.location.origin,
     () => null,
   );
 
