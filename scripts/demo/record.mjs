@@ -163,11 +163,11 @@ async function main() {
     );
     // enable_confirmations=false → session granted → /dashboard → /onboarding.
     await page.waitForURL(/\/onboarding/, { timeout: 15000 });
-    await beat(700); // new page — give it a beat before typing starts
   });
 
   // ── Beat 1b: name the stall ─────────────────────────────────────────────────
   await step("Name your stall", async () => {
+    await beat(700); // new page — give it a beat before typing starts
     await slowType(page, page.locator("#name"), STALL);
     await glideClick(page, page.getByRole("button", { name: /Open my stall/ }));
     await page.waitForURL(/\/dashboard$/, { timeout: 15000 });

@@ -105,9 +105,17 @@ function main() {
     `pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=${BG}`,
     "setsar=1",
   ];
+  // Consecutive steps share an exact boundary (step N's endMs == step N+1's
+  // startMs), and ffmpeg's between(t,start,end) is inclusive on both ends —
+  // so the single frame at that boundary satisfied both windows and drew two
+  // captions on top of each other. Trim a small gap off the end so each
+  // caption clears before the next appears (also reads as a deliberate beat).
+  const CAPTION_GAP_S = 0.15;
   for (const s of meta.steps) {
     const start = (s.startMs / 1000).toFixed(2);
-    const end = (s.endMs / 1000).toFixed(2);
+    const end = (
+      Math.max(s.startMs, s.endMs - CAPTION_GAP_S * 1000) / 1000
+    ).toFixed(2);
     vfilters.push(
       `drawtext=fontfile='${fontPath}':text='${ffEscapeText(s.caption)}':` +
         `fontsize=52:fontcolor=white:box=1:boxcolor=0x000000@0.55:boxborderw=22:` +
