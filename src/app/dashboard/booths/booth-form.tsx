@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Store, Clock, UtensilsCrossed, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ImageUploader } from "@/components/image-uploader";
+import { Section } from "@/components/ticket-section";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
@@ -114,68 +115,142 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="max-w-3xl space-y-8">
-      <div className="space-y-2.5">
-        <Label
-          htmlFor="booth-name"
-          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+      <div className="md:columns-2 md:gap-5">
+        <Section
+          icon={<Store className="size-5" />}
+          eyebrow="Shown to customers"
+          title="Name & photo"
+          description="Your booth's name and banner image."
         >
-          Booth name
-        </Label>
-        <Input
-          id="booth-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Mama's Kitchen"
-          className="h-12 rounded-xl text-base"
-        />
-      </div>
+          <div className="space-y-2.5">
+            <Label
+              htmlFor="booth-name"
+              className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            >
+              Booth name
+            </Label>
+            <Input
+              id="booth-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Mama's Kitchen"
+              className="h-12 rounded-xl text-base"
+            />
+          </div>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-x-5">
-        <div className="space-y-2.5">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Banner
-          </Label>
-          <ImageUploader
-            vendorId={vendorId}
-            value={imageUrl}
-            onChange={setImageUrl}
-          />
-        </div>
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Banner
+            </Label>
+            <ImageUploader
+              vendorId={vendorId}
+              value={imageUrl}
+              onChange={setImageUrl}
+            />
+          </div>
+        </Section>
 
-        <label className="flex items-center gap-3 self-start rounded-xl border border-border bg-card px-4 py-3">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            className="size-4 accent-[var(--color-primary)]"
-          />
-          <span className="text-sm">
-            <span className="font-medium">Active</span>
-            <span className="block text-muted-foreground">
-              Customers can only order from active booths.
+        <Section
+          icon={<Clock className="size-5" />}
+          eyebrow="When you're open"
+          title="Hours & availability"
+          description="Turn ordering on/off and set your hours."
+        >
+          <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="size-4 accent-[var(--color-primary)]"
+            />
+            <span className="text-sm">
+              <span className="font-medium">Active</span>
+              <span className="block text-muted-foreground">
+                Customers can only order from active booths.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+
+          <WorkingHoursEditor
+            value={hours}
+            onChange={setHours}
+            entitlement={entitlement}
+          />
+        </Section>
+
+        <Section
+          icon={<UtensilsCrossed className="size-5" />}
+          eyebrow="What you sell"
+          title="Menu"
+          description="Add items customers can order."
+        >
+          <MenuEditor
+            vendorId={vendorId}
+            items={items}
+            onChange={setItems}
+            entitlement={entitlement}
+          />
+        </Section>
+
+        <Section
+          icon={<Wallet className="size-5" />}
+          eyebrow="How you get paid"
+          title="Payment"
+          description="Optional. Customers pay you directly; QKit never touches the money."
+        >
+          <PaymentSection
+            vendorId={vendorId}
+            value={payment}
+            onChange={setPayment}
+          />
+        </Section>
+
+        {initial?.boothId && (
+          <div className="mb-5 space-y-2.5 break-inside-avoid-column rounded-xl border border-destructive/30 bg-destructive/[0.03] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-destructive">
+              Danger zone
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Deleting this booth permanently removes it and every order placed
+              at it. The data can&apos;t be retrieved.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive hover:text-white"
+                  disabled={deleting || saving}
+                >
+                  <Trash2 className="size-4" />
+                  {deleting ? "Deleting…" : "Delete booth"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete “{initial.name}”?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently deletes the booth and every order placed at
+                    it. This can&apos;t be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>
+                    Keep booth
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDelete}
+                    disabled={deleting}
+                    className="bg-destructive text-white hover:bg-destructive/90"
+                  >
+                    Delete booth
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
-
-      <WorkingHoursEditor
-        value={hours}
-        onChange={setHours}
-        entitlement={entitlement}
-      />
-
-      <MenuEditor
-        vendorId={vendorId}
-        items={items}
-        onChange={setItems}
-        entitlement={entitlement}
-      />
-
-      <PaymentSection
-        vendorId={vendorId}
-        value={payment}
-        onChange={setPayment}
-      />
 
       <div className="flex gap-3">
         <Button
@@ -196,52 +271,6 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
           Cancel
         </Button>
       </div>
-
-      {initial?.boothId && (
-        <div className="space-y-2.5 rounded-xl border border-destructive/30 bg-destructive/[0.03] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-destructive">
-            Danger zone
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Deleting this booth permanently removes it and every order placed at
-            it. The data can&apos;t be retrieved.
-          </p>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive hover:text-white"
-                disabled={deleting || saving}
-              >
-                <Trash2 className="size-4" />
-                {deleting ? "Deleting…" : "Delete booth"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete “{initial.name}”?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This permanently deletes the booth and every order placed at
-                  it. This can&apos;t be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleting}>
-                  Keep booth
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={onDelete}
-                  disabled={deleting}
-                  className="bg-destructive text-white hover:bg-destructive/90"
-                >
-                  Delete booth
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      )}
     </form>
   );
 }
