@@ -80,15 +80,7 @@ export function PaymentSection({
   }
 
   return (
-    <fieldset className="space-y-4">
-      <div className="space-y-1">
-        <legend className="font-display text-lg font-semibold">Payments</legend>
-        <p className="text-sm text-muted-foreground">
-          Optional. Attach your own payment method, customers pay you directly;
-          QKit never touches the money.
-        </p>
-      </div>
-
+    <div className="space-y-4">
       {/* Radio cards: a small, comparable set, so show every option at once
           (a dropdown would hide them and add a click). */}
       <div className="space-y-2.5">
@@ -266,6 +258,6 @@ export function PaymentSection({
           )}
         </div>
       )}
-    </fieldset>
+    </div>
   );
 }
