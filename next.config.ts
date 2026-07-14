@@ -29,6 +29,16 @@ const nextConfig: NextConfig = {
         ? "connect-src 'self' https://*.supabase.co wss://*.supabase.co"
         : "connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321";
 
+    // Avatars/menu photos render as plain <img> tags (shadcn's Avatar, and any
+    // remote image not routed through next/image), so the actual storage
+    // origins from images.remotePatterns above need to be reachable directly —
+    // not just same-origin — or the browser silently blocks the request and
+    // Avatar falls back to initials as if the photo didn't exist.
+    const imgSrc =
+      process.env.NODE_ENV === "production"
+        ? "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com"
+        : "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com http://127.0.0.1:54321";
+
     return [
       {
         source: "/(.*)",
@@ -60,7 +70,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              imgSrc,
               "font-src 'self' data:",
               connectSrc,
               "object-src 'none'",

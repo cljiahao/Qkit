@@ -305,13 +305,18 @@ export default async function LandingPage() {
     <div id="top" className="min-h-screen">
       {/* Header */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <Link
+        {/* Plain <a>, not next/link's Link: this is a same-page hash jump
+            (already on "/"), and Link doesn't reliably update the URL bar's
+            hash when only the fragment changes — it scrolls but leaves the
+            old hash showing. A native anchor always gets this right. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a
           href="/#top"
           aria-label="QKit home, back to top"
           className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
         >
           <span className="text-primary">Q</span>Kit
-        </Link>
+        </a>
         <div className="flex items-center gap-2">
           <Button
             asChild
@@ -319,7 +324,7 @@ export default async function LandingPage() {
             size="sm"
             className="hidden rounded-lg sm:inline-flex"
           >
-            <Link href="#faq">FAQ</Link>
+            <a href="#faq">FAQ</a>
           </Button>
           {user ? (
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
@@ -369,7 +374,7 @@ export default async function LandingPage() {
                 variant="outline"
                 className="h-12 rounded-xl px-7 text-base font-semibold"
               >
-                <Link href="#how">See how</Link>
+                <a href="#how">See how</a>
               </Button>
             </div>
           </div>
@@ -613,13 +618,15 @@ export default async function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-6 text-sm text-muted-foreground sm:flex-row">
-          <Link
+          {/* Plain <a>, not Link — see the header logo's comment above. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a
             href="/#top"
             aria-label="QKit home, back to top"
             className="font-display text-xl font-semibold text-foreground transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit
-          </Link>
+          </a>
           <span>Built for booths. Made in Singapore.</span>
           <Link href="/login" className="hover:text-foreground">
             Vendor sign in →
