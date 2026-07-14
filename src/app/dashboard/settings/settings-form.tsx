@@ -7,6 +7,7 @@ import { Bell, Clock, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Section } from "@/components/ticket-section";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { boardSettingsSchema } from "@/lib/schemas";
 import {
@@ -28,35 +29,6 @@ const SOUND_OPTIONS: { id: SoundId; label: string }[] = [
   { id: "triple", label: "Triple beep" },
   { id: "none", label: "Off" },
 ];
-
-function Section({
-  icon,
-  title,
-  description,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="ticket mb-5 break-inside-avoid-column overflow-hidden rounded-2xl border border-border px-6 py-6 shadow-[0_2px_0_0_var(--color-border)]">
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          {icon}
-        </span>
-        <div>
-          <h2 className="font-display text-xl font-semibold leading-tight">
-            {title}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <div className="mt-5 space-y-4">{children}</div>
-    </section>
-  );
-}
 
 export function SettingsForm({ initial }: { initial: BoardSettings }) {
   const router = useRouter();

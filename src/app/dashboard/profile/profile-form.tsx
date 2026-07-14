@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/image-uploader";
+import { Section } from "@/components/ticket-section";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import {
@@ -24,41 +25,6 @@ interface Props {
   email: string;
   vendorId: string;
   avatarUrl: string | null;
-}
-
-/** Small ticket-card wrapper for one independently-saved profile section. */
-function Section({
-  icon,
-  eyebrow,
-  title,
-  description,
-  children,
-}: {
-  icon: React.ReactNode;
-  eyebrow: string;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="ticket mb-5 break-inside-avoid-column overflow-hidden rounded-2xl border border-border px-6 py-6 shadow-[0_2px_0_0_var(--color-border)]">
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          {icon}
-        </span>
-        <div>
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            {eyebrow}
-          </p>
-          <h2 className="font-display text-xl font-semibold leading-tight">
-            {title}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <div className="mt-5 space-y-4">{children}</div>
-    </section>
-  );
 }
 
 export function ProfileForm({
