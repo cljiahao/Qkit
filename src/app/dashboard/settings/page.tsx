@@ -8,7 +8,7 @@ export default async function SettingsPage() {
   const { vendor } = await requireEntitledVendor();
 
   return (
-    <div className="mx-auto max-w-lg space-y-8 lg:max-w-4xl">
+    <div className="mx-auto max-w-lg space-y-8 md:max-w-4xl">
       <header>
         <div className="mb-2 -ml-2.5">
           <BackButton href="/dashboard" label="Back to board" />

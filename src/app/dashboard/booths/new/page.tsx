@@ -22,7 +22,7 @@ export default async function NewBoothPage() {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-lg md:max-w-4xl">
       <h1 className="font-display mb-6 text-3xl font-semibold">New booth</h1>
       <BoothForm vendorId={vendor.id} entitlement={entitlement} />
     </div>

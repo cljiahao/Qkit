@@ -41,7 +41,7 @@ export default async function EditBoothPage({ params }: Props) {
   }));
 
   return (
-    <div>
+    <div className="mx-auto max-w-lg md:max-w-4xl">
       <h1 className="font-display mb-6 text-3xl font-semibold">Edit booth</h1>
       <BoothForm
         vendorId={vendor.id}

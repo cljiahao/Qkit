@@ -113,100 +113,128 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
     });
   }
 
+  const saveCancelRow = (
+    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-6 py-6">
+      <Button
+        type="submit"
+        size="lg"
+        className="h-12 flex-1 rounded-xl text-base font-semibold"
+        disabled={saving}
+      >
+        {saving ? "Saving…" : "Save booth"}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="h-12 rounded-xl"
+        onClick={() => router.push("/dashboard/booths")}
+      >
+        Cancel
+      </Button>
+    </div>
+  );
+
   return (
-    <form onSubmit={onSubmit} className="max-w-3xl space-y-8">
-      <div className="md:columns-2 md:gap-5">
-        <Section
-          icon={<Store className="size-5" />}
-          eyebrow="Shown to customers"
-          title="Name & photo"
-          description="Your booth's name and banner image."
-        >
-          <div className="space-y-2.5">
-            <Label
-              htmlFor="booth-name"
-              className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-            >
-              Booth name
-            </Label>
-            <Input
-              id="booth-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Mama's Kitchen"
-              className="h-12 rounded-xl text-base"
-            />
-          </div>
+    <form onSubmit={onSubmit} className="space-y-8">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div>
+          <Section
+            icon={<Store className="size-5" />}
+            eyebrow="Shown to customers"
+            title="Name & photo"
+            description="Your booth's name and banner image."
+          >
+            <div className="space-y-2.5">
+              <Label
+                htmlFor="booth-name"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Booth name
+              </Label>
+              <Input
+                id="booth-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Mama's Kitchen"
+                className="h-12 rounded-xl text-base"
+              />
+            </div>
 
-          <div className="space-y-2.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Banner
-            </Label>
-            <ImageUploader
-              vendorId={vendorId}
-              value={imageUrl}
-              onChange={setImageUrl}
-            />
-          </div>
-        </Section>
+            <div className="space-y-2.5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Banner
+              </Label>
+              <ImageUploader
+                vendorId={vendorId}
+                value={imageUrl}
+                onChange={setImageUrl}
+              />
+            </div>
+          </Section>
 
-        <Section
-          icon={<Clock className="size-5" />}
-          eyebrow="When you're open"
-          title="Hours & availability"
-          description="Turn ordering on/off and set your hours."
-        >
-          <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="size-4 accent-[var(--color-primary)]"
-            />
-            <span className="text-sm">
-              <span className="font-medium">Active</span>
-              <span className="block text-muted-foreground">
-                Customers can only order from active booths.
+          <Section
+            icon={<Clock className="size-5" />}
+            eyebrow="When you're open"
+            title="Hours & availability"
+            description="Turn ordering on/off and set your hours."
+          >
+            <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="size-4 accent-[var(--color-primary)]"
+              />
+              <span className="text-sm">
+                <span className="font-medium">Active</span>
+                <span className="block text-muted-foreground">
+                  Customers can only order from active booths.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
 
-          <WorkingHoursEditor
-            value={hours}
-            onChange={setHours}
-            entitlement={entitlement}
-          />
-        </Section>
+            <WorkingHoursEditor
+              value={hours}
+              onChange={setHours}
+              entitlement={entitlement}
+            />
+          </Section>
 
-        <Section
-          icon={<UtensilsCrossed className="size-5" />}
-          eyebrow="What you sell"
-          title="Menu"
-          description="Add items customers can order."
-        >
-          <MenuEditor
-            vendorId={vendorId}
-            items={items}
-            onChange={setItems}
-            entitlement={entitlement}
-          />
-        </Section>
+          <Section
+            icon={<Wallet className="size-5" />}
+            eyebrow="How you get paid"
+            title="Payment"
+            description="Optional. Customers pay you directly; QKit never touches the money."
+          >
+            <PaymentSection
+              vendorId={vendorId}
+              value={payment}
+              onChange={setPayment}
+            />
+          </Section>
+        </div>
 
-        <Section
-          icon={<Wallet className="size-5" />}
-          eyebrow="How you get paid"
-          title="Payment"
-          description="Optional. Customers pay you directly; QKit never touches the money."
-        >
-          <PaymentSection
-            vendorId={vendorId}
-            value={payment}
-            onChange={setPayment}
-          />
-        </Section>
+        <div>
+          <Section
+            icon={<UtensilsCrossed className="size-5" />}
+            eyebrow="What you sell"
+            title="Menu"
+            description="Add items customers can order."
+          >
+            <MenuEditor
+              vendorId={vendorId}
+              items={items}
+              onChange={setItems}
+              entitlement={entitlement}
+            />
+          </Section>
+        </div>
+      </div>
 
-        {initial?.boothId && (
-          <div className="mb-5 space-y-2.5 break-inside-avoid-column rounded-xl border border-destructive/30 bg-destructive/[0.03] p-4">
+      {initial?.boothId ? (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="space-y-2.5 rounded-xl border border-destructive/30 bg-destructive/[0.03] p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-destructive">
               Danger zone
             </p>
@@ -249,28 +277,12 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        )}
-      </div>
 
-      <div className="flex gap-3">
-        <Button
-          type="submit"
-          size="lg"
-          className="h-12 flex-1 rounded-xl text-base font-semibold"
-          disabled={saving}
-        >
-          {saving ? "Saving…" : "Save booth"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="h-12 rounded-xl"
-          onClick={() => router.push("/dashboard/booths")}
-        >
-          Cancel
-        </Button>
-      </div>
+          {saveCancelRow}
+        </div>
+      ) : (
+        saveCancelRow
+      )}
     </form>
   );
 }
