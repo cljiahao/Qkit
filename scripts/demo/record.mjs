@@ -73,6 +73,17 @@ const CURSOR_SCRIPT = `
   })();
 `;
 
+// ── Mock the public origin shown on the QR/share-link card ──────────────────
+// The QR poster reads window.location.origin, which is a spec-[Unforgeable]
+// own property of window.location — it can't be overridden via a page script,
+// even before any app code runs (tried Location.prototype.origin; Chromium
+// shadows it with the real instance property). So instead of faking it live,
+// record.mjs measures the real on-screen link (text + bounding box) and hands
+// both to compose.mjs, which paints over just that one line with the real
+// (not-yet-launched) production domain, in the exact spot the real text sat.
+// Override with DEMO_PUBLIC_ORIGIN if the domain changes before launch.
+const PUBLIC_ORIGIN = process.env.DEMO_PUBLIC_ORIGIN ?? "https://qkit.merqo.sg";
+
 // ── Pacing + timeline ────────────────────────────────────────────────────────
 // Global tempo. <1 = faster: every cosmetic wait (beat) and the typing cadence
 // scale by it, so the whole walkthrough speeds up uniformly without retuning
@@ -81,6 +92,7 @@ const CURSOR_SCRIPT = `
 const SPEED = Number(process.env.DEMO_SPEED ?? 0.75);
 const steps = [];
 let popMs = 0; // when the live order lands — compose drops the chime here
+let qrLinkMock = null; // {startMs, endMs, box, text} — see PUBLIC_ORIGIN above
 let t0 = 0;
 const now = () => Date.now() - t0;
 const beat = (ms) => new Promise((r) => setTimeout(r, ms * SPEED));
@@ -288,7 +300,27 @@ async function main() {
     await page.waitForURL(new RegExp(`/dashboard/booths/${boothId}/qr`), {
       timeout: 15000,
     });
-    await beat(1600);
+    await beat(300); // let the QR + link render before measuring it
+
+    // Measure the real localhost link so compose.mjs can paint the real
+    // (not-yet-launched) production domain over it in the exact same spot —
+    // see the PUBLIC_ORIGIN comment above.
+    const linkEl = page.locator("p.font-mono");
+    const [box, text] = await Promise.all([
+      linkEl.boundingBox(),
+      linkEl.textContent(),
+    ]);
+    if (box && text) {
+      qrLinkMock = {
+        startMs: now(),
+        endMs: now(),
+        box,
+        text: text.replace(/^https?:\/\/[^/]+/, PUBLIC_ORIGIN),
+      };
+    }
+
+    await beat(1300);
+    if (qrLinkMock) qrLinkMock.endMs = now();
   });
 
   // ── Beat 4: the customer customizes + orders from their phone ───────────────
@@ -432,7 +464,7 @@ async function main() {
   fs.writeFileSync(
     path.join(OUT, "steps.json"),
     JSON.stringify(
-      { video: videoFile, viewport: VIEWPORT, popMs, steps },
+      { video: videoFile, viewport: VIEWPORT, popMs, qrLinkMock, steps },
       null,
       2,
     ),
