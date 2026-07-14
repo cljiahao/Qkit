@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { useAsyncAction } from "@/hooks/use-async-action";
+import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { passwordChangeSchema } from "@/lib/schemas";
 import { FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";
 
@@ -61,6 +61,7 @@ export function ResetPasswordForm() {
       toast.success("Password updated");
       router.push("/dashboard");
       router.refresh();
+      await navigatingAway();
     });
   }
 

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ImageUploader } from "@/components/image-uploader";
 import { Section } from "@/components/ticket-section";
-import { useAsyncAction } from "@/hooks/use-async-action";
+import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
@@ -76,6 +76,7 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
       }
       toast.success("Booth deleted");
       router.replace("/dashboard/booths");
+      await navigatingAway();
     });
   }
 
@@ -111,6 +112,7 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
       // replace + no refresh: a refresh here races and cancels the navigation
       // (same bug as onboarding). The list is revalidate=0 so it refetches on nav.
       router.replace("/dashboard/booths");
+      await navigatingAway();
     });
   }
 

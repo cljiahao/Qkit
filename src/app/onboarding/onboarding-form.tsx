@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { vendorSchema, type VendorInput } from "@/lib/schemas";
-import { useAsyncAction } from "@/hooks/use-async-action";
+import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { createVendor } from "./actions";
 
 export function OnboardingForm() {
@@ -32,6 +32,7 @@ export function OnboardingForm() {
       // dashboard is revalidate=0 so it re-fetches the new vendor on navigation,
       // and a refresh here would cancel the navigation.
       router.replace("/dashboard");
+      await navigatingAway();
     });
   }
 

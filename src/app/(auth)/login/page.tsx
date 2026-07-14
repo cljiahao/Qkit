@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { useAsyncAction } from "@/hooks/use-async-action";
+import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 
 type Mode = "signin" | "signup";
@@ -87,11 +87,7 @@ function LoginForm() {
         }
         router.push("/dashboard");
         router.refresh();
-        // Stay disabled through the in-app transition instead of flipping back
-        // to "Create account" while the old page is still showing — this
-        // component unmounts once /dashboard lands, so the promise never
-        // needs to resolve.
-        await new Promise<void>(() => {});
+        await navigatingAway();
         return;
       }
 
@@ -102,7 +98,7 @@ function LoginForm() {
       }
       router.push("/dashboard");
       router.refresh();
-      await new Promise<void>(() => {});
+      await navigatingAway();
     });
   }
 
