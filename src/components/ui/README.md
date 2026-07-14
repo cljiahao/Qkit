@@ -12,16 +12,11 @@ where noted below.
   used by `OrderCard`'s cancel-order confirmation.
 - `avatar.tsx` — `Avatar`/`AvatarImage`/`AvatarFallback`. Customized: adds a
   `size` prop (`"sm" | "default" | "lg"`, stock shadcn has no size variant).
-- `badge.tsx` — `Badge` with `default`/`secondary`/`destructive`/`outline`/
-  `ghost`/`link` variants (`cva`).
 - `button.tsx` — `Button`. Customized: extra `size` variants beyond stock
   shadcn (`"xs"`, `"icon-xs"`) alongside default/sm/lg/icon/icon-sm/icon-lg.
-- `card.tsx` — standard `Card`/`CardHeader`/`CardContent`/etc. shell.
 - `checkbox.tsx` — Radix `Checkbox` wrapper with a `CheckIcon` indicator.
 - `dialog.tsx` — `Dialog*` family, used by `ZoomableImage` and elsewhere.
 - `dropdown-menu.tsx` — `DropdownMenu*` family (Radix wrapped).
-- `form.tsx` — `react-hook-form` + Radix `Label` glue
-  (`Form`/`FormField`/`FormItem`/`FormLabel`/etc., context-based).
 - `input.tsx` — standard text `Input`.
 - `label.tsx` — Radix `Label` wrapper.
 - `popover.tsx` — `Popover`/`PopoverTrigger`/`PopoverContent`/`PopoverAnchor`,
@@ -29,7 +24,6 @@ where noted below.
 - `radio-group.tsx` — Radix `RadioGroup` wrapper with a filled-circle
   indicator.
 - `select.tsx` — Radix `Select` family with `sm`/`default` trigger sizes.
-- `separator.tsx` — Radix `Separator` wrapper.
 - `sheet.tsx` — side-panel `Sheet*` family (Radix `Dialog` under the hood),
   used by `ItemCustomizer`.
 - `switch.tsx` — Radix `Switch` wrapper. Customized: adds a `size` prop
