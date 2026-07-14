@@ -159,7 +159,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
     overdueMin === String(initial.overdue_min);
 
   return (
-    <div className="lg:columns-2 lg:gap-5">
+    <div className="md:columns-2 md:gap-5">
       <Section
         icon={<Clock className="size-5" />}
         title="Attention thresholds"
