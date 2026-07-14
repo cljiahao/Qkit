@@ -44,7 +44,7 @@ export function Stat({
     <div
       className={cn(
         "fade-rise rounded-xl border border-border bg-card p-4",
-        featured && "ticket overflow-hidden bg-primary/[0.05]",
+        featured && "ticket bg-primary/[0.05]",
         big && "sm:col-span-2",
       )}
       style={delay ? { animationDelay: `${delay}ms` } : undefined}

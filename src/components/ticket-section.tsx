@@ -1,3 +1,5 @@
+import { Ticket } from "@/components/ticket";
+
 export function Section({
   icon,
   eyebrow,
@@ -12,7 +14,7 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="ticket mb-5 break-inside-avoid-column rounded-2xl border border-border px-6 py-6 shadow-[0_2px_0_0_var(--color-border)]">
+    <Ticket as="section" className="mb-5 break-inside-avoid-column px-6 py-6">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           {icon}
@@ -30,6 +32,6 @@ export function Section({
         </div>
       </div>
       <div className="mt-5 space-y-4">{children}</div>
-    </section>
+    </Ticket>
   );
 }

@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { OrderStatusBadge } from "@/components/order-status-badge";
+import { Ticket } from "@/components/ticket";
 import { parseOrderItems } from "@/lib/schemas";
 import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import { boothColor } from "@/lib/booth-color";
@@ -150,9 +151,12 @@ export function OrderCard({
           : "border-border";
 
   return (
-    <div
+    <Ticket
+      radius="xl"
+      shadow="none"
+      borderColor="custom"
       className={cn(
-        "ticket flex w-full flex-col overflow-hidden rounded-xl border shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
+        "flex w-full flex-col shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
         wash,
       )}
     >
@@ -364,6 +368,6 @@ export function OrderCard({
           {sgtClock(order.created_at)}
         </p>
       </div>
-    </div>
+    </Ticket>
   );
 }

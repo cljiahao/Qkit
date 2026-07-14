@@ -7,6 +7,7 @@ import { parseMenuItems } from "@/lib/schemas";
 import { canAddBooth } from "@/lib/plan";
 import { servableBoothIds, isBoothPaused } from "@/lib/booth-access";
 import { ProLock } from "@/components/pro-lock";
+import { Ticket } from "@/components/ticket";
 import { BoothList } from "./booth-list";
 
 export const revalidate = 0;
@@ -77,12 +78,12 @@ export default async function BoothsPage() {
       )}
 
       {rows.length === 0 ? (
-        <div className="ticket mt-10 overflow-hidden rounded-2xl border border-dashed border-border py-16 text-center">
+        <Ticket shadow="none" dashed className="mt-10 py-16 text-center">
           <p className="font-display text-2xl font-semibold">No booths yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Create your first booth to start taking orders.
           </p>
-        </div>
+        </Ticket>
       ) : (
         <BoothList booths={rows} />
       )}

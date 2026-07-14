@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
+import { Ticket } from "@/components/ticket";
 import { isTerminal, sortActiveOrders } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
@@ -130,7 +131,11 @@ export function RealtimeOrderBoard({
 
   if (booths.length === 0) {
     return (
-      <div className="ticket mx-auto mt-10 max-w-md overflow-hidden rounded-2xl border border-dashed border-border p-10 text-center">
+      <Ticket
+        shadow="none"
+        dashed
+        className="mx-auto mt-10 max-w-md p-10 text-center"
+      >
         <p className="font-display text-2xl font-semibold">No booths yet</p>
         <p className="mt-2 text-sm text-muted-foreground">
           Set up a booth to start receiving orders. Once it&apos;s live, every
@@ -141,7 +146,7 @@ export function RealtimeOrderBoard({
             <Plus className="size-4" /> Add your first booth
           </Link>
         </Button>
-      </div>
+      </Ticket>
     );
   }
 
@@ -242,12 +247,12 @@ export function RealtimeOrderBoard({
       )}
 
       {idle ? (
-        <div className="ticket mt-10 overflow-hidden rounded-2xl border border-dashed border-border py-20 text-center">
+        <Ticket shadow="none" dashed className="mt-10 py-20 text-center">
           <p className="font-display text-2xl font-semibold">All caught up</p>
           <p className="mt-1 text-sm text-muted-foreground">
             No active orders. Standing by.
           </p>
-        </div>
+        </Ticket>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visible.map((order) => (

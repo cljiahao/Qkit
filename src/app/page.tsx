@@ -5,6 +5,7 @@ import { LandingCta } from "@/components/landing-cta";
 import { HeroPreviewCarousel } from "@/components/hero-preview-carousel";
 import { FeaturedBooths } from "@/components/featured-booths";
 import { BackToTop } from "@/components/back-to-top";
+import { Ticket } from "@/components/ticket";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_PRICING } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
@@ -416,9 +417,10 @@ export default async function LandingPage() {
         </h2>
         <div className="grid gap-5 sm:grid-cols-3">
           {STEPS.map((step, i) => (
-            <div
+            <Ticket
               key={step.title}
-              className="ticket rounded-2xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
+              shadow="none"
+              className="bg-card p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
             >
               <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <step.icon className="size-5" />
@@ -432,7 +434,7 @@ export default async function LandingPage() {
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {step.body}
               </p>
-            </div>
+            </Ticket>
           ))}
         </div>
       </section>
@@ -524,7 +526,10 @@ export default async function LandingPage() {
           </div>
 
           {/* Monthly Pro */}
-          <div className="ticket rounded-2xl border border-primary/40 bg-primary/[0.04] p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_18px_44px_-24px_oklch(0.4_0.09_45/0.55)]">
+          <Ticket
+            shadow="none"
+            className="border-primary/40 bg-primary/[0.04] p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_18px_44px_-24px_oklch(0.4_0.09_45/0.55)]"
+          >
             <div className="flex items-baseline justify-between gap-2">
               <p className="font-display text-2xl font-semibold text-primary">
                 Monthly Pro
@@ -553,7 +558,7 @@ export default async function LandingPage() {
               <li>Busy-times heatmap &amp; trends</li>
               <li>Profit margin per item + CSV</li>
             </ul>
-          </div>
+          </Ticket>
         </div>
         <p className="mt-6 text-center text-xs text-muted-foreground">
           {paidMode

@@ -8,14 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { Ticket } from "@/components/ticket";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { passwordChangeSchema } from "@/lib/schemas";
 import { FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";
 
 type SessionState = "checking" | "ready" | "no-session";
-
-const cardClass =
-  "ticket overflow-hidden rounded-2xl border border-border px-7 py-8 shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]";
 
 /**
  * Sets a new password on the recovery session established by /auth/callback
@@ -67,17 +65,17 @@ export function ResetPasswordForm() {
 
   if (state === "checking") {
     return (
-      <div className={cardClass}>
+      <Ticket shadow="lifted" className="px-7 py-8">
         <p className="text-center text-sm text-muted-foreground">
           Checking your reset link…
         </p>
-      </div>
+      </Ticket>
     );
   }
 
   if (state === "no-session") {
     return (
-      <div className={cardClass}>
+      <Ticket shadow="lifted" className="px-7 py-8">
         <h1 className="font-display text-2xl font-semibold leading-tight">
           This link has expired
         </h1>
@@ -92,12 +90,12 @@ export function ResetPasswordForm() {
         >
           <Link href="/login">Back to sign in</Link>
         </Button>
-      </div>
+      </Ticket>
     );
   }
 
   return (
-    <div className={cardClass}>
+    <Ticket shadow="lifted" className="px-7 py-8">
       <h1 className="font-display text-2xl font-semibold leading-tight">
         Set a new password
       </h1>
@@ -149,6 +147,6 @@ export function ResetPasswordForm() {
           {pending ? "Updating…" : "Update password"}
         </Button>
       </form>
-    </div>
+    </Ticket>
   );
 }

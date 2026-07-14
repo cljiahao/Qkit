@@ -8,6 +8,7 @@ import { Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Ticket } from "@/components/ticket";
 import { vendorSchema, type VendorInput } from "@/lib/schemas";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { createVendor } from "./actions";
@@ -39,7 +40,7 @@ export function OnboardingForm() {
   return (
     <main className="min-h-screen flex items-center justify-center p-5">
       <div className="w-full max-w-md">
-        <div className="ticket overflow-hidden rounded-2xl border border-border shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]">
+        <Ticket shadow="lifted">
           <div className="px-7 pt-9 pb-7">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-primary">
               <Store className="size-3.5" />
@@ -95,7 +96,7 @@ export function OnboardingForm() {
           <p className="bg-card px-7 py-4 text-center text-xs text-muted-foreground">
             You can rename it any time from your dashboard.
           </p>
-        </div>
+        </Ticket>
       </div>
     </main>
   );

@@ -2,6 +2,7 @@
 // board container/header, taking its booth title + ticket data as a prop so
 // the hero can carousel through multiple scenario boards.
 
+import { Ticket } from "@/components/ticket";
 import { LandingTicket, type LandingTicketData } from "./landing-ticket";
 
 export type LandingBoardData = {
@@ -13,7 +14,10 @@ export type LandingBoardData = {
 
 export function LandingBoard({ board }: { board: LandingBoardData }) {
   return (
-    <div className="ticket relative w-full overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-[0_1px_0_0_var(--color-border),0_24px_48px_-32px_oklch(0.4_0.06_45/0.45)] sm:p-4">
+    <Ticket
+      shadow="none"
+      className="relative w-full bg-card p-3 shadow-[0_1px_0_0_var(--color-border),0_24px_48px_-32px_oklch(0.4_0.06_45/0.45)] sm:p-4"
+    >
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="min-w-0">
           <p className="text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -37,6 +41,6 @@ export function LandingBoard({ board }: { board: LandingBoardData }) {
           <LandingTicket key={t.n} t={t} />
         ))}
       </div>
-    </div>
+    </Ticket>
   );
 }

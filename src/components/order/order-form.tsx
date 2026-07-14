@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZoomableImage } from "@/components/zoomable-image";
 import { ItemCustomizer } from "@/components/item-customizer";
+import { Ticket } from "@/components/ticket";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import {
   cn,
@@ -286,12 +287,12 @@ export function OrderForm({
   // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).
   if (menuItems.length === 0) {
     return (
-      <div className="ticket rounded-xl border border-border px-6 py-12 text-center">
+      <Ticket shadow="none" radius="xl" className="px-6 py-12 text-center">
         <p className="font-display text-lg font-semibold">Menu coming soon</p>
         <p className="mt-1 text-sm text-muted-foreground">
           This booth hasn&apos;t added its menu yet. Check back soon.
         </p>
-      </div>
+      </Ticket>
     );
   }
 
@@ -410,7 +411,7 @@ export function OrderForm({
 
       {/* Cart summary */}
       {hasItems && (
-        <section className="ticket overflow-hidden rounded-xl border border-border">
+        <Ticket as="section" shadow="none" radius="xl">
           <h2 className="flex items-center gap-2 px-4 pt-4 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             <ShoppingCart className="size-3.5" />
             Your order
@@ -478,7 +479,7 @@ export function OrderForm({
               </div>
             </>
           )}
-        </section>
+        </Ticket>
       )}
 
       {/* Customer name */}

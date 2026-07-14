@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { DollarSign, Lock, Package, Timer } from "lucide-react";
 import type { SeriesPoint, StatsSummary, WaitPoint } from "@/lib/stats";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Ticket } from "@/components/ticket";
 import { hourLabel, rangeCaption, waitClock } from "./chart-format";
 import { KpiRow, StatTile } from "./kpi-row";
 import { ExportButton } from "./export-button";
@@ -99,12 +100,12 @@ export function StatsView({
 }: Props) {
   if (summary.orderCount === 0) {
     return (
-      <div className="ticket overflow-hidden rounded-2xl border border-dashed border-border py-20 text-center">
+      <Ticket shadow="none" dashed className="py-20 text-center">
         <p className="font-display text-2xl font-semibold">No orders yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Nothing in this window. Try a wider range.
         </p>
-      </div>
+      </Ticket>
     );
   }
 

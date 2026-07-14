@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { DEFAULT_PRICING } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
+import { Ticket as TicketCard } from "@/components/ticket";
 import { UpgradeCta } from "./upgrade-cta";
 import { PassCountdown } from "./pass-countdown";
 
@@ -104,7 +105,7 @@ export default async function PlanPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Event pass */}
-          <div className="ticket flex flex-col rounded-2xl border border-border bg-card p-5">
+          <TicketCard shadow="none" className="flex flex-col bg-card p-5">
             <div className="flex items-center gap-2">
               <Ticket className="size-4 text-primary" />
               <h2 className="font-display text-xl font-semibold">Event pass</h2>
@@ -131,10 +132,13 @@ export default async function PlanPage() {
                 label={paidMode ? "Get a pass" : "Request a pass"}
               />
             </div>
-          </div>
+          </TicketCard>
 
           {/* Monthly */}
-          <div className="ticket flex flex-col rounded-2xl border border-primary/40 bg-card p-5">
+          <TicketCard
+            shadow="none"
+            className="flex flex-col border-primary/40 bg-card p-5"
+          >
             <div className="flex items-center gap-2">
               <Sparkles className="size-4 text-primary" />
               <h2 className="font-display text-xl font-semibold">
@@ -165,7 +169,7 @@ export default async function PlanPage() {
                 variant="outline"
               />
             </div>
-          </div>
+          </TicketCard>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import QRCode from "react-qr-code";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Ticket } from "@/components/ticket";
 import { orderPath } from "@/lib/booth-code";
 import { RegenerateButton } from "./regenerate-button";
 
@@ -91,7 +92,7 @@ export function BoothQrPoster({ boothId, name, isActive, code }: Props) {
         </Button>
       </div>
 
-      <div className="ticket overflow-hidden rounded-2xl border border-border bg-card p-8 text-center">
+      <Ticket shadow="none" className="bg-card p-8 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Scan to order
         </p>
@@ -133,7 +134,7 @@ export function BoothQrPoster({ boothId, name, isActive, code }: Props) {
             the booth editor before printing.
           </p>
         )}
-      </div>
+      </Ticket>
 
       <div className="mt-5 flex gap-3 print:hidden">
         <Button

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Ticket } from "@/components/ticket";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
@@ -130,7 +131,7 @@ function LoginForm() {
     return (
       <main className="min-h-screen flex items-center justify-center p-5">
         <div className="w-full max-w-md text-center">
-          <div className="ticket overflow-hidden rounded-2xl border border-border px-7 py-10 shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]">
+          <Ticket shadow="lifted" className="px-7 py-10">
             <Link
               href="/"
               aria-label="QKit home"
@@ -171,7 +172,7 @@ function LoginForm() {
             >
               Back to sign in
             </Button>
-          </div>
+          </Ticket>
         </div>
       </main>
     );
@@ -194,7 +195,7 @@ function LoginForm() {
           </p>
         </div>
 
-        <div className="ticket overflow-hidden rounded-2xl border border-border shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]">
+        <Ticket shadow="lifted">
           <div className="px-7 pt-9 pb-8">
             <h1 className="font-display text-3xl font-semibold leading-tight">
               {isSignin ? "Welcome back" : "Create your account"}
@@ -315,7 +316,7 @@ function LoginForm() {
               {isSignin ? "Create an account" : "Sign in"}
             </button>
           </p>
-        </div>
+        </Ticket>
       </div>
     </main>
   );

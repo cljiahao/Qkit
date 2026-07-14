@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
 import { OrderStatusBadge } from "@/components/order-status-badge";
+import { Ticket } from "@/components/ticket";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import {
   orderBoothIdSchema,
@@ -93,7 +94,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
-      <div className="ticket overflow-hidden rounded-2xl border border-border shadow-[0_2px_0_0_var(--color-border),0_18px_40px_-24px_oklch(0.4_0.06_45/0.45)]">
+      <Ticket shadow="lifted">
         <header className="px-6 pt-9 pb-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {booth?.name}
@@ -168,7 +169,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             </div>
           )}
         </section>
-      </div>
+      </Ticket>
 
       <div className="mt-6">
         <FeedbackForm

@@ -4,6 +4,8 @@
 // separate future spec; for now `page.tsx` passes an empty array, so this is
 // hidden. No fabricated testimonials ever.
 
+import { Ticket } from "@/components/ticket";
+
 export type FeaturedBooth = {
   // stall name
   name: string;
@@ -23,17 +25,14 @@ export function FeaturedBooths({ featured }: { featured: FeaturedBooth[] }) {
       </h2>
       <div className="grid gap-5 sm:grid-cols-3">
         {featured.map((f) => (
-          <figure
-            key={f.by}
-            className="ticket rounded-2xl border border-border bg-card p-6"
-          >
+          <Ticket key={f.by} as="figure" shadow="none" className="bg-card p-6">
             <blockquote className="text-sm leading-relaxed">
               &ldquo;{f.quote}&rdquo;
             </blockquote>
             <figcaption className="mt-4 text-xs font-semibold text-muted-foreground">
               {f.by}
             </figcaption>
-          </figure>
+          </Ticket>
         ))}
       </div>
     </section>

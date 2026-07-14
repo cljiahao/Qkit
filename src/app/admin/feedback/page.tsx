@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { npsBreakdown } from "@/lib/nps";
 import { summarizeReviews, type ReviewRow } from "@/lib/reviews";
 import { Paginated } from "@/components/paginated";
+import { Ticket } from "@/components/ticket";
 
 export const revalidate = 0;
 
@@ -120,7 +121,7 @@ export default async function AdminFeedbackPage() {
       </div>
 
       {/* ── Hero: vendor NPS (QKit's own loyalty metric) ─────────────────── */}
-      <section className="fade-rise ticket overflow-hidden rounded-2xl border border-border bg-card">
+      <Ticket as="section" shadow="none" className="fade-rise bg-card">
         <div className="px-6 pt-8 pb-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Vendor NPS · how vendors rate QKit
@@ -188,7 +189,7 @@ export default async function AdminFeedbackPage() {
             </Paginated>
           </>
         )}
-      </section>
+      </Ticket>
 
       {/* ── Platform CSAT: aggregate ordering-experience health ──────────── */}
       <section className="fade-rise space-y-4 rounded-xl border border-border bg-card p-5">

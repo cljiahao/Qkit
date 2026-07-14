@@ -1,6 +1,7 @@
 "use client";
 
 import { Ticket } from "lucide-react";
+import { Ticket as TicketCard } from "@/components/ticket";
 import { useNow } from "@/hooks/use-now";
 import { sgtWeekdayTime } from "@/lib/tz";
 
@@ -22,7 +23,10 @@ export function PassCountdown({ expiresAt }: { expiresAt: string }) {
   const until = sgtWeekdayTime(expiresAt);
 
   return (
-    <div className="ticket flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-5">
+    <TicketCard
+      shadow="none"
+      className="flex items-center gap-3 border-primary/30 bg-primary/5 p-5"
+    >
       <Ticket className="size-5 shrink-0 text-primary" />
       <div>
         <p className="font-display text-lg font-semibold text-primary">
@@ -30,6 +34,6 @@ export function PassCountdown({ expiresAt }: { expiresAt: string }) {
         </p>
         <p className="text-sm text-muted-foreground">{format(left)}</p>
       </div>
-    </div>
+    </TicketCard>
   );
 }

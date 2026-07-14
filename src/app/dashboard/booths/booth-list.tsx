@@ -5,6 +5,7 @@ import { MediaImage } from "@/components/media-image";
 import { toast } from "sonner";
 import { Copy, Pencil, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Ticket } from "@/components/ticket";
 
 interface BoothRow {
   id: string;
@@ -28,9 +29,12 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {booths.map((booth) => (
-        <div
+        <Ticket
           key={booth.id}
-          className="ticket flex flex-col overflow-hidden rounded-xl border border-border"
+          shadow="none"
+          radius="xl"
+          clip
+          className="flex flex-col"
         >
           <div className="relative h-28 w-full bg-muted">
             {booth.image_url && (
@@ -102,7 +106,7 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
               </Button>
             </div>
           </div>
-        </div>
+        </Ticket>
       ))}
     </div>
   );
