@@ -18,8 +18,11 @@ The authenticated vendor area — a shared header/nav shell wrapping the live or
 - `plan/` — billing/plan page (current tier, pass countdown, upgrade CTAs).
 - `profile/` — vendor account profile page (stall name, avatar, display name, password).
 - `realtime-order-board.tsx` — `RealtimeOrderBoard({ booths, initialOrders, boardSettings, loadError })` client component: the live order board itself. Subscribes via `useRealtimeOrders(boothIds, initialOrders, handleNewOrder)`, plays a sound and fires a toast/desktop notification (`fireNewOrderNotification`) on a new order while the tab is hidden, tracks an "away" badge reflected into `document.title`, filters/sorts active orders (`sortActiveOrders`, `isTerminal`), renders a per-booth `BoothTab` filter row when multi-booth, an empty/"No booths yet" state linking to `/dashboard/booths/new`, an idle "All caught up" state, and a grid of `OrderCard`s otherwise.
-- `settings/` — board preferences sub-route (not covered by this batch).
-- `stats/` — analytics sub-route (not covered by this batch).
+- `settings/` — board-preferences page: aging/overdue thresholds, new-order
+  sound, and desktop notifications, all persisted to `vendors.board_settings`.
+- `stats/` — sales analytics: revenue/orders/AOV, trends, margin, busy-hours,
+  top items, service speed, and reviews, gated free/pass vs. Pro, plus a
+  permanent ungated snapshot for a paid event window.
 - `tour-actions.ts` — `markTourSeen()` server action: best-effort stamps `vendors.tour_seen_at` for the signed-in user so the onboarding tour stops auto-running; failures are logged but never surfaced (worst case the tour just shows once more).
 
 ## Connectivity
