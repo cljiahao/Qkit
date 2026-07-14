@@ -13,6 +13,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +32,6 @@ import {
 } from "@/components/ui/sheet";
 import { FeedbackForm } from "@/components/feedback-form";
 import { SupportForm } from "@/components/support-form";
-import { MediaImage } from "@/components/media-image";
 import { cn } from "@/lib/utils";
 import type { Tier } from "@/lib/plan";
 
@@ -173,24 +173,15 @@ export function DashboardNav({
               aria-label="Account menu"
               className="flex items-center gap-2 rounded-lg py-1 pr-2 pl-1 text-left transition-colors outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
-              <span
+              <Avatar
                 aria-hidden
-                className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-md ring-1 ring-primary/25 ring-inset"
+                className="rounded-md ring-1 ring-inset ring-primary/25"
               >
-                {avatarUrl ? (
-                  <MediaImage
-                    src={avatarUrl}
-                    alt=""
-                    fill
-                    sizes="2rem"
-                    className="object-cover"
-                  />
-                ) : (
-                  <span className="font-mono grid size-full place-items-center bg-primary/12 text-xs font-semibold tracking-tight text-primary">
-                    {initials(vendorName)}
-                  </span>
-                )}
-              </span>
+                {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
+                <AvatarFallback className="rounded-md bg-primary/12 font-mono text-xs font-semibold tracking-tight text-primary">
+                  {initials(vendorName)}
+                </AvatarFallback>
+              </Avatar>
               <span className="hidden max-w-[9rem] truncate text-sm font-semibold md:inline">
                 {vendorName || "Account"}
               </span>

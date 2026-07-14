@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { submitSupportMessage } from "@/app/actions/support";
@@ -79,14 +80,14 @@ export function SupportForm() {
           ))}
         </ToggleGroup>
       </div>
-      <textarea
+      <Textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         aria-label="Describe the problem"
         placeholder="What happened? The more detail, the faster we can help."
         rows={4}
         maxLength={2000}
-        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="rounded-lg text-sm"
       />
       <Button
         type="button"

@@ -93,7 +93,9 @@ describe("SettingsForm desktop notifications", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />);
 
-    await user.click(screen.getByRole("button", { name: /^off$/i }));
+    await user.click(
+      screen.getByRole("switch", { name: /desktop notifications/i }),
+    );
     expect(requestNotifyPermission).toHaveBeenCalled();
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ desktop_notify: true }),
@@ -105,8 +107,12 @@ describe("SettingsForm desktop notifications", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />);
 
-    await user.click(screen.getByRole("button", { name: /^off$/i }));
+    await user.click(
+      screen.getByRole("switch", { name: /desktop notifications/i }),
+    );
     expect(updateBoardSettings).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /^off$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: /desktop notifications/i }),
+    ).not.toBeChecked();
   });
 });

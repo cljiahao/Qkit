@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Maximize2, X } from "lucide-react";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MediaImage } from "@/components/media-image";
 
 interface Props {
@@ -18,23 +24,8 @@ interface Props {
 export function ZoomableImage({ src, alt, sizes }: Props) {
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    // no scroll behind the lightbox
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
   return (
-    <>
+    <Dialog open={open} onOpenChange={setOpen}>
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -53,36 +44,27 @@ export function ZoomableImage({ src, alt, sizes }: Props) {
         </span>
       </button>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={alt || "Enlarged photo"}
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+      <DialogContent
+        showCloseButton={false}
+        className="inset-0 flex h-full max-h-none w-full max-w-none translate-x-0 translate-y-0 items-center justify-center rounded-none border-none bg-transparent p-4 shadow-none sm:max-w-none"
+      >
+        <DialogTitle className="sr-only">{alt || "Enlarged photo"}</DialogTitle>
+        <DialogClose
+          aria-label="Close"
+          className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
         >
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Close"
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
-          >
-            <X className="size-5" />
-          </button>
-          <div
-            className="relative h-[80vh] w-full max-w-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MediaImage
-              src={src}
-              alt={alt}
-              fill
-              sizes="90vw"
-              className="object-contain"
-            />
-          </div>
+          <X className="size-5" />
+        </DialogClose>
+        <div className="relative h-[80vh] w-full max-w-2xl">
+          <MediaImage
+            src={src}
+            alt={alt}
+            fill
+            sizes="90vw"
+            className="object-contain"
+          />
         </div>
-      )}
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

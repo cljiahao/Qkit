@@ -7,6 +7,7 @@ import { Bell, Clock, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Section } from "@/components/ticket-section";
 import { useAsyncAction } from "@/hooks/use-async-action";
@@ -233,20 +234,22 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         title="Notifications"
         description="A popup for a new order when this tab is backgrounded. Works on Android and desktop browsers. On iPhone or iPad, add QKit to your Home Screen first, since a regular Safari tab can't show these."
       >
-        <button
-          type="button"
-          aria-pressed={desktopNotify}
-          onClick={toggleDesktopNotify}
-          disabled={savingNotify}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
-            desktopNotify
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
-              : "border-destructive/40 bg-destructive/10 text-destructive",
-          )}
-        >
-          {desktopNotify ? "On" : "Off"}
-        </button>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={desktopNotify}
+            onCheckedChange={toggleDesktopNotify}
+            disabled={savingNotify}
+            aria-label="Desktop notifications"
+          />
+          <span
+            className={cn(
+              "text-sm font-semibold",
+              desktopNotify ? "text-emerald-600" : "text-muted-foreground",
+            )}
+          >
+            {desktopNotify ? "On" : "Off"}
+          </span>
+        </div>
         {desktopNotify && notifyPermission() !== "granted" && (
           <p className="text-xs text-muted-foreground">
             Permission isn&apos;t granted in this browser. This device

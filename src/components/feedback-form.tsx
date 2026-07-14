@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { submitFeedback } from "@/app/actions/feedback";
@@ -132,14 +133,14 @@ export function FeedbackForm({
           ))}
         </ToggleGroup>
       )}
-      <textarea
+      <Textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         aria-label={prompt ?? "Your feedback"}
         placeholder="Anything we can improve? (optional)"
         rows={3}
         maxLength={2000}
-        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="rounded-lg text-sm"
       />
       <Button
         type="button"
