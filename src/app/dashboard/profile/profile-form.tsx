@@ -170,6 +170,43 @@ export function ProfileForm({
   return (
     <div className="lg:columns-2 lg:gap-5">
       <Section
+        icon={<Store className="size-5" />}
+        eyebrow="Shown to customers"
+        title="Stall name"
+        description="The name on your booth page and order tickets."
+      >
+        <div className="space-y-2">
+          <Label htmlFor="stall-name" className={FORM_LABEL_CLASS}>
+            Stall name
+          </Label>
+          <Input
+            id="stall-name"
+            value={name}
+            maxLength={100}
+            onChange={(e) => setName(e.target.value)}
+            className="h-11 rounded-xl"
+            aria-invalid={!!nameError}
+            aria-describedby={nameError ? "stall-name-error" : undefined}
+          />
+          {nameError && (
+            <p id="stall-name-error" className={FORM_ERROR_CLASS}>
+              {nameError}
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={saveStall}
+            disabled={savingName || name === stallName}
+            className="h-10 rounded-xl font-semibold"
+          >
+            {savingName ? "Saving…" : "Save stall name"}
+          </Button>
+        </div>
+      </Section>
+
+      <Section
         icon={<UserRound className="size-5" />}
         eyebrow="Your account menu"
         title="Profile icon"
@@ -223,43 +260,6 @@ export function ProfileForm({
             className="h-10 rounded-xl font-semibold"
           >
             {savingDisplay ? "Saving…" : "Save display name"}
-          </Button>
-        </div>
-      </Section>
-
-      <Section
-        icon={<Store className="size-5" />}
-        eyebrow="Shown to customers"
-        title="Stall name"
-        description="The name on your booth page and order tickets."
-      >
-        <div className="space-y-2">
-          <Label htmlFor="stall-name" className={FORM_LABEL_CLASS}>
-            Stall name
-          </Label>
-          <Input
-            id="stall-name"
-            value={name}
-            maxLength={100}
-            onChange={(e) => setName(e.target.value)}
-            className="h-11 rounded-xl"
-            aria-invalid={!!nameError}
-            aria-describedby={nameError ? "stall-name-error" : undefined}
-          />
-          {nameError && (
-            <p id="stall-name-error" className={FORM_ERROR_CLASS}>
-              {nameError}
-            </p>
-          )}
-        </div>
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={saveStall}
-            disabled={savingName || name === stallName}
-            className="h-10 rounded-xl font-semibold"
-          >
-            {savingName ? "Saving…" : "Save stall name"}
           </Button>
         </div>
       </Section>
