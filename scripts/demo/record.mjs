@@ -297,6 +297,12 @@ async function main() {
   await step("Customers scan this", async () => {
     await beat(400);
     await glideClick(page, page.getByRole("link", { name: /Booth QR code/i }));
+    // Mark the mask window's start BEFORE the real link can possibly paint —
+    // the link only exists once the QR page has mounted and hydrated, both
+    // still ahead of us here. Measuring the box/text has to wait for that
+    // render to settle, but the mask itself must cover from before it, or a
+    // frame of real localhost text sneaks through on screen first.
+    const revealMs = now();
     await page.waitForURL(new RegExp(`/dashboard/booths/${boothId}/qr`), {
       timeout: 15000,
     });
@@ -312,7 +318,7 @@ async function main() {
     ]);
     if (box && text) {
       qrLinkMock = {
-        startMs: now(),
+        startMs: revealMs,
         endMs: now(),
         box,
         text: text.replace(/^https?:\/\/[^/]+/, PUBLIC_ORIGIN),

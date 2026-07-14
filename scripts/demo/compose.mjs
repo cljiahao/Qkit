@@ -194,10 +194,11 @@ function main() {
 
   const mixIns = ["[base]", "[chime]"];
   if (music) {
-    // Music carries through the outro, fading out over its last 3s.
+    // Full volume from frame one (no fade-in — it read as a hesitant, weirdly
+    // quiet open); carries through the outro, fading out over its last 3s.
     graph.push(
       `[1:a]atrim=0:${total.toFixed(2)},aresample=44100,volume=0.3,` +
-        `afade=t=in:st=0:d=2,afade=t=out:st=${(total - 3).toFixed(2)}:d=3[music]`,
+        `afade=t=out:st=${(total - 3).toFixed(2)}:d=3[music]`,
     );
     mixIns.push("[music]");
   }
