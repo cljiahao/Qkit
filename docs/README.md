@@ -6,15 +6,15 @@ Project documentation: deployment notes, the engineering constitution, business/
 
 ## Contents
 
-- `DEPLOY.md`
-- `business/`
-- `constitution.md`
-- `meta/`
-- `superpowers/`
+- `DEPLOY.md` — deploy notes: QKit runs on the shared Merqo Supabase project (same as loopkit/merqo) in its own `qkit` schema; documents the qkit-loopkit auto-award integration order (apply merqo's `0008_kit_events.sql` before this repo's `0051_emit_order_completed.sql`) and the `NEXT_PUBLIC_LOOPKIT_URL` env var that must be set in Vercel before deploying the order-status page change (fails closed — the earn link silently doesn't show without it).
+- `business/` — go-to-market and business-strategy documentation (own README).
+- `constitution.md` — the "inviolable principles" doc (the _why-never-change_, complementing `AGENTS.md`'s _how-to-route_): RLS-only authorization, service-role-server-only, Zod-at-every-boundary + strict TypeScript, no secrets in `NEXT_PUBLIC_*`, `@supabase/ssr`/`supabase-js` version compatibility, dual-written schema changes (migrations + `types.ts`), and permission deny-rules as a guardrail not a sandbox. Also documents the test matrix (unit/component/e2e/RLS/mutation/type-lint-fmt, each with its CI scope).
+- `meta/` — roadmap, audit-findings, and task-registry docs tracking work across the project (own README).
+- `superpowers/` — dated design specs and implementation plans produced by the brainstorm-then-plan workflow used to build features in this repo (own README).
 
 ## Connectivity
 
-`business/` holds go-to-market documentation; `meta/` holds the roadmap and audit-findings docs tracking work across the project; `superpowers/` holds the dated design specs and implementation plans produced by the brainstorm-then-plan workflow used to build features in this repo.
+`constitution.md` is the authority `AGENTS.md` defers to for anything touching auth, schema, or the harness ("read it before changing auth, schema, or the harness"). `business/` holds go-to-market documentation; `meta/` holds the roadmap and audit-findings docs tracking work across the project; `superpowers/` holds the dated design specs and implementation plans produced by the brainstorm-then-plan workflow used to build features in this repo. `DEPLOY.md` is referenced when actually shipping a change to the shared Merqo Supabase project.
 
 ## Parent
 

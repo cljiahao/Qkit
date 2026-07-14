@@ -100,35 +100,42 @@ booths and orders. See `AGENTS.md` for full conventions.
 
 ### Contents
 
-- `AGENTS.md`
-- `CHANGELOG.md`
-- `CLAUDE.md`
-- `FUTURE.md`
-- `components.json`
-- `docs/`
-- `e2e/`
-- `eslint.config.mjs`
-- `next.config.ts`
-- `package.json`
-- `playwright.config.ts`
-- `pnpm-lock.yaml`
-- `pnpm-workspace.yaml`
-- `postcss.config.mjs`
-- `public/`
-- `scripts/`
-- `src/`
-- `stryker.conf.json`
-- `supabase/`
-- `test/`
-- `tsconfig.json`
-- `vercel.json`
-- `vitest.config.ts`
+- `AGENTS.md` — routing/conventions doc for AI coding agents: stack divergence note (Supabase, not templateCentral's default better-auth/Drizzle), commands, file layout, data model, RLS/service-role rules, the AI harness description, and a running log of which templateCentral 5.0→5.9 deltas were adopted vs. deliberately skipped.
+- `CHANGELOG.md` — Keep-a-Changelog history; entries are added under `[Unreleased]` by the `/changelog` skill.
+- `CLAUDE.md` — a one-line pointer that routes Claude Code to `AGENTS.md` via an `@AGENTS.md` import (`Routing and conventions for this project live in AGENTS.md. Read it first.`).
+- `FUTURE.md` — inactive design seams inherited from templateCentral v4.0 (Meta-Harness CI, Trace-Driven Evolution, Environment Engineering) — integration points only, nothing here runs unless built out.
+- `components.json` — shadcn/ui CLI config: `style: new-york`, RSC + TSX on, `baseColor: neutral`, CSS variables, and the path aliases (`@/components`, `@/components/ui`, `@/lib`, `@/hooks`) the `shadcn` CLI writes generated components into.
+- `docs/` — deploy notes, the engineering constitution, business/GTM docs, and dated design/plan history (own README).
+- `e2e/` — Playwright specs for the auth-guard and customer-order-lifecycle smoke tests (own README).
+- `eslint.config.mjs` — flat ESLint config: extends `eslint-config-next`, ignores generated/build dirs (`node_modules`, `.next`, `supabase`, `coverage`, etc.), and adds `eslint-plugin-sonarjs` with `no-inline-comments` and `sonarjs/no-commented-code` as hard `error`s repo-wide (turned back off for `*.test.{ts,tsx}`, `test/**`, `scripts/**`, `e2e/**`, where inline notes on table-driven fixtures read better).
+- `next.config.ts` — Next config: `output: standalone`, `reactStrictMode`, `poweredByHeader: false`, dev indicator disabled, `images.remotePatterns` allow-listing local Supabase/`*.supabase.co`/`*.googleusercontent.com`, a `/register`→`/login` redirect, and a `headers()` function that sets a full security-header set (X-Frame-Options, HSTS, etc.) plus an environment-aware Content-Security-Policy (relaxes `script-src`/`connect-src`/`img-src` for local dev only).
+- `package.json` — scripts (`dev`/`build`/`test`/`test:mutation`/`test:e2e`/`check`/`format`/`demo:record`/`demo:compose`/`prepare`), the dependency set (Next 16, `@supabase/ssr` + `@supabase/supabase-js`, Radix/shadcn deps, `react-hook-form` + `zod`, `recharts`, `driver.js`, `react-qr-code`), the dev toolchain (`vitest`, `@playwright/test`, `@stryker-mutator/*`, `eslint` + `eslint-plugin-sonarjs`, `husky`, `lint-staged`, `prettier`), and the `lint-staged` config that runs `prettier --write` + `eslint --fix` on staged `.ts/.tsx/.mjs` and `prettier --write` on staged `.json/.md/.css`.
+- `playwright.config.ts` — e2e config: `testDir: ./e2e`, fully parallel, `webServer` auto-starts `pnpm dev` against `http://localhost:3000`, a single `chromium` project, and an HTML report emitted in CI (for the failure-artifact upload in `.github/workflows/ci.yml`).
+- `pnpm-lock.yaml` — generated pnpm lockfile; not hand-edited.
+- `pnpm-workspace.yaml` — pnpm settings: `allowBuilds` for `supabase`/`esbuild`/`sharp`/`unrs-resolver`, and pinned `overrides` that force-patch transitive advisories (`postcss`, `undici`, `vite`, `qs`) to fixed-version ranges, each scoped to self-clear once the parent dep ships the patched version.
+- `postcss.config.mjs` — minimal PostCSS config wiring the `@tailwindcss/postcss` plugin (Tailwind v4's PostCSS integration).
+- `public/` — static assets served as-is by Next.
+- `scripts/` — the demo-video generator (`demo:record`/`demo:compose`) and `check-readme-freshness.mjs` (run from the `.husky/pre-commit` hook).
+- `src/` — the Next.js app itself (App Router pages/actions, `src/lib`, `src/components`, `src/hooks`, `src/proxy.ts`).
+- `stryker.conf.json` — mutation-testing config: vitest runner, mutates only `src/lib/**/*.ts` (excludes `*.test.ts`, `types.ts`, `action-result.ts`, `supabase/**`), advisory only (`thresholds.break: null`, so a low score never fails CI).
+- `supabase/` — the Postgres schema: `migrations/` (SQL + RLS + realtime publication), seed data, and pgTAP RLS tests.
+- `test/` — Vitest tests and setup not colocated with their source (e.g. API-route tests).
+- `tsconfig.json` — TypeScript strict compiler options, the `@/*` → `./src/*` path alias, and `.next/types` generated-type includes.
+- `vercel.json` — Vercel deploy config: pins the deployment region to `sin1` (Singapore).
+- `vitest.config.ts` — Vitest config: `@` alias to `src/`, `node` test environment, dummy `NEXT_PUBLIC_SUPABASE_*` env vars so `src/lib/env` validation doesn't throw during tests, `test/setup.ts` as the global setup file, and v8 coverage over `src/**/*.{ts,tsx}`.
 
 ### Connectivity
 
 `src/` is the Next.js app itself; `supabase/` holds the Postgres schema and RLS
-policies it depends on, applied via the Supabase CLI or SQL Editor. Two
-separate test layers sit alongside it: `e2e/` (Playwright, against a real
-local Supabase) and `test/` (Vitest, for API routes not colocated with their
-source). `docs/` is dated design history from past work; `scripts/` holds the
-demo-video generator; `public/` is static assets served as-is.
+policies it depends on, applied via the Supabase CLI or SQL Editor (or the
+`/supabase-migrate` skill). Two separate test layers sit alongside it: `e2e/`
+(Playwright, against a real local Supabase, run via `playwright.config.ts`)
+and `test/` (Vitest, for code not colocated with its source, run via
+`vitest.config.ts`); `stryker.conf.json` adds an advisory mutation-testing pass
+over `src/lib` on top of both. `docs/` is deploy notes, the constitution, GTM
+docs, and dated design history; `scripts/` holds the demo-video generator and
+the pre-commit README-freshness check; `public/` is static assets served as-is.
+`AGENTS.md`/`CLAUDE.md`/`FUTURE.md` and `.claude/` together form the AI-agent
+harness described in `AGENTS.md`'s own "AI Harness" section; `.github/workflows/`
+runs the same checks (`pnpm check`, `pnpm test`, `pnpm build`, e2e, RLS, security
+scans) that `package.json`'s scripts define locally.

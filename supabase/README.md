@@ -2,19 +2,43 @@
 
 ## Purpose
 
-Postgres schema, RLS policies, and test data for the `qkit` Supabase schema.
+Everything that defines and exercises the `qkit` Postgres schema: the ordered
+migration history (tables, RLS policies, SECURITY DEFINER RPCs, the realtime
+publication), local-dev configuration for the Supabase CLI, demo/CI seed data,
+and the pgTAP test suite that guards RLS isolation. This is the authorization
+layer for the whole app — QKit enforces access control in Postgres (RLS +
+explicit Data-API grants), not in application code.
 
 ## Contents
 
-- `config.toml`
-- `migrations/`
-- `seed/`
-- `snippets/`
-- `tests/`
+- `config.toml` — Supabase CLI local-dev config: exposes only the `qkit` +
+  `graphql_public` schemas to the Data API (`api.schemas`), pins
+  `auto_expose_new_tables = false` (Data-API grants are made explicit in
+  migration `0041_data_api_grants.sql` instead, so the exposed surface doesn't
+  depend on CLI-version auto-grant behavior), Postgres major version 17, and
+  the standard local ports/services (API 54321, DB 54322, Studio 54323,
+  Inbucket 54324, seed file `./seed.sql` — though this project's real seeding
+  is the manually-run scripts in `seed/`, not `db reset`'s auto-seed path).
+- `migrations/` — the ordered SQL schema history (52 files, `0000`-`0051`);
+  see its own README for the full theme breakdown.
+- `seed/` — demo and CI seed data (sample booths/menus, a CI auth bootstrap);
+  see its own README.
+- `snippets/` — Supabase Studio's saved-query folder; currently empty.
+- `tests/` — the pgTAP RLS isolation test suite (`rls.test.sql`), run via
+  `supabase test db`; see its own README.
 
 ## Connectivity
 
-`migrations/` is the ordered schema history applied via the Supabase CLI (`supabase db push`/`db reset`); `seed/` holds demo and CI seed data built on top of that schema; `tests/` holds pgTAP RLS tests run against it. `snippets/` is Supabase Studio's saved-query folder, currently empty.
+`migrations/` is applied in order via the Supabase CLI (`supabase db push`/
+`db reset`, or the project's `/supabase-migrate` skill) to build the live
+schema that every Supabase client in `src/lib/supabase/` queries against.
+`seed/` scripts are run manually (never via `db reset`'s auto-seed) against a
+local or hosted Supabase instance to populate demo/e2e data — `e2e/*.spec.ts`
+and `pnpm test:e2e` depend on `coffee-cart.sql` having been applied. `tests/`
+is run standalone (`supabase test db`) against a freshly-migrated database and
+is independent of the Next.js app; it's the authoritative check that
+`migrations/`'s RLS policies actually hold cross-vendor isolation, and is
+referenced directly from `AGENTS.md`'s "RLS isolation" note.
 
 ## Parent
 

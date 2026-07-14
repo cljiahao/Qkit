@@ -4,7 +4,11 @@ Produces a vertical (9:16) screen-capture of QKit for sending to a prospect:
 **register → name your stall → add menu → QR → customer orders → order lands
 live on the board (pure queue) → add PayNow → customer pays → vendor confirms
 (payment queue)**. Shows both the unpaid (queue-only) and paid flows on one
-booth — payment is the optional upgrade. Captions burned per beat, no audio.
+booth — payment is the optional upgrade. Captions burned per beat; audio is a
+synthesized "order ready" chime (matching `src/lib/order-alerts.ts`) mixed in
+at the moment the live order lands, plus an optional low-volume background
+music bed from `assets/` (see `scripts/demo/assets/README.md`) — no file there
+means chime-only.
 
 > Runs against `DEMO_BASE_URL` (default `http://localhost:3000`). If port 3000
 > is taken, start `pnpm dev` on another port and set `DEMO_BASE_URL` to match.
@@ -13,18 +17,21 @@ booth — payment is the optional upgrade. Captions burned per beat, no audio.
 
 Spec: [`docs/superpowers/specs/2026-06-24-demo-video-generator-design.md`](../../docs/superpowers/specs/2026-06-24-demo-video-generator-design.md).
 
-> Status: **authored, not yet recorded** — needs Docker + local Supabase to run.
-> Implemented as `.mjs` (plain ESM + Playwright's bundled `chromium`) so it runs
-> with bare `node`, no extra tooling deps. `reset.sql` is plain SQL via `psql`.
+> Status: **recorded** — `out/demo.mp4` (plus the raw `.webm` and `steps.json`)
+> is present from the most recent run. Re-run any time with the steps below;
+> `reset.sql` makes the recorder idempotent. Needs Docker + local Supabase to
+> run. Implemented as `.mjs` (plain ESM + Playwright's bundled `chromium`) so
+> it runs with bare `node`, no extra tooling deps. `reset.sql` is plain SQL via
+> `psql`.
 
 ## Files
 
-| File          | Does                                                                 |
-| ------------- | -------------------------------------------------------------------- |
-| `reset.sql`   | Wipes the fixed demo account so each run starts identical            |
-| `record.mjs`  | Drives the real app (phone viewport), records `.webm` + `steps.json` |
-| `compose.mjs` | ffmpeg: pad to 1080×1920 + burn captions → `demo.mp4`                |
-| `out/`        | Generated artifacts (git-ignored)                                    |
+| File          | Does                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| `reset.sql`   | Wipes the fixed demo account so each run starts identical                                         |
+| `record.mjs`  | Drives the real app (phone viewport), records `.webm` + `steps.json`                              |
+| `compose.mjs` | ffmpeg: pad to 1080×1920, burn captions, mix in the chime + optional `assets/` music → `demo.mp4` |
+| `out/`        | Generated artifacts (git-ignored)                                                                 |
 
 ## Prerequisites
 

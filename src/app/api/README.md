@@ -2,16 +2,16 @@
 
 ## Purpose
 
-Route-handler API endpoints (as opposed to server actions, which live under `app/actions/` and each feature's own folder).
+Route-handler API endpoints (as opposed to server actions, which live under `app/actions/` and each feature's own folder) — the surface other systems and external callers hit over HTTP.
 
 ## Contents
 
-- `merqo/`
-- `v1/`
+- `merqo/` — bearer-token-authenticated endpoints the sibling Merqo product calls into: usage metrics, vendor status lookup, and plan upgrade/downgrade requests.
+- `v1/` — qkit's own versioned public API (currently a `sales` export endpoint under `v1/sales/summary`; see its own README).
 
 ## Connectivity
 
-`merqo/` are the metrics/plan-request endpoints the sibling Merqo product calls into; `v1/` is qkit's own versioned public API (currently just sales export).
+`merqo/` is a machine-to-machine integration surface, secured by a shared-secret `Authorization: Bearer` header checked with a constant-time comparison (`timingSafeEqual`) in each route — there is no session/cookie auth here, unlike the rest of the app. `v1/` is qkit's own external API, versioned separately from `merqo/`.
 
 ## Parent
 

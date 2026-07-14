@@ -2,48 +2,133 @@
 
 ## Purpose
 
-Shared React components used across the dashboard, landing page, and order flow.
+Shared React components used across the vendor dashboard, the marketing
+landing page, and the customer ordering flow — everything that isn't a raw
+shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
 
 ## Contents
 
-- `back-button.tsx`
-- `back-to-top.tsx`
-- `dashboard-tour.dom.test.tsx`
-- `dashboard-tour.tsx`
-- `featured-booths.dom.test.tsx`
-- `featured-booths.tsx`
-- `feedback-form.tsx`
-- `hero-preview-carousel.dom.test.tsx`
-- `hero-preview-carousel.tsx`
-- `image-uploader.tsx`
-- `item-customizer.tsx`
-- `landing-board.dom.test.tsx`
-- `landing-board.tsx`
-- `landing-boards.ts`
-- `landing-cta.tsx`
-- `landing-ticket.dom.test.tsx`
-- `landing-ticket.tsx`
-- `media-image.tsx`
-- `order/`
-- `order-card.dom.test.tsx`
-- `order-card.tsx`
-- `order-status-badge.tsx`
-- `paginated.tsx`
-- `pro-lock.tsx`
-- `providers.tsx`
-- `reorder-button.tsx`
-- `service-worker-registrar.tsx`
-- `support-form.tsx`
-- `ticket-section.tsx`
-- `tour-steps.test.ts`
-- `tour-steps.ts`
-- `tour.css`
-- `ui/`
-- `zoomable-image.tsx`
+- `back-button.tsx` — `BackButton({ href, label })`: a ghost `Button` wrapping
+  a `Link` with a leading arrow icon, used as consistent page-leave nav.
+- `back-to-top.tsx` — `BackToTop()`: fixed bottom-right scroll-to-top button
+  for the landing page, appears past `scrollY > 600`, respects
+  `prefers-reduced-motion` for the scroll behavior.
+- `dashboard-tour.tsx` — `DashboardTour({ seen })`: owns the dashboard
+  onboarding tour — a floating "?" replay button plus a lazily-imported
+  `driver.js` overlay (loaded only when the tour actually runs). Auto-runs
+  once for a vendor who hasn't seen it (server-tracked, stamped via
+  `markTourSeen`), can be replayed from any page (navigates back to
+  `/dashboard` first if needed).
+- `dashboard-tour.dom.test.tsx` — RTL tests for the tour's auto-run,
+  mark-seen, and cross-page replay behavior.
+- `featured-booths.tsx` — `FeaturedBooths({ featured })`: renders a 3-up grid
+  of vendor-approved testimonial quotes; renders nothing when the array is
+  empty (no fabricated testimonials — `page.tsx` currently passes `[]`).
+- `featured-booths.dom.test.tsx` — RTL test asserting the empty-array no-op.
+- `feedback-form.tsx` — `FeedbackForm({ source, boothId, orderNumber, token,
+prompt, metric })`: compact rating widget posting to
+  `submitFeedback` (`@/app/actions/feedback`) — `metric="stars"` (1–5, used
+  for customer order ratings) or `"nps"` (0–10 recommend score, vendor→QKit).
+- `hero-preview-carousel.tsx` — `HeroPreviewCarousel()`: the landing hero's
+  swipeable "live order board" carousel over `LANDING_BOARDS` — native
+  scroll-snap plus pointer-drag and a 10s auto-advance timer (paused on
+  interaction, skipped under reduced motion), decorative (`aria-hidden`).
+- `hero-preview-carousel.dom.test.tsx` — RTL test for carousel dot
+  navigation/active state.
+- `image-uploader.tsx` — `ImageUploader({ vendorId, value, onChange, variant
+})`: client-side resize-to-WebP (`resizeToWebp`, capped 1600px banner /
+  1000px thumb) then upload to the `booth-images` Supabase Storage bucket;
+  validates type (jpeg/png/webp) and a 15MB source cap.
+- `item-customizer.tsx` — `ItemCustomizer({ item, onClose, onAdd })`: a
+  bottom `Sheet` for picking a menu item's option groups (single-select via
+  `ToggleGroup type="single"`, multi-select via `type="multiple"`) before
+  adding it to the cart.
+- `landing-board.tsx` — `LandingBoard({ board })`: renders one "live order
+  board" ticket container (title + active-count pulse badge) for the hero
+  carousel, laying out its `LandingTicket`s in a 2-col grid.
+- `landing-board.dom.test.tsx` — RTL test for `LandingBoard` rendering.
+- `landing-boards.ts` — `LANDING_BOARDS`: static sample data for the 4 hero
+  scenario boards (coffee cart, ice-cream cart, a payment-claim flow, a
+  "rush" with aging/overdue tickets).
+- `landing-cta.tsx` — `LandingCta({ href, children, variant, event })`: a
+  landing-page call-to-action `Button`+`Link` that fires an optional
+  analytics event (`logEvent`) on click before navigating.
+- `landing-ticket.tsx` — `LandingTicket({ t })`: presentational "order chit"
+  mirroring the real `OrderCard`'s visual language (status badge, payment
+  badge, aging wash, perforated sections) for the landing hero — no server
+  actions, purely decorative sample data.
+- `landing-ticket.dom.test.tsx` — RTL test for `LandingTicket` rendering
+  across status/payment/age combinations.
+- `media-image.tsx` — `MediaImage(props)`: `next/image` wrapper that marks
+  `.svg` sources `unoptimized` (avoids needing the global
+  `dangerouslyAllowSVG` flag) while raster uploads still get full
+  optimization.
+- `order/` — components specific to the customer ordering flow (menu/cart
+  form, recent-orders list, expired-code screen). See its own README.
+- `order-card.tsx` — `OrderCard({ order, boothName, agingMin, overdueMin })`:
+  the vendor dashboard's live order ticket — status/payment badges, an
+  aging clock (`orderAgeTone`, ticks every 30s), expandable item options,
+  and the advance/cancel/confirm-payment action buttons wired to
+  `@/app/dashboard/order-actions`. One "attention wash" background at a
+  time, prioritized overdue > payment-claimed > aging.
+- `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
+  transitions and action-button wiring.
+- `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
+  pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
+  cancelled), shared by the dashboard board and the customer status page.
+- `paginated.tsx` — `Paginated({ children, pageSize, variant, label })`:
+  client-side pager over pre-rendered rows — `variant="pager"` (prev/next +
+  "x–y of N", for admin tables) or `"more"` (Load more / Show less, for
+  feeds).
+- `pro-lock.tsx` — `ProLock({ feature, label })`: an inline upgrade nudge
+  linking to `/dashboard/plan`, logging an `upgrade_cta` event tagged with
+  the specific gated `feature` for funnel analysis.
+- `providers.tsx` — `Providers({ children })`: app-wide client providers —
+  Radix `TooltipProvider` and the `sonner` `Toaster`.
+- `reorder-button.tsx` — `ReorderButton({ boothId, lines, customerName,
+label })`: stashes a past order's lines via `stashReorder` and navigates to
+  the booth's menu page, where `OrderForm` reconciles them against the live
+  menu/stock.
+- `service-worker-registrar.tsx` — `ServiceWorkerRegistrar()`: registers
+  `/sw.js` (best-effort) so ready-order notifications can use
+  `registration.showNotification` (required on Android Chrome) and the app
+  is installable as a PWA.
+- `support-form.tsx` — `SupportForm()`: vendor→admin help-request widget —
+  pick a category (pass/payment/pro/other) + free-text body, posts via
+  `submitSupportMessage`.
+- `ticket-section.tsx` — `Section({ icon, eyebrow, title, description,
+children })`: the bordered "ticket card" section shell (icon chip + title +
+  description + content) used by settings/profile/booth-form pages.
+- `ticket.tsx` — `Ticket({ as, shadow, radius, dashed, clip, borderColor,
+...props })`: the shared "kitchen ticket" card look (scalloped/perforated
+  edge via the `.ticket` CSS class) — centralizes border/radius/shadow so
+  every card in the app renders identically instead of each hand-rolling its
+  own combination.
+- `tour-steps.ts` — `tourSteps(isMobile)`: pure step config (element
+  selector + title + description) for the dashboard tour, kept free of any
+  `driver.js` import so it's unit-testable; desktop spotlights each nav
+  landmark, mobile spotlights the collapsed hamburger menu instead.
+- `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists.
+- `tour.css` — scoped styles for the `driver.js` popover (`.qkit-tour`
+  class) so the tour overlay matches the app's visual language.
+- `ui/` — the shadcn/ui primitive library everything else in this tree is
+  built from. See its own README.
+- `zoomable-image.tsx` — `ZoomableImage({ src, alt, sizes })`: a menu photo
+  that opens fullscreen in a `Dialog` on tap, with a corner expand-icon
+  affordance.
 
 ## Connectivity
 
-`ui/` is the shadcn/ui primitive library everything else in this tree is built from; `order/` holds components specific to the customer ordering flow. The rest are shared components used across the dashboard and landing pages — the `landing-*` family renders the marketing page, `ticket-section.tsx` is the bordered "ticket card" shell used by profile/settings/booth-form.
+`ui/` is the shadcn/ui primitive library everything else in this tree is
+built from; `order/` holds components specific to the customer ordering flow
+and is consumed by `src/app/o/[code]/page.tsx`. The `landing-*` family
+(`landing-board`, `landing-boards`, `landing-ticket`, `landing-cta`,
+`featured-booths`) renders the marketing landing page alongside
+`hero-preview-carousel.tsx` and `back-to-top.tsx`. `order-card.tsx` and
+`dashboard-tour.tsx` are consumed by the vendor dashboard
+(`src/app/dashboard`); `ticket.tsx`/`ticket-section.tsx` are the shared card
+shell used by both the dashboard and the ordering flow. `feedback-form.tsx`
+and `support-form.tsx` post to server actions under `src/app/actions/`.
 
 ## Parent
 

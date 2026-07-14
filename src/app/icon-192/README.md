@@ -2,11 +2,20 @@
 
 ## Purpose
 
-Generates the 192x192 PWA icon.
+Serves the 192×192 PWA/manifest icon at a stable URL (app-dir generated icon
+routes carry a content hash in their URL, which `manifest.ts` can't reference).
 
 ## Contents
 
-- `route.tsx`
+- `route.tsx` — `GET()` route handler: returns `new ImageResponse(brandIcon(192),
+{ width: 192, height: 192 })`, rendering the shared `brandIcon` JSX
+  (`@/lib/brand-icon`) to a PNG via `next/og`.
+
+## Connectivity
+
+Referenced by the web app manifest as the 192×192 icon entry; renders the same
+`brandIcon()` helper used by `icon-512/route.tsx` at a different size, so both
+stay visually identical.
 
 ## Parent
 

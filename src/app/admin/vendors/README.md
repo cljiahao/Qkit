@@ -2,16 +2,16 @@
 
 ## Purpose
 
-Admin vendor list and per-vendor management.
+Admin vendor list, pre-sorted by urgency, with drill-down into per-vendor management.
 
 ## Contents
 
-- `[id]/`
-- `page.tsx`
+- `page.tsx` — `AdminVendorsPage` async server component (`revalidate = 0`). Gated by `requireAdmin()`. Fetches vendors/licenses/booths/orders/open-support-messages in parallel, computes each vendor's health via `buildVendorHealth()` (`@/lib/admin-vendor-health`) and active-pass expiry via `latestActivePassByVendor()` (`@/lib/admin-stats`), builds `VendorListItem[]` sorted by `statusRank()` (most urgent first, ties broken by newest signup), and renders 4 `Stat` tiles (total vendors, "needs a look" count, on-a-live-pass count, 7d signups with delta) above the `VendorList`.
+- `[id]/` — per-vendor detail/management page, keyed by vendor id.
 
 ## Connectivity
 
-`page.tsx` lists all vendors; `[id]/` is the per-vendor detail/management page.
+`page.tsx` is the fleet-wide triage list; each row links to `[id]/page.tsx` for the single-vendor deep dive and action panel. Reuses `Stat` from `../stat` and `VendorList`/`VendorListItem` from `../vendor-list`. Reachable via the "Vendors" tab in `admin/admin-nav.tsx`, under the `admin/layout.tsx` shell.
 
 ## Parent
 

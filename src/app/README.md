@@ -6,30 +6,29 @@ Next.js App Router tree — every page, layout, route handler, and PWA manifest 
 
 ## Contents
 
-- `(auth)/`
-- `actions/`
-- `admin/`
-- `api/`
-- `apple-icon.tsx`
-- `auth/`
-- `dashboard/`
-- `error.tsx`
-- `global-error.tsx`
-- `globals.css`
-- `icon-192/`
-- `icon-512/`
-- `icon.tsx`
-- `layout.tsx`
-- `manifest.ts`
-- `not-found.tsx`
-- `o/`
-- `onboarding/`
-- `order/`
-- `page.tsx`
+- `(auth)/` — vendor login and password-reset pages (route group, no URL segment).
+- `actions/` — server actions shared across routes: analytics events, feedback, purchase (upgrade) requests, support messages.
+- `admin/` — internal admin dashboard (vendor management, pricing, feedback, support inbox).
+- `api/` — route-handler API endpoints: the Merqo cross-product integration and qkit's own `v1` public API.
+- `apple-icon.tsx` — `AppleIcon` route handler; renders `brandIcon(180)` (from `@/lib/brand-icon`) as a 180×180 PNG `ImageResponse` for iOS home-screen touch icons.
+- `auth/` — Supabase auth callback route (OAuth/recovery code exchange).
+- `dashboard/` — authenticated vendor area (realtime order board, booth/menu management, stats).
+- `error.tsx` — `Error` client component, the root React error boundary; replaces the Next dev overlay in production, logs via `console.error`, shows a "Try again" button calling `reset()`.
+- `global-error.tsx` — `GlobalError` client component; the boundary Next renders only when the **root layout itself** throws, so it ships its own `<html>/<body>` with inline styles (no Tailwind, since `globals.css` may not have loaded).
+- `globals.css` — Tailwind v4 entry point: theme tokens (OKLCH colors, `--font-*` variables), base layer, and custom utility classes (`.ticket`, `.perforation`, `.fade-rise`, status colors) used across the app.
+- `icon-192/`, `icon-512/` — PWA icon route folders (each renders a sized PNG, referenced by `manifest.ts`).
+- `icon.tsx` — `Icon` route handler; renders `brandIcon(32)` as a 32×32 PNG favicon.
+- `layout.tsx` — `RootLayout`. Loads `Fraunces`, `Hanken_Grotesk`, `Space_Mono` via `next/font/google`, sets `metadata`/`viewport` (PWA `appleWebApp`, `themeColor` from `BRAND_EMBER`), wraps children in `ServiceWorkerRegistrar` + `Providers`.
+- `manifest.ts` — `manifest()` returns the `MetadataRoute.Manifest` (name, `display: "standalone"`, `background_color`/`theme_color` from `@/lib/brand-icon`, icon list pointing at `/icon-192`/`/icon-512`).
+- `not-found.tsx` — `NotFound` component; branded 404 shown e.g. for a stale/mistyped order URL, links back to `/`.
+- `o/` — short-code customer ordering entry point.
+- `onboarding/` — post-signup vendor onboarding flow.
+- `order/` — legacy booth-id-based customer ordering route.
+- `page.tsx` — `LandingPage` async server component, the marketing home page. Fetches the signed-in user and the single `pricing` row via `createServerClient()`, falls back to `DEFAULT_PRICING` (from `@/lib/pricing`) when prices are unset (pre-Stripe beta framing). Renders hero, trust strip, `FeaturedBooths`, "how it works" steps, "why QKit" cards, a pricing teaser (Free / Event pass / Monthly Pro), and two FAQ columns (`FAQ` for prospects, `VENDOR_FAQ` for signed-up vendors troubleshooting real product behavior — QR regeneration, stock caps, SGT-scheduled hours, rate limits, etc.). CTA target and label switch based on whether `user` is signed in.
 
 ## Connectivity
 
-`(auth)/` is the vendor login/reset flow; `dashboard/` is the authenticated vendor area. `o/` and `order/` are the two customer-facing ordering surfaces (the current short-code entry point and the legacy booth-id route). `admin/` and `api/` are internal/ops surfaces; `actions/` holds server actions shared across routes rather than colocated with one page.
+`(auth)/` is the vendor login/reset flow; `dashboard/` is the authenticated vendor area. `o/` and `order/` are the two customer-facing ordering surfaces (the current short-code entry point and the legacy booth-id route). `admin/` and `api/` are internal/ops surfaces; `actions/` holds server actions shared across routes rather than colocated with one page. `layout.tsx` is the ancestor of every route below; `page.tsx` (the landing page) is the only route directly under `app/` besides the special Next.js files.
 
 ## Parent
 
