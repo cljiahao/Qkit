@@ -95,3 +95,40 @@ Production and Preview. Supabase realtime requires the `orders` table in the
 
 Authorization is enforced in Postgres via RLS: vendors only ever see their own
 booths and orders. See `AGENTS.md` for full conventions.
+
+## Structure
+
+### Contents
+
+- `AGENTS.md`
+- `CHANGELOG.md`
+- `CLAUDE.md`
+- `FUTURE.md`
+- `components.json`
+- `docs/`
+- `e2e/`
+- `eslint.config.mjs`
+- `next.config.ts`
+- `package.json`
+- `playwright.config.ts`
+- `pnpm-lock.yaml`
+- `pnpm-workspace.yaml`
+- `postcss.config.mjs`
+- `public/`
+- `scripts/`
+- `src/`
+- `stryker.conf.json`
+- `supabase/`
+- `test/`
+- `tsconfig.json`
+- `vercel.json`
+- `vitest.config.ts`
+
+### Connectivity
+
+`src/` is the Next.js app itself; `supabase/` holds the Postgres schema and RLS
+policies it depends on, applied via the Supabase CLI or SQL Editor. Two
+separate test layers sit alongside it: `e2e/` (Playwright, against a real
+local Supabase) and `test/` (Vitest, for API routes not colocated with their
+source). `docs/` is dated design history from past work; `scripts/` holds the
+demo-video generator; `public/` is static assets served as-is.

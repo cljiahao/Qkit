@@ -73,3 +73,23 @@ Re-run freely: step 1 makes step 2 idempotent.
 - The live-pop beat uses a second, un-recorded browser context to place a walk-in
   order, so the ticket arrives on the board through the real realtime
   subscription (genuine, not faked).
+
+## Structure
+
+### Contents
+
+- `assets/`
+- `compose.mjs`
+- `record.mjs`
+- `reset.sql`
+
+### Connectivity
+
+`assets/` holds the optional royalty-free music bed `compose.mjs` mixes under
+the recording. `record.mjs` drives the real app and writes the raw `.webm` +
+`steps.json` (caption/timing per beat) into `out/`; `compose.mjs` reads those
+two and renders the final captioned `demo.mp4` alongside them.
+
+## Parent
+
+[scripts](../README.md)
