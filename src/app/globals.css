@@ -127,6 +127,16 @@ body {
   background-attachment: fixed;
 }
 
+/* Scroll stays fully functional (wheel/touch/keyboard); the bar itself is
+   just visual chrome we don't want, on the phone-viewport ordering flow
+   especially — real phones don't show a persistent one either. */
+html {
+  scrollbar-width: none; /* Firefox */
+}
+html::-webkit-scrollbar {
+  display: none; /* Chromium, Safari */
+}
+
 /* Display headings tuned for Fraunces optical sizing */
 .font-display {
   font-family: var(--font-display);

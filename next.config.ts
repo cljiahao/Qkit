@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Don't advertise the framework (drops the X-Powered-By: Next.js header).
   poweredByHeader: false,
+  // Dev-only badge (route/build status, bottom-left) — no effect in production
+  // builds either way, but it shows up in screen recordings taken against a
+  // dev server, so keep it off entirely.
+  devIndicators: false,
 
   images: {
     remotePatterns: [
