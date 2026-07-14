@@ -87,6 +87,11 @@ function LoginForm() {
         }
         router.push("/dashboard");
         router.refresh();
+        // Stay disabled through the in-app transition instead of flipping back
+        // to "Create account" while the old page is still showing — this
+        // component unmounts once /dashboard lands, so the promise never
+        // needs to resolve.
+        await new Promise<void>(() => {});
         return;
       }
 
@@ -97,6 +102,7 @@ function LoginForm() {
       }
       router.push("/dashboard");
       router.refresh();
+      await new Promise<void>(() => {});
     });
   }
 

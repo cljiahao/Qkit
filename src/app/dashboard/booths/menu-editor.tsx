@@ -219,7 +219,7 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <ProLock feature="stock_cap" label="Sold-out limit · Pro" />
+                <ProLock feature="stock_cap" label="Pro" />
                 <span className="text-xs text-muted-foreground">
                   Auto-stop orders when an item sells out.
                 </span>

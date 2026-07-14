@@ -20,6 +20,11 @@ export default async function DashboardLayout({
   // Admins have no vendor row and don't use the vendor dashboard.
   if (await isAdmin(user.id)) redirect("/admin");
 
+  // A brand-new user hits /dashboard before onboarding — redirect here, before
+  // this layout's header shell renders, instead of letting DashboardPage
+  // redirect after the shell already painted (the blank-flash bug).
+  if (!vendor) redirect("/onboarding");
+
   // Custom profile icon lives on the auth user's metadata (no schema change).
   const rawAvatar = user.user_metadata?.avatar_url;
   const avatarUrl = typeof rawAvatar === "string" ? rawAvatar : null;
@@ -36,7 +41,7 @@ export default async function DashboardLayout({
       <header className="sticky top-0 z-20 border-b border-border bg-background/85 px-5 py-3.5 backdrop-blur-md print:hidden">
         <DashboardNav
           signOut={signOut}
-          vendorName={vendor?.name ?? ""}
+          vendorName={vendor.name}
           avatarUrl={avatarUrl}
           tier={entitlement.tier}
         />
@@ -44,9 +49,7 @@ export default async function DashboardLayout({
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
         {children}
       </main>
-      {/* Only once onboarded — a brand-new user briefly hits /dashboard before
-          the page redirects to /onboarding, and the tour must not flash there. */}
-      {vendor && <DashboardTour seen={!!vendor.tour_seen_at} />}
+      <DashboardTour seen={!!vendor.tour_seen_at} />
     </div>
   );
 }
