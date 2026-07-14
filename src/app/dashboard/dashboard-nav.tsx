@@ -11,6 +11,7 @@ import {
   MessageSquarePlus,
   Settings,
   User,
+  Wallet,
   X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -39,7 +40,6 @@ const LINKS = [
   { href: "/dashboard", label: "Orders" },
   { href: "/dashboard/booths", label: "Booths" },
   { href: "/dashboard/stats", label: "Stats" },
-  { href: "/dashboard/plan", label: "Plan" },
 ];
 
 function isActive(path: string, href: string): boolean {
@@ -211,6 +211,12 @@ export function DashboardNav({
               <Link href="/dashboard/settings" className="cursor-pointer">
                 <Settings className="size-4" />
                 Board settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/plan" className="cursor-pointer">
+                <Wallet className="size-4" />
+                Plan
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
