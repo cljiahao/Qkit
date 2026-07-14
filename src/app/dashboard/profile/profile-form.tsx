@@ -170,43 +170,6 @@ export function ProfileForm({
   return (
     <div className="lg:columns-2 lg:gap-5">
       <Section
-        icon={<Store className="size-5" />}
-        eyebrow="Shown to customers"
-        title="Stall name"
-        description="The name on your booth page and order tickets."
-      >
-        <div className="space-y-2">
-          <Label htmlFor="stall-name" className={FORM_LABEL_CLASS}>
-            Stall name
-          </Label>
-          <Input
-            id="stall-name"
-            value={name}
-            maxLength={100}
-            onChange={(e) => setName(e.target.value)}
-            className="h-11 rounded-xl"
-            aria-invalid={!!nameError}
-            aria-describedby={nameError ? "stall-name-error" : undefined}
-          />
-          {nameError && (
-            <p id="stall-name-error" className={FORM_ERROR_CLASS}>
-              {nameError}
-            </p>
-          )}
-        </div>
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={saveStall}
-            disabled={savingName || name === stallName}
-            className="h-10 rounded-xl font-semibold"
-          >
-            {savingName ? "Saving…" : "Save stall name"}
-          </Button>
-        </div>
-      </Section>
-
-      <Section
         icon={<UserRound className="size-5" />}
         eyebrow="Your account menu"
         title="Profile icon"
@@ -252,21 +215,6 @@ export function ProfileForm({
             </p>
           )}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="email" className={FORM_LABEL_CLASS}>
-            Email
-          </Label>
-          <Input
-            id="email"
-            value={email}
-            readOnly
-            disabled
-            className="h-11 rounded-xl bg-secondary/60"
-          />
-          <p className="text-xs text-muted-foreground">
-            Your sign-in email. It can&apos;t be changed here yet.
-          </p>
-        </div>
         <div className="flex justify-end">
           <Button
             type="button"
@@ -280,11 +228,63 @@ export function ProfileForm({
       </Section>
 
       <Section
+        icon={<Store className="size-5" />}
+        eyebrow="Shown to customers"
+        title="Stall name"
+        description="The name on your booth page and order tickets."
+      >
+        <div className="space-y-2">
+          <Label htmlFor="stall-name" className={FORM_LABEL_CLASS}>
+            Stall name
+          </Label>
+          <Input
+            id="stall-name"
+            value={name}
+            maxLength={100}
+            onChange={(e) => setName(e.target.value)}
+            className="h-11 rounded-xl"
+            aria-invalid={!!nameError}
+            aria-describedby={nameError ? "stall-name-error" : undefined}
+          />
+          {nameError && (
+            <p id="stall-name-error" className={FORM_ERROR_CLASS}>
+              {nameError}
+            </p>
+          )}
+        </div>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={saveStall}
+            disabled={savingName || name === stallName}
+            className="h-10 rounded-xl font-semibold"
+          >
+            {savingName ? "Saving…" : "Save stall name"}
+          </Button>
+        </div>
+      </Section>
+
+      <Section
         icon={<KeyRound className="size-5" />}
         eyebrow="Sign-in security"
         title="Change password"
         description="Set a new password. At least 8 characters."
       >
+        <div className="space-y-2">
+          <Label htmlFor="email" className={FORM_LABEL_CLASS}>
+            Email
+          </Label>
+          <Input
+            id="email"
+            value={email}
+            readOnly
+            disabled
+            className="h-11 rounded-xl bg-secondary/60"
+          />
+          <p className="text-xs text-muted-foreground">
+            Your sign-in email. It can&apos;t be changed here.
+          </p>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="new-password" className={FORM_LABEL_CLASS}>
             New password
