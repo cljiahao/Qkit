@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ProLock } from "@/components/pro-lock";
 import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
 import type { OptionGroup } from "@/lib/types";
@@ -90,38 +91,28 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
           </div>
 
           {/* single / multi toggle */}
-          <div
-            role="radiogroup"
+          <ToggleGroup
+            type="single"
+            value={group.multiple ? "any" : "one"}
+            onValueChange={(v) =>
+              v && updateGroup(gi, { multiple: v === "any" })
+            }
             aria-label="How many options a customer can pick"
             className="inline-flex rounded-lg border border-border p-0.5 text-sm"
           >
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!group.multiple}
-              onClick={() => updateGroup(gi, { multiple: false })}
-              className={`rounded-md px-3 py-1 font-medium transition-colors ${
-                !group.multiple
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground"
-              }`}
+            <ToggleGroupItem
+              value="one"
+              className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
             >
               Pick one
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={group.multiple ?? false}
-              onClick={() => updateGroup(gi, { multiple: true })}
-              className={`rounded-md px-3 py-1 font-medium transition-colors ${
-                group.multiple
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground"
-              }`}
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="any"
+              className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
             >
               Pick any
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
 
           {/* choices */}
           <div className="space-y-2">

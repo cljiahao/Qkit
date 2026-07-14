@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { submitFeedback } from "@/app/actions/feedback";
 
@@ -77,46 +78,47 @@ export function FeedbackForm({
       <p className="text-sm font-medium">{prompt ?? "How was it?"}</p>
       {metric === "nps" ? (
         <>
-          <div
-            className="grid grid-cols-11 gap-1"
-            role="radiogroup"
+          <ToggleGroup
+            type="single"
+            value={score >= 0 ? String(score) : undefined}
+            onValueChange={(v) => v && setScore(Number(v))}
+            spacing={1}
             aria-label="Recommend score, 0 to 10"
+            className="grid grid-cols-11"
           >
             {Array.from({ length: 11 }, (_, n) => (
-              <button
+              <ToggleGroupItem
                 key={n}
-                type="button"
-                role="radio"
-                aria-checked={score === n}
+                value={String(n)}
                 aria-label={`${n}`}
-                onClick={() => setScore(n)}
                 className={cn(
-                  "flex aspect-square items-center justify-center rounded-md border text-sm font-semibold tabular-nums transition-colors",
-                  score === n
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:border-primary/50 hover:bg-primary/5",
+                  "flex aspect-square items-center justify-center rounded-md border border-border text-sm font-semibold tabular-nums text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5",
+                  "data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground",
                 )}
               >
                 {n}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
           <div className="flex justify-between text-[11px] font-medium text-muted-foreground">
             <span>Not likely</span>
             <span>Very likely</span>
           </div>
         </>
       ) : (
-        <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+        <ToggleGroup
+          type="single"
+          value={score > 0 ? String(score) : undefined}
+          onValueChange={(v) => v && setScore(Number(v))}
+          spacing={1}
+          aria-label="Rating"
+        >
           {[1, 2, 3, 4, 5].map((n) => (
-            <button
+            <ToggleGroupItem
               key={n}
-              type="button"
-              role="radio"
-              aria-checked={score === n}
+              value={String(n)}
               aria-label={`${n} star${n === 1 ? "" : "s"}`}
-              onClick={() => setScore(n)}
-              className="inline-flex size-11 items-center justify-center rounded-lg hover:bg-secondary"
+              className="size-11 rounded-lg p-0 hover:bg-secondary data-[state=on]:bg-transparent"
             >
               <Star
                 className={cn(
@@ -126,9 +128,9 @@ export function FeedbackForm({
                     : "text-muted-foreground/40",
                 )}
               />
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       )}
       <textarea
         value={message}

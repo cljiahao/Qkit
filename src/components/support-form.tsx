@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { submitSupportMessage } from "@/app/actions/support";
 import type { SupportMessageInput } from "@/lib/schemas";
@@ -54,29 +55,29 @@ export function SupportForm() {
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <div>
         <p className="mb-2 text-sm font-medium">What&apos;s it about?</p>
-        <div
-          className="grid grid-cols-2 gap-1.5"
-          role="radiogroup"
+        <ToggleGroup
+          type="single"
+          value={category}
+          onValueChange={(v) =>
+            v && setCategory(v as SupportMessageInput["category"])
+          }
+          spacing={1.5}
           aria-label="What's it about?"
+          className="grid grid-cols-2"
         >
           {CATEGORIES.map((c) => (
-            <button
+            <ToggleGroupItem
               key={c.value}
-              type="button"
-              role="radio"
-              aria-checked={category === c.value}
-              onClick={() => setCategory(c.value)}
+              value={c.value}
               className={cn(
-                "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                category === c.value
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:bg-primary/5",
+                "rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5",
+                "data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary",
               )}
             >
               {c.label}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
       <textarea
         value={body}

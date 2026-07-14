@@ -10,8 +10,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MediaImage } from "@/components/media-image";
+import { cn } from "@/lib/utils";
 import type { MenuItem, SelectedOption } from "@/lib/types";
+
+const CHOICE_ITEM_CLASS = cn(
+  "inline-flex min-h-11 max-w-full items-center rounded-lg border border-border px-3.5 text-sm font-medium whitespace-normal break-words text-foreground transition-colors hover:border-primary/40",
+  "data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary",
+);
 
 interface Props {
   item: MenuItem | null;
@@ -61,20 +68,6 @@ function CustomizerBody({
     }
     return defaults;
   });
-
-  function toggle(group: (typeof groups)[number], choiceId: string) {
-    setSelected((s) => {
-      const current = s[group.id] ?? [];
-      if (group.multiple) {
-        const next = current.includes(choiceId)
-          ? current.filter((id) => id !== choiceId)
-          : [...current, choiceId];
-        return { ...s, [group.id]: next };
-      }
-      // single-select: replace with exactly this choice
-      return { ...s, [group.id]: [choiceId] };
-    });
-  }
 
   function confirm() {
     const options: SelectedOption[] = groups.flatMap((g) =>
@@ -131,34 +124,52 @@ function CustomizerBody({
               )}
             </p>
             {/* Selection state is conveyed by colour alone otherwise (fails WCAG
-                1.4.1 / 4.1.2); expose it via radio/checkbox semantics like the
-                feedback form does. Single-select = radiogroup, multi = group of
-                checkboxes. */}
-            <div
-              className="flex flex-wrap gap-2"
-              role={g.multiple ? "group" : "radiogroup"}
-              aria-label={g.label}
-            >
-              {g.choices.map((c) => {
-                const active = (selected[g.id] ?? []).includes(c.id);
-                return (
-                  <button
+                1.4.1 / 4.1.2); ToggleGroup exposes the right semantics for each
+                mode — role="radio" for single-select, a pressed toggle button
+                for multi-select. */}
+            {g.multiple ? (
+              <ToggleGroup
+                type="multiple"
+                value={selected[g.id] ?? []}
+                onValueChange={(values) =>
+                  setSelected((s) => ({ ...s, [g.id]: values }))
+                }
+                spacing={2}
+                aria-label={g.label}
+                className="flex flex-wrap"
+              >
+                {g.choices.map((c) => (
+                  <ToggleGroupItem
                     key={c.id}
-                    type="button"
-                    role={g.multiple ? "checkbox" : "radio"}
-                    aria-checked={active}
-                    onClick={() => toggle(g, c.id)}
-                    className={`inline-flex min-h-11 max-w-full items-center rounded-lg border px-3.5 text-sm font-medium whitespace-normal break-words transition-colors ${
-                      active
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-foreground hover:border-primary/40"
-                    }`}
+                    value={c.id}
+                    className={CHOICE_ITEM_CLASS}
                   >
                     {c.label}
-                  </button>
-                );
-              })}
-            </div>
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            ) : (
+              <ToggleGroup
+                type="single"
+                value={selected[g.id]?.[0]}
+                onValueChange={(v) =>
+                  v && setSelected((s) => ({ ...s, [g.id]: [v] }))
+                }
+                spacing={2}
+                aria-label={g.label}
+                className="flex flex-wrap"
+              >
+                {g.choices.map((c) => (
+                  <ToggleGroupItem
+                    key={c.id}
+                    value={c.id}
+                    className={CHOICE_ITEM_CLASS}
+                  >
+                    {c.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            )}
           </div>
         ))}
       </div>

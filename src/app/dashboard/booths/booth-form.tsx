@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2, Store, Clock, UtensilsCrossed, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -180,11 +181,9 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
             description="Turn ordering on/off and set your hours."
           >
             <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="size-4 accent-[var(--color-primary)]"
+                onCheckedChange={(checked) => setIsActive(checked === true)}
               />
               <span className="text-sm">
                 <span className="font-medium">Active</span>

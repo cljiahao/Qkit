@@ -7,6 +7,7 @@ import { Bell, Clock, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Section } from "@/components/ticket-section";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { boardSettingsSchema } from "@/lib/schemas";
@@ -203,30 +204,28 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         title="New-order sound"
         description="Plays when an order lands while this tab is open."
       >
-        <div
-          role="radiogroup"
+        <ToggleGroup
+          type="single"
+          value={soundId}
+          onValueChange={(v) => v && chooseSound(v as SoundId)}
+          disabled={savingSound}
+          spacing={2}
           aria-label="New-order sound"
-          className="grid grid-cols-3 gap-2"
+          className="grid grid-cols-3"
         >
           {SOUND_OPTIONS.map((opt) => (
-            <button
+            <ToggleGroupItem
               key={opt.id}
-              type="button"
-              role="radio"
-              aria-checked={soundId === opt.id}
-              onClick={() => chooseSound(opt.id)}
-              disabled={savingSound}
+              value={opt.id}
               className={cn(
-                "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                soundId === opt.id
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:bg-primary/5",
+                "rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5",
+                "data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary",
               )}
             >
               {opt.label}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </Section>
 
       <Section

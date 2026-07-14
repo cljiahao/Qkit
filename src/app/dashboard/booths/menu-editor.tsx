@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/image-uploader";
@@ -185,11 +186,11 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                 />
               </div>
               <label className="flex shrink-0 items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={item.available}
-                  onChange={(e) => update(i, { available: e.target.checked })}
-                  className="size-4 accent-[var(--color-primary)]"
+                  onCheckedChange={(checked) =>
+                    update(i, { available: checked === true })
+                  }
                 />
                 Available
               </label>

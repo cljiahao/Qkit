@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ProLock } from "@/components/pro-lock";
 import type { Entitlement } from "@/lib/plan";
 import type { WeekdayKey } from "@/lib/tz";
@@ -132,13 +133,11 @@ export function WorkingHoursEditor({
             return (
               <div key={key} className="flex flex-wrap items-center gap-2">
                 <label className="flex w-32 items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={open}
-                    onChange={(e) =>
-                      setDay(key, e.target.checked ? DEFAULT_WINDOW : null)
+                    onCheckedChange={(checked) =>
+                      setDay(key, checked === true ? DEFAULT_WINDOW : null)
                     }
-                    className="size-4 accent-[var(--color-primary)]"
                   />
                   <span className="font-medium">{label}</span>
                 </label>

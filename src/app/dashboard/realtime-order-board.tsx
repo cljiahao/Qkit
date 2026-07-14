@@ -5,6 +5,11 @@ import Link from "next/link";
 import { Plus, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { isTerminal, sortActiveOrders } from "@/lib/orders";
@@ -170,17 +175,21 @@ export function RealtimeOrderBoard({
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            asChild
-            variant="outline"
-            size="icon"
-            title="Board settings"
-            className="rounded-full"
-          >
-            <Link href="/dashboard/settings" aria-label="Board settings">
-              <SettingsIcon className="size-3.5" />
-            </Link>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+              >
+                <Link href="/dashboard/settings" aria-label="Board settings">
+                  <SettingsIcon className="size-3.5" />
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Board settings</TooltipContent>
+          </Tooltip>
           {soleBooth && !soleBooth.open && (
             <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1.5 text-sm font-semibold text-muted-foreground">
               Closed

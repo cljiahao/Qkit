@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImageUploader } from "@/components/image-uploader";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
@@ -83,7 +85,11 @@ export function PaymentSection({
     <div className="space-y-4">
       {/* Radio cards: a small, comparable set, so show every option at once
           (a dropdown would hide them and add a click). */}
-      <div className="space-y-2.5">
+      <RadioGroup
+        value={kind}
+        onValueChange={(v) => pick(v as Kind)}
+        className="gap-2.5"
+      >
         {OPTIONS.map(({ k, label, hint }) => {
           const selected = kind === k;
           return (
@@ -96,14 +102,7 @@ export function PaymentSection({
                   : "border-border bg-card hover:bg-secondary/50",
               )}
             >
-              <input
-                type="radio"
-                name="payment-kind"
-                checked={selected}
-                onChange={() => pick(k)}
-                aria-label={label}
-                className="mt-0.5 size-4 accent-[var(--color-primary)]"
-              />
+              <RadioGroupItem value={k} aria-label={label} className="mt-0.5" />
               <span className="min-w-0">
                 <span className="block text-sm font-medium">{label}</span>
                 <span className="block text-xs text-muted-foreground">
@@ -113,7 +112,7 @@ export function PaymentSection({
             </label>
           );
         })}
-      </div>
+      </RadioGroup>
 
       {kind === "paynow" && (
         <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4">
@@ -163,8 +162,10 @@ export function PaymentSection({
 
       {kind === "pointer" && (
         <div className="space-y-4 rounded-xl border border-border bg-card/40 p-4">
-          <div
-            role="radiogroup"
+          <ToggleGroup
+            type="single"
+            value={pointerMode}
+            onValueChange={(v) => v && pickPointerMode(v as PointerMode)}
             aria-label="Payment link or QR image"
             className="inline-flex rounded-lg border border-border p-0.5 text-sm"
           >
@@ -174,23 +175,15 @@ export function PaymentSection({
                 { m: "qr", label: "QR image" },
               ] as const
             ).map(({ m, label }) => (
-              <button
+              <ToggleGroupItem
                 key={m}
-                type="button"
-                role="radio"
-                aria-checked={pointerMode === m}
-                onClick={() => pickPointerMode(m)}
-                className={cn(
-                  "rounded-md px-3 py-1 font-medium transition-colors",
-                  pointerMode === m
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground",
-                )}
+                value={m}
+                className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
               >
                 {label}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
 
           {pointerMode === "link" ? (
             <>

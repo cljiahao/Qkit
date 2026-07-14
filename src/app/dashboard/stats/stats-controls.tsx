@@ -3,6 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const RANGES: { value: string; label: string }[] = [
   { value: "24h", label: "24h" },
@@ -65,18 +72,19 @@ export function StatsControls({ range, booth, booths, allowedRanges }: Props) {
       </div>
 
       {booths.length > 1 && (
-        <select
-          value={booth}
-          onChange={(e) => setParam("booth", e.target.value)}
-          className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
-        >
-          <option value="all">All booths</option>
-          {booths.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+        <Select value={booth} onValueChange={(v) => setParam("booth", v)}>
+          <SelectTrigger className="h-9 rounded-lg text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All booths</SelectItem>
+            {booths.map((b) => (
+              <SelectItem key={b.id} value={b.id}>
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
     </div>
   );
