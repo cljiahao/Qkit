@@ -100,6 +100,9 @@ booths and orders. See `AGENTS.md` for full conventions.
 
 ### Contents
 
+- `.claude/` — the Claude Code agent harness: hooks, project skills, and the harness manifest recording what templateCentral seeded (own README).
+- `.github/` — GitHub-specific config: CI/CD workflows (`ci.yml`, `security.yml`) and Dependabot (own README).
+- `.husky/` — git hooks (pre-commit lint-staged + the README-freshness nudge), used instead of templateCentral's default lefthook (own README).
 - `AGENTS.md` — routing/conventions doc for AI coding agents: stack divergence note (Supabase, not templateCentral's default better-auth/Drizzle), commands, file layout, data model, RLS/service-role rules, the AI harness description, and a running log of which templateCentral 5.0→5.9 deltas were adopted vs. deliberately skipped.
 - `CHANGELOG.md` — Keep-a-Changelog history; entries are added under `[Unreleased]` by the `/changelog` skill.
 - `CLAUDE.md` — a one-line pointer that routes Claude Code to `AGENTS.md` via an `@AGENTS.md` import (`Routing and conventions for this project live in AGENTS.md. Read it first.`).
