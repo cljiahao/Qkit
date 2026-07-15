@@ -39,6 +39,7 @@ export default async function ProfilePage() {
         email={user.email ?? ""}
         vendorId={user.id}
         avatarUrl={avatarUrl}
+        socialLinks={vendor.social_links}
       />
     </div>
   );

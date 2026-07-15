@@ -3,21 +3,24 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Store, IdCard, KeyRound, UserRound } from "lucide-react";
+import { Store, IdCard, KeyRound, UserRound, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@/components/image-uploader";
 import { Section } from "@/components/ticket-section";
+import { SocialLinksFields } from "@/components/social-links-fields";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import {
   profileNameSchema,
   displayNameSchema,
   passwordChangeSchema,
+  socialLinksSchema,
 } from "@/lib/schemas";
 import { FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";
-import { updateStallName } from "./actions";
+import type { SocialLinks } from "@/lib/types";
+import { updateStallName, updateSocialLinks } from "./actions";
 
 interface Props {
   stallName: string;
@@ -25,6 +28,7 @@ interface Props {
   email: string;
   vendorId: string;
   avatarUrl: string | null;
+  socialLinks: SocialLinks;
 }
 
 export function ProfileForm({
@@ -33,6 +37,7 @@ export function ProfileForm({
   email,
   vendorId,
   avatarUrl,
+  socialLinks,
 }: Props) {
   const router = useRouter();
   const supabase = createClient();
@@ -58,6 +63,30 @@ export function ProfileForm({
   const [confirm, setConfirm] = useState("");
   const [pwError, setPwError] = useState<string | null>(null);
   const { pending: savingPw, run: runPw } = useAsyncAction();
+
+  // Social/website links (vendors.social_links) — profile-level defaults, can
+  // be overridden per booth on the booth's own edit page.
+  const [links, setLinks] = useState<SocialLinks>(socialLinks);
+  const [linksError, setLinksError] = useState<string | null>(null);
+  const { pending: savingLinks, run: runLinks } = useAsyncAction();
+
+  function saveLinks() {
+    const parsed = socialLinksSchema.safeParse(links);
+    if (!parsed.success) {
+      setLinksError(parsed.error.issues[0]?.message ?? "Check your links");
+      return;
+    }
+    setLinksError(null);
+    return runLinks(async () => {
+      const res = await updateSocialLinks(parsed.data);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Links saved");
+      router.refresh();
+    });
+  }
 
   function saveStall() {
     const parsed = profileNameSchema.safeParse({ name });
@@ -168,6 +197,30 @@ export function ProfileForm({
             className="h-10 rounded-xl font-semibold"
           >
             {savingName ? "Saving…" : "Save stall name"}
+          </Button>
+        </div>
+      </Section>
+
+      <Section
+        icon={<Share2 className="size-5" />}
+        eyebrow="Shown to customers"
+        title="Social & website"
+        description="Shown on the order-status page after a customer orders. Applies to every booth unless overridden on that booth's own page."
+      >
+        <SocialLinksFields
+          value={links}
+          onChange={setLinks}
+          idPrefix="profile"
+        />
+        {linksError && <p className={FORM_ERROR_CLASS}>{linksError}</p>}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={saveLinks}
+            disabled={savingLinks}
+            className="h-10 rounded-xl font-semibold"
+          >
+            {savingLinks ? "Saving…" : "Save links"}
           </Button>
         </div>
       </Section>
