@@ -10,6 +10,8 @@ import {
   orderTokenSchema,
   parseOrderItems,
   parsePaymentConfig,
+  parseSocialLinks,
+  resolveSocialLinks,
 } from "@/lib/schemas";
 import { renderCheckout } from "@/lib/payments/adapters";
 import { FeedbackForm } from "@/components/feedback-form";
@@ -17,6 +19,7 @@ import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
 import { PayPanel } from "./pay-panel";
 import { EarnLink } from "./earn-link";
+import { SocialLinksRow } from "./social-links-row";
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;
@@ -59,7 +62,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
         .maybeSingle(),
       supabase
         .from("booths")
-        .select("name, payment, vendor_id")
+        .select("name, payment, vendor_id, social_links")
         .eq("id", boothId)
         .single(),
     ]);
@@ -71,6 +74,21 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   if (orderError)
     throw new Error(`order status read failed: ${orderError.message}`);
   if (!order) notFound();
+
+  // Vendor-level default links, so a booth without its own override still
+  // shows the vendor's. Small extra query (not embeddable via Promise.all
+  // above — it depends on booth.vendor_id) but this page isn't a hot path.
+  const { data: vendorRow } = booth?.vendor_id
+    ? await supabase
+        .from("vendors")
+        .select("social_links")
+        .eq("id", booth.vendor_id)
+        .maybeSingle()
+    : { data: null };
+  const socialLinks = resolveSocialLinks(
+    booth?.social_links ? parseSocialLinks(booth.social_links) : null,
+    parseSocialLinks(vendorRow?.social_links),
+  );
 
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
@@ -199,6 +217,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             className="h-11 rounded-xl px-5"
           />
         )}
+        <SocialLinksRow links={socialLinks} />
         <Link
           href={`/order/${boothId}`}
           className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
