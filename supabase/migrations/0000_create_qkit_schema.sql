@@ -1,4 +1,4 @@
--- QKit lives in its own schema so the shared Merqo project reads merqo.* / qkit.*
+-- qkit lives in its own schema so the shared Merqo project reads merqo.* / qkit.*
 -- per kit. auth.* and extensions.* are Supabase-managed and untouched.
 CREATE SCHEMA IF NOT EXISTS qkit;
 

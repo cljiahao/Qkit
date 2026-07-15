@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Admin view of submitted vendor/customer feedback — QKit's own vendor loyalty metric (NPS) alongside customer ordering-experience satisfaction (CSAT), platform-wide and per-vendor.
+Admin view of submitted vendor/customer feedback — qkit's own vendor loyalty metric (NPS) alongside customer ordering-experience satisfaction (CSAT), platform-wide and per-vendor.
 
 ## Contents
 

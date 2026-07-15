@@ -59,7 +59,7 @@ tour re-shows once). No toast.
 
 | #   | anchor        | copy                                                                                     |
 | --- | ------------- | ---------------------------------------------------------------------------------------- |
-| 1   | `order-board` | "Welcome to QKit. Live orders land here the moment a customer taps Order — no refresh."  |
+| 1   | `order-board` | "Welcome to qkit. Live orders land here the moment a customer taps Order — no refresh."  |
 | 2   | `nav-booths`  | "Start here: build your stall, add your menu, get a QR. This is step one to going live." |
 | 3   | `nav-stats`   | "Track sales and how fast you're serving once orders roll in."                           |
 | 4   | `nav-plan`    | "Free covers the basics. Upgrade to Pro when you're ready for more."                     |

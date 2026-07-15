@@ -18,7 +18,7 @@ extra_search_path = ["qkit", "extensions"]
 max_rows = 1000
 # Controls whether new tables/functions in `public` are auto-granted to the Data API roles
 # (`anon`, `authenticated`, `service_role`) without explicit GRANTs. Kept OFF (deterministic):
-# auto-expose on a current CLI re-grants `authenticated` broadly and fights QKit's selective
+# auto-expose on a current CLI re-grants `authenticated` broadly and fights qkit's selective
 # REVOKEs (it undid the next_order_number EXECUTE + vendors.plan UPDATE revokes in CI). The Data
 # API grants are instead made EXPLICIT in migration `0041_data_api_grants.sql`, so the end state is
 # identical across every CLI version and doesn't depend on this flag (which is removed 2026-10-30).

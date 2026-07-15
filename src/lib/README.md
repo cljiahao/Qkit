@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Framework-agnostic business logic for QKit: order/booth/entitlement rules, stats
+Framework-agnostic business logic for qkit: order/booth/entitlement rules, stats
 and margin aggregation, the Zod schemas that validate every server-action/form
 boundary, and the DB type mirror. Kept free of React and Next.js so it is
 unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
@@ -85,7 +85,7 @@ unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
 currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
   admin downgrade-vendor action.
 - `merqo-downgrade-request.test.ts` — tests the three outcome branches.
-- `merqo-metrics.ts` — `computeMerqoMetrics`: QKit's own business metrics
+- `merqo-metrics.ts` — `computeMerqoMetrics`: qkit's own business metrics
   (revenue/GMV, active vendors, weekly order deltas, signups, plan mix,
   pending upgrade requests, activation funnel) built on top of
   `admin-stats.ts`'s `summarizeVendors`/`activationFunnel`.

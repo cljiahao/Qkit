@@ -7,7 +7,7 @@ export default function DashboardFeedbackPage() {
     <div className="mx-auto max-w-md space-y-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Help shape QKit
+          Help shape qkit
         </p>
         <h1 className="font-display text-4xl font-semibold leading-none">
           Feedback
@@ -20,7 +20,7 @@ export default function DashboardFeedbackPage() {
       <FeedbackForm
         source="vendor"
         metric="nps"
-        prompt="How likely are you to recommend QKit to another vendor?"
+        prompt="How likely are you to recommend qkit to another vendor?"
       />
     </div>
   );

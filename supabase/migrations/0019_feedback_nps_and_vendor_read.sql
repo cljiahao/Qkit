@@ -1,6 +1,6 @@
 -- Feedback has two distinct audiences that were blurred together:
 --   • customer → vendor (order experience)  — a 1–5★ rating
---   • vendor   → QKit   (product loyalty)    — now an NPS 0–10 score
+--   • vendor   → qkit   (product loyalty)    — now an NPS 0–10 score
 -- Add an `nps` column for the vendor path (rating stays for customers), and let
 -- a vendor READ the customer feedback about their own booths (their reputation).
 

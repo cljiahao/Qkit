@@ -55,7 +55,7 @@ export function VendorManage({ vendor }: { vendor: AdminVendorRow }) {
     setDays("1");
   }
 
-  // Interpret the date-only input as SGT midnight (QKit is UTC+8), NOT the
+  // Interpret the date-only input as SGT midnight (qkit is UTC+8), NOT the
   // browser/UTC midnight Date.parse("YYYY-MM-DD") would give — otherwise a
   // granted pass starts up to 8h off from the event day the admin picked.
   function startIso(): string | undefined {

@@ -1,4 +1,4 @@
-// EMVCo-compliant PayNow QR payload builder. Pure — no I/O. QKit never touches
+// EMVCo-compliant PayNow QR payload builder. Pure — no I/O. qkit never touches
 // funds; this only renders a QR the customer scans in their own bank app.
 
 /**

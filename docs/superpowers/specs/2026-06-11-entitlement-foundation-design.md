@@ -4,7 +4,7 @@ Date: 2026-06-11
 
 ## Problem
 
-Monetize QKit. Beta needs the plan/limit mechanism and the hard locks now;
+Monetize qkit. Beta needs the plan/limit mechanism and the hard locks now;
 payment (Stripe) comes later. When a client wants advanced features, the owner
 flips their plan to `pro` manually in Supabase.
 

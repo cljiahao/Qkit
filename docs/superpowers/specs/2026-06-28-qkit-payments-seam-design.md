@@ -1,11 +1,11 @@
-# QKit Payments Seam — Design
+# qkit Payments Seam — Design
 
 **Date:** 2026-06-28
 **Status:** Approved (design); plan + implementation to follow.
 
 ## Summary
 
-QKit was born a queueing system with payment optional. This adds a **bring-your-own
+qkit was born a queueing system with payment optional. This adds a **bring-your-own
 payment seam**: a vendor may wire their own payment system (PayNow QR, any payment
 link, a static QR image, or — later — a verified Stripe Connect account) so the
 queue becomes a _payment queue_. Payment stays **optional**: a booth with no method
@@ -13,14 +13,14 @@ configured behaves exactly as today.
 
 ### Guiding decisions (locked during brainstorming)
 
-- **Seam, not forced provider.** QKit offers a pluggable payment-method seam; it does
-  not force vendors onto a payment system QKit chose.
-- **No paycut on BYO.** QKit takes no transaction cut when a vendor wires their own
-  payment. This removes the only reason to be a Stripe Connect _platform_, so QKit
+- **Seam, not forced provider.** qkit offers a pluggable payment-method seam; it does
+  not force vendors onto a payment system qkit chose.
+- **No paycut on BYO.** qkit takes no transaction cut when a vendor wires their own
+  payment. This removes the only reason to be a Stripe Connect _platform_, so qkit
   never sits in the money flow → no MAS exposure, no money-flow handling.
   Monetization stays subscription-only (existing free/Pro plans).
-- **Stripe platform is blocked anyway.** A Connect platform account requires QKit to
-  be a registered business (UEN/ACRA). QKit is not incorporated yet, so the verified
+- **Stripe platform is blocked anyway.** A Connect platform account requires qkit to
+  be a registered business (UEN/ACRA). qkit is not incorporated yet, so the verified
   Stripe adapter is **schema-reserved but dark** in v1. A vendor's own Stripe
   _Payment Link_ is still supported today — as a `pointer`.
 - **Order-first, not pay-first.** The order is created immediately (today's behavior
@@ -30,8 +30,8 @@ configured behaves exactly as today.
 ### v1 scope
 
 Methods: `none` (today), `pointer` (any link / static QR, incl. Stripe Payment Link),
-`paynow` (QKit generates a dynamic PayNow QR per order). `stripe` (verified) is
-schema-reserved; its adapter throws "not enabled". No money flow, no QKit Stripe
+`paynow` (qkit generates a dynamic PayNow QR per order). `stripe` (verified) is
+schema-reserved; its adapter throws "not enabled". No money flow, no qkit Stripe
 account, no regulatory exposure.
 
 ## Data model
@@ -41,7 +41,7 @@ account, no regulatory exposure.
 ```text
 null                                              // queue-only (today)
 { kind:'pointer', label, url?, qr_image_url? }    // any link / uploaded static QR
-{ kind:'paynow',  payee_name, uen? | mobile? }    // QKit generates dynamic QR per order
+{ kind:'paynow',  payee_name, uen? | mobile? }    // qkit generates dynamic QR per order
 { kind:'stripe',  account_id }                    // DARK — schema reserved, adapter throws
 ```
 
@@ -157,5 +157,5 @@ fields, dynamic amount). It is unit- and mutation-tested.
 - Verified Stripe Connect adapter (blocked: no business entity; unneeded: no cut).
 - Any transaction cut / application fee / platform money flow.
 - Refunds, partial payments, payment reconciliation/ledger for customer→vendor money
-  (QKit never holds these funds).
+  (qkit never holds these funds).
 - GrabPay / ShopeePay / Atome / other e-wallets (fall back to `pointer`).

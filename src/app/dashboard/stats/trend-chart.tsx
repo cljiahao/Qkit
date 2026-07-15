@@ -28,7 +28,7 @@ function ordersOf(payload: unknown): number {
 /**
  * Revenue trend across the window — shape of growth, not just the delta. The
  * `title` defaults to "Revenue trend" (the vendor's own sales); the admin view
- * passes a clearer label since there it's aggregate booth sales (GMV), not QKit's
+ * passes a clearer label since there it's aggregate booth sales (GMV), not qkit's
  * own earnings.
  */
 export function TrendChart({

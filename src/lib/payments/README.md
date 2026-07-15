@@ -3,7 +3,7 @@
 ## Purpose
 
 Payment-adapter logic for the customer checkout panel. No money ever flows
-through QKit — customers pay vendors directly via a PayNow QR, a payment link,
+through qkit — customers pay vendors directly via a PayNow QR, a payment link,
 or a static QR image; this folder only renders the right view for whichever
 method a vendor has configured (`booths.payment`) and generates a spec-
 compliant PayNow QR payload.

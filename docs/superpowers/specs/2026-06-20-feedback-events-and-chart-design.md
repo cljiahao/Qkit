@@ -11,7 +11,7 @@ choices noted inline.
 
 ## Part A — Profit / trend chart fix (`trend-chart.tsx`)
 
-Shared by the admin "QKit revenue" chart and the vendor stats trend. Two bugs:
+Shared by the admin "qkit revenue" chart and the vendor stats trend. Two bugs:
 
 - **Y-axis cut off:** `margin.left: -18` pushes the axis off-canvas and
   `YAxis width={28}` is too narrow for `$1,234` labels.
@@ -37,13 +37,13 @@ Shared by the admin "QKit revenue" chart and the vendor stats trend. Two bugs:
 ## Part B — Feedback: three audiences, cleanly separated
 
 Current state: one `feedback` table, `source IN ('customer','vendor')`. Customer
-order feedback (1–5★) and vendor→QKit feedback (1–5★) both land there; **only the
+order feedback (1–5★) and vendor→qkit feedback (1–5★) both land there; **only the
 admin can read it** (RLS admin-only SELECT). Vendors can't see their own reviews.
 
-### B1 — Vendor→QKit becomes NPS (decision A)
+### B1 — Vendor→qkit becomes NPS (decision A)
 
 B2B consensus: NPS is the primary loyalty metric. Replace the vendor 1–5★ on
-`/dashboard/feedback` with NPS 0–10 ("How likely are you to recommend QKit?") +
+`/dashboard/feedback` with NPS 0–10 ("How likely are you to recommend qkit?") +
 optional comment.
 
 - **Migration `0019`:** `ALTER TABLE feedback ADD COLUMN nps SMALLINT CHECK (nps
@@ -71,7 +71,7 @@ Marketplace best practice: a vendor's reviews are their reputation — show them
 
 ### B3 — Admin page split
 
-`/admin/feedback`: two clear sections — **QKit feedback** (vendor NPS: score,
+`/admin/feedback`: two clear sections — **qkit feedback** (vendor NPS: score,
 trend, comments) and **Customer order feedback** (per-booth ★ + messages) —
 instead of one mixed list.
 
@@ -129,7 +129,7 @@ A (chart, no migration) → C (events) → B (feedback). Each part: pure lib + t
 - [ ] Vendor feedback on `/dashboard/feedback` is NPS 0–10; admin shows an NPS score.
 - [ ] A vendor sees their booths' customer ratings + recent comments (ungated);
       trend gated to Pro.
-- [ ] Admin feedback page separates QKit-feedback from customer-order-feedback.
+- [ ] Admin feedback page separates qkit-feedback from customer-order-feedback.
 - [ ] A vendor can name a past pass and open that window's full stats, ungated,
       after it expires.
 - [ ] `pnpm check` + `pnpm test` green; migrations + `types.ts` consistent.

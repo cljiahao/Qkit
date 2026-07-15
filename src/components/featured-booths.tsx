@@ -21,7 +21,7 @@ export function FeaturedBooths({ featured }: { featured: FeaturedBooth[] }) {
   return (
     <section className="mx-auto max-w-5xl px-5 py-14">
       <h2 className="font-display mb-10 text-center text-3xl font-semibold">
-        Booths already serving with QKit
+        Booths already serving with qkit
       </h2>
       <div className="grid gap-5 sm:grid-cols-3">
         {featured.map((f) => (

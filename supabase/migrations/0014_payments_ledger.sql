@@ -1,5 +1,5 @@
--- Append-only revenue ledger: one immutable row per charge QKit collects. This
--- is the single source of truth for "what QKit made" — passes and (future)
+-- Append-only revenue ledger: one immutable row per charge qkit collects. This
+-- is the single source of truth for "what qkit made" — passes and (future)
 -- monthly subscriptions, manual PayNow/cash now, Stripe later. Separate from
 -- `licenses` (which is access/entitlement); payments is money.
 

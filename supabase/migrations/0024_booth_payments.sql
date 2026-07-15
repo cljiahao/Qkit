@@ -1,5 +1,5 @@
 -- Payment seam: optional per-booth payment method + per-order payment lifecycle.
--- No money flows through QKit; vendor is merchant of record. Active kinds
+-- No money flows through qkit; vendor is merchant of record. Active kinds
 -- (pointer, paynow) carry no secrets, so booths.payment is publicly readable
 -- alongside the existing public booth read.
 

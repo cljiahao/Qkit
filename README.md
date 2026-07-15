@@ -1,4 +1,4 @@
-# QKit
+# qkit
 
 Vendor booth ordering system. Vendors sign in to manage their menu and watch
 live orders; customers scan a booth QR code, order from the menu, and track

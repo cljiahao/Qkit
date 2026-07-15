@@ -29,12 +29,12 @@ Approved design docs, one per feature, each with a matching implementation plan 
 - `2026-06-24-demo-video-generator-design.md` — "Demo video generator — design": architecture for the Playwright-driven prospect demo-video generator (matches `scripts/demo/`).
 - `2026-06-24-service-speed-stats-design.md` — "Service-speed stats — design (2026-06-24)": data model, metric definition, and architecture for time-to-ready stats.
 - `2026-06-27-onboarding-tour-design.md` — "Onboarding Tour — Design": the vendor onboarding tour shown after first sign-up.
-- `2026-06-28-qkit-payments-seam-design.md` — "QKit Payments Seam — Design": data model, `src/lib/payments/` connector interface, flow, and RLS for PayNow payments.
+- `2026-06-28-qkit-payments-seam-design.md` — "qkit Payments Seam — Design": data model, `src/lib/payments/` connector interface, flow, and RLS for PayNow payments.
 - `2026-07-01-booth-qr-token-design.md` — "Rotatable Booth QR Token — Design": the rotatable-token architecture backing the QR-token plan.
 - `2026-07-01-order-path-hardening-design.md` — "Order Path Hardening — DB-Enforced Ordering + Short Code — Design (Phase A)": moving order-path invariants into the database and adding short order-entry codes.
 - `2026-07-02-order-integrity-design.md` — "Order Integrity — Vendor Write Path Hardening (Phase B / B2) — Design": closes the `authenticated`-role gap the sweep-2 audit found in the vendor write path.
 - `2026-07-04-admin-vendor-management-design.md` — "Admin vendor management — design": admin-side tooling for managing vendor accounts.
-- `2026-07-04-sales-export-seam-design.md` — "QKit Sales Export Seam — Design": a sales-data export seam, including auth via same-origin vendor session cookie.
+- `2026-07-04-sales-export-seam-design.md` — "qkit Sales Export Seam — Design": a sales-data export seam, including auth via same-origin vendor session cookie.
 - `2026-07-06-hero-ticket-carousel-design.md` — "Hero Ticket Carousel + Avatar Fix — Design": the rotating hero-ticket carousel and an avatar-rendering fix.
 - `2026-07-09-vendor-board-settings-design.md` — "Vendor Board Settings — Design": per-vendor board display/behavior settings.
 - `2026-07-14-booth-form-ticket-cards-design.md` — "Booth Form Ticket Cards — Design": rendering booth-form menu items as ticket-style cards.

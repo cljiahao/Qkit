@@ -462,7 +462,7 @@ Current (`payment-section.tsx:82-95`):
         <legend className="font-display text-lg font-semibold">Payments</legend>
         <p className="text-sm text-muted-foreground">
           Optional. Attach your own payment method, customers pay you directly;
-          QKit never touches the money.
+          qkit never touches the money.
         </p>
       </div>
 
@@ -838,7 +838,7 @@ Replace with:
           icon={<Wallet className="size-5" />}
           eyebrow="How you get paid"
           title="Payment"
-          description="Optional. Customers pay you directly; QKit never touches the money."
+          description="Optional. Customers pay you directly; qkit never touches the money."
         >
           <PaymentSection
             vendorId={vendorId}

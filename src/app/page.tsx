@@ -68,7 +68,7 @@ const FAQ: FaqEntry[] = [
     a: "Any phone, tablet, or laptop with a browser. No app, no special hardware, no POS terminal.",
   },
   {
-    q: "Can I take payment through QKit?",
+    q: "Can I take payment through qkit?",
     a: {
       lead: "Not yet. Orders land on your live board and you settle however you like:",
       bullets: ["Cash", "PayNow", "Your own card terminal"],
@@ -99,7 +99,7 @@ const FAQ: FaqEntry[] = [
   },
   {
     q: "Can orders stop when I sell out?",
-    a: "Yes. Set a stock limit per item and QKit counts it down as orders come in, then marks it sold out so customers can't order what you've run out of. Included with the event pass and monthly.",
+    a: "Yes. Set a stock limit per item and qkit counts it down as orders come in, then marks it sold out so customers can't order what you've run out of. Included with the event pass and monthly.",
   },
   {
     q: "Can I schedule when my booth takes orders?",
@@ -313,7 +313,7 @@ export default async function LandingPage() {
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a
           href="/#top"
-          aria-label="QKit home, back to top"
+          aria-label="qkit home, back to top"
           className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
         >
           <span className="text-primary">Q</span>Kit
@@ -358,7 +358,7 @@ export default async function LandingPage() {
               minus the queue.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground lg:mx-0">
-              QKit turns any booth into a QR-ordering stall. Customers scan and
+              qkit turns any booth into a QR-ordering stall. Customers scan and
               order from their phone; you watch every order land in real time.
             </p>
             <div className="mt-8 flex justify-center gap-3 lg:justify-start">
@@ -442,7 +442,7 @@ export default async function LandingPage() {
       {/* Why / moat */}
       <section className="mx-auto max-w-5xl px-5 py-14">
         <h2 className="font-display mb-10 text-center text-3xl font-semibold">
-          Why vendors pick QKit
+          Why vendors pick qkit
         </h2>
         <div className="grid gap-5 sm:grid-cols-3">
           {MOAT.map((m) => (
@@ -627,12 +627,13 @@ export default async function LandingPage() {
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/#top"
-            aria-label="QKit home, back to top"
+            aria-label="qkit home, back to top"
             className="font-display text-xl font-semibold text-foreground transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit
           </a>
           <span>Built for booths. Made in Singapore.</span>
+          <span className="text-xs">© 2026 qkit · a Merqo kit</span>
           <Link href="/login" className="hover:text-foreground">
             Vendor sign in →
           </Link>

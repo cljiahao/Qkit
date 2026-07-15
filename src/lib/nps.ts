@@ -1,4 +1,4 @@
-// Net Promoter Score — the vendor→QKit loyalty metric.
+// Net Promoter Score — the vendor→qkit loyalty metric.
 // Promoters score 9–10, passives 7–8, detractors 0–6.
 // NPS = (%promoters − %detractors), an integer from −100 to 100.
 

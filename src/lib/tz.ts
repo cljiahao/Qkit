@@ -1,4 +1,4 @@
-// QKit is Singapore-only, so every wall-clock decision (working hours, busiest
+// qkit is Singapore-only, so every wall-clock decision (working hours, busiest
 // hour) is made in Asia/Singapore — never the server's UTC or the customer's
 // browser tz. Per-booth timezones are a future extension.
 export const BOOTH_TZ = "Asia/Singapore";

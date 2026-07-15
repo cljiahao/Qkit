@@ -11,7 +11,7 @@ export default function ResetPasswordPage() {
         <div className="mb-8 text-center">
           <Link
             href="/"
-            aria-label="QKit home"
+            aria-label="qkit home"
             className="font-display inline-flex items-baseline gap-0.5 text-4xl font-semibold tracking-tight transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit

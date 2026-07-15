@@ -35,7 +35,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   shows average rating, distribution, and recent comments **split per booth**,
   each comment timestamped, with "show more" paging (RLS now lets a vendor read
   their own booths' customer feedback). Per-event stats include that event's
-  reviews, and a prominent "Feedback" nav button surfaces the QKit feedback page.
+  reviews, and a prominent "Feedback" nav button surfaces the qkit feedback page.
 - AI harness governance: `docs/constitution.md` (inviolable rules — RLS-is-authz,
   service-role server-only, Zod boundaries, deny-rules-are-a-guardrail).
 - Project skills `/security-scan` (local gitleaks + `pnpm audit`) and `/changelog`;
@@ -216,6 +216,11 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
+- **Brand name standardized to lowercase `qkit`** across prose, UI copy, aria-labels,
+  and docs (was inconsistently "QKit"/"Qkit" in ~87 files) — matches the sibling
+  kits (`loopkit`) and the Merqo dashboard's kit registry. The navbar/hero/footer
+  logo mark keeps its stylized two-tone "QKit" wordmark (unchanged, intentional —
+  a visual mark, not prose). The footer now also credits "a Merqo kit".
 - **Performance:** the customer status page fetches its order + booth in one
   round-trip instead of two; the dashboard's auth + vendor lookups are memoized
   per request (a layout + page no longer double-fetch); the DB rate limiter is
@@ -254,13 +259,13 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
   shows no items to reorder _from_, and this also removes the inconsistency where
   only orders placed after the snapshot feature had a reorder button.
 - Admin revamp: tabbed into **Overview · Vendors · Feedback** (vendors moved to
-  their own tab). Cards adopt QKit's ticket/receipt motif (perforated hero,
+  their own tab). Cards adopt qkit's ticket/receipt motif (perforated hero,
   Space Mono figures, staggered reveal). Overview adds a **GMV** card (customer
   spend flowing through booths — the marketplace's throughput). Admin **feedback**
   drops the raw per-order customer feed (vendor-facing); it tracks **vendor NPS**,
   an **aggregate platform CSAT**, and a **per-vendor CSAT breakdown** (worst-rated
   first) to surface ordering-quality issues — scores only, no raw reviews.
-- Vendor → QKit feedback is **NPS** (0–10 "recommend QKit?") instead of 1–5
+- Vendor → qkit feedback is **NPS** (0–10 "recommend qkit?") instead of 1–5
   stars (migration `0019` adds the `nps` column).
 - Fixed the stats/admin trend chart: dated X-axis (was a hidden index) and an
   uncut Y-axis (was clipped by a negative margin + 28px width).
@@ -300,5 +305,5 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 - Upgraded `@supabase/ssr` 0.6 → 0.10 for `@supabase/supabase-js` 2.107 type
   compatibility (older ssr made every typed query resolve to `never`).
 
-[Unreleased]: https://github.com/cljiahao/Qkit/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/cljiahao/Qkit/releases/tag/v0.1.0
+[Unreleased]: https://github.com/cljiahao/qkit/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/cljiahao/qkit/releases/tag/v0.1.0

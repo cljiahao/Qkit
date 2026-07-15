@@ -5,7 +5,7 @@ Status: approved-for-planning
 
 ## Context
 
-QKit has an entitlement foundation (migration 0003): `vendors.plan` (`free`/`pro`),
+qkit has an entitlement foundation (migration 0003): `vendors.plan` (`free`/`pro`),
 `PLAN_LIMITS` in `src/lib/plan.ts`, a 1-booth-on-free gate (RLS + app), and
 stats-range gating. Pro is flipped manually via the admin toggle. There is **no
 billing** and there are no real vendors yet — the goal of this work is to make the
@@ -150,7 +150,7 @@ licenses(
 ```
 
 - **No `event_id`** — the pass is an **account-wide time window**, not tied to a
-  modelled event (QKit has no real-world "event" entity; the `events` table is the
+  modelled event (qkit has no real-world "event" entity; the `events` table is the
   analytics CTA log).
 - **Status is computed, not stored:** "active" ⇔ `expires_at > now()`. This avoids
   the original prompt's bug where a stored `status` never flips to expired.

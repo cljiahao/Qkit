@@ -4,7 +4,7 @@
 
 The ordered, append-only SQL schema history for the `qkit` Postgres schema —
 every table, RLS policy, SECURITY DEFINER RPC, trigger, index, and Data-API
-grant/revoke that defines QKit's data model and its Postgres-enforced
+grant/revoke that defines qkit's data model and its Postgres-enforced
 authorization. Applied in filename order via the Supabase CLI; nothing here is
 ever edited after landing — a later migration corrects an earlier one.
 
@@ -94,7 +94,7 @@ schema evolved in five broad waves:
   notify preferences, vendor-updatable). `0051_emit_order_completed.sql`
   adds a trigger that calls `merqo.emit_metric` on an order's first
   transition into `completed`, so sibling Merqo-suite products (e.g.
-  loopkit) can react to QKit order completions without QKit knowing who's
+  loopkit) can react to qkit order completions without qkit knowing who's
   listening.
 
 ## Connectivity

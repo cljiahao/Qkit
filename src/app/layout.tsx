@@ -26,10 +26,10 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "QKit: booth ordering",
+  title: "qkit: booth ordering",
   description: "Scan, order, and track from any food booth in real time.",
   // iOS standalone PWA chrome (status bar + home-screen title).
-  appleWebApp: { capable: true, title: "QKit", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "qkit", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

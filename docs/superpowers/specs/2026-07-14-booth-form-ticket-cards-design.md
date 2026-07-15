@@ -43,7 +43,7 @@ the two columns. DOM order (also the mobile single-column stacking order):
    two columns, to be visually assessed and amended later if it looks bad.
 
 4. **Payment** — icon `Wallet`, eyebrow "How you get paid", title "Payment",
-   description "Optional. Customers pay you directly; QKit never touches
+   description "Optional. Customers pay you directly; qkit never touches
    the money." Contains: `PaymentSection` with its own internal
    legend/description removed (see below — it duplicated this card's
    header).
@@ -232,7 +232,7 @@ labeled "Stall name") and accepted there.
       icon={<Wallet className="size-5" />}
       eyebrow="How you get paid"
       title="Payment"
-      description="Optional. Customers pay you directly; QKit never touches the money."
+      description="Optional. Customers pay you directly; qkit never touches the money."
     >
       <PaymentSection
         vendorId={vendorId}

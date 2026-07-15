@@ -3,7 +3,7 @@ import { MS_PER_DAY, MS_PER_HOUR } from "@/lib/utils";
 
 /**
  * Per-vendor health as a small set of banded statuses — not a synthetic 0-100
- * score. QKit has no login/engagement telemetry, so a numeric score from
+ * score. qkit has no login/engagement telemetry, so a numeric score from
  * order-recency alone would be false precision; a banded status the admin can
  * act on is more honest. First matching rule wins, most-urgent first.
  */

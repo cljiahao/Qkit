@@ -28,4 +28,4 @@ state (devcontainers or Nix flakes with agent-specific overlays).
 ---
 
 _Seams from [templateCentral v4.0](https://github.com/cljiahao/templatecentral),
-adapted for the QKit (Next 16 + Supabase) stack. None activated._
+adapted for the qkit (Next 16 + Supabase) stack. None activated._

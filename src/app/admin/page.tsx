@@ -108,14 +108,14 @@ export default async function AdminPage() {
 
   const passByVendor = latestActivePassByVendor(licenses, now);
 
-  // QKit's own revenue — what we actually collected, from the payments ledger
+  // qkit's own revenue — what we actually collected, from the payments ledger
   // (NOT vendor GMV). Beta comps record no payment, so this is honest earnings.
   const revenue30d = payments
     .filter((p) => p.created_at >= cutoff30d)
     .reduce((sum, p) => sum + p.amount_cents, 0);
   const revenueAll = payments.reduce((sum, p) => sum + p.amount_cents, 0);
 
-  // GMV — total customer spend flowing through booths (vendor sales, not QKit's
+  // GMV — total customer spend flowing through booths (vendor sales, not qkit's
   // take). The marketplace's throughput; cancelled orders excluded.
   const gmv30d = (orderRows ?? [])
     .filter((o) => o.created_at >= cutoff30d && o.status !== "cancelled")
@@ -163,7 +163,7 @@ export default async function AdminPage() {
     inWindow(v.created_at, cutoff14d, cutoff7d),
   ).length;
 
-  // 14-day trend of QKit revenue (collected pass/sub amounts), not vendor sales.
+  // 14-day trend of qkit revenue (collected pass/sub amounts), not vendor sales.
   const revSeries = windowSeries(
     payments.map(
       (p): StatsOrder => ({
@@ -255,11 +255,11 @@ export default async function AdminPage() {
         </section>
       )}
 
-      {/* North-star band — QKit revenue leads; active vendors is the leading
+      {/* North-star band — qkit revenue leads; active vendors is the leading
           indicator behind it. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
-          label="QKit revenue · 30d"
+          label="qkit revenue · 30d"
           value={formatPrice(revenue30d)}
           big
           featured
@@ -295,7 +295,7 @@ export default async function AdminPage() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <ActivationFunnelView funnel={funnel} />
-        <TrendChart series={revSeries} range="14d" title="QKit revenue" />
+        <TrendChart series={revSeries} range="14d" title="qkit revenue" />
       </div>
 
       <p className="text-xs text-muted-foreground">

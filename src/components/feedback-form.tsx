@@ -18,7 +18,7 @@ interface Props {
   token?: string;
   prompt?: string;
   // "stars" = 1–5 (customer order rating); "nps" = 0–10 recommend score
-  // (vendor → QKit loyalty). Defaults to stars.
+  // (vendor → qkit loyalty). Defaults to stars.
   metric?: "stars" | "nps";
 }
 

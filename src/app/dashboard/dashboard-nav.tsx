@@ -137,7 +137,7 @@ export function DashboardNav({
 
           <Link
             href="/dashboard"
-            aria-label="QKit dashboard home"
+            aria-label="qkit dashboard home"
             className="font-display shrink-0 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit
@@ -311,7 +311,7 @@ export function DashboardNav({
             <FeedbackForm
               source="vendor"
               metric="nps"
-              prompt="How likely are you to recommend QKit to another vendor?"
+              prompt="How likely are you to recommend qkit to another vendor?"
             />
           </div>
         </SheetContent>

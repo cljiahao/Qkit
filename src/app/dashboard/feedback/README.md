@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Vendor-facing feedback page — a dedicated full-page destination for sharing feedback about QKit itself, separate from the same form's drawer variant in the dashboard nav.
+Vendor-facing feedback page — a dedicated full-page destination for sharing feedback about qkit itself, separate from the same form's drawer variant in the dashboard nav.
 
 ## Contents
 
-- `page.tsx` — `DashboardFeedbackPage()` (`revalidate = 0`): renders a header ("Help shape QKit" / "Feedback") and `FeedbackForm` from `@/components/feedback-form` with `source="vendor"`, `metric="nps"`, and the prompt "How likely are you to recommend QKit to another vendor?".
+- `page.tsx` — `DashboardFeedbackPage()` (`revalidate = 0`): renders a header ("Help shape qkit" / "Feedback") and `FeedbackForm` from `@/components/feedback-form` with `source="vendor"`, `metric="nps"`, and the prompt "How likely are you to recommend qkit to another vendor?".
 
 ## Connectivity
 

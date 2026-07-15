@@ -6,7 +6,7 @@ Everything that defines and exercises the `qkit` Postgres schema: the ordered
 migration history (tables, RLS policies, SECURITY DEFINER RPCs, the realtime
 publication), local-dev configuration for the Supabase CLI, demo/CI seed data,
 and the pgTAP test suite that guards RLS isolation. This is the authorization
-layer for the whole app — QKit enforces access control in Postgres (RLS +
+layer for the whole app — qkit enforces access control in Postgres (RLS +
 explicit Data-API grants), not in application code.
 
 ## Contents

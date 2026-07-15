@@ -6,7 +6,7 @@ Project documentation: deployment notes, the engineering constitution, business/
 
 ## Contents
 
-- `DEPLOY.md` — deploy notes: QKit runs on the shared Merqo Supabase project (same as loopkit/merqo) in its own `qkit` schema; documents the qkit-loopkit auto-award integration order (apply merqo's `0008_kit_events.sql` before this repo's `0051_emit_order_completed.sql`) and the `NEXT_PUBLIC_LOOPKIT_URL` env var that must be set in Vercel before deploying the order-status page change (fails closed — the earn link silently doesn't show without it).
+- `DEPLOY.md` — deploy notes: qkit runs on the shared Merqo Supabase project (same as loopkit/merqo) in its own `qkit` schema; documents the qkit-loopkit auto-award integration order (apply merqo's `0008_kit_events.sql` before this repo's `0051_emit_order_completed.sql`) and the `NEXT_PUBLIC_LOOPKIT_URL` env var that must be set in Vercel before deploying the order-status page change (fails closed — the earn link silently doesn't show without it).
 - `business/` — go-to-market and business-strategy documentation (own README).
 - `constitution.md` — the "inviolable principles" doc (the _why-never-change_, complementing `AGENTS.md`'s _how-to-route_): RLS-only authorization, service-role-server-only, Zod-at-every-boundary + strict TypeScript, no secrets in `NEXT_PUBLIC_*`, `@supabase/ssr`/`supabase-js` version compatibility, dual-written schema changes (migrations + `types.ts`), and permission deny-rules as a guardrail not a sandbox. Also documents the test matrix (unit/component/e2e/RLS/mutation/type-lint-fmt, each with its CI scope).
 - `meta/` — roadmap, audit-findings, and task-registry docs tracking work across the project (own README).

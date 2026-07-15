@@ -8,7 +8,7 @@ namespace.
 
 ## Contents
 
-- `merqo/` — tests for `src/app/api/merqo/` (QKit's internal business-metrics
+- `merqo/` — tests for `src/app/api/merqo/` (qkit's internal business-metrics
   feed, consumed by the Merqo umbrella product); see its own README.
 - `v1/` — tests for `src/app/api/v1/` (the stable, versioned external API);
   see its own README.

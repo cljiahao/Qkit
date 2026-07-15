@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move every QKit database object out of the `public` schema into a dedicated `qkit` schema, so the shared Merqo Supabase project reads `merqo.* / qkit.* / <future-kit>.*` — self-documenting ownership per kit.
+**Goal:** Move every qkit database object out of the `public` schema into a dedicated `qkit` schema, so the shared Merqo Supabase project reads `merqo.* / qkit.* / <future-kit>.*` — self-documenting ownership per kit.
 
-**Architecture:** QKit keeps ONE schema (`qkit`) holding all its tables, enums, functions, policies, and its realtime publication membership. The move is a scoped textual rewrite of the migration set (`public.` → `qkit.`), not an in-place `ALTER SCHEMA RENAME` — the DB is being reset fresh (zero vendors), so there is no data to preserve and a clean rewrite avoids the partial-breakage of rename (plpgsql bodies, `search_path` pins, publication refs all resolve correctly from migration 1). The app layer pins the supabase-js default schema to `qkit`; Merqo still reads QKit only over HTTP (`/api/merqo/metrics`), so this move is invisible across the product boundary.
+**Architecture:** qkit keeps ONE schema (`qkit`) holding all its tables, enums, functions, policies, and its realtime publication membership. The move is a scoped textual rewrite of the migration set (`public.` → `qkit.`), not an in-place `ALTER SCHEMA RENAME` — the DB is being reset fresh (zero vendors), so there is no data to preserve and a clean rewrite avoids the partial-breakage of rename (plpgsql bodies, `search_path` pins, publication refs all resolve correctly from migration 1). The app layer pins the supabase-js default schema to `qkit`; Merqo still reads qkit only over HTTP (`/api/merqo/metrics`), so this move is invisible across the product boundary.
 
 **Tech Stack:** Supabase (Postgres + PostgREST + Realtime), `@supabase/ssr`, Next.js 16, TypeScript strict, Vitest, pgTAP.
 
@@ -31,14 +31,14 @@
 
 **Interfaces:**
 
-- Produces: a `qkit` schema containing every QKit table/enum/function/policy; realtime publication `supabase_realtime` includes `qkit.orders`; `anon`/`authenticated`/`service_role` hold `USAGE` on `qkit` plus the same per-table grants the migrations already assert (the deliberate revokes on internal tables/functions carry over unchanged).
+- Produces: a `qkit` schema containing every qkit table/enum/function/policy; realtime publication `supabase_realtime` includes `qkit.orders`; `anon`/`authenticated`/`service_role` hold `USAGE` on `qkit` plus the same per-table grants the migrations already assert (the deliberate revokes on internal tables/functions carry over unchanged).
 
 - [ ] **Step 1: Create the schema-bootstrap migration**
 
 `supabase/migrations/0000_create_qkit_schema.sql`:
 
 ```sql
--- QKit lives in its own schema so the shared Merqo project reads merqo.* / qkit.*
+-- qkit lives in its own schema so the shared Merqo project reads merqo.* / qkit.*
 -- per kit. auth.* and extensions.* are Supabase-managed and untouched.
 CREATE SCHEMA IF NOT EXISTS qkit;
 
@@ -96,7 +96,7 @@ schemas = ["qkit", "graphql_public"]
 extra_search_path = ["qkit", "extensions"]
 ```
 
-Leave `auto_expose_new_tables = false` as-is (already correct; it is what stops the CLI re-granting `authenticated` over QKit's revokes).
+Leave `auto_expose_new_tables = false` as-is (already correct; it is what stops the CLI re-granting `authenticated` over qkit's revokes).
 
 - [ ] **Step 6: Commit**
 
@@ -249,7 +249,7 @@ sed -i -e 's/\bpublic\./qkit./g' supabase/tests/rls.test.sql
 grep -n "public\." supabase/tests/rls.test.sql | grep -v graphql_public
 ```
 
-Expected: no executable `public.` refs remain (comments OK). Verify `set search_path` / `set role` helpers and any `tests.` pgTAP helper schema are untouched (only QKit table refs move).
+Expected: no executable `public.` refs remain (comments OK). Verify `set search_path` / `set role` helpers and any `tests.` pgTAP helper schema are untouched (only qkit table refs move).
 
 - [ ] **Step 2: Commit**
 
@@ -288,13 +288,13 @@ CI runs: build, migrations apply to a fresh DB, pgTAP RLS, Playwright e2e (custo
 Not code — the operator steps to bring the hosted DB to the new state:
 
 1. Reset the DB (wipes the throwaway `public` data): fresh project or `Database → reset`. Nothing to hand-delete.
-2. Apply QKit migrations — they now build `qkit.*` (0000 creates the schema first).
+2. Apply qkit migrations — they now build `qkit.*` (0000 creates the schema first).
 3. Apply the Merqo migration (`merqo.*`).
 4. Data API → Exposed schemas: set to **`qkit`, `merqo`** (+ `graphql_public`); REMOVE `public` and `extensions` from the exposed list.
-5. Data API → **Automatically expose new tables: OFF** (matches the explicit-grant model; stops re-granting over QKit's revokes).
+5. Data API → **Automatically expose new tables: OFF** (matches the explicit-grant model; stops re-granting over qkit's revokes).
 6. Data API → Extra search path: clear it (the client sets `db.schema`); Max rows: leave 1000.
-7. Set `MERQO_METRICS_SECRET` (both sides) + QKit's publishable/secret keys in Vercel; redeploy QKit.
-8. Seed `merqo.products` (point `metrics_url` at QKit) + `merqo_team`.
+7. Set `MERQO_METRICS_SECRET` (both sides) + qkit's publishable/secret keys in Vercel; redeploy qkit.
+8. Seed `merqo.products` (point `metrics_url` at qkit) + `merqo_team`.
 
 - [ ] **Step 4: Commit any doc touch-ups**
 

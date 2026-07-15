@@ -6,7 +6,7 @@ export const BRAND_EMBER = "#c4572f";
 export const BRAND_OAT = "#f6f1e7";
 
 /**
- * The QKit "Q" app mark for ImageResponse-generated icons (favicon, manifest,
+ * The qkit "Q" app mark for ImageResponse-generated icons (favicon, manifest,
  * apple-touch). A system serif stands in for Fraunces — fine at icon scale and
  * avoids shipping font data to the icon route.
  */

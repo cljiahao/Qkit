@@ -5,7 +5,7 @@ allowed-tools: "Bash(supabase *), Bash(pnpm *)"
 disable-model-invocation: true
 ---
 
-QKit uses Supabase (Postgres + RLS + realtime), not Drizzle. Migrations live in
+qkit uses Supabase (Postgres + RLS + realtime), not Drizzle. Migrations live in
 `supabase/migrations/`.
 
 ## Apply schema

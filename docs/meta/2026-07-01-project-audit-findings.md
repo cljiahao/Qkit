@@ -1,4 +1,4 @@
-# QKit Project Audit — Findings & Remediation Roadmap
+# qkit Project Audit — Findings & Remediation Roadmap
 
 **Date:** 2026-07-01
 **Method:** 5 parallel read-only area sweeps (src/lib, order/latency, dashboard/actions, DB/RLS/indexes, cross-cutting dedupe) + a 2nd sweep (adversarial verification of DB criticals + completeness critic). All findings cite `file:line`.

@@ -1,4 +1,4 @@
--- Explicit Data-API table grants. QKit historically relied on Supabase's
+-- Explicit Data-API table grants. qkit historically relied on Supabase's
 -- auto-expose (implicit grants at table creation + selective REVOKEs), but that
 -- behaviour now varies by CLI version and fights the revokes (a fresh CI DB
 -- re-granted `authenticated` privileges the migrations had revoked). With

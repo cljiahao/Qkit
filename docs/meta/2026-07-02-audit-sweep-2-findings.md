@@ -1,4 +1,4 @@
-# QKit Audit — Sweep 2 (multi-axis) — Findings
+# qkit Audit — Sweep 2 (multi-axis) — Findings
 
 **Date:** 2026-07-02
 **Method:** 6 parallel read-only agents on **orthogonal axes** (not the file-area split of the 2026-07-01 sweep): trust-boundary (edge→DB), money invariant (end-to-end), concurrency/latency (event scale), type/dead/schema-drift (SQL↔TS), resilience/a11y/idempotency, dedupe/abstraction. Each adversarial (construct a concrete failure or drop it) and cross-referencing the 2026-07-01 baseline (S/L/D/B/P/T ids). All findings cite `file:line`.
@@ -65,7 +65,7 @@ The stock gate reads `booth_remaining_stock()` (`0030:69`) **before** the per-bo
 - **F17** `advanceOrder`/`cancelOrder` update by `id` with no current-status guard (status isn't frozen) → cancel↔advance race can resurrect a cancelled order into revenue+stock. → add `.eq("status", expected)` optimistic guard.
 - **F18** `cancelOrder` doesn't clear `payment_status`; a confirmed-paid then-cancelled order drops from revenue with no refund trail. → decide refund/negative-revenue semantics.
 - **F19** `can_create_booth` (`0010:64`) checks `expires_at > now()` but not `valid_from <= now()` — inconsistent with every other window check.
-- **F20** `setVendorPlan(pro, amount>0)` resubmission inserts duplicate `payments` rows → QKit revenue double-counts (`admin/actions.ts:53`). → idempotency/guard.
+- **F20** `setVendorPlan(pro, amount>0)` resubmission inserts duplicate `payments` rows → qkit revenue double-counts (`admin/actions.ts:53`). → idempotency/guard.
 - **F21 (L8)** RLS bare `auth.uid()` → `(select auth.uid())` systematically.
 - **F22 (L11)** Admin unbounded full-table scans (`admin/page.tsx:63`). → bound by date / aggregate in SQL.
 - **F23** Dead `order_status` values `'pending'`/`'confirmed'` + unreachable `DEFAULT 'pending'` (place_order always inserts `'preparing'`). Cosmetic; keep in tolerant read schema.

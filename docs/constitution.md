@@ -1,4 +1,4 @@
-# QKit Constitution
+# qkit Constitution
 
 Inviolable principles for this project. This is the _why-never-change_; `AGENTS.md`
 is the _how-to-route_. When a change appears to require breaking one of these,

@@ -232,7 +232,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       <Section
         icon={<Bell className="size-5" />}
         title="Notifications"
-        description="A popup for a new order when this tab is backgrounded. Works on Android and desktop browsers. On iPhone or iPad, add QKit to your Home Screen first, since a regular Safari tab can't show these."
+        description="A popup for a new order when this tab is backgrounded. Works on Android and desktop browsers. On iPhone or iPad, add qkit to your Home Screen first, since a regular Safari tab can't show these."
       >
         <div className="flex items-center gap-3">
           <Switch

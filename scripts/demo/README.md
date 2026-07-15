@@ -1,6 +1,6 @@
 # Demo video generator
 
-Produces a vertical (9:16) screen-capture of QKit for sending to a prospect:
+Produces a vertical (9:16) screen-capture of qkit for sending to a prospect:
 **register → name your stall → add menu → QR → customer orders → order lands
 live on the board (pure queue) → add PayNow → customer pays → vendor confirms
 (payment queue)**. Shows both the unpaid (queue-only) and paid flows on one

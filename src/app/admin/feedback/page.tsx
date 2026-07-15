@@ -60,7 +60,7 @@ export default async function AdminFeedbackPage() {
     ]);
   const all = rows ?? [];
 
-  // QKit's own metric: vendor → QKit loyalty (NPS) + their written notes.
+  // qkit's own metric: vendor → qkit loyalty (NPS) + their written notes.
   const vendorRows = all.filter((f) => f.source === "vendor");
   const nps = npsBreakdown(
     vendorRows.map((f) => f.nps).filter((n): n is number => n != null),
@@ -120,11 +120,11 @@ export default async function AdminFeedbackPage() {
         </h1>
       </div>
 
-      {/* ── Hero: vendor NPS (QKit's own loyalty metric) ─────────────────── */}
+      {/* ── Hero: vendor NPS (qkit's own loyalty metric) ─────────────────── */}
       <Ticket as="section" shadow="none" className="fade-rise bg-card">
         <div className="px-6 pt-8 pb-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Vendor NPS · how vendors rate QKit
+            Vendor NPS · how vendors rate qkit
           </p>
           <div className="mt-2 flex items-end gap-3">
             <span className="font-display text-6xl font-semibold leading-none">

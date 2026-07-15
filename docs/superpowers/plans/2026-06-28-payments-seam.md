@@ -1,10 +1,10 @@
-# QKit Payments Seam Implementation Plan
+# qkit Payments Seam Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a bring-your-own payment seam so a booth can attach PayNow / any payment link / static QR (Stripe reserved-but-dark), turning the order queue into an optional payment queue.
 
-**Architecture:** Per-booth `booths.payment` JSONB (discriminated union by `kind`) drives a pure adapter (`src/lib/payments/`) that produces a `CheckoutView` (qr/link/image). Orders gain a `payment_status` lifecycle (`not_required`→`pending`→`claimed`→`confirmed`). The customer claims payment via a service-role action; the vendor confirms via the existing RLS-guarded client update. No money flows through QKit.
+**Architecture:** Per-booth `booths.payment` JSONB (discriminated union by `kind`) drives a pure adapter (`src/lib/payments/`) that produces a `CheckoutView` (qr/link/image). Orders gain a `payment_status` lifecycle (`not_required`→`pending`→`claimed`→`confirmed`). The customer claims payment via a service-role action; the vendor confirms via the existing RLS-guarded client update. No money flows through qkit.
 
 **Tech Stack:** Next.js 16 App Router, TypeScript strict, Supabase (`@supabase/ssr`), Zod, Vitest, `react-qr-code`, Playwright.
 
@@ -39,7 +39,7 @@
 
 ```sql
 -- Payment seam: optional per-booth payment method + per-order payment lifecycle.
--- No money flows through QKit; vendor is merchant of record. Active kinds
+-- No money flows through qkit; vendor is merchant of record. Active kinds
 -- (pointer, paynow) carry no secrets, so booths.payment is publicly readable
 -- alongside the existing public booth read.
 
@@ -374,7 +374,7 @@ Expected: FAIL (module not found).
 - [ ] **Step 3: Implement `src/lib/payments/paynow.ts`**
 
 ```ts
-// EMVCo-compliant PayNow QR payload builder. Pure — no I/O. QKit never touches
+// EMVCo-compliant PayNow QR payload builder. Pure — no I/O. qkit never touches
 // funds; this only renders a QR the customer scans in their own bank app.
 
 /** CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF) over the ASCII of `s`. */
@@ -1211,7 +1211,7 @@ export function PaymentSection({
       <legend className="font-display text-lg font-semibold">Payments</legend>
       <p className="text-sm text-muted-foreground">
         Optional. Attach your own payment method — customers pay you directly;
-        QKit never touches the money.
+        qkit never touches the money.
       </p>
 
       <div className="space-y-2">
@@ -1460,6 +1460,6 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ## Notes for the implementer
 
-- `payment_status` is **independent** of `order_status`. Cancelling an order does not change payment fields; a refund flow is out of scope (QKit holds no funds).
+- `payment_status` is **independent** of `order_status`. Cancelling an order does not change payment fields; a refund flow is out of scope (qkit holds no funds).
 - The PayNow CRC test pins CRC-16/CCITT-FALSE via the standard `0x29B1` check value — if that test fails, the bug is in `crc16`, not the payload assembly.
 - Keep the service-role client out of any client component (Task 6 is `"use server"`).

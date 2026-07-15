@@ -1,13 +1,13 @@
-# QKit Sales Export Seam — Design
+# qkit Sales Export Seam — Design
 
 **Date:** 2026-07-04
 **Status:** Contract frozen (v1, shipped); machine auth deferred by design.
 
 ## Summary
 
-QKit is the first of a family of stackable **-kit** products (see the ecosystem
+qkit is the first of a family of stackable **-kit** products (see the ecosystem
 vision). A sibling product — e.g. an invoicing-kit — needs to pull a vendor's
-sales figures from QKit rather than re-derive them. This documents the **read
+sales figures from qkit rather than re-derive them. This documents the **read
 seam** for that: what the contract is, how a sibling authenticates (later), and
 what is deliberately built now vs when a real consumer lands.
 

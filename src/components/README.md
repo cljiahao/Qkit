@@ -28,7 +28,7 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
 - `feedback-form.tsx` — `FeedbackForm({ source, boothId, orderNumber, token,
 prompt, metric })`: compact rating widget posting to
   `submitFeedback` (`@/app/actions/feedback`) — `metric="stars"` (1–5, used
-  for customer order ratings) or `"nps"` (0–10 recommend score, vendor→QKit).
+  for customer order ratings) or `"nps"` (0–10 recommend score, vendor→qkit).
 - `hero-preview-carousel.tsx` — `HeroPreviewCarousel()`: the landing hero's
   swipeable "live order board" carousel over `LANDING_BOARDS` — native
   scroll-snap plus pointer-drag and a 10s auto-advance timer (paused on

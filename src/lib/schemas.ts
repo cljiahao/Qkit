@@ -147,7 +147,7 @@ const pointerConfigSchema = z.object({
   kind: z.literal("pointer"),
   label: z.string().min(1, "Label is required").max(60),
   // Rendered as an <a href> on the public status page — restrict to http(s) so
-  // a vendor can't store a javascript:/data: link (stored XSS on the QKit origin).
+  // a vendor can't store a javascript:/data: link (stored XSS on the qkit origin).
   url: z
     .string()
     .url()
@@ -282,7 +282,7 @@ export const grantPassSchema = z.object({
   // for their event date; entitlement is computed from [validFrom, expires_at).
   validFromIso: z.string().datetime().optional(),
   note: z.string().max(200).optional(),
-  // What QKit actually collected (cents). 0/omitted = free comp / design partner.
+  // What qkit actually collected (cents). 0/omitted = free comp / design partner.
   amountCents: z.number().int().nonnegative().max(10_000_00).optional(),
 });
 export type GrantPassInput = z.infer<typeof grantPassSchema>;
@@ -299,7 +299,7 @@ export const feedbackSchema = z
     token: z.string().uuid().optional(),
     // customer order rating
     rating: z.number().int().min(1).max(5).optional(),
-    // vendor → QKit loyalty
+    // vendor → qkit loyalty
     nps: z.number().int().min(0).max(10).optional(),
     message: z.string().trim().max(2000).optional(),
   })

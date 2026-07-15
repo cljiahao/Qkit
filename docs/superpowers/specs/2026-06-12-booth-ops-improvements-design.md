@@ -8,7 +8,7 @@ Singapore-timezone helper, since three of the four reason about wall-clock time.
 
 ## Shared: timezone helper
 
-`src/lib/tz.ts` — QKit is Singapore-only, so all wall-clock reasoning uses
+`src/lib/tz.ts` — qkit is Singapore-only, so all wall-clock reasoning uses
 `Asia/Singapore`, never server UTC or the customer's browser tz.
 
 ```ts

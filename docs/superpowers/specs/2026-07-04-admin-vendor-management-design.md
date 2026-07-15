@@ -5,7 +5,7 @@ Date: 2026-07-04 · Status: approved, building
 ## Problem
 
 The admin surface today shows aggregates (fleet KPIs, activation funnel counts,
-QKit revenue, upgrade-request inbox, pricing, audit log) but never a single
+qkit revenue, upgrade-request inbox, pricing, audit log) but never a single
 vendor's story. The admin cannot answer "is this vendor okay?" — no per-vendor
 last-active, order count, booth count, revenue, funnel stage, or pass/payment
 state in one place. Vendor-side failures (pass/pro/payment problems) have no
@@ -27,14 +27,14 @@ numbers-with-context). Sources in the research brief attached to the session.
   tables (`vendors`, `booths`, `orders`, `licenses`, `payments`,
   `purchase_requests`) plus one new `support_messages` table. No new error/event
   plumbing.
-- **No 0-100 health score.** QKit lacks the login/engagement telemetry a real
+- **No 0-100 health score.** qkit lacks the login/engagement telemetry a real
   composite score needs; a score from order-recency alone is false precision
   (the "numbers without context" anti-pattern). Use honest **banded status
   chips** + real columns (last order, 7d trend) instead.
 - **Deferred (Approach B):** capturing technical `console.error` failures into a
   `vendor_errors` table. Revisit only if crashes prove a real support driver;
   prefer Sentry over hand-rolling if so.
-- **Future note:** a way to push/notify the QKit team of new messages
+- **Future note:** a way to push/notify the qkit team of new messages
   (realtime/email). `support_messages` is shaped so a notify layer bolts on
   later (status + created_at + category, resolvable) without rework. Not built
   now.

@@ -78,7 +78,7 @@ export function RealtimeOrderBoard({
 
   // Reflect the away-count in the tab title so a backgrounded vendor notices.
   useEffect(() => {
-    if (away > 0) document.title = `(${away}) New orders · QKit`;
+    if (away > 0) document.title = `(${away}) New orders · qkit`;
     else if (originalTitle.current) document.title = originalTitle.current;
   }, [away]);
 
@@ -89,7 +89,7 @@ export function RealtimeOrderBoard({
       setAway((n) => n + 1);
       if (boardSettings.desktop_notify) {
         void fireNewOrderNotification(
-          boothName.get(order.booth_id) ?? "QKit",
+          boothName.get(order.booth_id) ?? "qkit",
           order.order_number,
         );
       }

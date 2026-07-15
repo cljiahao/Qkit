@@ -1,4 +1,4 @@
-# QKit Go-To-Market Handbook
+# qkit Go-To-Market Handbook
 
 **Date:** 2026-06-22
 **For:** solo founder · ~10 hrs/week · ~$0 budget · validate-first
@@ -55,7 +55,7 @@ _first_ conversation is with an organiser, not a vendor (see §2).
 Goal: **1–3 pilot vendors at one real market weekend**, $0, inside ~3–4 weeks.
 
 **Step 1 — Get organiser permission (the gating move).**
-Email `spaces@invade.co` (and DM the Makers' Market IG). Pitch QKit as a _vendor
+Email `spaces@invade.co` (and DM the Makers' Market IG). Pitch qkit as a _vendor
 perk that makes their market look modern_, not a vendor you're selling to. Ask:
 "Can I run a free pilot with 1–2 F&B stalls at an upcoming weekend?" Offer them
 the aggregate data (orders, peak times) as the hook. If they say yes, the vendor
@@ -97,7 +97,7 @@ parity):
   MDR. [rewardly.sg/pricing]
 - **HitPay**: pure **pay-per-transaction**, no monthly/setup/platform fee,
   hardware from ~S$85. [hitpayapp.com/sg/pricing]
-- Both **bundle payment processing**; QKit deliberately does **not**. Your wedge
+- Both **bundle payment processing**; qkit deliberately does **not**. Your wedge
   is **app-free ordering + live queue UX**, priced to pay only when trading —
   cheaper than a monthly sub for sporadic traders.
 
@@ -133,9 +133,9 @@ Skip content/SEO for now — too slow for a 10-hr/week validate-first phase.
 - **Vendor food licensing is NOT your burden.** Temporary-fair food vendors get
   a **free Temporary Fair Stall Licence**, processed by the fair operator under a
   flat **$60 fair permit** — no separate vendor fee, valid only during the fair.
-  You can truthfully tell vendors QKit doesn't change their licensing.
+  You can truthfully tell vendors qkit doesn't change their licensing.
   [gobusiness.gov.sg ×2]
-- **Payments out of scope = no MAS exposure.** Because QKit never touches money,
+- **Payments out of scope = no MAS exposure.** Because qkit never touches money,
   you avoid payment-services licensing entirely. Keep it that way early; adding
   payments later is a _deliberate, heavy_ decision.
 - **GST:** compulsory registration only above **S$1M** taxable turnover
@@ -190,7 +190,7 @@ real numbers arrive.)
 
 ## What's unproven / refuted (read before acting)
 
-- **QKit's own price isn't set** — validate the day-pass against $40–500/day rent
+- **qkit's own price isn't set** — validate the day-pass against $40–500/day rent
   and $39–59/mo competitor subs during the pilot.
 - **Organiser openness is assumed, not verified** — the whole beachhead hinges on
   it; test it first.

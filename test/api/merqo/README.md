@@ -3,7 +3,7 @@
 ## Purpose
 
 Tests for the `src/app/api/merqo/` route handlers — the bearer-token-gated
-feed that exposes QKit's business metrics to the Merqo umbrella product.
+feed that exposes qkit's business metrics to the Merqo umbrella product.
 
 ## Contents
 

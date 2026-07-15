@@ -1,7 +1,7 @@
 -- ── Per-event licenses ───────────────────────────────────────────────────────
 
 -- A license is a time-boxed Pro window. No event_id: the window is account-wide
--- (QKit has no real-world "event" entity). "active" is COMPUTED (expires_at >
+-- (qkit has no real-world "event" entity). "active" is COMPUTED (expires_at >
 -- now()), never stored, so it can't drift out of sync. Minted only by the
 -- service-role admin action today; a Stripe webhook will insert the same shape
 -- later (source = 'stripe').

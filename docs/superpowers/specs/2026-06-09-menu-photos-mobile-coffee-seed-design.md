@@ -5,7 +5,7 @@ Status: Approved (pending spec review)
 
 ## Goal
 
-Three related enhancements to QKit, shipped as one spec:
+Three related enhancements to qkit, shipped as one spec:
 
 1. **Per-item menu photos** — menu items can carry an optional image, shown to
    customers and editable by vendors.

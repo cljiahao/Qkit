@@ -53,7 +53,7 @@ our context:
   multi-role technical teams — not one vendor.
 
 → Keep the curated fixed layout. If flexibility is ever wanted, use **show/hide
-toggles**, not drag. Revisit only if QKit serves multiple distinct vendor roles.
+toggles**, not drag. Revisit only if qkit serves multiple distinct vendor roles.
 
 ## Data model
 

@@ -1,4 +1,4 @@
-# QKit — Master Task Registry (consolidated, 2026-07-02)
+# qkit — Master Task Registry (consolidated, 2026-07-02)
 
 Consolidates **three audit sweeps** + dependency/CVE scan + toolchain into one prioritized backlog.
 Sources: `2026-07-01-project-audit-findings.md` (S/L/D/B/P/T), `2026-07-02-audit-sweep-2-findings.md` (F1–F27), sweep-3 agents (coverage N-cov, deps/config, validation V, reuse R, error-handling N-err), `pnpm audit` (clean).

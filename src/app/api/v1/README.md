@@ -2,7 +2,7 @@
 
 ## Purpose
 
-QKit's own versioned public API surface — the frozen v1 response contract that sibling products (and QKit's own dashboard) can integrate against without a rewrite when internals change.
+qkit's own versioned public API surface — the frozen v1 response contract that sibling products (and qkit's own dashboard) can integrate against without a rewrite when internals change.
 
 ## Contents
 

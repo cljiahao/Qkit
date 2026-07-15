@@ -445,7 +445,7 @@ export default function LoginPage() {
           <CardTitle className="text-2xl">
             {mode === "signin" ? "Sign in" : "Create account"}
           </CardTitle>
-          <CardDescription>Access your QKit vendor dashboard</CardDescription>
+          <CardDescription>Access your qkit vendor dashboard</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button

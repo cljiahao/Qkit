@@ -1,4 +1,4 @@
-// QKit demo recorder — drives the REAL app against a LOCAL Supabase, records a
+// qkit demo recorder — drives the REAL app against a LOCAL Supabase, records a
 // vertical (9:16) phone-viewport walkthrough, and emits steps.json (caption +
 // timing per beat) for compose.mjs to burn in.
 //
@@ -360,7 +360,7 @@ async function main() {
 
   // ── Beat 6: turn the queue into a payment queue (add PayNow) ────────────────
   // Same booth, edited: pick PayNow and drop in a UEN. No money ever flows
-  // through QKit — the customer pays the vendor directly.
+  // through qkit — the customer pays the vendor directly.
   await step("Want to get paid? Add PayNow", async () => {
     await page.goto(`${BASE}/dashboard/booths/${boothId}`, {
       waitUntil: "domcontentloaded",

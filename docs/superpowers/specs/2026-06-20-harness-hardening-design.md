@@ -6,7 +6,7 @@
 
 ## Problem
 
-QKit's AI harness, tooling, and security posture grew organically. Most
+qkit's AI harness, tooling, and security posture grew organically. Most
 infrastructure exists (vitest/playwright/stryker, eslint, prettier+husky,
 CHANGELOG, CI, hooks, two project skills) but with gaps:
 

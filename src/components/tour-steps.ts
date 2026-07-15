@@ -16,7 +16,7 @@ const DESKTOP: TourStep[] = [
     element: sel("order-board"),
     title: "Your live order board",
     description:
-      "Welcome to QKit. Orders land here the moment a customer taps Order — no refresh, no reload.",
+      "Welcome to qkit. Orders land here the moment a customer taps Order — no refresh, no reload.",
   },
   {
     element: sel("nav-booths"),

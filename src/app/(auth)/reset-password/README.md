@@ -6,7 +6,7 @@ Password-reset page reached from a Supabase recovery-email link — lets a vendo
 
 ## Contents
 
-- `page.tsx` — `ResetPasswordPage` server component (`revalidate = 0`). Renders the QKit brand lockup and hands off to `ResetPasswordForm`; no data fetching of its own.
+- `page.tsx` — `ResetPasswordPage` server component (`revalidate = 0`). Renders the qkit brand lockup and hands off to `ResetPasswordForm`; no data fetching of its own.
 - `reset-password-form.tsx` — `ResetPasswordForm` client component. On mount calls `supabase.auth.getUser()` to check whether a recovery session exists (`"checking" | "ready" | "no-session"` state). If no session, shows an expired-link message with a link back to `/login`. If ready, renders a form validated with `passwordChangeSchema` (from `@/lib/schemas`); on submit calls `supabase.auth.updateUser({ password })`, toasts success/failure, then `router.push("/dashboard")` + `router.refresh()`, awaiting `navigatingAway()` from `@/hooks/use-async-action` to avoid a state update after navigation.
 
 ## Connectivity

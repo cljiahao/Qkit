@@ -1,6 +1,6 @@
 <!-- templateCentral: nextjs@5.7.0 (Supabase variant — NOT better-auth/Drizzle) -->
 
-# AGENTS.md — QKit
+# AGENTS.md — qkit
 
 > STOP — This project diverges from the stock templateCentral Next.js stack on
 > the data layer only. Auth/DB/realtime are **Supabase** (`@supabase/ssr`), not
@@ -8,7 +8,7 @@
 > an app repository layer. Runtime matches tc: Next 16, route protection in
 > `src/proxy.ts`, and `cookies()`/`headers()`/`params`/`searchParams` are async.
 
-## What QKit is
+## What qkit is
 
 Vendor booth ordering system. Vendors sign in to manage menus and watch live
 orders; customers order from a QR-linked booth page and track status in realtime.
@@ -117,10 +117,10 @@ Deliberately **not** adopted (Supabase-variant / bespoke-harness divergence, eac
 a conscious choice — don't let a future drift-check "fix" them):
 
 - **pino route-logging enforcement** (5.7) — pino was removed as an unused dep;
-  QKit's API surface (one route) logs via `console.error`, not the tc `withLogging`
+  qkit's API surface (one route) logs via `console.error`, not the tc `withLogging`
   wrapper. No `scripts/check-route-logging.mjs` gate.
-- **lefthook** (5.2) — QKit uses husky + lint-staged; not migrating the git-hook system.
-- **tc CI gates + `verify-harness.sh` / `.harness-base`** (5.2–5.3) — QKit has its own
+- **lefthook** (5.2) — qkit uses husky + lint-staged; not migrating the git-hook system.
+- **tc CI gates + `verify-harness.sh` / `.harness-base`** (5.2–5.3) — qkit has its own
   CI (`.github/workflows/{ci,security}.yml`); no harness re-sync base exists (seeded
   pre-5.3), so `migrate` Phase-5 3-way merge is N/A.
 - **password min-12 on the login schema** (5.5) — would lock out existing 8-char

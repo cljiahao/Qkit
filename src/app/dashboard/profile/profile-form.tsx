@@ -196,7 +196,7 @@ export function ProfileForm({
         icon={<IdCard className="size-5" />}
         eyebrow="Just for you"
         title="Display name"
-        description="How QKit addresses you. Customers never see this."
+        description="How qkit addresses you. Customers never see this."
       >
         <div className="space-y-2">
           <Label htmlFor="display-name" className={FORM_LABEL_CLASS}>

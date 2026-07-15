@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Tests for `src/app/api/v1/` — QKit's stable, versioned external API surface
+Tests for `src/app/api/v1/` — qkit's stable, versioned external API surface
 (the frozen contract sibling products and exports are meant to keep working
 against across internal refactors).
 

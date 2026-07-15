@@ -100,7 +100,7 @@ export default async function PlanPage() {
       {tier === "pro" ? (
         <p className="rounded-xl border border-border bg-card px-5 py-4 text-sm text-muted-foreground">
           You&apos;re on Pro. Unlimited booths, scheduling, sold-out caps, and
-          full stats are unlocked. Thanks for supporting QKit.
+          full stats are unlocked. Thanks for supporting qkit.
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

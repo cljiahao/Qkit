@@ -1,4 +1,4 @@
-// Minimal service worker for QKit. It does NOT cache anything (no offline /
+// Minimal service worker for qkit. It does NOT cache anything (no offline /
 // stale-asset risk) — its only jobs are to (a) control open pages so the order
 // page can call registration.showNotification (the only notification form
 // Android Chrome allows), and (b) focus/open the order on notification click.

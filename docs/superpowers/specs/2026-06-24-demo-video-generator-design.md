@@ -7,7 +7,7 @@
 
 A real prospect (coffee-cart vendor met at a wedding, via Instagram DM) asked to
 see "a short video of how it works." This produces that artifact: a short,
-sendable screen-capture of QKit that answers her stated pains — crowding, orders
+sendable screen-capture of qkit that answers her stated pains — crowding, orders
 piling up, customers wandering off before their drink is ready.
 
 The video is a **sales artifact for one human**, not a marketing reel or an

@@ -206,7 +206,7 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
             icon={<Wallet className="size-5" />}
             eyebrow="How you get paid"
             title="Payment"
-            description="Optional. Customers pay you directly; QKit never touches the money."
+            description="Optional. Customers pay you directly; qkit never touches the money."
           >
             <PaymentSection
               vendorId={vendorId}

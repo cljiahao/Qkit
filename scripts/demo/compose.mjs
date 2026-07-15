@@ -1,4 +1,4 @@
-// QKit demo compositor — takes the raw recording + steps.json and produces the
+// qkit demo compositor — takes the raw recording + steps.json and produces the
 // send-ready vertical mp4: phone capture centred on a 1080x1920 canvas with each
 // beat's caption burned in, plus audio (Playwright records none):
 //   • the order "ready" chime, mixed in at the moment the live order lands —
@@ -131,7 +131,7 @@ function main() {
     `[0:v]${vfilters.join(",")},fps=30,format=yuv420p,` +
       `fade=t=out:st=${(dur - 0.6).toFixed(2)}:d=0.6[vmain]`,
     `color=c=${BG}:s=1080x1920:d=${OUTRO_DUR}:r=30,setsar=1,format=yuv420p,` +
-      `drawtext=fontfile='${fontPath}':text='QKit':fontsize=148:` +
+      `drawtext=fontfile='${fontPath}':text='qkit':fontsize=148:` +
       `fontcolor=white:x=(w-text_w)/2:y=h/2-160,` +
       `drawtext=fontfile='${fontPath}':` +
       `text='Run your booth, watch orders land live':` +

@@ -134,7 +134,7 @@ function LoginForm() {
           <Ticket shadow="lifted" className="px-7 py-10">
             <Link
               href="/"
-              aria-label="QKit home"
+              aria-label="qkit home"
               className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
             >
               <span className="text-primary">Q</span>Kit
@@ -185,7 +185,7 @@ function LoginForm() {
         <div className="mb-8 text-center">
           <Link
             href="/"
-            aria-label="QKit home"
+            aria-label="qkit home"
             className="font-display inline-flex items-baseline gap-0.5 text-4xl font-semibold tracking-tight transition-opacity hover:opacity-80"
           >
             <span className="text-primary">Q</span>Kit
@@ -307,7 +307,7 @@ function LoginForm() {
 
           <div className="perforation" />
           <p className="bg-card px-7 py-4 text-center text-sm text-muted-foreground">
-            {isSignin ? "New to QKit? " : "Already have an account? "}
+            {isSignin ? "New to qkit? " : "Already have an account? "}
             <button
               type="button"
               className="font-semibold text-primary underline-offset-4 hover:underline"
