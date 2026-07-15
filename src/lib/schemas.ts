@@ -4,6 +4,7 @@ import type {
   OptionGroup,
   OrderItem,
   PaymentConfig,
+  SocialLinks,
 } from "@/lib/types";
 import type { BoothHours } from "@/lib/hours";
 
@@ -249,6 +250,44 @@ export function parsePaymentConfig(data: unknown): PaymentConfig | null {
   return parsed.success ? parsed.data : null;
 }
 
+// ── Social/website links ─────────────────────────────────────────────────────
+// Vendor profile (vendors.social_links) and per-booth (booths.social_links).
+// All fields optional; an absent/empty object means "nothing set".
+
+const socialUrl = z
+  .string()
+  .trim()
+  .max(300)
+  .refine((u) => /^https?:\/\//i.test(u), "Must be an http(s) link")
+  .optional();
+
+export const socialLinksSchema = z.object({
+  website: socialUrl,
+  instagram: socialUrl,
+  facebook: socialUrl,
+  tiktok: socialUrl,
+});
+export type SocialLinksInput = z.infer<typeof socialLinksSchema>;
+
+/** Parse a JSONB social_links value; any malformed shape degrades to {}. */
+export function parseSocialLinks(data: unknown): SocialLinks {
+  const parsed = socialLinksSchema.safeParse(data);
+  return parsed.success ? parsed.data : {};
+}
+
+/**
+ * Effective social links for a booth: the booth's own override if it set
+ * one, otherwise the vendor's profile-level default. Whole-object override —
+ * a booth that sets only `instagram` does NOT also inherit the vendor's
+ * `website`, matching booths.hours/booths.payment's null-degrades semantics.
+ */
+export function resolveSocialLinks(
+  boothLinks: SocialLinks | null,
+  vendorLinks: SocialLinks,
+): SocialLinks {
+  return boothLinks ?? vendorLinks;
+}
+
 export const boothFormSchema = z.object({
   boothId: z.string().uuid().optional(),
   name: z.string().min(1, "Booth name is required").max(100),
@@ -258,6 +297,9 @@ export const boothFormSchema = z.object({
   menu_items: z.array(menuItemFormSchema),
   // Optional BYO payment method; null = queue-only. Reuses paymentConfigSchema.
   payment: paymentConfigSchema.nullable().default(null),
+  // null = inherit the vendor's profile-level defaults; non-null = a
+  // complete per-booth override. See resolveSocialLinks.
+  social_links: socialLinksSchema.nullable().default(null),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */

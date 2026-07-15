@@ -18,6 +18,9 @@ import {
   passwordChangeSchema,
   boardSettingsSchema,
   parseOrderRef,
+  socialLinksSchema,
+  parseSocialLinks,
+  resolveSocialLinks,
 } from "./schemas";
 
 const UUID_A = "11111111-1111-1111-1111-111111111111";
@@ -683,5 +686,68 @@ describe("parsePaymentConfig", () => {
     expect(parsePaymentConfig(null)).toBeNull();
     expect(parsePaymentConfig({ kind: "paypal" })).toBeNull();
     expect(parsePaymentConfig({ kind: "paynow" })).toBeNull();
+  });
+});
+
+describe("socialLinksSchema", () => {
+  it("accepts a fully-populated set of http(s) links", () => {
+    const parsed = socialLinksSchema.safeParse({
+      website: "https://example.com",
+      instagram: "https://instagram.com/example",
+      facebook: "https://facebook.com/example",
+      tiktok: "https://tiktok.com/@example",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts an empty object (nothing set)", () => {
+    expect(socialLinksSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("rejects a bare domain with no protocol", () => {
+    const parsed = socialLinksSchema.safeParse({ website: "example.com" });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects a javascript: URL", () => {
+    const parsed = socialLinksSchema.safeParse({
+      instagram: "javascript:alert(1)",
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("parseSocialLinks", () => {
+  it("degrades malformed/missing data to an empty object", () => {
+    expect(parseSocialLinks(null)).toEqual({});
+    expect(parseSocialLinks(undefined)).toEqual({});
+    expect(parseSocialLinks("nope")).toEqual({});
+    expect(parseSocialLinks({ website: "not-a-url" })).toEqual({});
+  });
+
+  it("passes through a valid object", () => {
+    expect(parseSocialLinks({ website: "https://a.b" })).toEqual({
+      website: "https://a.b",
+    });
+  });
+});
+
+describe("resolveSocialLinks", () => {
+  it("uses the vendor default when the booth has no override", () => {
+    const vendorLinks = { website: "https://vendor.example" };
+    expect(resolveSocialLinks(null, vendorLinks)).toEqual(vendorLinks);
+  });
+
+  it("uses the booth override completely, even if partial", () => {
+    const vendorLinks = {
+      website: "https://vendor.example",
+      instagram: "https://instagram.com/vendor",
+    };
+    const boothLinks = { instagram: "https://instagram.com/this-booth" };
+    expect(resolveSocialLinks(boothLinks, vendorLinks)).toEqual(boothLinks);
+  });
+
+  it("returns an empty object when neither is set", () => {
+    expect(resolveSocialLinks(null, {})).toEqual({});
   });
 });
