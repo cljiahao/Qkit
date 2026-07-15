@@ -46,6 +46,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reported as a refund (following the standard gross / refunds / net accounting
   model) instead of silently vanishing from revenue — surfaced on the stats KPI
   band, the `SalesSummaryV1` API, and the CSV export.
+- **Vendor social & website links**: vendors can add a website URL plus
+  Instagram/Facebook/TikTok links on their profile page — applied by default
+  to every booth they own, with an optional per-booth override on that
+  booth's own edit page. Shown to customers on the order-status page footer,
+  after they've placed an order (kept off the menu/ordering page by design).
+  Free tier, no plan gate (`vendors.social_links`/`booths.social_links`,
+  migration `0052`).
 
 ### Security
 
