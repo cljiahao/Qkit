@@ -56,6 +56,16 @@ export type PaymentConfig =
   | { kind: "paynow"; payee_name: string; uen?: string; mobile?: string }
   | { kind: "stripe"; account_id: string };
 
+// Vendor/booth social + website links (qkit.vendors.social_links,
+// qkit.booths.social_links jsonb). All fields optional; an absent/empty
+// object means "nothing set".
+export type SocialLinks = {
+  website?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+};
+
 export type OptionChoice = { id: string; label: string };
 export type OptionGroup = {
   id: string;
@@ -112,6 +122,7 @@ export interface Database {
           created_at: string;
           tour_seen_at: string | null;
           board_settings: BoardSettings;
+          social_links: SocialLinks;
         };
         Insert: {
           id: string;
@@ -120,6 +131,7 @@ export interface Database {
           created_at?: string;
           tour_seen_at?: string | null;
           board_settings?: BoardSettings;
+          social_links?: SocialLinks;
         };
         Update: {
           id?: string;
@@ -128,6 +140,7 @@ export interface Database {
           created_at?: string;
           tour_seen_at?: string | null;
           board_settings?: BoardSettings;
+          social_links?: SocialLinks;
         };
         Relationships: [];
       };
@@ -399,6 +412,7 @@ export interface Database {
           payment: Json | null;
           created_at: string;
           short_code: string;
+          social_links: Json | null;
         };
         Insert: {
           id?: string;
@@ -412,6 +426,7 @@ export interface Database {
           payment?: Json | null;
           created_at?: string;
           short_code?: string;
+          social_links?: Json | null;
         };
         Update: {
           id?: string;
@@ -425,6 +440,7 @@ export interface Database {
           payment?: Json | null;
           created_at?: string;
           short_code?: string;
+          social_links?: Json | null;
         };
         Relationships: [
           {

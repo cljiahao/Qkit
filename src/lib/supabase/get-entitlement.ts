@@ -70,6 +70,13 @@ export const loadEntitlement = cache(
       vendor.board_settings = DEFAULT_BOARD_SETTINGS;
     }
 
+    // social_links can be missing if migration 0052 hasn't reached this DB yet
+    // (deploy and migrate aren't atomic) — fall back to "nothing set" rather
+    // than crash the profile/booth-form pages.
+    if (vendor && !vendor.social_links) {
+      vendor.social_links = {};
+    }
+
     const licenseExpiresAt = vendor ? (license?.expires_at ?? null) : null;
     return {
       user,
