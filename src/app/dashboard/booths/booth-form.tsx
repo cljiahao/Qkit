@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Store, Clock, UtensilsCrossed, Wallet } from "lucide-react";
+import {
+  Trash2,
+  Store,
+  Clock,
+  UtensilsCrossed,
+  Wallet,
+  Share2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -25,6 +32,7 @@ import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
+import { SocialLinksSection } from "./social-links-section";
 import { saveBooth, deleteBooth } from "./actions";
 import {
   boothFormSchema,
@@ -33,11 +41,12 @@ import {
 } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
-import type { PaymentConfig } from "@/lib/types";
+import type { PaymentConfig, SocialLinks } from "@/lib/types";
 
 interface Props {
   vendorId: string;
   entitlement: Entitlement;
+  vendorSocialLinks: SocialLinks;
   initial?: {
     boothId: string;
     name: string;
@@ -46,10 +55,16 @@ interface Props {
     hours: BoothHours;
     menu_items: MenuItemFormInput[];
     payment: PaymentConfig | null;
+    social_links: SocialLinks | null;
   };
 }
 
-export function BoothForm({ vendorId, entitlement, initial }: Props) {
+export function BoothForm({
+  vendorId,
+  entitlement,
+  vendorSocialLinks,
+  initial,
+}: Props) {
   const router = useRouter();
   const [name, setName] = useState(initial?.name ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(
@@ -62,6 +77,9 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
   );
   const [payment, setPayment] = useState<PaymentConfig | null>(
     initial?.payment ?? null,
+  );
+  const [socialLinks, setSocialLinks] = useState<SocialLinks | null>(
+    initial?.social_links ?? null,
   );
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
@@ -95,6 +113,7 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
         option_groups: sanitizeOptionGroups(it.option_groups),
       })),
       payment,
+      social_links: socialLinks,
     };
     const parsed = boothFormSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -212,6 +231,19 @@ export function BoothForm({ vendorId, entitlement, initial }: Props) {
               vendorId={vendorId}
               value={payment}
               onChange={setPayment}
+            />
+          </Section>
+
+          <Section
+            icon={<Share2 className="size-5" />}
+            eyebrow="Shown to customers"
+            title="Social links"
+            description="Shown on the order-status page after a customer orders."
+          >
+            <SocialLinksSection
+              value={socialLinks}
+              onChange={setSocialLinks}
+              vendorDefaults={vendorSocialLinks}
             />
           </Section>
         </div>

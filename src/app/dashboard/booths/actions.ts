@@ -158,6 +158,7 @@ export async function saveBooth(
     hours,
     menu_items,
     payment: data.payment,
+    social_links: data.social_links,
   };
 
   if (data.boothId) {

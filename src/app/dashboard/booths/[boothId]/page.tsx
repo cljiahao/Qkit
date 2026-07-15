@@ -5,6 +5,7 @@ import {
   parseMenuItems,
   parseBoothHours,
   parsePaymentConfig,
+  parseSocialLinks,
 } from "@/lib/schemas";
 import { BoothForm } from "../booth-form";
 
@@ -22,7 +23,9 @@ export default async function EditBoothPage({ params }: Props) {
   // RLS scopes this to the vendor's own booths; a foreign id returns null.
   const { data: booth } = await supabase
     .from("booths")
-    .select("id, name, image_url, is_active, hours, menu_items, payment")
+    .select(
+      "id, name, image_url, is_active, hours, menu_items, payment, social_links",
+    )
     .eq("id", boothId)
     .maybeSingle();
 
@@ -46,6 +49,7 @@ export default async function EditBoothPage({ params }: Props) {
       <BoothForm
         vendorId={vendor.id}
         entitlement={entitlement}
+        vendorSocialLinks={vendor.social_links}
         initial={{
           boothId: booth.id,
           name: booth.name,
@@ -54,6 +58,9 @@ export default async function EditBoothPage({ params }: Props) {
           hours: parseBoothHours(booth.hours),
           menu_items: menuItems,
           payment: parsePaymentConfig(booth.payment),
+          social_links: booth.social_links
+            ? parseSocialLinks(booth.social_links)
+            : null,
         }}
       />
     </div>

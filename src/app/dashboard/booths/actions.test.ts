@@ -216,4 +216,13 @@ describe("saveBooth entitlement enforcement", () => {
     expect(h.updateSpy).toHaveBeenCalledTimes(1);
     expect(h.insertSpy).not.toHaveBeenCalled();
   });
+
+  it("(f) passes social_links through to the row untouched", async () => {
+    const socialLinks = { instagram: "https://instagram.com/booth" };
+    const res = await saveBooth(makeBooth({ social_links: socialLinks }));
+
+    expect(res).toEqual({ success: true, boothId: "b-new" });
+    const row = h.insertSpy.mock.calls[0][0] as { social_links: unknown };
+    expect(row.social_links).toEqual(socialLinks);
+  });
 });
