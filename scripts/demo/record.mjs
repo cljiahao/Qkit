@@ -370,8 +370,12 @@ async function main() {
     await center(page, paynow);
     await glideClick(page, paynow);
     await beat(350);
-    await slowType(page, page.locator("#pn-name"), STALL, 40);
-    await slowType(page, page.locator("#pn-uen"), "53312345A", 45);
+    const pnName = page.locator("#pn-name");
+    await center(page, pnName);
+    await slowType(page, pnName, STALL, 40);
+    const pnUen = page.locator("#pn-uen");
+    await center(page, pnUen);
+    await slowType(page, pnUen, "53312345A", 45);
     await beat(450); // hold on the filled-in fields before moving to save
     const saveBoothBtn2 = page.getByRole("button", { name: /Save booth/ });
     await center(page, saveBoothBtn2);

@@ -5,8 +5,8 @@ import { BRAND_EMBER, BRAND_OAT } from "@/lib/brand-icon";
 // Web Notifications for a PWA added to the home screen in standalone mode.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "qkit — booth ordering",
-    short_name: "qkit",
+    name: "QKit — booth ordering",
+    short_name: "QKit",
     description: "Scan, order, and track from any food booth in real time.",
     start_url: "/",
     display: "standalone",
