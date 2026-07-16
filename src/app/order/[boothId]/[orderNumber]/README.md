@@ -39,8 +39,12 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   null), computes whether to show the pay panel
   (`renderCheckout` from `@/lib/payments/adapters`), and renders the ticket
   header, `OrderStatusPoller`, `PayPanel`, the itemized order, `FeedbackForm`,
-  `EarnLink` (once completed), the booth's resolved social links
-  (`SocialLinksRow`, `@/components`), and a reorder/"order again" link.
+  `EarnLink` (once completed), the resolved social links (`SocialLinksRow`,
+  `@/components`, booth override else the vendor's shared default from
+  `merqo.vendor_profile` via `getOrCreateVendorProfile` —
+  `@/lib/merqo-vendor-profile` — degrading to booth-only links on any RPC
+  error rather than breaking the page for a customer holding a valid,
+  paid order link), and a reorder/"order again" link.
 - `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, checkout,
 initialStatus, amountCents })` client component: polls `getPaymentStatus`
   every 5s until `confirmed`/`not_required`; renders a QR

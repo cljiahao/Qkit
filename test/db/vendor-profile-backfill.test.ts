@@ -5,14 +5,14 @@ import { fileURLToPath } from "node:url";
 const sql = readFileSync(
   fileURLToPath(
     new URL(
-      "../../supabase/migrations/0053_vendor_profile_backfill.sql",
+      "../../supabase/migrations/0054_vendor_profile_backfill.sql",
       import.meta.url,
     ),
   ),
   "utf8",
 ).toLowerCase();
 
-describe("0053_vendor_profile_backfill migration", () => {
+describe("0054_vendor_profile_backfill migration", () => {
   it("inserts into merqo.vendor_profile from qkit.vendors", () => {
     expect(sql).toMatch(
       /insert into merqo\.vendor_profile\s*\(vendor_id,\s*stall_name,\s*social_links\)/,
