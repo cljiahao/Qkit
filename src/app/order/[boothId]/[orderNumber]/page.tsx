@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
-import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Ticket } from "@/components/ticket";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import {

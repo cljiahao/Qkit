@@ -1,6 +1,12 @@
 import next from "eslint-config-next";
 import sonarjs from "eslint-plugin-sonarjs";
 
+// next's default export already registers @typescript-eslint (as the
+// "next/typescript" block) — reuse that instance rather than adding a
+// second direct dependency on @typescript-eslint/eslint-plugin.
+const typescriptEslintPlugin = next.find((c) => c.name === "next/typescript")
+  .plugins["@typescript-eslint"];
+
 const eslintConfig = [
   ...next,
   {
@@ -15,6 +21,25 @@ const eslintConfig = [
       "playwright-report/**",
       "scripts/demo/out/**",
     ],
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    plugins: { "@typescript-eslint": typescriptEslintPlugin },
+    rules: {
+      // Neither tsconfig (no noUnusedLocals/noUnusedParameters) nor
+      // eslint-config-next's own "next/typescript" block flags unused
+      // vars/imports — this project's `_`-prefix convention for
+      // intentionally-unused args is the ignore signal, matching
+      // templatecentral's scaffold convention.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
   },
   {
     // Comment hygiene (templateCentral standard, hard gate as of 5.8): own-line
