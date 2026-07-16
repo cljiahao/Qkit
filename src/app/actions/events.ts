@@ -1,7 +1,9 @@
 "use server";
 
 import { z } from "zod";
+import { headers } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Json } from "@/lib/types";
 
 // Allowlist of trackable events. Reject anything else so the table can't be
@@ -44,6 +46,10 @@ export async function logEvent(
   }
   try {
     const supabase = await createServerClient();
+    // Generous limit — several of these fire per page visit.
+    const ip = clientIp(await headers());
+    const allowed = await rateLimit(supabase, `event:${ip}`, 40, 60);
+    if (!allowed) return;
     await supabase.from("events").insert({
       type: parsed.data,
       ...(safeMeta ? { metadata: safeMeta as Json } : {}),
