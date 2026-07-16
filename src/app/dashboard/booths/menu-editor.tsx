@@ -161,25 +161,25 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-[7rem] flex-1">
+              <div className="relative min-w-[9rem] flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   $
                 </span>
                 <Input
                   inputMode="decimal"
-                  placeholder="Price (optional)"
+                  placeholder="Price (opt.)"
                   value={centsToDollars(item.price_cents)}
                   onChange={(e) => setPrice(i, e.target.value)}
                   className="rounded-lg pl-7"
                 />
               </div>
-              <div className="relative min-w-[7rem] flex-1">
+              <div className="relative min-w-[9rem] flex-1">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   $
                 </span>
                 <Input
                   inputMode="decimal"
-                  placeholder="Cost (optional)"
+                  placeholder="Cost (opt.)"
                   value={centsToDollars(item.cost_cents)}
                   onChange={(e) => setCost(i, e.target.value)}
                   className="rounded-lg pl-7"
