@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { createServiceClient } from "@/lib/supabase/server";
 import { Ticket } from "@/components/ticket";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
@@ -16,9 +17,13 @@ import { renderCheckout } from "@/lib/payments/adapters";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
-import { PayPanel } from "./pay-panel";
 import { EarnLink } from "./earn-link";
 import { SocialLinksRow } from "@/components/social-links-row";
+
+// Split out react-qr-code's bundle: showPay is false for most orders
+// (queue-only booths, or once payment is a moot point), so PayPanel
+// shouldn't ship in every order-status page's JS regardless.
+const PayPanel = dynamic(() => import("./pay-panel").then((m) => m.PayPanel));
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;

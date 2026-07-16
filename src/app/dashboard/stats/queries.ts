@@ -90,17 +90,21 @@ export async function fetchEventReviewRows(
   to: string,
 ): Promise<ReviewRow[]> {
   if (!boothIds.length) return [];
-  const { data: orderKeys } = await supabase
-    .from("orders")
-    .select("booth_id, order_number")
-    .in("booth_id", boothIds)
-    .gte("created_at", from)
-    .lt("created_at", to);
+  // Neither query depends on the other's result — both only need boothIds —
+  // so run them concurrently instead of paying two sequential round-trips.
+  const [{ data: orderKeys }, rows] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("booth_id, order_number")
+      .in("booth_id", boothIds)
+      .gte("created_at", from)
+      .lt("created_at", to),
+    fetchReviewRows(supabase, boothIds),
+  ]);
   const inEvent = new Set(
     (orderKeys ?? []).map((o) => `${o.booth_id}::${o.order_number}`),
   );
   if (inEvent.size === 0) return [];
-  const rows = await fetchReviewRows(supabase, boothIds);
   return rows.filter(
     (r) => r.order_number && inEvent.has(`${r.booth_id}::${r.order_number}`),
   );
