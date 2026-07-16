@@ -80,9 +80,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **A free item in an otherwise-priced order showed "$0.00" instead of
   "Free"**, on both the customer order-status page and the vendor live
-  board — the price column was gated on the order having _any_ priced
-  item, not on the line itself, so a deliberately-free line (e.g. "extra
-  sauce") inherited a price display it never had.
+  board/completed-orders card. Two layers: the UI's price column was gated
+  on the order having _any_ priced item, not on the line itself; and
+  underneath that, `place_order` coalesced an unset menu-item price to `0`
+  and always stored `price_cents` on the order snapshot, so the "genuinely
+  free" vs "explicitly $0.00" distinction was already gone by the time the
+  order was placed — the UI fix alone had nothing to key off. `place_order`
+  now omits `price_cents` entirely for an unset price (migration `0055`),
+  mirroring how `cost_cents` already worked.
 - **Price/Cost menu-item fields on the booth edit form truncated their own
   placeholder** ("Price (optiona…") — narrowed to "Price (opt.)"/"Cost
   (opt.)" and widened the field slightly.

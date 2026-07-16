@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-55 files, `0000` through `0054`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0054` tail; skimmed by filename/theme otherwise. The
+56 files, `0000` through `0055`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0055` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -110,7 +110,11 @@ schema evolved in five broad waves:
   without ever clobbering a value already set through the new shared-profile
   write path — guarded to no-op when `merqo.vendor_profile` doesn't exist
   (qkit's own CI/local `supabase start` builds a fresh DB from only qkit's
-  migrations, with no merqo schema at all).
+  migrations, with no merqo schema at all). `0055_place_order_free_price.sql`
+  recreates `place_order` so an unset menu-item price stores no
+  `price_cents` key on the order snapshot at all, instead of coalescing to
+  `0` — mirrors how `cost_cents` already worked, and is what lets the UI
+  show "Free" instead of "$0.00" for a deliberately-unpriced item.
 
 ## Connectivity
 

@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(76);
+select plan(79);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -123,7 +123,8 @@ values (
      {"id":"free1","name":"Unlimited Tea","description":"","price_cents":300,
       "cost_cents":100,"available":true},
      {"id":"free2","name":"No-Cost Snack","description":"","price_cents":100,
-      "available":true}
+      "available":true},
+     {"id":"unpriced1","name":"Free Sample","description":"","available":true}
    ]'::jsonb
 );
 
@@ -485,6 +486,29 @@ select isnt(
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '11111111-1111-1111-1111-111111111111'),
   null, 'place_order minted a per-order access_token');
+
+-- An item with no price set stores no price_cents key at all (0055) — not
+-- coalesced to 0 — so a customer/vendor can tell "genuinely free" apart from
+-- "explicitly priced at $0.00".
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode1', 'Ada',
+       '[{"menuItemId":"unpriced1","name":"Free Sample","quantity":1}]'::jsonb,
+       '44444444-4444-4444-4444-444444444444'::uuid) $$,
+  'place_order succeeds for an item with no price set');
+select ok(
+  not (
+    (select items -> 0 from qkit.orders
+     where booth_id = '00000000-0000-0000-0000-0000000b0004'
+       and idempotency_key = '44444444-4444-4444-4444-444444444444')
+    ? 'price_cents'
+  ),
+  'an unpriced item omits price_cents entirely, not 0');
+select is(
+  (select total_cents from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '44444444-4444-4444-4444-444444444444'),
+  0, 'an order of only unpriced items totals 0');
 
 -- Replay with the SAME idempotency key must return the SAME order_number and
 -- must not insert a second row.
