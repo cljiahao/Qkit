@@ -5,6 +5,7 @@ import { getUser } from "@/lib/supabase/get-user";
 import { getEntitlement, type Entitlement } from "@/lib/plan";
 import type { User } from "@supabase/supabase-js";
 import { DEFAULT_BOARD_SETTINGS, type Vendor } from "@/lib/types";
+import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
 
 /**
  * Resolve the current vendor's effective entitlement (plan + any live license).
@@ -75,6 +76,22 @@ export const loadEntitlement = cache(
     // than crash the profile/booth-form pages.
     if (vendor && !vendor.social_links) {
       vendor.social_links = {};
+    }
+
+    // Stall name + social links now live in merqo.vendor_profile (shared
+    // across kits) — qkit.vendors.name/social_links are stale leftovers
+    // from before the cutover, not yet dropped (see 2026-07-16 plan Task 3
+    // note). Overwrite with the shared source of truth so every consumer of
+    // `vendor` (profile page, booth forms, order-status page) sees the
+    // current value without knowing the storage moved.
+    if (vendor) {
+      const profile = await getOrCreateVendorProfile(
+        supabase,
+        vendor.id,
+        vendor.name,
+      );
+      vendor.name = profile.stall_name;
+      vendor.social_links = profile.social_links;
     }
 
     const licenseExpiresAt = vendor ? (license?.expires_at ?? null) : null;
