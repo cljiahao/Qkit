@@ -36,7 +36,7 @@
 
 This task has no behavior to unit-test (it's schema/types), so instead of a failing-test step it's verified by `tsc --noEmit` (already runs automatically after every Edit/Write per this repo's harness) and a quick manual read-check in Task 2's tests, which import `SocialLinks`.
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `supabase/migrations/0052_vendor_social_links.sql`:
 
@@ -64,7 +64,7 @@ GRANT UPDATE (social_links) ON qkit.vendors TO authenticated;
 -- change needed here.
 ```
 
-- [ ] **Step 2: Add the `SocialLinks` type**
+- [x] **Step 2: Add the `SocialLinks` type**
 
 In `src/lib/types.ts`, immediately after the `PaymentConfig` type (currently ends around line 57), add:
 
@@ -80,7 +80,7 @@ export type SocialLinks = {
 };
 ```
 
-- [ ] **Step 3: Extend the `Database` vendors/booths table types**
+- [x] **Step 3: Extend the `Database` vendors/booths table types**
 
 In `src/lib/types.ts`, in the `vendors` table's `Row`/`Insert`/`Update` (each currently ends with `board_settings: BoardSettings;` / `board_settings?: BoardSettings;`), add a trailing field:
 
@@ -100,7 +100,7 @@ social_links: Json | null;
 
 (and `social_links?: Json | null;` in `Insert`/`Update`). `booths.social_links` stays `Json | null` at the Database-row level (like `hours`/`payment`) because it's parsed defensively at read time, not trusted as already-valid.
 
-- [ ] **Step 4: Defensive fallback in `loadEntitlement`**
+- [x] **Step 4: Defensive fallback in `loadEntitlement`**
 
 In `src/lib/supabase/get-entitlement.ts`, right after the existing:
 
@@ -121,12 +121,12 @@ if (vendor && !vendor.social_links) {
 }
 ```
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `pnpm exec tsc --noEmit`
 Expected: no errors (this repo's `pnpm check` bundles this; running `tsc` alone is faster feedback here since there's no behavior to test yet).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add supabase/migrations/0052_vendor_social_links.sql src/lib/types.ts src/lib/supabase/get-entitlement.ts
@@ -147,7 +147,7 @@ git commit -m "feat: add vendors/booths.social_links columns and types"
 - Consumes: `SocialLinks` type from Task 1 (`src/lib/types.ts`).
 - Produces: `export const socialLinksSchema: z.ZodObject<...>`, `export type SocialLinksInput = z.infer<typeof socialLinksSchema>`, `export function parseSocialLinks(data: unknown): SocialLinks`, `export function resolveSocialLinks(boothLinks: SocialLinks | null, vendorLinks: SocialLinks): SocialLinks`. `boothFormSchema` gains `social_links: socialLinksSchema.nullable().default(null)`. All consumed by Tasks 3–6.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `src/lib/schemas.test.ts`, add near the existing `describe("parsePaymentConfig", ...)` block (the file already imports from `"./schemas"` at the top — add `socialLinksSchema, parseSocialLinks, resolveSocialLinks` to that import):
 
@@ -216,12 +216,12 @@ describe("resolveSocialLinks", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm test schemas.test.ts`
 Expected: FAIL — `socialLinksSchema`/`parseSocialLinks`/`resolveSocialLinks` are not exported yet.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `src/lib/schemas.ts`, right after the existing `boothFormSchema` definition and its `parseBoothHours` helper (around where `parseBoothHours`/`parsePaymentConfig` already live), add:
 
@@ -282,12 +282,12 @@ export const boothFormSchema = z.object({
 });
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm test schemas.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/schemas.ts src/lib/schemas.test.ts
@@ -308,7 +308,7 @@ git commit -m "feat: add social links schema, parser, and resolver"
 - Consumes: `SocialLinks` type (Task 1).
 - Produces: `export function SocialLinksFields({ value, onChange, idPrefix }: { value: SocialLinks; onChange: (next: SocialLinks) => void; idPrefix: string })` — a controlled 4-input block (website/Instagram/Facebook/TikTok), consumed by Task 4 (profile) and Task 5 (booth override).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/components/social-links-fields.dom.test.tsx`:
 
@@ -349,12 +349,12 @@ describe("SocialLinksFields", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test social-links-fields`
 Expected: FAIL — `src/components/social-links-fields.tsx` doesn't exist.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `src/components/social-links-fields.tsx`:
 
@@ -442,12 +442,12 @@ export function SocialLinksFields({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test social-links-fields`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/components/social-links-fields.tsx src/components/social-links-fields.dom.test.tsx
@@ -470,7 +470,7 @@ git commit -m "feat: add reusable SocialLinksFields input component"
 - Consumes: `socialLinksSchema`, `SocialLinksInput` (Task 2); `SocialLinksFields` (Task 3); `SocialLinks` type (Task 1).
 - Produces: `export async function updateSocialLinks(input: SocialLinksInput): Promise<ActionResult>` in `profile/actions.ts`. `ProfileForm` gains a required prop `socialLinks: SocialLinks`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/app/dashboard/profile/profile-form.dom.test.tsx`:
 
@@ -538,12 +538,12 @@ describe("ProfileForm social links", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test profile-form`
 Expected: FAIL — `ProfileForm` doesn't accept `socialLinks`, no "Save links" button exists, `updateSocialLinks` isn't exported from `./actions`.
 
-- [ ] **Step 3: Implement the server action**
+- [x] **Step 3: Implement the server action**
 
 In `src/app/dashboard/profile/actions.ts`, add the import and new action:
 
@@ -594,7 +594,7 @@ export async function updateSocialLinks(
 }
 ```
 
-- [ ] **Step 4: Implement the form section**
+- [x] **Step 4: Implement the form section**
 
 In `src/app/dashboard/profile/profile-form.tsx`:
 
@@ -667,16 +667,16 @@ Add a new `Section` (placed after the existing "Stall name" section, before "Pro
 
 `FORM_ERROR_CLASS` needs adding to the existing `@/lib/utils` import (it currently imports only `FORM_LABEL_CLASS`).
 
-- [ ] **Step 5: Wire the page**
+- [x] **Step 5: Wire the page**
 
 In `src/app/dashboard/profile/page.tsx`, add `socialLinks={vendor.social_links}` to the `<ProfileForm ... />` call.
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `pnpm test profile-form`
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/app/dashboard/profile/actions.ts src/app/dashboard/profile/profile-form.tsx src/app/dashboard/profile/profile-form.dom.test.tsx src/app/dashboard/profile/page.tsx
@@ -701,7 +701,7 @@ git commit -m "feat: add vendor-level social/website links to profile page"
 - Consumes: `SocialLinksFields` (Task 3), `SocialLinks` type (Task 1), `boothFormSchema` field from Task 2.
 - Produces: `export function SocialLinksSection({ value, onChange, vendorDefaults }: { value: SocialLinks | null; onChange: (next: SocialLinks | null) => void; vendorDefaults: SocialLinks })`. `BoothForm` gains a required prop `vendorSocialLinks: SocialLinks` and `initial?.social_links?: SocialLinks | null`.
 
-- [ ] **Step 1: Write the failing test for `SocialLinksSection`**
+- [x] **Step 1: Write the failing test for `SocialLinksSection`**
 
 Create `src/app/dashboard/booths/social-links-section.dom.test.tsx`:
 
@@ -765,12 +765,12 @@ describe("SocialLinksSection", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test social-links-section`
 Expected: FAIL — `src/app/dashboard/booths/social-links-section.tsx` doesn't exist.
 
-- [ ] **Step 3: Implement `SocialLinksSection`**
+- [x] **Step 3: Implement `SocialLinksSection`**
 
 Create `src/app/dashboard/booths/social-links-section.tsx`:
 
@@ -824,12 +824,12 @@ export function SocialLinksSection({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test social-links-section`
 Expected: PASS
 
-- [ ] **Step 5: Write the failing test for `saveBooth` passing `social_links` through**
+- [x] **Step 5: Write the failing test for `saveBooth` passing `social_links` through**
 
 In `src/app/dashboard/booths/actions.test.ts`, add `social_links: null` to the `makeBooth` defaults object (so every existing call site still gets a valid `BoothFormInput`):
 
@@ -861,12 +861,12 @@ it("(f) passes social_links through to the row untouched", async () => {
 });
 ```
 
-- [ ] **Step 6: Run test to verify it fails**
+- [x] **Step 6: Run test to verify it fails**
 
 Run: `pnpm test actions.test.ts`
 Expected: FAIL — `row.social_links` is `undefined` (saveBooth doesn't read/pass it yet).
 
-- [ ] **Step 7: Implement in `saveBooth`**
+- [x] **Step 7: Implement in `saveBooth`**
 
 In `src/app/dashboard/booths/actions.ts`, in the `row` object saveBooth builds (currently ending `payment: data.payment,`), add:
 
@@ -882,12 +882,12 @@ const row = {
 };
 ```
 
-- [ ] **Step 8: Run test to verify it passes**
+- [x] **Step 8: Run test to verify it passes**
 
 Run: `pnpm test actions.test.ts`
 Expected: PASS (all existing cases plus the new one)
 
-- [ ] **Step 9: Wire `BoothForm`**
+- [x] **Step 9: Wire `BoothForm`**
 
 In `src/app/dashboard/booths/booth-form.tsx`:
 
@@ -940,7 +940,7 @@ Add a new `Section` after the existing "Payment" section (inside the same left-c
 </Section>
 ```
 
-- [ ] **Step 10: Wire the two server pages**
+- [x] **Step 10: Wire the two server pages**
 
 In `src/app/dashboard/booths/[boothId]/page.tsx`: add `social_links` to the existing `.select("id, name, image_url, is_active, hours, menu_items, payment")` call, import `parseSocialLinks` from `@/lib/schemas`, and pass two new props to `<BoothForm>`:
 
@@ -976,12 +976,12 @@ In `src/app/dashboard/booths/new/page.tsx`, add the prop to the no-`initial` cal
 
 (`vendor` in both pages comes from `requireEntitledVendor()`, whose `Vendor` type now includes `social_links` per Task 1.)
 
-- [ ] **Step 11: Full check**
+- [x] **Step 11: Full check**
 
 Run: `pnpm check`
 Expected: PASS (prettier + eslint + tsc)
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add src/app/dashboard/booths/social-links-section.tsx src/app/dashboard/booths/social-links-section.dom.test.tsx src/app/dashboard/booths/booth-form.tsx src/app/dashboard/booths/actions.ts src/app/dashboard/booths/actions.test.ts "src/app/dashboard/booths/[boothId]/page.tsx" src/app/dashboard/booths/new/page.tsx
@@ -1003,7 +1003,7 @@ git commit -m "feat: add per-booth social links override"
 - Consumes: `resolveSocialLinks`, `parseSocialLinks` (Task 2), `SocialLinks` type (Task 1).
 - Produces: `export function SocialLinksRow({ links }: { links: SocialLinks })`, rendered in the order-status page footer.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/app/order/[boothId]/[orderNumber]/social-links-row.dom.test.tsx`:
 
@@ -1046,12 +1046,12 @@ describe("SocialLinksRow", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test social-links-row`
 Expected: FAIL — the component doesn't exist.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `src/app/order/[boothId]/[orderNumber]/social-links-row.tsx`:
 
@@ -1094,12 +1094,12 @@ export function SocialLinksRow({ links }: { links: SocialLinks }) {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test social-links-row`
 Expected: PASS
 
-- [ ] **Step 5: Wire the order-status page**
+- [x] **Step 5: Wire the order-status page**
 
 In `src/app/order/[boothId]/[orderNumber]/page.tsx`:
 
@@ -1151,17 +1151,17 @@ In the JSX, in the existing footer block (`<div className="mt-auto flex flex-col
         </Link>
 ```
 
-- [ ] **Step 6: Full check**
+- [x] **Step 6: Full check**
 
 Run: `pnpm check`
 Expected: PASS
 
-- [ ] **Step 7: Run the full test suite**
+- [x] **Step 7: Run the full test suite**
 
 Run: `pnpm test`
 Expected: PASS (all suites, including the untouched existing ones)
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add "src/app/order/[boothId]/[orderNumber]/social-links-row.tsx" "src/app/order/[boothId]/[orderNumber]/social-links-row.dom.test.tsx" "src/app/order/[boothId]/[orderNumber]/page.tsx"
@@ -1176,7 +1176,7 @@ git commit -m "feat: show resolved social links on the order-status page footer"
 
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Add the entry**
+- [x] **Step 1: Add the entry**
 
 In `CHANGELOG.md`, under `## [Unreleased]` → `### Added`, add a new bullet (matching the existing bullet style/voice) after the most recent one:
 
@@ -1190,7 +1190,7 @@ In `CHANGELOG.md`, under `## [Unreleased]` → `### Added`, add a new bullet (ma
   migration `0052`).
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add CHANGELOG.md
