@@ -30,7 +30,11 @@ function loadEnvLocal(): Record<string, string> {
 }
 
 describe.skipIf(!RUN)("next_order_number concurrency (integration)", () => {
-  const env = { ...loadEnvLocal(), ...process.env };
+  // vitest.config.ts injects a dummy NEXT_PUBLIC_SUPABASE_URL into
+  // process.env for every test run (so non-integration tests don't need
+  // real credentials) — .env.local must win here or this always targets
+  // the dummy localhost value instead of the real DB.
+  const env = { ...process.env, ...loadEnvLocal() };
   const url = env.NEXT_PUBLIC_SUPABASE_URL;
   const secret = env.SUPABASE_SECRET_KEY;
 
