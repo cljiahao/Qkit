@@ -95,6 +95,14 @@ currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
 hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   for the admin/vendor upgrade-to-Pro request flow.
 - `merqo-upgrade-request.test.ts` — tests the three outcome branches.
+- `merqo-vendor-profile.ts` — `getOrCreateVendorProfile`/`upsertVendorProfile`:
+  cross-schema helper calling merqo's `get_or_create_vendor_profile`/
+  `upsert_vendor_profile` RPCs (`supabase.schema("merqo").rpc(...)`) so
+  stall name + social links read/write against the shared
+  `merqo.vendor_profile` table instead of the stale `qkit.vendors` columns.
+- `merqo-vendor-profile.test.ts` — tests the RPC call shape (schema/function
+  name, args) and that a Postgres error surfaces as a thrown `Error` with the
+  underlying message.
 - `merqo-vendor-status.ts` — `resolveVendorStatus(email, authUsers, vendors)`:
   two-step email → auth user → vendor plan lookup (vendors has no email
   column) for admin vendor search.

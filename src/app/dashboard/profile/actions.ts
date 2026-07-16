@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
 import {
+  getOrCreateVendorProfile,
+  upsertVendorProfile,
+} from "@/lib/merqo-vendor-profile";
+import {
   profileNameSchema,
   socialLinksSchema,
   type ProfileNameInput,
@@ -11,11 +15,9 @@ import {
 import type { ActionResult } from "@/lib/action-result";
 
 /**
- * Update the vendor's stall name (vendors.name). The authenticated role is
- * granted UPDATE on (name, tour_seen_at) under RLS vendors_self_update, so this
- * runs on the normal server client scoped to the caller's own row (id =
- * auth.uid()). Display name and password live on the auth user and are set
- * client-side via supabase.auth.updateUser — they don't pass through here.
+ * Update the vendor's stall name. Persisted in merqo.vendor_profile (shared
+ * across kits, see docs/superpowers/specs/2026-07-16-shared-vendor-profile-design.md)
+ * via the upsert_vendor_profile RPC — not a local qkit.vendors write.
  */
 export async function updateStallName(
   input: ProfileNameInput,
@@ -33,13 +35,19 @@ export async function updateStallName(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not signed in" };
 
-  const { error } = await supabase
-    .from("vendors")
-    .update({ name: parsed.data.name })
-    .eq("id", user.id);
-
-  if (error) {
-    console.error("updateStallName failed", error.message);
+  try {
+    const current = await getOrCreateVendorProfile(supabase, user.id, null);
+    await upsertVendorProfile(
+      supabase,
+      user.id,
+      parsed.data.name,
+      current.social_links,
+    );
+  } catch (err) {
+    console.error(
+      "updateStallName failed",
+      err instanceof Error ? err.message : err,
+    );
     return { success: false, error: "Could not save stall name" };
   }
 
@@ -49,10 +57,8 @@ export async function updateStallName(
 }
 
 /**
- * Update the vendor's profile-level default social/website links
- * (vendors.social_links). Same RLS/grant path as updateStallName — the
- * authenticated role can update its own vendors row (migration 0052 grants
- * UPDATE (social_links) explicitly).
+ * Update the vendor's profile-level default social/website links. Same
+ * merqo.vendor_profile write path as updateStallName.
  */
 export async function updateSocialLinks(
   input: SocialLinksInput,
@@ -70,13 +76,19 @@ export async function updateSocialLinks(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not signed in" };
 
-  const { error } = await supabase
-    .from("vendors")
-    .update({ social_links: parsed.data })
-    .eq("id", user.id);
-
-  if (error) {
-    console.error("updateSocialLinks failed", error.message);
+  try {
+    const current = await getOrCreateVendorProfile(supabase, user.id, null);
+    await upsertVendorProfile(
+      supabase,
+      user.id,
+      current.stall_name,
+      parsed.data,
+    );
+  } catch (err) {
+    console.error(
+      "updateSocialLinks failed",
+      err instanceof Error ? err.message : err,
+    );
     return { success: false, error: "Could not save links" };
   }
 

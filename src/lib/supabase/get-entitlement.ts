@@ -5,13 +5,19 @@ import { getUser } from "@/lib/supabase/get-user";
 import { getEntitlement, type Entitlement } from "@/lib/plan";
 import type { User } from "@supabase/supabase-js";
 import { DEFAULT_BOARD_SETTINGS, type Vendor } from "@/lib/types";
+import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
 
 /**
  * Resolve the current vendor's effective entitlement (plan + any live license).
  *
  * vendors.id === auth.users.id and licenses.vendor_id === vendors.id, so both
  * the vendor row and the license both key on user.id — they're fetched in
- * parallel (one round-trip, not two) on this hot dashboard path.
+ * parallel (one round-trip, not two) on this hot dashboard path. A THIRD,
+ * sequential round-trip follows once the vendor row is back: the
+ * merqo.vendor_profile fetch below can't join the Promise.all above because
+ * it needs to know the vendor row actually exists first — firing it
+ * unconditionally would spuriously create a merqo profile for a
+ * signed-in-but-not-yet-onboarded user (no vendors row yet).
  *
  * Defensive: if the licenses table predates migration 0010 the query errors and
  * `data` is null, so we degrade to the plan-only entitlement rather than throw.
@@ -75,6 +81,30 @@ export const loadEntitlement = cache(
     // than crash the profile/booth-form pages.
     if (vendor && !vendor.social_links) {
       vendor.social_links = {};
+    }
+
+    // Stall name + social links now live in merqo.vendor_profile (shared
+    // across kits) — qkit.vendors.name/social_links are stale leftovers
+    // from before the cutover, not yet dropped (see 2026-07-16 plan Task 3
+    // note). Overwrite with the shared source of truth so every consumer of
+    // `vendor` (profile page, booth forms, order-status page) sees the
+    // current value without knowing the storage moved.
+    if (vendor) {
+      // Deliberately NOT try/caught (unlike the order-status page's use of
+      // this same call) — this call now makes the ENTIRE authenticated
+      // dashboard hard-dependent on the merqo schema being reachable, since
+      // loadEntitlement backs every dashboard page's data load. That's a
+      // conscious tradeoff, matching this function's existing fail-loud
+      // convention for the vendor read above: swallowing an error here
+      // could misroute a real vendor to /onboarding, which is worse than
+      // surfacing the error boundary.
+      const profile = await getOrCreateVendorProfile(
+        supabase,
+        vendor.id,
+        vendor.name,
+      );
+      vendor.name = profile.stall_name;
+      vendor.social_links = profile.social_links;
     }
 
     const licenseExpiresAt = vendor ? (license?.expires_at ?? null) : null;
