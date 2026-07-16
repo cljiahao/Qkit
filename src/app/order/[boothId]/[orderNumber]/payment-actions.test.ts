@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { claimPayment, unclaimPayment } from "./payment-actions";
+import {
+  claimPayment,
+  unclaimPayment,
+  getPaymentStatus,
+} from "./payment-actions";
 
 // Mock the service client. Two chains hang off from("orders"):
 //   write:   update().eq().eq().eq().eq().neq().select("id") → { data, error }
@@ -175,5 +179,34 @@ describe("unclaimPayment", () => {
       success: false,
       error: "The stall already confirmed your payment.",
     });
+  });
+});
+
+describe("getPaymentStatus", () => {
+  it("returns null for an invalid token without creating a client", async () => {
+    const res = await getPaymentStatus(BOOTH, ORDER, "not-a-uuid");
+    expect(res).toBeNull();
+    expect(createServiceClientMock).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the token doesn't match any order", async () => {
+    reread.mockResolvedValue({ data: null });
+    const res = await getPaymentStatus(BOOTH, ORDER, TOKEN);
+    expect(res).toBeNull();
+  });
+
+  it("returns the payment status for a matching token", async () => {
+    reread.mockResolvedValue({ data: { payment_status: "confirmed" } });
+    const res = await getPaymentStatus(BOOTH, ORDER, TOKEN);
+    expect(res).toBe("confirmed");
+  });
+
+  it("returns null and logs on a real read error", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    reread.mockResolvedValue({ data: null, error: { message: "boom" } });
+    const res = await getPaymentStatus(BOOTH, ORDER, TOKEN);
+    expect(res).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith("getPaymentStatus failed", "boom");
+    errorSpy.mockRestore();
   });
 });
