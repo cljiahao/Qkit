@@ -12,7 +12,12 @@ import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
  *
  * vendors.id === auth.users.id and licenses.vendor_id === vendors.id, so both
  * the vendor row and the license both key on user.id — they're fetched in
- * parallel (one round-trip, not two) on this hot dashboard path.
+ * parallel (one round-trip, not two) on this hot dashboard path. A THIRD,
+ * sequential round-trip follows once the vendor row is back: the
+ * merqo.vendor_profile fetch below can't join the Promise.all above because
+ * it needs to know the vendor row actually exists first — firing it
+ * unconditionally would spuriously create a merqo profile for a
+ * signed-in-but-not-yet-onboarded user (no vendors row yet).
  *
  * Defensive: if the licenses table predates migration 0010 the query errors and
  * `data` is null, so we degrade to the plan-only entitlement rather than throw.
@@ -85,6 +90,14 @@ export const loadEntitlement = cache(
     // `vendor` (profile page, booth forms, order-status page) sees the
     // current value without knowing the storage moved.
     if (vendor) {
+      // Deliberately NOT try/caught (unlike the order-status page's use of
+      // this same call) — this call now makes the ENTIRE authenticated
+      // dashboard hard-dependent on the merqo schema being reachable, since
+      // loadEntitlement backs every dashboard page's data load. That's a
+      // conscious tradeoff, matching this function's existing fail-loud
+      // convention for the vendor read above: swallowing an error here
+      // could misroute a real vendor to /onboarding, which is worse than
+      // surfacing the error boundary.
       const profile = await getOrCreateVendorProfile(
         supabase,
         vendor.id,

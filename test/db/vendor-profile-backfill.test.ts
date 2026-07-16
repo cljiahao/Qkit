@@ -22,7 +22,15 @@ describe("0053_vendor_profile_backfill migration", () => {
     );
   });
 
-  it("is idempotent (ON CONFLICT DO NOTHING, not a blind insert)", () => {
-    expect(sql).toMatch(/on conflict\s*\(\s*vendor_id\s*\)\s*do nothing/);
+  it("is idempotent and self-healing (ON CONFLICT DO UPDATE, not a blind insert or a permanent skip)", () => {
+    expect(sql).toMatch(
+      /on conflict\s*\(\s*vendor_id\s*\)\s*do update\s+set\s+social_links\s*=\s*excluded\.social_links/,
+    );
+  });
+
+  it("only overwrites social_links when the existing row is still the empty default and qkit has real data (never clobbers a value already set through the new write path)", () => {
+    expect(sql).toMatch(
+      /where\s+merqo\.vendor_profile\.social_links\s*=\s*'\{\}'::jsonb\s+and\s+excluded\.social_links\s*<>\s*'\{\}'::jsonb/,
+    );
   });
 });

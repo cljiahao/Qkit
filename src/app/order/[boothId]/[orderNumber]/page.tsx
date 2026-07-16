@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
-import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+import {
+  getOrCreateVendorProfile,
+  type VendorProfile,
+} from "@/lib/merqo-vendor-profile";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Ticket } from "@/components/ticket";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
@@ -79,9 +82,28 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   // Vendor-level default links, so a booth without its own override still
   // shows the vendor's. Small extra query (not embeddable via Promise.all
   // above — it depends on booth.vendor_id) but this page isn't a hot path.
-  const vendorProfile = booth?.vendor_id
-    ? await getOrCreateVendorProfile(supabase, booth.vendor_id, null)
-    : null;
+  //
+  // Unlike get-entitlement's fail-loud convention, a failure here must NOT
+  // take down the page: this is a customer holding a valid, paid order link,
+  // and the vendor-level links are a decorative footer, not load-bearing.
+  // Degrade to booth-only links (or none) on any RPC error rather than throw
+  // — same "don't strand a customer on a DB/network blip" philosophy as the
+  // orderError handling above.
+  let vendorProfile: VendorProfile | null = null;
+  if (booth?.vendor_id) {
+    try {
+      vendorProfile = await getOrCreateVendorProfile(
+        supabase,
+        booth.vendor_id,
+        null,
+      );
+    } catch (err) {
+      console.error(
+        "order-status: vendor profile read failed",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
   const socialLinks = resolveSocialLinks(
     booth?.social_links ? parseSocialLinks(booth.social_links) : null,
     parseSocialLinks(vendorProfile?.social_links ?? null),
