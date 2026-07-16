@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-52 files, `0000` through `0051`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0051` tail; skimmed by filename/theme otherwise. The
+54 files, `0000` through `0053`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0053` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -74,7 +74,7 @@ schema evolved in five broad waves:
   expression didn't cast to the enum. `0043` restores `anon` INSERT on
   `events` (landing-page analytics silently broke under `0041`'s explicit
   grants).
-- **Order-token, hours & feedback-integrity (`0044`-`0051`)** —
+- **Order-token, hours, feedback-integrity & social links (`0044`-`0053`)** —
   `0044_order_token_and_hours.sql` adds `orders.access_token` (an
   unguessable per-order UUID closing the sequential-order-number
   enumeration leak on the status page) and `booth_open` (a SQL mirror of
@@ -95,7 +95,12 @@ schema evolved in five broad waves:
   adds a trigger that calls `merqo.emit_metric` on an order's first
   transition into `completed`, so sibling Merqo-suite products (e.g.
   loopkit) can react to qkit order completions without qkit knowing who's
-  listening.
+  listening. `0052_vendor_social_links.sql` adds `vendors.social_links`
+  (vendor-wide default) and `booths.social_links` (nullable per-booth
+  whole-object override). `0053_booth_for_order_social_links.sql` extends
+  `get_booth_for_order` to resolve and return the effective social links
+  (booth override, else vendor default) so the customer menu page can show
+  them even while the booth is closed.
 
 ## Connectivity
 

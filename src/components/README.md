@@ -93,6 +93,23 @@ label })`: stashes a past order's lines via `stashReorder` and navigates to
   `/sw.js` (best-effort) so ready-order notifications can use
   `registration.showNotification` (required on Android Chrome) and the app
   is installable as a PWA.
+- `social-icons.tsx` — `SOCIAL_LINK_FIELDS`: the shared vendor social-link
+  field list (website/instagram/facebook/tiktok) — real brand marks via
+  `@icons-pack/react-simple-icons` (`color="default"`, the platform's
+  official color) for every field but `website`, which uses a generic
+  Lucide `Globe`. Consumed by both `social-links-fields.tsx` (the edit form)
+  and `social-links-row.tsx` (the read-only display).
+- `social-links-fields.tsx` — `SocialLinksFields({ value, onChange,
+idPrefix })`: the vendor profile/booth-edit form inputs for the four social
+  fields, labeled with `social-icons.tsx`'s marks.
+- `social-links-fields.dom.test.tsx` — RTL tests for `SocialLinksFields`.
+- `social-links-row.tsx` — `SocialLinksRow({ links })`: read-only icon row
+  of a vendor's set social links, each on a fixed light chip (not the page's
+  theme background) so single-color marks like TikTok's stay legible in
+  dark mode too; renders nothing when `links` is empty. Shown on the
+  order-status page footer and on a closed booth's menu-page banner.
+- `social-links-row.dom.test.tsx` — RTL tests for `SocialLinksRow`'s
+  empty/partial-link rendering.
 - `support-form.tsx` — `SupportForm()`: vendor→admin help-request widget —
   pick a category (pass/payment/pro/other) + free-text body, posts via
   `submitSupportMessage`.

@@ -28,7 +28,10 @@ the current (non-legacy) customer ordering entry point.
   retryable `ExpiredCode variant="error"`) from an unresolved code (hard
   `ExpiredCode`), computes open/closed state via `isBoothOpen`/
   `nextOpenLabel`, and renders the booth header, `RecentOrders`, a closed
-  banner when applicable, and `OrderForm`.
+  banner when applicable (with the booth's resolved social links, so a
+  stranded customer can still reach the vendor — `get_booth_for_order`
+  resolves booth-override-vs-vendor-default, migration `0053`), and
+  `OrderForm`.
 - `loading.tsx` — animated skeleton (title bar + 5 placeholder menu rows)
   shown while `page.tsx`'s server fetch resolves — the QR-scan hot path,
   where event-site network can be slow.
