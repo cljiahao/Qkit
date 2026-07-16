@@ -1,27 +1,10 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { bearerOk } from "@/lib/merqo-auth";
 import { computeMerqoMetrics } from "@/lib/merqo-metrics";
 import type { Plan } from "@/lib/types";
 
 export const revalidate = 0;
-
-function bearerOk(request: Request): boolean {
-  const secret = process.env.MERQO_METRICS_SECRET;
-  // never allow an unset secret to authorize
-  if (!secret) return false;
-  const header = request.headers.get("authorization") ?? "";
-  const prefix = "Bearer ";
-  if (!header.startsWith(prefix)) return false;
-  // Constant-time compare so the endpoint doesn't leak the secret one byte at a
-  // time via response timing. timingSafeEqual requires equal-length buffers, so
-  // gate on length first (length is not itself sensitive here).
-  const provided = Buffer.from(header.slice(prefix.length));
-  const expected = Buffer.from(secret);
-  return (
-    provided.length === expected.length && timingSafeEqual(provided, expected)
-  );
-}
 
 export async function GET(request: Request) {
   if (!bearerOk(request)) {

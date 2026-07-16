@@ -1,28 +1,14 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
+import {
+  bearerOk,
+  listAllAuthUsers,
+  findAuthUserByEmail,
+} from "@/lib/merqo-auth";
 import { resolveUpgradeOutcome } from "@/lib/merqo-upgrade-request";
 
 export const revalidate = 0;
-
-// Verbatim copy of api/merqo/metrics/route.ts's bearerOk — keep in lockstep.
-function bearerOk(request: Request): boolean {
-  const secret = process.env.MERQO_METRICS_SECRET;
-  // never allow an unset secret to authorize
-  if (!secret) return false;
-  const header = request.headers.get("authorization") ?? "";
-  const prefix = "Bearer ";
-  if (!header.startsWith(prefix)) return false;
-  // Constant-time compare so the endpoint doesn't leak the secret one byte at a
-  // time via response timing. timingSafeEqual requires equal-length buffers, so
-  // gate on length first (length is not itself sensitive here).
-  const provided = Buffer.from(header.slice(prefix.length));
-  const expected = Buffer.from(secret);
-  return (
-    provided.length === expected.length && timingSafeEqual(provided, expected)
-  );
-}
 
 const bodySchema = z.object({ email: z.string().email() });
 
@@ -44,10 +30,7 @@ export async function POST(request: Request) {
 
   const supabase = await createServiceClient();
 
-  // Known limitation: listUsers paginates but we only fetch page 1 (1000 users max).
-  // Once qkit has >1000 auth users, vendors past this page silently resolve as
-  // not_found. TODO: implement pagination to fetch all pages.
-  const usersRes = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const usersRes = await listAllAuthUsers(supabase, "merqo upgrade-request");
   if (usersRes.error) {
     console.error("merqo upgrade-request: read failed", usersRes.error.message);
     return NextResponse.json(
@@ -55,15 +38,10 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   }
-  if (usersRes.data?.users.length === 1000) {
-    console.error(
-      "merqo upgrade-request: listUsers returned a full page (1000) — pagination not implemented, some vendors past this page may resolve as not_found",
-    );
-  }
 
-  const key = parsed.data.email.toLowerCase();
-  const authUser = (usersRes.data?.users ?? []).find(
-    (u) => u.email?.toLowerCase() === key,
+  const authUser = findAuthUserByEmail(
+    usersRes.data?.users ?? [],
+    parsed.data.email,
   );
 
   const vendorRes = authUser
