@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/server";
+import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Ticket } from "@/components/ticket";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
@@ -78,16 +79,12 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   // Vendor-level default links, so a booth without its own override still
   // shows the vendor's. Small extra query (not embeddable via Promise.all
   // above — it depends on booth.vendor_id) but this page isn't a hot path.
-  const { data: vendorRow } = booth?.vendor_id
-    ? await supabase
-        .from("vendors")
-        .select("social_links")
-        .eq("id", booth.vendor_id)
-        .maybeSingle()
-    : { data: null };
+  const vendorProfile = booth?.vendor_id
+    ? await getOrCreateVendorProfile(supabase, booth.vendor_id, null)
+    : null;
   const socialLinks = resolveSocialLinks(
     booth?.social_links ? parseSocialLinks(booth.social_links) : null,
-    parseSocialLinks(vendorRow?.social_links),
+    parseSocialLinks(vendorProfile?.social_links ?? null),
   );
 
   const items = parseOrderItems(order.items);
