@@ -6,7 +6,7 @@ The Claude Code agent harness for this project: hooks, project skills, and the h
 
 ## Contents
 
-- `harness.json` — templateCentral drift-tracking manifest: records `templatecentral_version` (5.7.0), the stack adaptation note ("Next 16 + Supabase — not better-auth/Drizzle"), a running `review_note` log of what was/wasn't adopted from later templateCentral versions, and `seeded_files` (per-file SHA-256 `origin_hash` for `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/verify.sh`, and two `SKILL.md` files) used to detect drift against the upstream template.
+- `harness.json` — templateCentral drift-tracking manifest: records `templatecentral_version` (5.7.0), the stack adaptation note ("Next 16 + Supabase — not better-auth/Drizzle"), a running `review_note` log of what was/wasn't adopted from later templateCentral versions, `adoWiki`/`richReadme` (per-folder-README opt-ins from 5.10/5.11 — both explicit booleans, not left implicit), and `seeded_files` (per-file SHA-256 `origin_hash` for `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/verify.sh`, and two `SKILL.md` files) used to detect drift against the upstream template.
 - `hooks/` — shell scripts invoked by the hook commands wired in `settings.json` (currently just `verify.sh`).
 - `settings.json` — the hook wiring (`PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop`, `SessionStart`) plus the `permissions.allow/ask/deny` lists and `skillOverrides` that disable the templateCentral `add`/`scaffold`/`migrate` skills for this repo; see Connectivity below for what each hook actually runs.
 - `skills/` — this project's slash-command skills (`changelog`, `next-verify`, `security-scan`, `supabase-migrate`).
