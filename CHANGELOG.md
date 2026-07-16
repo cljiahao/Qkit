@@ -78,6 +78,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A free item in an otherwise-priced order showed "$0.00" instead of
+  "Free"**, on both the customer order-status page and the vendor live
+  board — the price column was gated on the order having _any_ priced
+  item, not on the line itself, so a deliberately-free line (e.g. "extra
+  sauce") inherited a price display it never had.
+- **Price/Cost menu-item fields on the booth edit form truncated their own
+  placeholder** ("Price (optiona…") — narrowed to "Price (opt.)"/"Cost
+  (opt.)" and widened the field slightly.
 - **Social link icons now show each platform's real logo and brand color**
   instead of generic Lucide glyphs (TikTok was a plain music-note icon, not
   the TikTok mark). Instagram/Facebook/TikTok now render via Simple Icons

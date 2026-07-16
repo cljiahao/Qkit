@@ -64,6 +64,22 @@ describe("OrderCard", () => {
     expect(screen.getByText("Total")).toBeInTheDocument();
   });
 
+  it("shows Free (not $0.00) for an unpriced item in an otherwise-priced order", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          items: [
+            { menuItemId: "m1", name: "Kopi", price_cents: 350, quantity: 1 },
+            { menuItemId: "m2", name: "Extra sauce", quantity: 1 },
+          ],
+          total_cents: 350,
+        })}
+      />,
+    );
+    expect(screen.getByText("Free")).toBeInTheDocument();
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
+
   it("advances preparing -> ready and relabels the button", async () => {
     const user = userEvent.setup();
     advanceOrder.mockResolvedValue({ success: true, status: "ready" });

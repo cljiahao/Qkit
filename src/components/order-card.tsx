@@ -230,7 +230,9 @@ export function OrderCard({
                 </span>
                 {priced && (
                   <span className="shrink-0 font-mono text-muted-foreground">
-                    {formatPrice((item.price_cents ?? 0) * item.quantity)}
+                    {item.price_cents == null
+                      ? "Free"
+                      : formatPrice(item.price_cents * item.quantity)}
                   </span>
                 )}
               </div>
