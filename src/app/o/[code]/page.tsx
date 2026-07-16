@@ -1,12 +1,17 @@
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
-import { parseMenuItems, parseBoothHours } from "@/lib/schemas";
+import {
+  parseMenuItems,
+  parseBoothHours,
+  parseSocialLinks,
+} from "@/lib/schemas";
 import { isBoothOpen, nextOpenLabel } from "@/lib/hours";
 import { parseRemaining } from "@/lib/stock";
 import { OrderForm } from "@/components/order/order-form";
 import { RecentOrders } from "@/components/order/recent-orders";
 import { ExpiredCode } from "@/components/order/expired-code";
 import { MediaImage } from "@/components/media-image";
+import { SocialLinksRow } from "@/components/social-links-row";
 
 export const revalidate = 0;
 
@@ -24,6 +29,7 @@ const boothForOrder = z.object({
   servable: z.boolean(),
   menu_items: z.unknown(),
   remaining: z.unknown(),
+  social_links: z.unknown(),
 });
 
 export default async function OrderEntryPage({ params }: Props) {
@@ -53,6 +59,7 @@ export default async function OrderEntryPage({ params }: Props) {
     : nextOpenLabel({ is_active: booth.is_active, hours }, nowIso);
   const closed = !open || !booth.servable;
   const remaining = parseRemaining(booth.remaining);
+  const socialLinks = parseSocialLinks(booth.social_links);
 
   return (
     <div className="mx-auto min-h-screen max-w-lg px-5 pb-28 pt-8">
@@ -89,6 +96,14 @@ export default async function OrderEntryPage({ params }: Props) {
               ? "This booth isn't accepting orders right now."
               : `${reopen ?? "Not taking orders at the moment."} You can browse the menu below.`}
           </p>
+          {Object.keys(socialLinks).length > 0 && (
+            <div className="mt-3 flex flex-col items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Reach {booth.name} here
+              </p>
+              <SocialLinksRow links={socialLinks} />
+            </div>
+          )}
         </div>
       )}
       <OrderForm

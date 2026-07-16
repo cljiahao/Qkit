@@ -50,9 +50,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Instagram/Facebook/TikTok links on their profile page — applied by default
   to every booth they own, with an optional per-booth override on that
   booth's own edit page. Shown to customers on the order-status page footer,
-  after they've placed an order (kept off the menu/ordering page by design).
-  Free tier, no plan gate (`vendors.social_links`/`booths.social_links`,
-  migration `0052`).
+  after they've placed an order. Free tier, no plan gate
+  (`vendors.social_links`/`booths.social_links`, migration `0052`).
+- **Social links also shown on a closed booth's menu page**, inside the
+  "not taking orders" banner, so a customer who lands on a closed booth can
+  still reach the vendor to ask why instead of hitting a dead end
+  (`get_booth_for_order` now resolves and returns `social_links`, migration
+  `0053`).
 
 ### Security
 
@@ -68,6 +72,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Social link icons now show each platform's real logo and brand color**
+  instead of generic Lucide glyphs (TikTok was a plain music-note icon, not
+  the TikTok mark). Instagram/Facebook/TikTok now render via Simple Icons
+  (`@icons-pack/react-simple-icons`) on a fixed light chip so the marks stay
+  legible in dark mode too; used on both the vendor profile form and every
+  customer-facing social row.
 - **Vendor stats reviews scale with your own data, not the whole platform.** The
   reviews query leaned on RLS alone to scope to your booths and had no
   `feedback(booth_id)` index, so it walked platform-wide customer feedback each

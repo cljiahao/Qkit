@@ -1,42 +1,22 @@
 "use client";
 
-import { Globe, Instagram, Facebook, Music2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FORM_LABEL_CLASS } from "@/lib/utils";
+import { SOCIAL_LINK_FIELDS } from "@/components/social-icons";
 import type { SocialLinks } from "@/lib/types";
 
-const FIELDS: {
-  key: keyof SocialLinks;
-  label: string;
-  placeholder: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    key: "website",
-    label: "Website",
-    placeholder: "https://your-stall.com",
-    icon: Globe,
-  },
-  {
-    key: "instagram",
-    label: "Instagram",
-    placeholder: "https://instagram.com/yourstall",
-    icon: Instagram,
-  },
-  {
-    key: "facebook",
-    label: "Facebook",
-    placeholder: "https://facebook.com/yourstall",
-    icon: Facebook,
-  },
-  {
-    key: "tiktok",
-    label: "TikTok",
-    placeholder: "https://tiktok.com/@yourstall",
-    icon: Music2,
-  },
-];
+const PLACEHOLDERS: Record<keyof SocialLinks, string> = {
+  website: "https://your-stall.com",
+  instagram: "https://instagram.com/yourstall",
+  facebook: "https://facebook.com/yourstall",
+  tiktok: "https://tiktok.com/@yourstall",
+};
+
+const FIELDS = SOCIAL_LINK_FIELDS.map((field) => ({
+  ...field,
+  placeholder: PLACEHOLDERS[field.key],
+}));
 
 export function SocialLinksFields({
   value,

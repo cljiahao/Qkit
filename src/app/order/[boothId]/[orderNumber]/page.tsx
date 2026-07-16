@@ -19,7 +19,7 @@ import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
 import { PayPanel } from "./pay-panel";
 import { EarnLink } from "./earn-link";
-import { SocialLinksRow } from "./social-links-row";
+import { SocialLinksRow } from "@/components/social-links-row";
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;
@@ -217,7 +217,14 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             className="h-11 rounded-xl px-5"
           />
         )}
-        <SocialLinksRow links={socialLinks} />
+        {Object.keys(socialLinks).length > 0 && (
+          <div className="flex flex-col items-center gap-2 pt-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Follow {booth?.name}
+            </p>
+            <SocialLinksRow links={socialLinks} />
+          </div>
+        )}
         <Link
           href={`/order/${boothId}`}
           className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
