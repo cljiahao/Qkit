@@ -19,9 +19,24 @@
 -- Old qkit.vendors columns are dropped in a LATER, separate migration once
 -- the code swap (Tasks 4-6) is deployed and verified — not here, see design
 -- spec's qkit-cutover section step 4.
-insert into merqo.vendor_profile (vendor_id, stall_name, social_links)
-select id, name, social_links from qkit.vendors
-on conflict (vendor_id) do update
-  set social_links = excluded.social_links
-  where merqo.vendor_profile.social_links = '{}'::jsonb
-    and excluded.social_links <> '{}'::jsonb;
+--
+-- Guarded: qkit's own CI/local `supabase start` builds a fresh Postgres from
+-- only qkit's migrations, with no merqo schema at all — the unguarded INSERT
+-- hard-failed `supabase start` there. Real environments apply the merqo
+-- migrations first (this migration's own header says so), so the table
+-- exists there and the backfill runs as intended; this only short-circuits
+-- when it's genuinely absent.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'merqo' and table_name = 'vendor_profile'
+  ) then
+    insert into merqo.vendor_profile (vendor_id, stall_name, social_links)
+    select id, name, social_links from qkit.vendors
+    on conflict (vendor_id) do update
+      set social_links = excluded.social_links
+      where merqo.vendor_profile.social_links = '{}'::jsonb
+        and excluded.social_links <> '{}'::jsonb;
+  end if;
+end $$;

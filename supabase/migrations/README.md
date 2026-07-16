@@ -108,7 +108,9 @@ schema evolved in five broad waves:
   `DO NOTHING`, so it repairs a vendor whose profile row was lazily created
   empty by `merqo.get_or_create_vendor_profile` before this migration ran,
   without ever clobbering a value already set through the new shared-profile
-  write path.
+  write path — guarded to no-op when `merqo.vendor_profile` doesn't exist
+  (qkit's own CI/local `supabase start` builds a fresh DB from only qkit's
+  migrations, with no merqo schema at all).
 
 ## Connectivity
 
