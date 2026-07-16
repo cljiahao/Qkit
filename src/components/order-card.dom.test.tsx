@@ -90,6 +90,20 @@ describe("OrderCard", () => {
     expect(advanceOrder).toHaveBeenCalledWith("o1");
   });
 
+  it("does not flash a Paid badge when completing an order that never required payment", async () => {
+    const user = userEvent.setup();
+    advanceOrder.mockResolvedValue({ success: true, status: "completed" });
+    render(
+      <OrderCard
+        order={makeOrder({ status: "ready", payment_status: "not_required" })}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
+
+    expect(screen.queryByText(/^Paid$/i)).not.toBeInTheDocument();
+  });
+
   it("cancels via the confirm dialog", async () => {
     const user = userEvent.setup();
     render(<OrderCard order={makeOrder({ status: "preparing" })} />);

@@ -109,8 +109,16 @@ export function OrderCard({
         toast.error(res.error);
       } else {
         setStatus(res.status);
-        // Completing auto-confirms an outstanding payment (see buildAdvancePatch).
-        if (res.status === "completed") setConfirmedLocally(true);
+        // Mirrors buildAdvancePatch: only a payment that was actually
+        // outstanding gets auto-confirmed on completion. A `not_required`
+        // order has nothing to confirm — flagging it anyway would pop a
+        // stray "Paid" badge into the aging-clock's spot for one frame.
+        if (
+          res.status === "completed" &&
+          (order.payment_status === "pending" ||
+            order.payment_status === "claimed")
+        )
+          setConfirmedLocally(true);
       }
     });
   }
