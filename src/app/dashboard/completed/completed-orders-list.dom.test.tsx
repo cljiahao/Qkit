@@ -1,0 +1,138 @@
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { CompletedOrdersList } from "./completed-orders-list";
+import type { BoardOrder } from "@/lib/types";
+
+vi.mock("@/app/dashboard/order-actions", () => ({
+  advanceOrder: vi.fn(),
+  confirmOrderPayment: vi.fn(),
+  cancelOrder: vi.fn(),
+}));
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+
+function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
+  return {
+    id: `o-${Math.random()}`,
+    booth_id: "b1",
+    order_number: "0007",
+    customer_name: "Ada",
+    items: [{ menuItemId: "m1", name: "Kopi", price_cents: 350, quantity: 2 }],
+    status: "completed",
+    total_cents: 700,
+    payment_status: "not_required",
+    payment_method_kind: null,
+    paid_at: null,
+    created_at: new Date(0).toISOString(),
+    ready_at: new Date(0).toISOString(),
+    completed_at: new Date(0).toISOString(),
+    updated_at: new Date(0).toISOString(),
+    idempotency_key: null,
+    ...overrides,
+  };
+}
+
+const BOOTHS = [{ id: "b1", name: "Kopi Corner" }];
+
+describe("CompletedOrdersList", () => {
+  it("shows an empty state when there are no completed orders", () => {
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={[]}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.getByText("No completed orders yet")).toBeInTheDocument();
+  });
+
+  it("shows a retry banner on a load error instead of an empty state", () => {
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={[]}
+        loadError={true}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load your completed orders",
+    );
+  });
+
+  it("renders a card per completed order", () => {
+    const orders = [
+      makeOrder({ id: "o1", order_number: "0001" }),
+      makeOrder({ id: "o2", order_number: "0002" }),
+    ];
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={orders}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(screen.getByText("#0002")).toBeInTheDocument();
+  });
+
+  it("only shows a booth name chip when the vendor has more than one booth", () => {
+    const order = makeOrder({ id: "o1" });
+    const { rerender } = render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={[order]}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.queryByText("Kopi Corner")).not.toBeInTheDocument();
+
+    rerender(
+      <CompletedOrdersList
+        booths={[...BOOTHS, { id: "b2", name: "Ice Cream Cart" }]}
+        orders={[order]}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.getByText("Kopi Corner")).toBeInTheDocument();
+  });
+
+  it("paginates beyond the first page", async () => {
+    const user = userEvent.setup();
+    const orders = Array.from({ length: 13 }, (_, i) =>
+      makeOrder({ id: `o${i}`, order_number: String(i).padStart(4, "0") }),
+    );
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={orders}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    // Default pageSize is 12 — the 13th order starts on page 2.
+    expect(screen.queryByText("#0012")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(screen.getByText("#0012")).toBeInTheDocument();
+  });
+
+  it("notes the history cap when the fetch hit historyLimit", () => {
+    const orders = [makeOrder({ id: "o1" })];
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={orders}
+        loadError={false}
+        historyLimit={1}
+      />,
+    );
+    expect(
+      screen.getByText(/most recent 1 completed orders/),
+    ).toBeInTheDocument();
+  });
+});

@@ -16,11 +16,15 @@ describe("DashboardNav", () => {
     tier: "free" as const,
   };
 
-  it("renders Orders, Booths, and Stats as inline nav links, with no Plan link", () => {
+  it("renders Orders, Completed, Booths, and Stats as inline nav links, with no Plan link", () => {
     render(<DashboardNav {...baseProps} />);
     expect(screen.getByRole("link", { name: "Orders" })).toHaveAttribute(
       "href",
       "/dashboard",
+    );
+    expect(screen.getByRole("link", { name: "Completed" })).toHaveAttribute(
+      "href",
+      "/dashboard/completed",
     );
     expect(screen.getByRole("link", { name: "Booths" })).toHaveAttribute(
       "href",

@@ -79,7 +79,9 @@ prompt, metric })`: compact rating widget posting to
 - `paginated.tsx` — `Paginated({ children, pageSize, variant, label })`:
   client-side pager over pre-rendered rows — `variant="pager"` (prev/next +
   "x–y of N", for admin tables) or `"more"` (Load more / Show less, for
-  feeds).
+  feeds). The visible rows sit in their own `className`-styled wrapper,
+  separate from the prev/next or Load-more row — a grid `className` (e.g.
+  the completed-orders page) lays out only the rows, not the pager controls.
 - `pro-lock.tsx` — `ProLock({ feature, label })`: an inline upgrade nudge
   linking to `/dashboard/plan`, logging an `upgrade_cta` event tagged with
   the specific gated `feature` for funnel analysis.

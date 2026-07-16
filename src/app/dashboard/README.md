@@ -2,13 +2,14 @@
 
 ## Purpose
 
-The authenticated vendor area — a shared header/nav shell wrapping the live order board plus sub-routes for booth management, billing, account, board preferences, analytics, and support.
+The authenticated vendor area — a shared header/nav shell wrapping the live order board plus sub-routes for booth management, order history, billing, account, board preferences, analytics, and support.
 
 ## Contents
 
 - `booths/` — booth list, create/edit form, and printable QR-code sub-routes.
-- `dashboard-nav.dom.test.tsx` — RTL/jsdom tests for `DashboardNav`: asserts the inline nav links (Orders/Booths/Stats, no Plan link) and the account-menu item order (Profile, Board settings, Plan, Get help, Feedback, then Sign out).
-- `dashboard-nav.tsx` — `DashboardNav({ signOut, vendorName, avatarUrl, tier })` client component: the sticky header row. Left side is a mobile burger (`Menu`/`X`) plus inline `Orders`/`Booths`/`Stats` links (`LINKS` array) from `sm` up, with active-route highlighting via `isActive`/`usePathname`; right side is an account dropdown (avatar with `initials()` fallback, a `TierBadge` reflecting the vendor's plan tier) linking to Profile, Board settings, Plan, and opening `Get help`/`Feedback` `Sheet` drawers (rendering `SupportForm`/`FeedbackForm`) before a `signOut` form submit.
+- `completed/` — paginated history of the vendor's completed orders (own README).
+- `dashboard-nav.dom.test.tsx` — RTL/jsdom tests for `DashboardNav`: asserts the inline nav links (Orders/Completed/Booths/Stats, no Plan link) and the account-menu item order (Profile, Board settings, Plan, Get help, Feedback, then Sign out).
+- `dashboard-nav.tsx` — `DashboardNav({ signOut, vendorName, avatarUrl, tier })` client component: the sticky header row. Left side is a mobile burger (`Menu`/`X`) plus inline `Orders`/`Completed`/`Booths`/`Stats` links (`LINKS` array) from `sm` up, with active-route highlighting via `isActive`/`usePathname`; right side is an account dropdown (avatar with `initials()` fallback, a `TierBadge` reflecting the vendor's plan tier) linking to Profile, Board settings, Plan, and opening `Get help`/`Feedback` `Sheet` drawers (rendering `SupportForm`/`FeedbackForm`) before a `signOut` form submit.
 - `feedback/` — vendor-facing "share feedback about qkit" page.
 - `layout.tsx` — `DashboardLayout({ children })` server component: resolves `user`/`vendor`/`entitlement` via `loadEntitlement()`, redirects to `/login` if signed out, `/admin` if the user `isAdmin()`, `/onboarding` if there's no vendor row yet (before the header shell paints, avoiding a blank-flash). Renders the sticky header with `DashboardNav`, a `signOut` server action, and `DashboardTour` (onboarding tour, gated on `vendor.tour_seen_at`).
 - `loading.tsx` — `Loading()`: the segment's Suspense fallback, a centered spinning `Loader2`, shown while a nested page is slow to resolve.
@@ -27,7 +28,7 @@ The authenticated vendor area — a shared header/nav shell wrapping the live or
 
 ## Connectivity
 
-`layout.tsx` gates every route under `/dashboard` (auth/vendor/admin redirects) and renders `dashboard-nav.tsx` around `{children}`; `page.tsx` is the `/dashboard` index route and renders `realtime-order-board.tsx`, which calls the order-mutation actions in `order-actions.ts` indirectly via `OrderCard` and subscribes through `@/hooks/use-realtime-orders`. `dashboard-nav.tsx` links out to `booths/`, `plan/`, `profile/`, `settings/`, `stats/`, `feedback/` — the dashboard's sub-routes for booth management, billing, account, board preferences, analytics, and support respectively. `tour-actions.ts` is called by `DashboardTour` (in `@/components`) once the tour completes.
+`layout.tsx` gates every route under `/dashboard` (auth/vendor/admin redirects) and renders `dashboard-nav.tsx` around `{children}`; `page.tsx` is the `/dashboard` index route and renders `realtime-order-board.tsx`, which calls the order-mutation actions in `order-actions.ts` indirectly via `OrderCard` and subscribes through `@/hooks/use-realtime-orders`. `dashboard-nav.tsx` links out to `completed/`, `booths/`, `plan/`, `profile/`, `settings/`, `stats/`, `feedback/` — the dashboard's sub-routes for order history, booth management, billing, account, board preferences, analytics, and support respectively. `tour-actions.ts` is called by `DashboardTour` (in `@/components`) once the tour completes.
 
 ## Parent
 

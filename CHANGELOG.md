@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Completed-orders history**: the live board drops a ticket the moment
+  it's marked picked up, which is right for the active queue but left no
+  way to pull it back up. A new `/dashboard/completed` page shows a
+  paginated (12/page), newest-first history of a vendor's completed orders
+  (capped at the most recent 500) — the same read-only ticket, no action
+  buttons since a completed order is terminal.
 - **Rotatable booth QR short code**: each booth's QR encodes a short
   `/o/{code}` URL backed by a vendor-rotatable 12-char code. A **Regenerate QR**
   button (behind a booth-naming confirmation) mints a new code, instantly

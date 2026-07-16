@@ -36,8 +36,8 @@ export function Paginated({
   if (variant === "more") {
     const visible = items.slice(0, shown);
     return (
-      <div className={className}>
-        {visible}
+      <div>
+        <div className={className}>{visible}</div>
         {(shown < total || shown > pageSize) && (
           <div className="mt-2 flex gap-4 text-xs font-medium">
             {shown < total && (
@@ -70,8 +70,8 @@ export function Paginated({
   const visible = items.slice(start, start + pageSize);
 
   return (
-    <div className={className}>
-      {visible}
+    <div>
+      <div className={className}>{visible}</div>
       {total > pageSize && (
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
           <span className="font-mono">

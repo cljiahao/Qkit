@@ -38,6 +38,7 @@ import type { Tier } from "@/lib/plan";
 
 const LINKS = [
   { href: "/dashboard", label: "Orders" },
+  { href: "/dashboard/completed", label: "Completed" },
   { href: "/dashboard/booths", label: "Booths" },
   { href: "/dashboard/stats", label: "Stats" },
 ];
