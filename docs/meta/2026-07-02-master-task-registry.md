@@ -77,9 +77,18 @@ auth.uid())` + owns_booth — broad migration, do carefully w/ pgTAP), T29 (admi
 T31/T32 (resilience logging), T37 (types mirror — low value; prefer `supabase gen types`),
 T38 (dead order_status pending/confirmed — enum, risky), T40 (config hygiene batch),
 T41 (coverage). Dedupe: R1 ok/err/fail, D3 uuidSchema, D4 cents, R6 WEEKDAYS.
-**Needs USER decision:** **T24** (cancel-then-refund semantics: does a confirmed-paid
-order that's cancelled stay in revenue / show a refund trail / go negative?).
 **Own cycle:** T42/T43 (templateCentral 5.0→5.6 + checked-in skills refresh).
+
+**T24 SHIPPED** (2026-07-03, commit `af1bc5c`, stale in this doc until
+2026-07-17): resolved as pure bookkeeping policy, no payment-gateway work
+needed — a confirmed-paid order that's later cancelled is excluded from
+`revenue_cents` but tracked separately via `refunds_cents`/`refundCount`
+(`src/lib/stats.ts`), never silently dropped. Independently confirmed
+2026-07-17 against Square/Toast/StoreHub conventions (order-state vs
+payment-state kept separate, cancelled-after-paid always a distinct tagged
+state, never deleted) and against PayNow's own mechanics (no rail-level
+refund exists — a PayNow "refund" is always a manual vendor transfer, so
+there's nothing to build programmatically here today).
 
 ## P1 — do first
 
@@ -168,7 +177,7 @@ Discards `error` on both reads → transient failure yields `{revenue:0,...}` 20
 **Correctness / money**
 
 - **T23** `payment_method_kind` unconstrained TEXT, forgeable via direct `booths` PATCH; Row type claims a union → add `CHECK (… IN ('pointer','paynow','stripe'))`. **F16/T1-type**
-- **T24** `cancelOrder` doesn't clear `payment_status` → confirmed-paid-then-cancelled drops from revenue, no refund trail. Decide refund/negative-revenue semantics. **F18/money-agent**
+- ~~**T24**~~ **SHIPPED 2026-07-03** (`af1bc5c`) — see the Progress section above. **F18/money-agent**
 - **T25** `can_create_booth` checks `expires_at` but not `valid_from` — entitlement predicate already **diverged** from `booth_servable`. Fix via shared `vendor_entitled()` SQL helper. **F19 = R2** (HIGH-value dedupe: fixes the live drift).
 - **T26** Admin `setVendorPlan(pro,amount>0)` resubmit → duplicate `payments` rows (revenue double-count); no idempotency. **F20**
 - **T27** `logEvent` metadata unbounded (V7); status-page `boothId`/`orderNumber` no Zod (V8, degrades safe); menu numeric fields no `.max()` → `total_cents` INTEGER overflow (V4); cart array no `.max()` (V5). **V4/V5/V7/V8**
