@@ -163,12 +163,82 @@ it here so it isn't silently skipped.
 
 ---
 
+## Track E — Board hands-off + labeling (2026-07-18, from a follow-up Manfred discussion)
+
+Three concrete pain points from a deeper conversation about time-cost, not
+new speculation: the board needing constant tending, finding a specific
+order in history, and hand-writing (illegibly) on every cup.
+
+### PR-E1: Vendor-configurable auto-clear for ready-but-uncollected orders — effort M
+
+Confirmed gap: `ready → completed` (`src/lib/orders.ts:29`) only happens on
+a manual "Mark Picked Up" tap today — nothing auto-clears it. **Decided
+2026-07-18**: accept the simple trade-off — auto-flip `ready` orders to
+`completed` after a vendor-configurable timeout, same pattern as the
+existing ticket-aging settings (`board_settings.aging_min`/`overdue_min`).
+Default timeout still needs a real number — not worth deep-researching (not
+a googleable fact, it's Manfred-specific), better to ask him directly how
+long a drink typically sits before collection, or just ship a conservative
+default (2-3 min, not the originally-floated 15s, which reasoning suggests
+is too aggressive for most walk-up timing) and let him tune it.
+
+**Files:** `src/lib/types.ts` (`BoardSettings` — add the new field),
+`src/app/dashboard/settings/` (settings form), a sweep mechanism — needs a
+small implementation decision during the PR: a client-triggered periodic
+server action (matching the existing `usePolling` pattern already in use)
+scoped to the open dashboard's booths is the lighter-weight option vs. a
+new Postgres cron job; lean toward the former unless there's a reason the
+sweep needs to run even when no vendor has the dashboard open.
+
+**Acceptance:** ready orders older than the configured timeout flip to
+completed automatically; setting defaults sensibly and is vendor-editable;
+fulfilment-rate stat's now-approximate meaning is an accepted trade-off,
+not a bug.
+
+### PR-E2: Search/filter on the completed-orders page — effort S
+
+Confirmed gap: `completed-orders-list.tsx` is a plain paginated grid today,
+zero search. Add a filter input (order number, and maybe customer name if
+collected) so a vendor can quickly find a specific ticket to double-confirm
+a dispute. No open design question — straightforward client-side filter
+given `Paginated` is already client-side.
+
+**Files:** `src/app/dashboard/completed/completed-orders-list.tsx`.
+
+**Acceptance:** typing an order number narrows the grid to matching orders;
+clearing the input restores the full paginated list.
+
+### PR-E3: Printed name + order-number label for the cup — effort L, needs its own design pass
+
+Same underlying capability as the previously-speculative "kitchen ticket
+printer" idea (Track C's era, `docs/business/2026-07-17-vendor-expansion-
+and-integrations-strategy.md`) — now concretely validated: hand-writing on
+every cup costs time and is illegible across different handwriting. This
+is the **first hardware integration anywhere in the ecosystem** (confirmed
+— no ESC/POS or any printer code exists yet in any kit), so like Track C,
+don't PR-size this from a bullet list — run it through a real design pass
+first: printer model/connection method (USB/Bluetooth/network — matters a
+lot for a mobile cart), label size/content (name + order number minimum;
+does it need the drink spec too?), and whether it prints automatically on
+order-placed or on a vendor tap.
+
+---
+
 ## Suggested order
 
-1. **PR-A1** (close guard) — smallest, ships a real risk-fix immediately.
-2. **PR-B1 → PR-B2 → PR-B3** (walk-up entry → unified board → one-tap) — the
-   core day-to-day workflow Manfred will actually feel.
-3. **QA-D1** (payment proof) — run this anytime once PR-A1/B-track are live
-   enough for a real test session; doesn't block or get blocked by Track C.
-4. **Track C design pass**, then its PRs — start the brainstorming session
-   once Track B is merged, so the board it plugs into is stable.
+1. **PR-B1 → PR-B2 → PR-B3** (walk-up entry → unified board → one-tap) —
+   the core day-to-day workflow Manfred will actually feel. Fold **PR-A1**
+   (close guard) into B3, not a standalone first PR — there's no quick-close
+   button to guard until B3 introduces the first vendor quick-tap controls;
+   building the guard before then would be guarding a risk that doesn't
+   exist yet.
+2. **PR-E1 → PR-E2** (auto-clear → completed-page search) — small, no
+   dependency on the B-track, can slot in parallel or right after.
+3. **QA-D1** (payment proof) — run this anytime once B-track is live enough
+   for a real test session; doesn't block or get blocked by Track C/E3.
+4. **Track C design pass** and **PR-E3's design pass** — both genuinely
+   need more input before PR-sizing (Track C: Manfred's answer on the
+   physical scan mechanic, relevant to other vendor archetypes not his own
+   cart; E3: printer model/connection method, the ecosystem's first
+   hardware integration). Run once Track B is merged, so whatever they plug
+   into is stable.
