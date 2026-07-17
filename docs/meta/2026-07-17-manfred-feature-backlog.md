@@ -75,6 +75,39 @@ digital kiosk UI. effort XL — hardware design (tokens, magnetic reader,
 sticker printer) is outside qkit's current software-only scope; the digital
 kiosk UI half could ship independently as a stepped order-builder flow.
 
+**Update (2026-07-18):** Manfred is already independently working with a
+3D-printing vendor on interactive physical order-build tabs (Japanese-style
+physical ordering) — real, in-progress hardware effort on his side, not
+speculative. He's explicit this is about **human interaction and
+liveliness at the booth** (weddings/corp events especially) — customers
+physically play with the tabs to build their drink, not a self-serve
+kiosk replacing interaction. Framed his own question as: could qkit read
+the finished arrangement via RFID, or computer vision on the assembled
+tabs?
+
+**qkit's actual scope here is narrower than it sounds** — Manfred's
+collaborator owns the physical tab design; qkit's job is just the capture
+step (read the finished arrangement → submit an order), since everything
+downstream (order appears on the board, sticker prints) is already Track
+B / Track E3 from the Phase 1 job board, not new work.
+
+**Capture mechanism — recommend QR/barcode or NFC per tab, not open
+computer vision.** CV interpreting a photo of hand-arranged physical
+objects has real failure modes outdoors (variable lighting across a
+wedding day, angle, tabs overlapping, motion blur) — a misread means a
+wrong drink made, worse than the illegible-handwriting problem this is
+meant to fix. A small QR/barcode printed on each tab gets the same
+"scan the physical arrangement" result with far higher reliability, and
+reuses qkit's existing QR infrastructure entirely — this is really just
+the token-price-encoding scheme F5 already needs, applied to reading
+instead of just pricing. NFC tags (~$0.05-0.20/tag, no battery) plus a
+cheap dedicated reader (~$15-30) at the booth is the more robust option
+still, sidesteps lighting/angle entirely — Web NFC's Android-Chrome-only
+limitation doesn't matter here since the reader lives at the booth, not
+in the customer's phone. Needs a real prototype-testing pass once
+Manfred's physical side is further along before committing engineering
+time to either.
+
 ---
 
 ## P3 — differentiators, explore after core loop is proven
