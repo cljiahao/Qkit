@@ -17,6 +17,8 @@ Cross-cutting project-management docs — roadmap, audit findings, and the conso
 
 Referenced from `AGENTS.md` ("Plan of record") alongside `docs/superpowers/plans/2026-06-05-qkit-core.md`. The master task registry consolidates and supersedes the two audit-findings docs as the actionable backlog; the roadmap is the earlier, higher-level planning document both audits were later run against. The Manfred feature backlog is a separate, parallel track — new product features from vendor input, not remediation of existing code. The Phase 1 job board turns that backlog into sequenced, mergeable PRs and is the current active work queue for the Manfred pilot.
 
+**Higher-order view:** this folder is qkit's own detailed backlog. For how qkit's work fits alongside loopkit/paykit/merqo hub — cross-kit sequencing, latency/security between kits, domain/subscription decisions — see `Merqo Business/docs/business/2026-07-17-merqo-roadmap.md` (sibling registries: `paykit/docs/meta/2026-07-17-paykit-task-registry.md`, `merqo/docs/meta/2026-07-17-merqo-hub-task-registry.md`).
+
 ## Parent
 
 [docs](../README.md)
