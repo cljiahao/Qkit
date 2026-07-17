@@ -145,11 +145,14 @@ diffing against templateCentral 5.11's scaffold `eslint.config.mjs`. Added
 matching this project's existing convention), reusing the `@typescript-eslint`
 plugin instance `eslint-config-next` already registers rather than adding a
 second direct dependency on it. Caught one real dead import on first run
-(`OrderStatusBadge` in the order-status page), now removed. Also fixed a gap
-introduced 2026-07-16 in an earlier same-day commit: `Write(...)` ask-rules for
-the governance files below had been dropped as "redundant" with `Edit(...)`,
-but `Edit`/`Write` are separate permission-scoped tools — that silently let a
-full-file `Write` to `AGENTS.md`/`CLAUDE.md`/etc. skip the ask gate. Restored.
+(`OrderStatusBadge` in the order-status page), now removed.
+
+**Permission-rule correction (2026-07-17):** the 2026-07-16 entry above added
+separate `Write(...)` ask-rules alongside `Edit(...)` for the governance files,
+believing `Edit`/`Write` were independently matched. Verified this is wrong:
+the permission-rule matcher covers `Write(path)` under `Edit(path)` — only
+`Edit(...)` is needed. The redundant `Write(...)` entries were removed from
+`.claude/settings.json`, back to `Edit(...)`-only.
 
 ## AI Harness
 
@@ -168,8 +171,8 @@ Task) so common work doesn't prompt; `deny` covers secret reads/edits (`.env.loc
 and other `.env.<env>` variants, `./secrets/**` — `.env.example` is the one
 whitelisted env file) and irreversible ops (`rm -rf`, `git push --force`/`-f`,
 `git reset --hard`, `git clean -fd/-fx`, `git filter-branch`, ref-delete). `ask`
-gates both `Edit(...)` and `Write(...)` (two separate tools — a rule on one
-does not cover the other) on the medium-security governance files: `AGENTS.md`,
+gates `Edit(...)` (covers both Edit and Write calls) on the medium-security
+governance files: `AGENTS.md`,
 `CLAUDE.md`, `docs/constitution.md`, `.claude/harness.json`, `.claude/settings.json`,
 `.claude/settings.local.json`. Deny always wins over ask/allow (enforced even
 under bypass); it's a guardrail, not a sandbox — prefix-matched and
