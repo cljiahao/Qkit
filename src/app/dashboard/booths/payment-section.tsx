@@ -137,24 +137,32 @@ export function PaymentSection({
           </div>
           <div className="space-y-2">
             <Label htmlFor="pn-uen" className={FORM_LABEL_CLASS}>
-              UEN
+              UEN or mobile number
             </Label>
             <Input
               id="pn-uen"
-              value={paynow?.uen ?? ""}
-              placeholder="53312345A"
+              value={paynow?.mobile ?? paynow?.uen ?? ""}
+              placeholder="53312345A or +6591234567"
               className="h-12 rounded-xl"
-              onChange={(e) =>
+              onChange={(e) => {
+                const value = e.target.value;
+                // A leading "+" is the only thing that distinguishes the two
+                // formats (mobile requires "+65...", UEN never has a "+"), so
+                // every keystroke re-decides which field this belongs in and
+                // explicitly clears the other — no stale dual-field state.
+                const isMobile = value.startsWith("+");
                 onChange({
                   kind: "paynow",
                   payee_name: paynow?.payee_name ?? "",
-                  uen: e.target.value || undefined,
-                })
-              }
+                  uen: isMobile ? undefined : value || undefined,
+                  mobile: isMobile ? value || undefined : undefined,
+                });
+              }}
             />
             <p className="text-xs text-muted-foreground">
-              Your business PayNow UEN. Customers scan a QR with the order total
-              already filled in.
+              Start with + for a mobile number (+65XXXXXXXX), otherwise your
+              business UEN. Customers scan a QR with the order total already
+              filled in.
             </p>
           </div>
         </div>

@@ -45,6 +45,41 @@ describe("PaymentSection", () => {
     });
   });
 
+  it("emits a paynow config with mobile when the value starts with +", () => {
+    const onChange = vi.fn();
+    render(<Host initial={null} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("radio", { name: /PayNow/i }));
+    fireEvent.change(screen.getByLabelText(/Payee name/i), {
+      target: { value: "Cart" },
+    });
+    fireEvent.change(screen.getByLabelText(/UEN/i), {
+      target: { value: "+6591234567" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      kind: "paynow",
+      payee_name: "Cart",
+      mobile: "+6591234567",
+    });
+  });
+
+  it("clears uen when the same field switches to a mobile-shaped value", () => {
+    const onChange = vi.fn();
+    render(
+      <Host
+        initial={{ kind: "paynow", payee_name: "Cart", uen: "53312345A" }}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/UEN/i), {
+      target: { value: "+6591234567" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      kind: "paynow",
+      payee_name: "Cart",
+      mobile: "+6591234567",
+    });
+  });
+
   it("emits null when 'No online payment' is selected", () => {
     const onChange = vi.fn();
     render(
