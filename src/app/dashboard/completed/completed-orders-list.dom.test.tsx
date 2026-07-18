@@ -81,7 +81,7 @@ describe("CompletedOrdersList", () => {
     expect(screen.getByText("#0002")).toBeInTheDocument();
   });
 
-  it("only shows a booth name chip when the vendor has more than one booth", () => {
+  it("only shows a booth flag when the vendor has more than one booth", () => {
     const order = makeOrder({ id: "o1" });
     const { rerender } = render(
       <CompletedOrdersList
@@ -91,7 +91,7 @@ describe("CompletedOrdersList", () => {
         historyLimit={500}
       />,
     );
-    expect(screen.queryByText("Kopi Corner")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Kopi Corner")).not.toBeInTheDocument();
 
     rerender(
       <CompletedOrdersList
@@ -101,7 +101,7 @@ describe("CompletedOrdersList", () => {
         historyLimit={500}
       />,
     );
-    expect(screen.getByText("Kopi Corner")).toBeInTheDocument();
+    expect(screen.getByTitle("Kopi Corner")).toBeInTheDocument();
   });
 
   it("paginates beyond the first page", async () => {

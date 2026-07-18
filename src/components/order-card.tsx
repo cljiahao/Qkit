@@ -34,7 +34,7 @@ import {
 import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
-import { Banknote, ChevronDown, Clock, Zap } from "lucide-react";
+import { Banknote, Bookmark, ChevronDown, Clock, Zap } from "lucide-react";
 import type { BoardOrder, OrderStatus } from "@/lib/types";
 
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
@@ -214,11 +214,21 @@ export function OrderCard({
                     className="size-4 shrink-0 text-muted-foreground"
                     aria-hidden="true"
                   />
+                  {boothName && (
+                    <span title={boothName} className="inline-flex shrink-0">
+                      <Bookmark
+                        className="size-4"
+                        style={{ color: boothColor(order.booth_id) }}
+                        fill="currentColor"
+                        aria-label={boothName}
+                      />
+                    </span>
+                  )}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {order.customer_name}
                 </p>
-                <p className="text-[0.6rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                <p className="mt-1.5 text-[0.55rem] font-medium uppercase tracking-wider text-muted-foreground/50">
                   Tap to bump
                 </p>
               </button>
@@ -253,6 +263,16 @@ export function OrderCard({
                   aria-label="Manually bumped to the front of the queue"
                 />
               )}
+              {boothName && (
+                <span title={boothName} className="inline-flex shrink-0">
+                  <Bookmark
+                    className="size-4"
+                    style={{ color: boothColor(order.booth_id) }}
+                    fill="currentColor"
+                    aria-label={boothName}
+                  />
+                </span>
+              )}
             </p>
             <p className="truncate text-sm text-muted-foreground">
               {order.customer_name}
@@ -262,15 +282,6 @@ export function OrderCard({
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <OrderStatusBadge status={status} />
           <PaymentBadge status={payStatus} />
-          {boothName && (
-            <span className="inline-flex max-w-[8rem] items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
-              <span
-                className="size-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: boothColor(order.booth_id) }}
-              />
-              <span className="truncate">{boothName}</span>
-            </span>
-          )}
         </div>
       </div>
 
