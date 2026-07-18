@@ -163,11 +163,11 @@ describe("OrderCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the booth flag when a name is given", () => {
+  it("renders the booth banner when a name is given", () => {
     render(<OrderCard order={makeOrder()} boothName="Kopi Cart" />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.getByTitle("Kopi Cart")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Cart")).toBeInTheDocument();
   });
 });
 

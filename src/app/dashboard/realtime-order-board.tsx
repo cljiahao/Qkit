@@ -262,10 +262,11 @@ export function RealtimeOrderBoard({
             </SelectContent>
           </Select>
         )}
-        {/* Status-rank/bump grouping (preparing before ready, bumped first)
-            always wins — this only flips the FIFO tie-break within a group,
-            so a rush-hour vendor can check "what's waited longest" without
-            losing that priority structure. */}
+        {/* Status-agnostic on purpose — a rush-hour vendor triaging "what's
+            waited longest" needs an old ready-but-unclaimed order to
+            surface too, not stay pinned below every preparing order just
+            because of its status. A bumped order still always leads either
+            way (see sortActiveOrders). */}
         <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
           {(
             [

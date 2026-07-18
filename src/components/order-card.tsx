@@ -183,20 +183,21 @@ export function OrderCard({
         wash,
       )}
     >
-      {/* A folder-tab-style booth indicator, flush against the card's own
-          left edge (`.ticket` is already position:relative) — same
-          boothColor() hash already driving the filter tabs, so a staffer's
-          "this colour = my booth" association carries onto the card. Width
-          matches the header row's own left inset (px-4) so it sits inside
-          that gutter instead of covering the order number. Only rendered in
-          multi-booth view; a single-booth card has nothing to disambiguate. */}
+      {/* A full-width booth banner instead of squeezing the name into a
+          corner icon/tab — those blocked or truncated past readability. In
+          normal flow (not absolutely positioned) so it can't overlap the
+          name/number block below it, and the full card width means a
+          booth's actual name reads at a glance instead of being guessed
+          from a dot. Same boothColor() hash as the filter tabs/dropdown, so
+          the colour association still carries onto the card. Only rendered
+          in multi-booth view. */}
       {boothName && (
-        <div
-          className="absolute top-6 left-0 flex h-16 w-4 items-center justify-center overflow-hidden rounded-r-md border border-l-0 bg-card"
-          style={{ borderColor: boothColor(order.booth_id) }}
-          title={boothName}
-        >
-          <span className="rotate-180 text-[0.5rem] font-semibold tracking-wider text-muted-foreground uppercase [writing-mode:vertical-rl]">
+        <div className="flex items-center gap-1.5 rounded-t-xl border-b border-border/60 bg-secondary/40 px-4 py-1.5">
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: boothColor(order.booth_id) }}
+          />
+          <span className="truncate text-xs font-semibold tracking-wide text-foreground uppercase">
             {boothName}
           </span>
         </div>

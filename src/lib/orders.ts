@@ -135,20 +135,20 @@ export function buildAdvancePatch(
 export type AgeSortOrder = "earliest" | "latest";
 
 /**
- * Sort active orders for the vendor board: in-progress (preparing) before
- * ready, then a manually bumped order (vendor's explicit "help this one now"
- * override — most-recently-bumped first) before non-bumped, then FIFO within
- * a status by created_at (oldest first by default). created_at is used
+ * Sort active orders for the vendor board display: a manually bumped order
+ * (vendor's explicit "help this one now" override — most-recently-bumped
+ * first) always leads, then every order by created_at — oldest first
+ * ("earliest", the default) or newest first ("latest"). created_at is used
  * rather than order_number because order numbers are per-booth and not
  * globally ordered, and is never touched by a bump — ticket-aging display
  * stays accurate regardless of bump state.
  *
- * `order` only flips the final FIFO tie-break (oldest-first vs
- * newest-first) — it never reorders across the status-rank/bump grouping
- * above, since those reflect actual kitchen priority (what needs action
- * next), not just recency. "latest" lets a vendor spot orders that just
- * came in without losing the preparing-before-ready / bumped-first
- * structure. Pure + non-mutating.
+ * Deliberately status-agnostic: an old "ready" order sitting unclaimed is
+ * exactly the kind of "been waiting longest" case a vendor wants surfaced
+ * during a rush, so it can't be pinned below every "preparing" order just
+ * because of its status. (The kitchen's own build-priority — what to cook
+ * next — is a separate concern; see `ordersAheadOf`, which stays
+ * status-aware for the customer-facing wait estimate.) Pure + non-mutating.
  */
 export function sortActiveOrders(
   orders: BoardOrder[],
@@ -156,8 +156,6 @@ export function sortActiveOrders(
 ): BoardOrder[] {
   const dir = order === "latest" ? -1 : 1;
   return [...orders].sort((a, b) => {
-    const rank = STATUS_RANK[a.status] - STATUS_RANK[b.status];
-    if (rank !== 0) return rank;
     const aBumped = a.priority_bumped_at != null;
     const bBumped = b.priority_bumped_at != null;
     if (aBumped !== bBumped) return aBumped ? -1 : 1;
@@ -175,12 +173,15 @@ export function sortActiveOrders(
 }
 
 /**
- * How many orders rank strictly ahead of `target` in the same queue —
- * mirrors sortActiveOrders's own comparison (status rank, then bump state,
- * then created_at/bump time) rather than reimplementing the ordering, so a
- * wait estimate always matches what the vendor's board actually shows.
- * Excludes `target` itself and excludes exact ties (undefined ordering,
- * safer to under-count by one than over-promise). Pure.
+ * How many orders rank strictly ahead of `target` in the kitchen's own
+ * build queue — status rank (preparing before ready), then bump state, then
+ * created_at/bump time. This is the customer-facing wait estimate, a
+ * separate concern from the vendor board's display order
+ * (`sortActiveOrders`, which is deliberately status-agnostic so a vendor
+ * can triage by pure age): what matters here is what the kitchen still has
+ * to *do*, not how the board is currently sorted on screen. Excludes
+ * `target` itself and excludes exact ties (undefined ordering, safer to
+ * under-count by one than over-promise). Pure.
  */
 export function ordersAheadOf(
   orders: {

@@ -125,10 +125,12 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   excluding `access_token`), `TERMINAL_STATUSES`/`isTerminal`, `ADVANCE` (legal
   forward-status map + button label), `orderAgeTone`/`elapsedMinutes`/
   `elapsedLabel`, `buildAdvancePatch` (status transition patch, auto-confirming
-  payment on completion), `sortActiveOrders` (status-rank/bump-priority sort;
-  takes an `AgeSortOrder`, `"earliest"` default or `"latest"`, that only flips
-  the FIFO tie-break within a group — never reorders across status/bump
-  priority), `orderProgressIndex` (customer 3-segment progress bar).
+  payment on completion), `sortActiveOrders` (vendor-board display sort,
+  status-agnostic by design — a bumped order leads, then every order by
+  `created_at`; takes an `AgeSortOrder`, `"earliest"` default or `"latest"`),
+  `ordersAheadOf` (the separate, status-aware kitchen-priority queue used
+  for the customer-facing wait estimate), `orderProgressIndex` (customer
+  3-segment progress bar).
 - `orders.test.ts` — tests status transitions, patch-building (including the
   payment auto-confirm-on-complete rule), sorting, and age/label formatting.
 - `payments/` — PayNow QR generation and the payment-method adapter registry
