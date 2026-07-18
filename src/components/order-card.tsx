@@ -34,7 +34,7 @@ import {
 import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
-import { Banknote, Bookmark, ChevronDown, Clock, Zap } from "lucide-react";
+import { Banknote, ChevronDown, Clock, Zap } from "lucide-react";
 import type { BoardOrder, OrderStatus } from "@/lib/types";
 
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
@@ -181,19 +181,26 @@ export function OrderCard({
       className={cn(
         "flex w-full flex-col shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
         wash,
-        // A per-booth colour stripe — same boothColor() hash already used for
-        // the filter tabs and the booth pill below, so a staffer's "this
-        // colour = my booth" association carries straight over onto the
-        // card. Only rendered when boothName is (i.e. the vendor actually
-        // has multiple booths); a single-booth card has nothing to
-        // disambiguate. Thin on purpose so it doesn't compete with `wash`,
-        // which carries the higher-priority overdue/aging/payment signal.
-        boothName && "border-l-4",
       )}
-      style={
-        boothName ? { borderLeftColor: boothColor(order.booth_id) } : undefined
-      }
     >
+      {/* A folder-tab-style booth indicator, flush against the card's own
+          left edge (`.ticket` is already position:relative) — same
+          boothColor() hash already driving the filter tabs, so a staffer's
+          "this colour = my booth" association carries onto the card. Width
+          matches the header row's own left inset (px-4) so it sits inside
+          that gutter instead of covering the order number. Only rendered in
+          multi-booth view; a single-booth card has nothing to disambiguate. */}
+      {boothName && (
+        <div
+          className="absolute top-6 left-0 flex h-16 w-4 items-center justify-center overflow-hidden rounded-r-md border border-l-0 bg-card"
+          style={{ borderColor: boothColor(order.booth_id) }}
+          title={boothName}
+        >
+          <span className="rotate-180 text-[0.5rem] font-semibold tracking-wider text-muted-foreground uppercase [writing-mode:vertical-rl]">
+            {boothName}
+          </span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
         {/* The name/number block doubles as the bump affordance: tapping it
             prompts a confirmation instead of sitting as a separate icon
@@ -214,16 +221,6 @@ export function OrderCard({
                     className="size-4 shrink-0 text-muted-foreground"
                     aria-hidden="true"
                   />
-                  {boothName && (
-                    <span title={boothName} className="inline-flex shrink-0">
-                      <Bookmark
-                        className="size-4"
-                        style={{ color: boothColor(order.booth_id) }}
-                        fill="currentColor"
-                        aria-label={boothName}
-                      />
-                    </span>
-                  )}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {order.customer_name}
@@ -262,16 +259,6 @@ export function OrderCard({
                   className="size-4 shrink-0 text-primary"
                   aria-label="Manually bumped to the front of the queue"
                 />
-              )}
-              {boothName && (
-                <span title={boothName} className="inline-flex shrink-0">
-                  <Bookmark
-                    className="size-4"
-                    style={{ color: boothColor(order.booth_id) }}
-                    fill="currentColor"
-                    aria-label={boothName}
-                  />
-                </span>
               )}
             </p>
             <p className="truncate text-sm text-muted-foreground">
