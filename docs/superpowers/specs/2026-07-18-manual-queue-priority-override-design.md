@@ -1,23 +1,27 @@
 # Manual Queue Priority Override — Design
 
 **Date:** 2026-07-18
-**Status:** DRAFT — pending founder review, not yet approved
+**Status:** Decided (2026-07-18) — ready for an implementation plan
 **Depends on:** Track B (walk-up order entry / unified board), Phase 1 job board (`docs/meta/2026-07-17-phase1-manfred-pilot-job-board.md`)
 
-## Open questions (resolve before this becomes an implementation plan)
+## Decisions
 
-1. Does a bump apply once (order jumps to the front, then ages normally from
-   its new position) or does it pin the order permanently above all new
-   arrivals until served? This spec recommends **once** (see Decisions) but
-   it's a real product call, not an engineering one.
-2. Should there be any limit on how many times/how often an order can be
-   bumped (abuse/mistake guard), or is a single vendor-facing booth low
-   enough stakes that no limit is needed?
-3. Is a visible "bumped" marker on the card enough transparency, or does
-   Manfred want an audit trail (who bumped, when) — current recommendation
-   is no audit trail for v1 (single-vendor-account booths have no
-   multi-staff identity to attribute it to yet, see qkit's separately
-   identified multi-staff-access gap).
+1. **One-time bump, not a permanent pin.** Order jumps to the front of its
+   status lane, then ages normally from its new position — matches "help
+   someone right now" better than "this person is always first."
+2. **No limit on repeated bumping for v1.** Reasoned through explicitly:
+   the abuse-surface is tiny (one trusted vendor at their own booth, not a
+   marketplace of strangers), and a hard cap can't distinguish genuine
+   repeated need from habit — e.g. several elderly guests needing help
+   within the same busy hour at one event would hit a cap for the same
+   reason it exists to stop abuse. The already-decided visible bump
+   marker (Decision 3 below) gives passive visibility if bumping ever
+   became routine, without blocking legitimate repeated use. Revisit only
+   if real usage shows it's actually a problem.
+3. **Visible marker, no audit trail for v1.** Single-vendor-account booths
+   have no multi-staff identity to attribute a bump to yet — add
+   attribution only once multi-staff access (separately identified gap)
+   actually exists.
 
 ## Problem
 
@@ -52,12 +56,11 @@ already does.
    descending), then the existing FIFO logic applies unchanged among the
    rest. `created_at` itself is never touched — ticket-aging display stays
    accurate regardless of bump state.
-3. **Bump applies once, not pinned** — recommended over a permanent pin.
-   A pin would let one bumped order silently block the queue indefinitely
-   if forgotten about; a one-time jump-to-front, after which the order
+3. **Bump applies once, not pinned** — decided over a permanent pin. A pin
+   would let one bumped order silently block the queue indefinitely if
+   forgotten about; a one-time jump-to-front, after which the order
    resumes normal aging/FIFO behavior from its new front-of-lane position,
-   self-limits the override's blast radius. (Open question 1 — confirm
-   with Manfred before building.)
+   self-limits the override's blast radius.
 4. **UI: a single "Bump to front" button, not drag-to-reorder.** Matches
    this codebase's existing one-tap-action philosophy (`ADVANCE`,
    `cancelOrder` are both single buttons, no drag interactions exist
@@ -154,6 +157,7 @@ indicator) driven by `order.priority_bumped_at != null`.
 - Drag-to-reorder (see Decision 4).
 - Multi-staff attribution of who bumped (see Decision 6, and qkit's
   separately-tracked multi-staff-access gap).
-- Any limit/cooldown on repeated bumping (open question 2).
+- Any limit/cooldown on repeated bumping — decided against for v1, see
+  Decisions above.
 - Applying this concept to the completed-orders history view — bumping
   only makes sense for active-lane ordering.

@@ -1,8 +1,7 @@
 # Live Wait-Time Estimate — Design
 
 **Date:** 2026-07-18
-**Status:** DRAFT — pending founder review. Two open questions below are
-genuinely unresolved and shouldn't be guessed past.
+**Status:** Decided (2026-07-18) — ready for an implementation plan
 
 ## Summary
 
@@ -85,23 +84,15 @@ a hybrid before knowing B's simpler version is actually insufficient.
    a sense it's tracked, not second precision) — e.g. "~5 min" not
    "4 min 37 sec".
 
-## Open questions — need your call, not a guess
+## Decisions (2026-07-18)
 
-1. **Minimum sample size before showing an estimate at all.** A booth's
-   first order of the day (or first-ever order) has zero recent history —
-   showing a made-up number is worse than showing nothing. Needs a
-   concrete threshold (e.g. "don't show until at least 3 orders have
-   completed today") — I don't have a principled number to pick here,
-   this is a judgment call.
-2. **Does it update live, or is it a one-time estimate shown at
-   order-placed and left stale?** The board already has realtime wiring
-   (`use-realtime-orders`) — reusing that for a live-updating estimate is
-   architecturally straightforward, but it's real added complexity (the
-   status-poller already exists for status changes; would this piggyback
-   on the same poll, or need its own recompute trigger). If a stale
-   one-time estimate at order-placed is good enough for v1 (customer
-   mostly checks once, not continuously), that's meaningfully less work —
-   worth deciding intent before scoping the implementation.
+1. **Minimum sample size: ~10 recent completed orders** before showing an
+   estimate at all. Below that, show nothing rather than a guess — a
+   booth's first event of the day gets no wrong number displayed.
+2. **Live-updating, not a one-time snapshot.** Reuse the existing realtime
+   wiring (`use-realtime-orders`) rather than a stale estimate frozen at
+   order-placed time — more honest if the queue speeds up or slows down
+   after the customer last looked.
 
 ## Out of scope for this spec
 

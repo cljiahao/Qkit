@@ -1,39 +1,28 @@
 # Menu Customization Choice Price Delta — Design
 
 **Date:** 2026-07-18
-**Status:** Draft — pending founder review (open questions below block approval)
+**Status:** Decided (2026-07-18) — ready for an implementation plan
 **Depends on:** none structurally, but touches the same `place_order` function
 hardened in `2026-07-01-order-path-hardening-design.md` — must preserve that
 spec's core invariant (price is computed server-side from the stored menu,
 never trusted from the client).
 
-## Open questions (resolve before implementation)
+## Decisions on the open questions
 
-1. **Should `cost_delta_cents` be required whenever `price_delta_cents` is
-   set, or fully optional (default 0)?** Leaving it optional means a vendor
-   charging +$1 for oat milk without recording oat milk's extra cost will
-   show an inflated margin% on that line — same class of approximation the
-   codebase already accepts elsewhere (e.g. cancelled-order revenue
-   bookkeeping), but worth a founder call rather than a silent default.
-   This spec recommends optional/default-0, matching how the base item's
-   own `cost_cents` is itself optional today — flagged, not decided.
-2. **Is "same choice, different price depending on the item it's attached
-   to" a real need?** (e.g. oat milk +$1 on a latte, +$0.50 on filter
-   coffee). Confirmed via code read: choices are defined once per
-   `option_groups` array on each menu item independently (there's no
-   shared/global choice library — every item's option groups are its own
-   copy), so this is **already possible today** without any schema change:
-   a vendor sets a different delta on that item's own copy of the "Oat
-   milk" choice. Noting this explicitly so it isn't assumed to need
-   cross-item pricing logic — it doesn't.
-3. **Does the customizer need an explicit "this is the free default"
-   marker**, or is relying on choice order (first choice = pre-selected
-   default, per existing `item-customizer.tsx` behavior) good enough for
-   v1? This spec recommends relying on order — vendors already implicitly
-   rely on this for which choice is pre-selected — but flagging since
-   getting it wrong (e.g. pre-selecting oat milk as the free default) is a
-   real revenue-loss vector if the sanitizer/editor doesn't guide vendors
-   toward putting the $0 choice first.
+1. **`cost_delta_cents` is optional, not required.** Confirmed 2026-07-18 —
+   requiring it would force every vendor adding a priced choice to also
+   know their own precise incremental cost, real data-entry friction for
+   a field the base item's own `cost_cents` doesn't require either.
+   Margin stats stay approximate for cost-affecting choices; acceptable v1
+   gap, matches the existing optionality pattern rather than introducing
+   an inconsistent stricter rule for choices specifically.
+2. **Cross-item choice pricing needs no new mechanism** — confirmed
+   already possible today (each item owns its own copy of its option
+   groups), not a design decision, just a fact worth recording so it isn't
+   re-litigated.
+3. **Relying on choice order for the free default — accepted as
+   recommended**, not separately re-discussed. Revisit only if this
+   actually causes a real vendor pricing mistake in practice.
 
 ## Problem
 
