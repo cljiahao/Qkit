@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Plus, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -66,6 +66,23 @@ export function RealtimeOrderBoard({
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
   const [filter, setFilter] = useState<BoothFilter>("all");
   const [sortOrder, setSortOrder] = useState<AgeSortOrder>("earliest");
+  // Order ids currently inside an OrderCard undo window (see order-card.tsx) —
+  // kept on the active board below even once their status is terminal, so the
+  // undo affordance a vendor just tapped doesn't get yanked out from under
+  // them by the realtime echo of the very write it's offering to undo.
+  const [undoWindowIds, setUndoWindowIds] = useState<Set<string>>(new Set());
+  const handleUndoWindowChange = useCallback(
+    (orderId: string, active: boolean) => {
+      setUndoWindowIds((prev) => {
+        if (active === prev.has(orderId)) return prev;
+        const next = new Set(prev);
+        if (active) next.add(orderId);
+        else next.delete(orderId);
+        return next;
+      });
+    },
+    [],
+  );
   // new orders that arrived while hidden
   const [away, setAway] = useState(0);
   const originalTitle = useRef("");
@@ -111,7 +128,7 @@ export function RealtimeOrderBoard({
   );
 
   const active = sortActiveOrders(
-    orders.filter((o) => !isTerminal(o.status)),
+    orders.filter((o) => !isTerminal(o.status) || undoWindowIds.has(o.id)),
     sortOrder,
   );
   const activeCountFor = (id: string) =>
@@ -307,6 +324,7 @@ export function RealtimeOrderBoard({
               boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
               agingMin={boardSettings.aging_min}
               overdueMin={boardSettings.overdue_min}
+              onUndoWindowChange={handleUndoWindowChange}
             />
           ))}
         </div>

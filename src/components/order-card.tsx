@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,12 +30,20 @@ import {
   bumpOrder,
   cancelOrder as cancelOrderAction,
   confirmOrderPayment,
+  revertOrderAdvance,
 } from "@/app/dashboard/order-actions";
 import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
-import { Banknote, ChevronDown, Clock, Zap } from "lucide-react";
-import type { BoardOrder, OrderStatus } from "@/lib/types";
+import { Banknote, ChevronDown, Clock, Undo2, Zap } from "lucide-react";
+import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
+
+// Undo window for advanceStatus (Mark Ready / Mark Picked Up) — instant tap,
+// no hold-to-confirm gate (research: confirmation friction on a high-frequency
+// action causes habituation and increases errors instead of preventing them),
+// backed instead by a short, visible undo. Matches Square KDS's own 3s undo on
+// its equivalent complete action; 4s here for a touch fat-finger margin.
+const UNDO_MS = 4000;
 
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   if (status === "not_required") return null;
@@ -63,6 +71,7 @@ export function OrderCard({
   boothName,
   agingMin,
   overdueMin,
+  onUndoWindowChange,
 }: {
   order: BoardOrder;
   boothName?: string;
@@ -70,6 +79,13 @@ export function OrderCard({
   // Fall through to orderAgeTone's own defaults when not supplied.
   agingMin?: number;
   overdueMin?: number;
+  // Notifies the board while an advance's undo window is open, so it can
+  // keep a just-completed order (a terminal status, normally filtered off
+  // the active board) visible until the window closes — otherwise the
+  // realtime echo of the very advance being undone could unmount this card
+  // out from under the undo button. No-op when omitted (e.g. the completed-
+  // orders history list, which never calls advanceStatus in the first place).
+  onUndoWindowChange?: (orderId: string, active: boolean) => void;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   // Resync to the (realtime-updated) prop when it actually changes value, so a
@@ -95,6 +111,22 @@ export function OrderCard({
   const { pending: updating, run } = useAsyncAction();
   const [expanded, setExpanded] = useState(false);
 
+  // A just-tapped advanceStatus sits here until the undo window closes (timer
+  // in undoTimerRef) or the vendor taps Undo. Cleared on unmount too, so a
+  // card that scrolls out of view (or the completed order finally leaving the
+  // board once the window ends) never fires a late setState.
+  const [pendingUndo, setPendingUndo] = useState<{
+    revertTo: OrderStatus;
+    revertFrom: OrderStatus;
+    prevPaymentStatus: PaymentStatus;
+  } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
   // Ticket aging: tick the clock each 30s (only while live) so the vendor sees
   // at a glance how long an order has waited against a ~10-min prep target.
   const nowMs = useNow(30_000, !isTerminal(status));
@@ -106,10 +138,19 @@ export function OrderCard({
   const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
 
-  // All three mutations go through validated server actions (order-actions.ts);
-  // the DB enforces ownership (RLS) and column integrity (a freeze trigger).
+  // A dismissed/expired undo window just clears local state — the DB write
+  // it's undoing (or not) already happened; there's nothing left to do here.
+  function dismissUndo(orderId: string) {
+    setPendingUndo(null);
+    onUndoWindowChange?.(orderId, false);
+  }
+
+  // All mutations go through validated server actions (order-actions.ts); the
+  // DB enforces ownership (RLS) and column integrity (a freeze trigger).
   function advanceStatus() {
     if (!advance) return;
+    const revertTo = status;
+    const prevPaymentStatus = order.payment_status;
     return run(async () => {
       const res = await advanceOrder(order.id);
       if (!res.success) {
@@ -122,11 +163,54 @@ export function OrderCard({
         // stray "Paid" badge into the aging-clock's spot for one frame.
         if (
           res.status === "completed" &&
-          (order.payment_status === "pending" ||
-            order.payment_status === "claimed")
+          (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed")
         )
           setConfirmedLocally(true);
+
+        // Instant tap, no confirm gate — a short undo window is the recovery
+        // path instead (see UNDO_MS). onUndoWindowChange keeps a just-
+        // completed order on the active board for this window; without it,
+        // the realtime echo of this very write would filter the card off the
+        // board before the vendor could react to a mis-tap.
+        setPendingUndo({ revertTo, revertFrom: res.status, prevPaymentStatus });
+        onUndoWindowChange?.(order.id, true);
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = setTimeout(() => dismissUndo(order.id), UNDO_MS);
       }
+    });
+  }
+
+  function undoAdvance() {
+    if (!pendingUndo) return;
+    const { revertTo, revertFrom, prevPaymentStatus } = pendingUndo;
+    const orderId = order.id;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    return run(async () => {
+      const res = await revertOrderAdvance(
+        orderId,
+        revertTo,
+        revertFrom,
+        prevPaymentStatus,
+      );
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        setStatus(res.status);
+        if (
+          revertFrom === "completed" &&
+          (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed")
+        )
+          setConfirmedLocally(false);
+      }
+      // Clearing the local pendingUndo is enough to restore this card's own
+      // buttons — status is no longer terminal, so `closed` already flips
+      // false. Releasing the board's keep-alive override is delayed instead
+      // of immediate: the board's `orders` (realtime-sourced) still reads
+      // "completed" until THIS revert's own echo lands, so releasing right
+      // away risks a one-frame flicker where the card gets filtered off the
+      // board before it flips back.
+      setPendingUndo(null);
+      setTimeout(() => onUndoWindowChange?.(orderId, false), 1000);
     });
   }
 
@@ -377,57 +461,84 @@ export function OrderCard({
           </div>
         )}
 
-        {!closed && (
+        {/* Stays visible through a pending undo window even once `closed`
+            (e.g. a just-completed order) — otherwise the undo affordance
+            itself would vanish along with the row. */}
+        {(!closed || pendingUndo) && (
           <div className="flex gap-2 px-4 pb-4">
-            {advance && (
+            {pendingUndo && status === pendingUndo.revertFrom ? (
+              // Instant tap, no confirm gate on the advance itself — this is
+              // the recovery path instead: a few seconds to catch a mis-tap,
+              // draining left-to-right so the deadline is visible at a glance.
               <Button
+                type="button"
                 size="sm"
-                className="h-11 flex-1 rounded-lg font-semibold"
-                onClick={advanceStatus}
+                variant="outline"
+                className="relative h-11 flex-1 overflow-hidden rounded-lg font-semibold"
+                onClick={undoAdvance}
                 disabled={updating}
               >
-                {advance.label}
+                <span
+                  className="undo-bar absolute inset-y-0 left-0 bg-secondary"
+                  aria-hidden="true"
+                />
+                <span className="relative flex items-center gap-1.5">
+                  <Undo2 className="size-4" /> Undo
+                </span>
               </Button>
-            )}
-            {/* No cancel affordance once payment is confirmed — there's no
-                refund rail, so a paid order can only be refunded off-platform
-                (the server action rejects the cancel too). */}
-            {payStatus !== "confirmed" && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+            ) : (
+              <>
+                {advance && (
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
+                    className="h-11 flex-1 rounded-lg font-semibold"
+                    onClick={advanceStatus}
                     disabled={updating}
                   >
-                    Cancel
+                    {advance.label}
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Cancel order #{order.order_number}?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This permanently cancels the order and removes it from the
-                      board. This can&apos;t be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={updating}>
-                      Keep order
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={cancelOrder}
-                      disabled={updating}
-                      className="bg-destructive text-white hover:bg-destructive/90"
-                    >
-                      Cancel order
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                )}
+                {/* No cancel affordance once payment is confirmed — there's no
+                    refund rail, so a paid order can only be refunded off-platform
+                    (the server action rejects the cancel too). */}
+                {payStatus !== "confirmed" && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
+                        disabled={updating}
+                      >
+                        Cancel
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Cancel order #{order.order_number}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This permanently cancels the order and removes it from
+                          the board. This can&apos;t be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={updating}>
+                          Keep order
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={cancelOrder}
+                          disabled={updating}
+                          className="bg-destructive text-white hover:bg-destructive/90"
+                        >
+                          Cancel order
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
             )}
           </div>
         )}

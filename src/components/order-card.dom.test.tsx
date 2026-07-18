@@ -9,19 +9,26 @@ import type { Order } from "@/lib/types";
 // The card delegates mutations to server actions (order-actions.ts). We mock
 // those and assert the card calls the right one with the order id; the patch
 // content is the server action's job (covered in order-actions.test.ts).
-const { advanceOrder, confirmOrderPayment, cancelOrder, bumpOrder } =
-  vi.hoisted(() => ({
-    advanceOrder: vi.fn(),
-    confirmOrderPayment: vi.fn(),
-    cancelOrder: vi.fn(),
-    bumpOrder: vi.fn(),
-  }));
+const {
+  advanceOrder,
+  confirmOrderPayment,
+  cancelOrder,
+  bumpOrder,
+  revertOrderAdvance,
+} = vi.hoisted(() => ({
+  advanceOrder: vi.fn(),
+  confirmOrderPayment: vi.fn(),
+  cancelOrder: vi.fn(),
+  bumpOrder: vi.fn(),
+  revertOrderAdvance: vi.fn(),
+}));
 
 vi.mock("@/app/dashboard/order-actions", () => ({
   advanceOrder,
   confirmOrderPayment,
   cancelOrder,
   bumpOrder,
+  revertOrderAdvance,
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -54,10 +61,12 @@ beforeEach(() => {
   confirmOrderPayment.mockReset();
   cancelOrder.mockReset();
   bumpOrder.mockReset();
+  revertOrderAdvance.mockReset();
   advanceOrder.mockResolvedValue({ success: true, status: "ready" });
   confirmOrderPayment.mockResolvedValue({ success: true });
   cancelOrder.mockResolvedValue({ success: true });
   bumpOrder.mockResolvedValue({ success: true });
+  revertOrderAdvance.mockResolvedValue({ success: true, status: "preparing" });
 });
 
 describe("OrderCard", () => {
@@ -88,7 +97,7 @@ describe("OrderCard", () => {
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
   });
 
-  it("advances preparing -> ready and relabels the button", async () => {
+  it("advances preparing -> ready instantly, showing Undo rather than a confirm gate", async () => {
     const user = userEvent.setup();
     advanceOrder.mockResolvedValue({ success: true, status: "ready" });
     render(<OrderCard order={makeOrder({ status: "preparing" })} />, {
@@ -97,14 +106,60 @@ describe("OrderCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Mark Ready" }));
 
+    // No confirmation dialog — the tap already happened. Recovery is Undo.
     expect(advanceOrder).toHaveBeenCalledWith("o1");
-    // The card relabels off the status the action returns.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /undo/i })).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Mark Picked Up" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("undoes an advance back to the previous status", async () => {
+    const user = userEvent.setup();
+    advanceOrder.mockResolvedValue({ success: true, status: "ready" });
+    render(<OrderCard order={makeOrder({ status: "preparing" })} />, {
+      wrapper: TooltipProvider,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark Ready" }));
+    await user.click(await screen.findByRole("button", { name: /undo/i }));
+
+    expect(revertOrderAdvance).toHaveBeenCalledWith(
+      "o1",
+      "preparing",
+      "ready",
+      "not_required",
+    );
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Mark Picked Up" }),
+        screen.getByRole("button", { name: "Mark Ready" }),
       ).toBeInTheDocument(),
     );
   });
+
+  it("reveals the next advance label once the undo window elapses", async () => {
+    const user = userEvent.setup();
+    advanceOrder.mockResolvedValue({ success: true, status: "ready" });
+    render(<OrderCard order={makeOrder({ status: "preparing" })} />, {
+      wrapper: TooltipProvider,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark Ready" }));
+    await screen.findByRole("button", { name: /undo/i });
+
+    // Real-time wait past UNDO_MS (4s) — deliberately not faked: mixing fake
+    // timers with userEvent's own internal delays and RTL's polling wait is
+    // fragile enough to cost more confidence than it saves for one test.
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole("button", { name: "Mark Picked Up" }),
+        ).toBeInTheDocument(),
+      { timeout: 5000 },
+    );
+  }, 6000);
 
   it("advances ready -> completed via the action", async () => {
     const user = userEvent.setup();
