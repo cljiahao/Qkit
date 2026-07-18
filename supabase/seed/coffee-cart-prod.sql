@@ -28,8 +28,9 @@ select
       "option_groups":[
         {"id":"style","label":"Style","choices":[
           {"id":"o","label":"O (black)"},
-          {"id":"c","label":"C (evaporated milk)"},
-          {"id":"normal","label":"Normal (condensed milk)"}
+          {"id":"c","label":"C (evaporated milk)","allergens":["dairy"]},
+          {"id":"normal","label":"Normal (condensed milk)","allergens":["dairy"]},
+          {"id":"oat","label":"Oat Milk","price_delta_cents":100,"cost_delta_cents":40}
         ]},
         {"id":"temp","label":"Temperature","choices":[
           {"id":"hot","label":"Hot"},
@@ -48,8 +49,9 @@ select
       "option_groups":[
         {"id":"style","label":"Style","choices":[
           {"id":"o","label":"O (no milk)"},
-          {"id":"c","label":"C (evaporated milk)"},
-          {"id":"normal","label":"Normal (condensed milk)"}
+          {"id":"c","label":"C (evaporated milk)","allergens":["dairy"]},
+          {"id":"normal","label":"Normal (condensed milk)","allergens":["dairy"]},
+          {"id":"oat","label":"Oat Milk","price_delta_cents":100,"cost_delta_cents":40}
         ]},
         {"id":"temp","label":"Temperature","choices":[
           {"id":"hot","label":"Hot"},
@@ -64,7 +66,7 @@ select
     },
     {
       "id":"milo","name":"Milo","description":"Malt chocolate","price_cents":200,
-      "image_url":"/seed/milo.svg","available":true,
+      "image_url":"/seed/milo.svg","available":true,"allergens":["dairy","soy"],
       "option_groups":[
         {"id":"temp","label":"Temperature","choices":[
           {"id":"hot","label":"Hot"},

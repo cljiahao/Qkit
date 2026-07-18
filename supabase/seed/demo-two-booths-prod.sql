@@ -40,8 +40,9 @@ begin
         "option_groups":[
           {"id":"style","label":"Style","choices":[
             {"id":"o","label":"O (black)"},
-            {"id":"c","label":"C (evaporated milk)"},
-            {"id":"normal","label":"Normal (condensed milk)"}
+            {"id":"c","label":"C (evaporated milk)","allergens":["dairy"]},
+            {"id":"normal","label":"Normal (condensed milk)","allergens":["dairy"]},
+            {"id":"oat","label":"Oat Milk","price_delta_cents":100,"cost_delta_cents":40}
           ]},
           {"id":"temp","label":"Temperature","choices":[
             {"id":"hot","label":"Hot"},
@@ -60,8 +61,9 @@ begin
         "option_groups":[
           {"id":"style","label":"Style","choices":[
             {"id":"o","label":"O (no milk)"},
-            {"id":"c","label":"C (evaporated milk)"},
-            {"id":"normal","label":"Normal (condensed milk)"}
+            {"id":"c","label":"C (evaporated milk)","allergens":["dairy"]},
+            {"id":"normal","label":"Normal (condensed milk)","allergens":["dairy"]},
+            {"id":"oat","label":"Oat Milk","price_delta_cents":100,"cost_delta_cents":40}
           ]},
           {"id":"temp","label":"Temperature","choices":[
             {"id":"hot","label":"Hot"},
@@ -71,7 +73,7 @@ begin
       },
       {
         "id":"milo","name":"Milo","description":"Malt chocolate","price_cents":200,
-        "image_url":"/seed/milo.svg","available":true,
+        "image_url":"/seed/milo.svg","available":true,"allergens":["dairy","soy"],
         "option_groups":[
           {"id":"temp","label":"Temperature","choices":[
             {"id":"hot","label":"Hot"},
@@ -97,7 +99,7 @@ begin
             {"id":"vanilla","label":"Vanilla"},
             {"id":"chocolate","label":"Chocolate"},
             {"id":"strawberry","label":"Strawberry"},
-            {"id":"milo","label":"Milo"}
+            {"id":"milo","label":"Milo","allergens":["dairy","soy"]}
           ]},
           {"id":"serving","label":"Serving","choices":[
             {"id":"cup","label":"Cup"},
@@ -115,8 +117,8 @@ begin
           ]},
           {"id":"toppings","label":"Toppings","multiple":true,"choices":[
             {"id":"sprinkles","label":"Sprinkles"},
-            {"id":"peanuts","label":"Peanuts"},
-            {"id":"wafer","label":"Wafer"}
+            {"id":"peanuts","label":"Peanuts","allergens":["nuts"]},
+            {"id":"wafer","label":"Wafer","allergens":["gluten"]}
           ]}
         ]
       },
