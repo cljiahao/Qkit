@@ -352,6 +352,12 @@ export const pricingFormSchema = z.object({
 });
 export type PricingFormInput = z.infer<typeof pricingFormSchema>;
 
+export const bannerFormSchema = z.object({
+  banner_enabled: z.boolean(),
+  banner_message: z.string().max(280),
+});
+export type BannerFormInput = z.infer<typeof bannerFormSchema>;
+
 export const grantPassSchema = z.object({
   vendorId: z.string().uuid(),
   // Sold per day; 1 covers a few-hour market, up to 14 for long bazaars/fairs.

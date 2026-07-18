@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(85);
+select plan(89);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -722,6 +722,36 @@ select throws_like(
        gen_random_uuid()) $$,
   '%ORDER_UNSERVABLE%',
   'place_order raises ORDER_UNSERVABLE for a non-servable booth');
+
+reset role;
+
+-- Maintenance banner (0058): a public-read singleton, same "no write policy,
+-- writes go through the service-role admin action only" shape as qkit.pricing.
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select isnt_empty(
+  $$ select 1 from qkit.platform_settings where id = 1 $$,
+  'anon can read platform_settings');
+select throws_ok(
+  $$ update qkit.platform_settings set banner_enabled = true where id = 1 $$,
+  '42501',
+  null,
+  'anon cannot write platform_settings (no UPDATE policy, RLS default-denies)');
+
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '00000000-0000-0000-0000-00000000000a', 'role', 'authenticated')::text,
+  true);
+select isnt_empty(
+  $$ select 1 from qkit.platform_settings where id = 1 $$,
+  'authenticated can read platform_settings');
+select throws_ok(
+  $$ update qkit.platform_settings set banner_enabled = true where id = 1 $$,
+  '42501',
+  null,
+  'authenticated (a real vendor, not an admin) cannot write platform_settings either');
 
 reset role;
 

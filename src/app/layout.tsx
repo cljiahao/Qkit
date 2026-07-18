@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
+import { MaintenanceBanner } from "@/components/maintenance-banner";
+import { DEFAULT_PLATFORM_SETTINGS } from "@/lib/platform-settings";
+import { createServerClient } from "@/lib/supabase/server";
 import { BRAND_EMBER } from "@/lib/brand-icon";
 import "./globals.css";
 
@@ -36,11 +39,23 @@ export const viewport: Viewport = {
   themeColor: BRAND_EMBER,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Anonymous-safe (same client shape as the public order page) — read errors
+  // fail closed to "no banner" (DEFAULT_PLATFORM_SETTINGS) rather than
+  // breaking every single page load site-wide over a display-only feature.
+  const supabase = await createServerClient();
+  const { data, error } = await supabase
+    .from("platform_settings")
+    .select("banner_enabled, banner_message")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) console.error("platform_settings read failed", error.message);
+  const banner = data ?? DEFAULT_PLATFORM_SETTINGS;
+
   return (
     <html
       lang="en"
@@ -49,6 +64,10 @@ export default function RootLayout({
     >
       <body>
         <ServiceWorkerRegistrar />
+        <MaintenanceBanner
+          enabled={banner.banner_enabled}
+          message={banner.banner_message}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>
