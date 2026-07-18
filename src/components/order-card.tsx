@@ -14,11 +14,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Ticket } from "@/components/ticket";
 import { parseOrderItems } from "@/lib/schemas";
@@ -45,7 +40,7 @@ import type { BoardOrder, OrderStatus } from "@/lib/types";
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   if (status === "not_required") return null;
   const map = {
-    pending: { label: "Unpaid", cls: "bg-secondary text-muted-foreground" },
+    pending: { label: "Unpaid", cls: "bg-secondary text-foreground" },
     // Filled, high-contrast — the actionable state.
     claimed: { label: "Says paid", cls: "bg-blue-600 text-white" },
     confirmed: { label: "Paid", cls: "bg-emerald-600 text-white" },
@@ -189,25 +184,70 @@ export function OrderCard({
       )}
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
-        <div className="min-w-0">
-          <p className="font-mono text-xl font-bold tracking-tight">
-            #{order.order_number}
-          </p>
-          <p className="truncate text-sm text-muted-foreground">
-            {order.customer_name}
-          </p>
-        </div>
+        {/* The name/number block doubles as the bump affordance: tapping it
+            prompts a confirmation instead of sitting as a separate icon
+            button next to Mark ready, where an accidental tap advanced the
+            wrong thing. Not tappable once already bumped (re-tap would just
+            refresh the timestamp with no visible change) or once closed. */}
+        {!closed && !bumped ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="min-w-0 rounded-md text-left transition-colors hover:bg-secondary/50"
+                disabled={updating}
+              >
+                <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
+                  #{order.order_number}
+                  <Zap
+                    className="size-4 shrink-0 text-muted-foreground/40"
+                    aria-hidden="true"
+                  />
+                </p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {order.customer_name}
+                </p>
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Bump order #{order.order_number} to front?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Moves this order ahead of the others still waiting in the
+                  queue.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={updating}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={bump} disabled={updating}>
+                  Bump to front
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
+              #{order.order_number}
+              {!closed && bumped && (
+                <Zap
+                  className="size-4 shrink-0 text-primary"
+                  aria-label="Manually bumped to the front of the queue"
+                />
+              )}
+            </p>
+            <p className="truncate text-sm text-muted-foreground">
+              {order.customer_name}
+            </p>
+          </div>
+        )}
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <OrderStatusBadge status={status} />
           <PaymentBadge status={payStatus} />
-          {!closed && bumped && (
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-primary"
-              title="Manually bumped to the front of the queue"
-            >
-              <Zap className="size-3" /> Bumped
-            </span>
-          )}
           {boothName && (
             <span className="inline-flex max-w-[8rem] items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
               <span
@@ -335,30 +375,6 @@ export function OrderCard({
               >
                 {advance.label}
               </Button>
-            )}
-            {/* Deliberately not shown once already bumped — a re-tap would
-                just refresh the timestamp with no visible change, a confusing
-                double-bump affordance for no benefit. Icon-only: this is a
-                secondary, occasional action — a full text label next to the
-                primary advance button crowded the row (esp. at grid-column
-                and mobile widths), giving it equal visual weight it doesn't
-                need. */}
-            {!bumped && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-11 w-11 shrink-0 rounded-lg text-muted-foreground"
-                    onClick={bump}
-                    disabled={updating}
-                    aria-label="Bump to front"
-                  >
-                    <Zap className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Bump to front</TooltipContent>
-              </Tooltip>
             )}
             {/* No cancel affordance once payment is confirmed — there's no
                 refund rail, so a paid order can only be refunded off-platform
