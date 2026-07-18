@@ -52,7 +52,11 @@ const TEH: MenuItem = {
   price_cents: 300,
   available: true,
   option_groups: [
-    { id: "t", label: "Temp", choices: [{ id: "i", label: "Iced" }] },
+    {
+      id: "t",
+      label: "Temp",
+      choices: [{ id: "i", label: "Iced", price_delta_cents: 100 }],
+    },
   ],
 };
 
@@ -120,6 +124,21 @@ describe("OrderForm cart", () => {
     const cart = screen.getByText("Your order").closest("section")!;
     expect(within(cart).getByText("Teh")).toBeInTheDocument();
     expect(within(cart).getByText("Iced")).toBeInTheDocument();
+  });
+
+  it("folds a priced choice's delta into the cart line and submit total", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Customize" }));
+    await user.click(screen.getByRole("button", { name: "stub-confirm" }));
+
+    // Teh is $3.00 base + $1.00 for the priced "Iced" choice = $4.00 — both
+    // the cart line price and the order total reflect it.
+    const cart = screen.getByText("Your order").closest("section")!;
+    expect(within(cart).getAllByText("$4.00")).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: /Place order · 1 item · \$4\.00/ }),
+    ).toBeEnabled();
   });
 
   it("submits the order, remembers it, and navigates to the status page", async () => {

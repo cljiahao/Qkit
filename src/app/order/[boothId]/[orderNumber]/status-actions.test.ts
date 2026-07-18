@@ -1,19 +1,29 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { getOrderStatus } from "./status-actions";
+import { getOrderStatus, getWaitEstimate } from "./status-actions";
 
-const { createServiceClientMock, maybeSingle } = vi.hoisted(() => {
-  const maybeSingle = vi.fn();
+// Chainable stub: every builder method returns itself; the chain is
+// awaitable directly (multi-row reads here never call a terminal
+// .maybeSingle()/.single()) and .maybeSingle() also resolves the same
+// result for the single-row lookups.
+function chain(result: { data: unknown; error: unknown }) {
+  const obj: Record<string, unknown> = {};
+  const self = () => obj;
+  obj.select = self;
+  obj.eq = self;
+  obj.in = self;
+  obj.order = self;
+  obj.limit = self;
+  obj.maybeSingle = () => Promise.resolve(result);
+  obj.then = (resolve: (v: typeof result) => void) =>
+    Promise.resolve(result).then(resolve);
+  return obj;
+}
+
+const { createServiceClientMock, fromMock } = vi.hoisted(() => {
+  const fromMock = vi.fn();
   return {
-    createServiceClientMock: vi.fn(() =>
-      Promise.resolve({
-        from: () => ({
-          select: () => ({
-            eq: () => ({ eq: () => ({ eq: () => ({ maybeSingle }) }) }),
-          }),
-        }),
-      }),
-    ),
-    maybeSingle,
+    createServiceClientMock: vi.fn(() => Promise.resolve({ from: fromMock })),
+    fromMock,
   };
 });
 
@@ -27,7 +37,7 @@ const TOKEN = "11111111-2222-4333-8444-555555555555";
 
 beforeEach(() => {
   createServiceClientMock.mockClear();
-  maybeSingle.mockReset().mockResolvedValue({ data: null, error: null });
+  fromMock.mockReset().mockReturnValue(chain({ data: null, error: null }));
 });
 
 describe("getOrderStatus", () => {
@@ -43,17 +53,78 @@ describe("getOrderStatus", () => {
   });
 
   it("returns the status for a matching token", async () => {
-    maybeSingle.mockResolvedValue({ data: { status: "ready" }, error: null });
+    fromMock.mockReturnValue(chain({ data: { status: "ready" }, error: null }));
     const res = await getOrderStatus(BOOTH, ORDER, TOKEN);
     expect(res).toBe("ready");
   });
 
   it("returns null and logs on a real read error", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    maybeSingle.mockResolvedValue({ data: null, error: { message: "boom" } });
+    fromMock.mockReturnValue(chain({ data: null, error: { message: "boom" } }));
     const res = await getOrderStatus(BOOTH, ORDER, TOKEN);
     expect(res).toBeNull();
     expect(errorSpy).toHaveBeenCalledWith("getOrderStatus failed", "boom");
     errorSpy.mockRestore();
+  });
+});
+
+describe("getWaitEstimate", () => {
+  it("returns null for an invalid token without creating a client", async () => {
+    const res = await getWaitEstimate(BOOTH, ORDER, "not-a-uuid");
+    expect(res).toBeNull();
+    expect(createServiceClientMock).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the token doesn't match any order", async () => {
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(res).toBeNull();
+  });
+
+  it("computes an estimate from active orders ahead and recent wait history", async () => {
+    const target = {
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    const active = [
+      target,
+      {
+        id: "a",
+        status: "preparing",
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+      },
+    ];
+    const recent = Array.from({ length: 10 }, () => ({
+      status: "completed",
+      created_at: "2026-06-12T04:00:00Z",
+      ready_at: "2026-06-12T04:02:00Z", // 120s wait each
+      total_cents: 0,
+      items: [],
+    }));
+    fromMock
+      .mockReturnValueOnce(chain({ data: target, error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }))
+      .mockReturnValueOnce(chain({ data: recent, error: null }));
+
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(res).toBe(120); // 1 order ahead * 120s avg
+  });
+
+  it("returns null below the minimum recent-order sample size", async () => {
+    const target = {
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    fromMock
+      .mockReturnValueOnce(chain({ data: target, error: null }))
+      .mockReturnValueOnce(chain({ data: [target], error: null }))
+      .mockReturnValueOnce(chain({ data: [], error: null }));
+
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(res).toBeNull();
   });
 });

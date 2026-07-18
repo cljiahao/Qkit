@@ -20,7 +20,7 @@ import {
   formatPrice,
   orderHasPricing,
 } from "@/lib/utils";
-import { cartKey, cartTotal } from "@/lib/cart";
+import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
 import { loadCart, saveCart, clearCart } from "@/lib/cart-storage";
 import { addRecentOrder } from "@/lib/recent-orders";
 import { reconcileReorder } from "@/lib/reorder";
@@ -174,10 +174,19 @@ export function OrderForm({
 
   function addConfigured(item: MenuItem, options: SelectedOption[]) {
     if (blockedByStock(item.id)) return;
+    // Fold selected choices' price_delta_cents into the line's informational
+    // price — place_order re-derives the authoritative total the same way
+    // from the stored menu, this is display-only. Preserve the "Free" (no
+    // price_cents at all) convention when the item is unpriced and nothing
+    // selected added a cost either.
+    const delta = sumOptionDeltas(item, options);
+    const combined = (item.price_cents ?? 0) + delta;
+    const price_cents =
+      item.price_cents == null && delta === 0 ? undefined : combined;
     updateCart(cartKey(item.id, options), (existing) => ({
       menuItemId: item.id,
       name: item.name,
-      price_cents: item.price_cents,
+      price_cents,
       options: options.length ? options : undefined,
       quantity: existing ? existing.quantity + 1 : 1,
     }));

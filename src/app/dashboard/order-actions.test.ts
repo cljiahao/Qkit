@@ -3,6 +3,7 @@ import {
   advanceOrder,
   confirmOrderPayment,
   cancelOrder,
+  bumpOrder,
 } from "./order-actions";
 
 // Mock the supabase server client's fluent chain and the vendor gate. Two
@@ -179,6 +180,46 @@ describe("cancelOrder", () => {
     });
     updateSelect.mockResolvedValue({ data: [], error: null });
     const res = await cancelOrder(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed — please refresh.",
+    });
+  });
+});
+
+describe("bumpOrder", () => {
+  it("bumps a live order to the front of its status lane", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    const res = await bumpOrder(ID);
+    expect(res).toEqual({ success: true });
+    expect(update).toHaveBeenCalledWith({
+      priority_bumped_at: expect.any(String),
+    });
+  });
+
+  it("rejects a terminal order", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "completed", payment_status: "confirmed" },
+    });
+    const res = await bumpOrder(ID);
+    expect(res.success).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid order id before touching the DB", async () => {
+    const res = await bumpOrder("not-a-uuid");
+    expect(res.success).toBe(false);
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh when the order changed concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await bumpOrder(ID);
     expect(res).toEqual({
       success: false,
       error: "Order changed — please refresh.",

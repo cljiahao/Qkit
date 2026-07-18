@@ -13,7 +13,7 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(79)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(85)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
@@ -59,7 +59,10 @@ from the Vitest/Playwright tests elsewhere in the repo.
     (`ORDER_INVALID`); an unknown customization option is rejected; a
     non-servable booth raises `ORDER_UNSERVABLE`; an item with no price set
     stores no `price_cents` key at all (not `0`) and totals the order at
-    `0` (migration `0055`).
+    `0` (migration `0055`); a priced customization choice sums its delta into
+    the authoritative total, and a `price_delta_cents` forged into a
+    submitted option is ignored — only the stored menu's own delta is ever
+    trusted (migration `0056`).
   - `submit_feedback`: a customer review bound to a real order's
     `(booth_id, order_number, access_token)` succeeds; a mismatched token is
     rejected (`FEEDBACK_UNAUTHORIZED`) — the migration `0048` review-bombing

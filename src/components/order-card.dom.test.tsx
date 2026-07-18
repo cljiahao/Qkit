@@ -8,16 +8,19 @@ import type { Order } from "@/lib/types";
 // The card delegates mutations to server actions (order-actions.ts). We mock
 // those and assert the card calls the right one with the order id; the patch
 // content is the server action's job (covered in order-actions.test.ts).
-const { advanceOrder, confirmOrderPayment, cancelOrder } = vi.hoisted(() => ({
-  advanceOrder: vi.fn(),
-  confirmOrderPayment: vi.fn(),
-  cancelOrder: vi.fn(),
-}));
+const { advanceOrder, confirmOrderPayment, cancelOrder, bumpOrder } =
+  vi.hoisted(() => ({
+    advanceOrder: vi.fn(),
+    confirmOrderPayment: vi.fn(),
+    cancelOrder: vi.fn(),
+    bumpOrder: vi.fn(),
+  }));
 
 vi.mock("@/app/dashboard/order-actions", () => ({
   advanceOrder,
   confirmOrderPayment,
   cancelOrder,
+  bumpOrder,
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -40,6 +43,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     updated_at: new Date(0).toISOString(),
     idempotency_key: null,
     access_token: "tok-test",
+    priority_bumped_at: null,
     ...overrides,
   };
 }
@@ -48,9 +52,11 @@ beforeEach(() => {
   advanceOrder.mockReset();
   confirmOrderPayment.mockReset();
   cancelOrder.mockReset();
+  bumpOrder.mockReset();
   advanceOrder.mockResolvedValue({ success: true, status: "ready" });
   confirmOrderPayment.mockResolvedValue({ success: true });
   cancelOrder.mockResolvedValue({ success: true });
+  bumpOrder.mockResolvedValue({ success: true });
 });
 
 describe("OrderCard", () => {
@@ -201,5 +207,49 @@ describe("OrderCard payment", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("shows a Bump to front button for a live, non-bumped order", () => {
+    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />);
+    expect(
+      screen.getByRole("button", { name: /bump to front/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls bumpOrder and shows the bumped badge, hiding the button, once bumped", async () => {
+    const user = userEvent.setup();
+    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />);
+    await user.click(screen.getByRole("button", { name: /bump to front/i }));
+    expect(bumpOrder).toHaveBeenCalledWith("o1");
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: /bump to front/i }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(/bumped/i)).toBeInTheDocument();
+  });
+
+  it("shows the bumped badge and no button for an order already bumped", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ priority_bumped_at: new Date(0).toISOString() })}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /bump to front/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/bumped/i)).toBeInTheDocument();
+  });
+
+  it("shows no bump button or badge for a closed order", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "completed", priority_bumped_at: null })}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /bump to front/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/bumped/i)).not.toBeInTheDocument();
   });
 });

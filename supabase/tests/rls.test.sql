@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(79);
+select plan(85);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -124,7 +124,15 @@ values (
       "cost_cents":100,"available":true},
      {"id":"free2","name":"No-Cost Snack","description":"","price_cents":100,
       "available":true},
-     {"id":"unpriced1","name":"Free Sample","description":"","available":true}
+     {"id":"unpriced1","name":"Free Sample","description":"","available":true},
+     {"id":"fancy1","name":"Fancy Coffee","description":"","price_cents":400,
+      "available":true,
+      "option_groups":[
+        {"id":"milk","label":"Milk","choices":[
+          {"id":"reg","label":"Regular"},
+          {"id":"oat","label":"Oat Milk","price_delta_cents":150}
+        ]}
+      ]}
    ]'::jsonb
 );
 
@@ -283,6 +291,20 @@ select isnt(
   (select with_check from pg_policies
    where tablename = 'orders' and policyname = 'orders_vendor_update'),
   null, 'orders_vendor_update has a WITH CHECK clause');
+
+-- Manual queue priority bump (0057) rides the same orders_vendor_update
+-- policy as every other state-machine column — no new policy needed, but
+-- confirm the RLS boundary holds for it same as status: A can bump its own
+-- order, but a bump attempt on B's order is silently filtered to 0 rows.
+with upd as (
+  update qkit.orders set priority_bumped_at = now()
+  where id = '00000000-0000-0000-0000-00000000d001' returning 1)
+select is((select count(*)::int from upd), 1,
+  'vendor can bump its own order');
+with upd as (
+  update qkit.orders set priority_bumped_at = now()
+  where id = '00000000-0000-0000-0000-00000000d002' returning 1)
+select is((select count(*)::int from upd), 0, 'A cannot bump B order');
 
 -- ── Authenticated-role lockdown (0033) ──────────────────────────────────────
 -- Phase A closed these for anon only; sign-up is open, so `authenticated` is
@@ -509,6 +531,37 @@ select is(
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '44444444-4444-4444-4444-444444444444'),
   0, 'an order of only unpriced items totals 0');
+
+-- A priced customization choice (0056 / menu-choice-price-delta): "Fancy
+-- Coffee" is $4.00 base, "Oat Milk" adds $1.50 -> $5.50 total.
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode1', 'Ada',
+       '[{"menuItemId":"fancy1","name":"Fancy Coffee","quantity":1,
+          "options":[{"group":"Milk","choice":"Oat Milk"}]}]'::jsonb,
+       '55555555-5555-5555-5555-555555555555'::uuid) $$,
+  'place_order succeeds for an item with a priced option');
+select is(
+  (select total_cents from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '55555555-5555-5555-5555-555555555555'),
+  550, 'a priced option''s delta is summed into the authoritative total (400 + 150)');
+
+-- A forged price_delta_cents stuffed into the submitted option is ignored —
+-- "Regular" carries no real delta in the stored menu, so the total stays the
+-- base price regardless of what the request claims.
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode1', 'Ada',
+       '[{"menuItemId":"fancy1","name":"Fancy Coffee","quantity":1,
+          "options":[{"group":"Milk","choice":"Regular","price_delta_cents":99999}]}]'::jsonb,
+       '66666666-6666-6666-6666-666666666666'::uuid) $$,
+  'place_order succeeds when the request forges a price_delta_cents on options');
+select is(
+  (select total_cents from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0004'
+     and idempotency_key = '66666666-6666-6666-6666-666666666666'),
+  400, 'a forged price_delta_cents in the request is ignored — only the stored menu''s delta is trusted');
 
 -- Replay with the SAME idempotency key must return the SAME order_number and
 -- must not insert a second row.

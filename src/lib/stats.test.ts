@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   avgWaitSeconds,
+  estimateWaitSeconds,
   computeStats,
   pctChange,
   waitSeries,
@@ -479,6 +480,43 @@ describe("avgWaitSeconds", () => {
     expect(
       avgWaitSeconds([waitOrder("2026-06-12T04:00:00Z", "not-a-date")]),
     ).toBeNull();
+  });
+});
+
+function readiedOrders(n: number, waitSeconds: number): StatsOrder[] {
+  return Array.from({ length: n }, () =>
+    waitOrder(
+      "2026-06-12T04:00:00Z",
+      new Date(
+        Date.parse("2026-06-12T04:00:00Z") + waitSeconds * 1000,
+      ).toISOString(),
+    ),
+  );
+}
+
+describe("estimateWaitSeconds", () => {
+  it("returns null below the minimum sample size (default 10)", () => {
+    expect(estimateWaitSeconds(readiedOrders(9, 120), 2)).toBeNull();
+  });
+
+  it("multiplies the recent average wait by orders ahead once sample size is met", () => {
+    expect(estimateWaitSeconds(readiedOrders(10, 120), 3)).toBe(360);
+  });
+
+  it("returns null when the recent orders have no usable wait data", () => {
+    const orders = Array.from({ length: 10 }, () =>
+      waitOrder("2026-06-12T04:00:00Z", null),
+    );
+    expect(estimateWaitSeconds(orders, 2)).toBeNull();
+  });
+
+  it("returns 0 for the next order in line (nothing ahead)", () => {
+    expect(estimateWaitSeconds(readiedOrders(10, 120), 0)).toBe(0);
+  });
+
+  it("respects a custom minimum sample size", () => {
+    expect(estimateWaitSeconds(readiedOrders(3, 120), 2, 3)).toBe(240);
+    expect(estimateWaitSeconds(readiedOrders(2, 120), 2, 3)).toBeNull();
   });
 });
 

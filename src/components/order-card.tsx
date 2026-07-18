@@ -27,13 +27,14 @@ import {
 } from "@/lib/orders";
 import {
   advanceOrder,
+  bumpOrder,
   cancelOrder as cancelOrderAction,
   confirmOrderPayment,
 } from "@/app/dashboard/order-actions";
 import { sgtClock } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
-import { Banknote, ChevronDown, Clock } from "lucide-react";
+import { Banknote, ChevronDown, Clock, Zap } from "lucide-react";
 import type { BoardOrder, OrderStatus } from "@/lib/types";
 
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
@@ -85,6 +86,12 @@ export function OrderCard({
   // realtime echo arrives.
   const [confirmedLocally, setConfirmedLocally] = useState(false);
   const payStatus = confirmedLocally ? "confirmed" : order.payment_status;
+  // Same optimistic-then-realtime-confirmed pattern as confirmedLocally above —
+  // an instant "bumped" state for the vendor who tapped it, superseded by the
+  // realtime-updated prop once that echo arrives (or reflecting another
+  // session's bump immediately, without waiting on this one's own tap).
+  const [bumpedLocally, setBumpedLocally] = useState(false);
+  const bumped = bumpedLocally || order.priority_bumped_at != null;
   const { pending: updating, run } = useAsyncAction();
   const [expanded, setExpanded] = useState(false);
 
@@ -142,6 +149,14 @@ export function OrderCard({
     });
   }
 
+  function bump() {
+    return run(async () => {
+      const res = await bumpOrder(order.id);
+      if (!res.success) toast.error(res.error);
+      else setBumpedLocally(true);
+    });
+  }
+
   const closed = isTerminal(status);
 
   // One full-card attention wash at a time, by priority. A background (not a
@@ -180,6 +195,14 @@ export function OrderCard({
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <OrderStatusBadge status={status} />
           <PaymentBadge status={payStatus} />
+          {!closed && bumped && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-primary"
+              title="Manually bumped to the front of the queue"
+            >
+              <Zap className="size-3" /> Bumped
+            </span>
+          )}
           {!closed && (
             <span
               className={cn(
@@ -329,6 +352,20 @@ export function OrderCard({
                 disabled={updating}
               >
                 {advance.label}
+              </Button>
+            )}
+            {/* Deliberately not shown once already bumped — a re-tap would
+                just refresh the timestamp with no visible change, a confusing
+                double-bump affordance for no benefit. */}
+            {!bumped && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-11 rounded-lg text-muted-foreground"
+                onClick={bump}
+                disabled={updating}
+              >
+                <Zap className="size-4" /> Bump to front
               </Button>
             )}
             {/* No cancel affordance once payment is confirmed — there's no

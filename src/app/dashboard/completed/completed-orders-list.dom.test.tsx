@@ -9,6 +9,7 @@ vi.mock("@/app/dashboard/order-actions", () => ({
   advanceOrder: vi.fn(),
   confirmOrderPayment: vi.fn(),
   cancelOrder: vi.fn(),
+  bumpOrder: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
@@ -29,6 +30,7 @@ function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
     completed_at: new Date(0).toISOString(),
     updated_at: new Date(0).toISOString(),
     idempotency_key: null,
+    priority_bumped_at: null,
     ...overrides,
   };
 }

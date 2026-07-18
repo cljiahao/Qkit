@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cartKey, cartTotal } from "./cart";
+import { cartKey, cartTotal, sumOptionDeltas } from "./cart";
 
 describe("cartKey", () => {
   it("returns the bare id when there are no options", () => {
@@ -73,5 +73,62 @@ describe("cartTotal", () => {
         { price_cents: 250, quantity: 1 },
       ]),
     ).toBe(250);
+  });
+});
+
+describe("sumOptionDeltas", () => {
+  const item = {
+    option_groups: [
+      {
+        id: "milk",
+        label: "Milk",
+        choices: [
+          { id: "reg", label: "Regular" },
+          { id: "oat", label: "Oat Milk", price_delta_cents: 100 },
+        ],
+      },
+      {
+        id: "addons",
+        label: "Add-ons",
+        multiple: true,
+        choices: [
+          { id: "shot", label: "Extra Shot", price_delta_cents: 80 },
+          { id: "syrup", label: "Syrup", price_delta_cents: 50 },
+        ],
+      },
+    ],
+  };
+
+  it("is 0 with no options selected", () => {
+    expect(sumOptionDeltas(item, [])).toBe(0);
+    expect(sumOptionDeltas(item, undefined)).toBe(0);
+  });
+
+  it("is 0 for a selected choice with no delta", () => {
+    expect(sumOptionDeltas(item, [{ group: "Milk", choice: "Regular" }])).toBe(
+      0,
+    );
+  });
+
+  it("sums a single priced choice", () => {
+    expect(sumOptionDeltas(item, [{ group: "Milk", choice: "Oat Milk" }])).toBe(
+      100,
+    );
+  });
+
+  it("sums multiple selected choices across groups (multi-select)", () => {
+    expect(
+      sumOptionDeltas(item, [
+        { group: "Milk", choice: "Oat Milk" },
+        { group: "Add-ons", choice: "Extra Shot" },
+        { group: "Add-ons", choice: "Syrup" },
+      ]),
+    ).toBe(230);
+  });
+
+  it("ignores an option that doesn't match any known group/choice", () => {
+    expect(sumOptionDeltas(item, [{ group: "Nope", choice: "Nothing" }])).toBe(
+      0,
+    );
   });
 });

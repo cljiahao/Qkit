@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MediaImage } from "@/components/media-image";
-import { cn } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
 import type { MenuItem, SelectedOption } from "@/lib/types";
 
 const CHOICE_ITEM_CLASS = cn(
@@ -69,6 +69,30 @@ function CustomizerBody({
     return defaults;
   });
 
+  // The actual selected Choice objects across every group — the single
+  // source both the running total and the allergen badges derive from.
+  const selectedChoices = groups.flatMap((g) =>
+    (selected[g.id] ?? [])
+      .map((id) => g.choices.find((c) => c.id === id))
+      .filter((c): c is (typeof g.choices)[number] => !!c),
+  );
+
+  // Informational only — place_order re-derives the authoritative total the
+  // same way from the stored menu (src/lib/cart.ts's sumOptionDeltas).
+  const priceDelta = selectedChoices.reduce(
+    (sum, c) => sum + (c.price_delta_cents ?? 0),
+    0,
+  );
+
+  // Union of the item's fixed allergens and every currently-selected
+  // choice's allergens — no subtraction, see the allergen-tagging spec.
+  const allergens = Array.from(
+    new Set([
+      ...(item.allergens ?? []),
+      ...selectedChoices.flatMap((c) => c.allergens ?? []),
+    ]),
+  );
+
   function confirm() {
     const options: SelectedOption[] = groups.flatMap((g) =>
       (selected[g.id] ?? [])
@@ -109,6 +133,24 @@ function CustomizerBody({
         <SheetTitle className="font-display text-2xl">{item.name}</SheetTitle>
         {item.description && (
           <SheetDescription>{item.description}</SheetDescription>
+        )}
+        {/* Allergen info is a safety signal, not optional complexity — always
+            shown, never behind an accordion, updates live with selection. */}
+        {allergens.length > 0 && (
+          <div
+            role="status"
+            className="flex flex-wrap gap-1.5 pt-1"
+            aria-label="Contains allergens"
+          >
+            {allergens.map((a) => (
+              <span
+                key={a}
+                className="rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
+              >
+                {a}
+              </span>
+            ))}
+          </div>
         )}
       </SheetHeader>
 
@@ -175,6 +217,13 @@ function CustomizerBody({
       </div>
 
       <SheetFooter>
+        {/* Informational only — place_order re-derives the real total
+            server-side from the stored menu, never trusts this. */}
+        {priceDelta > 0 && (
+          <p className="text-center text-sm font-semibold text-primary">
+            +{formatPrice(priceDelta)}
+          </p>
+        )}
         <Button
           type="button"
           size="lg"

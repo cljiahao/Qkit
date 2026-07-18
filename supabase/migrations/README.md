@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-56 files, `0000` through `0055`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0055` tail; skimmed by filename/theme otherwise. The
+58 files, `0000` through `0057`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0057` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -115,6 +115,17 @@ schema evolved in five broad waves:
   `price_cents` key on the order snapshot at all, instead of coalescing to
   `0` — mirrors how `cost_cents` already worked, and is what lets the UI
   show "Free" instead of "$0.00" for a deliberately-unpriced item.
+  `0056_place_order_option_deltas.sql` extends the same function's
+  options-validation loop to also sum each selected choice's
+  `price_delta_cents`/`cost_delta_cents` into the line's total/cost, so a
+  vendor can charge extra for a customization (e.g. an oat-milk upcharge)
+  while `place_order` stays the sole authority on the charged amount — a
+  `price_delta_cents` forged into a submitted option is ignored, only the
+  stored menu's own delta is ever trusted. `0057_order_priority_bump.sql`
+  adds a nullable `priority_bumped_at` column to `orders` for the vendor
+  "bump to front" board action — not caught by the existing freeze
+  trigger (denylist, not allowlist), rides the existing
+  `orders_vendor_update` RLS policy with no new policy needed.
 
 ## Connectivity
 

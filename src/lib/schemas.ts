@@ -28,9 +28,48 @@ const imageUrlString = z
   });
 const menuImageUrl = imageUrlString.nullable().optional();
 
+// Upper bound for any money field (cents). $10k — matches the admin pricing cap
+// and keeps totals well inside a signed INTEGER even at max quantity/line count.
+export const MAX_MONEY_CENTS = 10_000_00;
+// Cart line cap — mirrors the DB guard inside place_order (jsonb_array_length).
+export const MAX_CART_LINES = 50;
+
+// Placeholder taxonomy for a coffee-cart context — extend if a real gap
+// shows up. Vendor-declared only; nothing in this codebase infers an
+// allergen from a label (e.g. "Oat Milk" does not imply dairy-free).
+export const ALLERGEN_TAGS = [
+  "dairy",
+  "nuts",
+  "gluten",
+  "soy",
+  "egg",
+  "caffeine",
+] as const;
+export type AllergenTag = (typeof ALLERGEN_TAGS)[number];
+
 export const optionChoiceSchema = z.object({
   id: z.string(),
   label: z.string(),
+  // Additive only — a selected choice adds cost, never reduces it. Bounded
+  // by MAX_MONEY_CENTS same as every other money field, so a forged delta
+  // can't overflow total_cents once summed across a cart.
+  price_delta_cents: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(MAX_MONEY_CENTS)
+    .optional(),
+  // Vendor's extra unit cost for this choice — optional, mirrors the base
+  // item's own cost_cents optionality. Never sent to customers.
+  cost_delta_cents: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(MAX_MONEY_CENTS)
+    .optional(),
+  // Only tag an allergen that actually varies by choice — see
+  // menuItemFormSchema's allergens for the fixed-ingredient half.
+  allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
 });
 
 export const optionGroupSchema = z.object({
@@ -69,12 +108,6 @@ export const selectedOptionSchema = z.object({
   choice: z.string().min(1).max(100),
 });
 
-// Upper bound for any money field (cents). $10k — matches the admin pricing cap
-// and keeps totals well inside a signed INTEGER even at max quantity/line count.
-export const MAX_MONEY_CENTS = 10_000_00;
-// Cart line cap — mirrors the DB guard inside place_order (jsonb_array_length).
-export const MAX_CART_LINES = 50;
-
 export const placeOrderSchema = z.object({
   customerName: z.string().min(1, "Your name is required").max(100),
   items: z
@@ -112,6 +145,9 @@ export const menuItemFormSchema = z.object({
   available: z.boolean(),
   // Optional sold-out cap (Pro). null/absent = unlimited.
   stock: z.number().int().nonnegative().max(1_000_000).nullable().optional(),
+  // Only fixed/inherent allergens that no customization changes — see
+  // optionChoiceSchema's allergens for anything that varies by choice.
+  allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
 });
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
@@ -432,6 +468,7 @@ export const menuItemSchema = z.object({
   available: z.boolean(),
   option_groups: z.array(optionGroupSchema).optional(),
   stock: z.number().int().nonnegative().nullable().optional(),
+  allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
 });
 
 export const orderItemSchema = z.object({
@@ -480,6 +517,7 @@ export const orderRowSchema = z.object({
   // parse here first. Tolerant so a payload missing it degrades to "" instead
   // of dropping the whole event.
   access_token: z.string().catch(""),
+  priority_bumped_at: z.string().nullable(),
 });
 
 /** Parse a JSONB menu_items value, dropping any malformed entries. */

@@ -1,4 +1,4 @@
-import type { SelectedOption } from "@/lib/types";
+import type { MenuItem, SelectedOption } from "@/lib/types";
 
 // US = ASCII unit separator (0x1F); cannot appear in user-facing labels, so two
 // different combos can never collide even when a label contains spaces.
@@ -30,4 +30,25 @@ export function cartTotal(
   items: { price_cents?: number | null; quantity: number }[],
 ): number {
   return items.reduce((sum, i) => sum + (i.price_cents ?? 0) * i.quantity, 0);
+}
+
+/**
+ * Sum of `price_delta_cents` across the selected choices, informational only
+ * (mirrors what place_order re-derives authoritatively from the same stored
+ * menu). An option that doesn't match any known group/choice contributes 0
+ * rather than throwing — the server is the one place that rejects unknown
+ * options; client-side display should degrade quietly.
+ */
+export function sumOptionDeltas(
+  item: Pick<MenuItem, "option_groups">,
+  options: SelectedOption[] | undefined,
+): number {
+  if (!options || options.length === 0) return 0;
+  const groups = item.option_groups ?? [];
+  return options.reduce((sum, o) => {
+    const choice = groups
+      .find((g) => g.label === o.group)
+      ?.choices.find((c) => c.label === o.choice);
+    return sum + (choice?.price_delta_cents ?? 0);
+  }, 0);
 }

@@ -1,17 +1,25 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ProLock } from "@/components/pro-lock";
 import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
-import type { OptionGroup } from "@/lib/types";
+import { ALLERGEN_TAGS, type AllergenTag } from "@/lib/schemas";
+import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
+import type { OptionChoice, OptionGroup } from "@/lib/types";
 
 interface Props {
   groups: OptionGroup[];
   onChange: (groups: OptionGroup[]) => void;
   entitlement: Entitlement;
+}
+
+function centsToDollars(cents?: number): string {
+  return cents == null ? "" : centsToDollarString(cents);
 }
 
 /**
@@ -20,6 +28,21 @@ interface Props {
  * with any number of choices. Not coffee-specific.
  */
 export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
+  // Advanced (cost + allergens) is collapsed by default per choice — most
+  // choices need neither, price is the only thing every vendor cares about.
+  const [expandedChoices, setExpandedChoices] = useState<Set<string>>(
+    new Set(),
+  );
+
+  function toggleAdvanced(choiceId: string) {
+    setExpandedChoices((prev) => {
+      const next = new Set(prev);
+      if (next.has(choiceId)) next.delete(choiceId);
+      else next.add(choiceId);
+      return next;
+    });
+  }
+
   // canHaveOptionGroups(count) asks "may an item carry `count` groups?" — so the
   // cap is hit when adding one more (groups.length + 1) is not allowed.
   const atGroupCap = !canHaveOptionGroups(entitlement, groups.length + 1);
@@ -48,6 +71,41 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
     updateGroup(gi, {
       choices: group.choices.map((c, i) => (i === ci ? { ...c, label } : c)),
     });
+  }
+
+  function updateChoice(gi: number, ci: number, patch: Partial<OptionChoice>) {
+    const group = groups[gi];
+    updateGroup(gi, {
+      choices: group.choices.map((c, i) => (i === ci ? { ...c, ...patch } : c)),
+    });
+  }
+
+  function setChoicePrice(gi: number, ci: number, dollars: string) {
+    const parsed = parseDollarsToCents(dollars);
+    if (!parsed.ok) return;
+    updateChoice(gi, ci, {
+      price_delta_cents: parsed.cents === 0 ? undefined : parsed.cents,
+    });
+  }
+
+  function setChoiceCost(gi: number, ci: number, dollars: string) {
+    const parsed = parseDollarsToCents(dollars);
+    if (!parsed.ok) return;
+    updateChoice(gi, ci, {
+      cost_delta_cents: parsed.cents === 0 ? undefined : parsed.cents,
+    });
+  }
+
+  function toggleChoiceAllergen(
+    gi: number,
+    ci: number,
+    choice: OptionChoice,
+    tag: AllergenTag,
+    checked: boolean,
+  ) {
+    const current = choice.allergens ?? [];
+    const next = checked ? [...current, tag] : current.filter((a) => a !== tag);
+    updateChoice(gi, ci, { allergens: next.length ? next : undefined });
   }
 
   function addChoice(gi: number) {
@@ -116,27 +174,106 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
 
           {/* choices */}
           <div className="space-y-2">
-            {group.choices.map((choice, ci) => (
-              <div key={choice.id} className="flex gap-2">
-                <Input
-                  placeholder="Choice (e.g. Small)"
-                  value={choice.label}
-                  onChange={(e) => updateChoiceLabel(gi, ci, e.target.value)}
-                  className="rounded-lg"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
-                  onClick={() => removeChoice(gi, ci)}
-                  aria-label="Remove choice"
-                  disabled={group.choices.length <= 1}
+            {group.choices.map((choice, ci) => {
+              const advancedOpen = expandedChoices.has(choice.id);
+              return (
+                <div
+                  key={choice.id}
+                  className="space-y-1.5 rounded-lg border border-transparent"
                 >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Choice (e.g. Small)"
+                      value={choice.label}
+                      onChange={(e) =>
+                        updateChoiceLabel(gi, ci, e.target.value)
+                      }
+                      className="rounded-lg"
+                    />
+                    {/* Price matters to every vendor — always visible, not
+                        behind the Advanced accordion below. */}
+                    <div className="relative w-28 shrink-0">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        inputMode="decimal"
+                        placeholder="Price (opt.)"
+                        value={centsToDollars(choice.price_delta_cents)}
+                        onChange={(e) => setChoicePrice(gi, ci, e.target.value)}
+                        className="rounded-lg pl-6"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
+                      onClick={() => removeChoice(gi, ci)}
+                      aria-label="Remove choice"
+                      disabled={group.choices.length <= 1}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+
+                  {/* Advanced: extra cost + allergens — collapsed by default,
+                      most choices need neither. */}
+                  <button
+                    type="button"
+                    onClick={() => toggleAdvanced(choice.id)}
+                    className="flex items-center gap-1 pl-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    {advancedOpen ? (
+                      <ChevronDown className="size-3" />
+                    ) : (
+                      <ChevronRight className="size-3" />
+                    )}
+                    Advanced
+                  </button>
+                  {advancedOpen && (
+                    <div className="ml-1 space-y-2 border-l border-border pl-3">
+                      <div className="relative w-32">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          inputMode="decimal"
+                          placeholder="Cost (opt.)"
+                          value={centsToDollars(choice.cost_delta_cents)}
+                          onChange={(e) =>
+                            setChoiceCost(gi, ci, e.target.value)
+                          }
+                          className="rounded-lg pl-6 text-sm"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {ALLERGEN_TAGS.map((tag) => (
+                          <label
+                            key={tag}
+                            className="flex items-center gap-1.5 text-xs capitalize"
+                          >
+                            <Checkbox
+                              checked={(choice.allergens ?? []).includes(tag)}
+                              onCheckedChange={(checked) =>
+                                toggleChoiceAllergen(
+                                  gi,
+                                  ci,
+                                  choice,
+                                  tag,
+                                  checked === true,
+                                )
+                              }
+                            />
+                            {tag}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <Button
               type="button"
               variant="ghost"

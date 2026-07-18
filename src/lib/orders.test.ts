@@ -8,6 +8,8 @@ import {
   orderProgressIndex,
   ORDER_PROGRESS_SEGMENTS,
   buildAdvancePatch,
+  ordersAheadOf,
+  estimateLabel,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
 
@@ -31,6 +33,7 @@ function order(over: Partial<Order>): Order {
     updated_at: over.updated_at ?? "2026-06-12T10:00:00Z",
     idempotency_key: over.idempotency_key ?? null,
     access_token: over.access_token ?? "tok-test",
+    priority_bumped_at: over.priority_bumped_at ?? null,
   };
 }
 
@@ -101,6 +104,67 @@ describe("sortActiveOrders", () => {
     ];
     sortActiveOrders(input);
     expect(input.map((o) => o.id)).toEqual(["r", "p"]);
+  });
+
+  it("ranks a bumped order ahead of older non-bumped orders in the same status tier", () => {
+    const out = sortActiveOrders([
+      order({
+        id: "old",
+        status: "preparing",
+        created_at: "2026-06-12T10:00:00Z",
+      }),
+      order({
+        id: "bumped",
+        status: "preparing",
+        created_at: "2026-06-12T10:05:00Z",
+        priority_bumped_at: "2026-06-12T10:06:00Z",
+      }),
+    ]);
+    expect(out.map((o) => o.id)).toEqual(["bumped", "old"]);
+  });
+
+  it("ranks multiple bumped orders by most-recently-bumped first", () => {
+    const out = sortActiveOrders([
+      order({
+        id: "bumped-first",
+        status: "preparing",
+        priority_bumped_at: "2026-06-12T10:00:00Z",
+      }),
+      order({
+        id: "bumped-second",
+        status: "preparing",
+        priority_bumped_at: "2026-06-12T10:05:00Z",
+      }),
+    ]);
+    expect(out.map((o) => o.id)).toEqual(["bumped-second", "bumped-first"]);
+  });
+
+  it("does not touch created_at-based FIFO among non-bumped orders", () => {
+    const out = sortActiveOrders([
+      order({
+        id: "new",
+        status: "preparing",
+        created_at: "2026-06-12T10:05:00Z",
+      }),
+      order({
+        id: "old",
+        status: "preparing",
+        created_at: "2026-06-12T10:00:00Z",
+      }),
+    ]);
+    expect(out.map((o) => o.id)).toEqual(["old", "new"]);
+  });
+
+  it("still ranks by status before considering bump state", () => {
+    const out = sortActiveOrders([
+      order({
+        id: "ready-bumped",
+        status: "ready",
+        priority_bumped_at: "2026-06-12T10:05:00Z",
+      }),
+      order({ id: "preparing-plain", status: "preparing" }),
+    ]);
+    expect(out.map((o) => o.id)).toEqual(["preparing-plain", "ready-bumped"]);
   });
 });
 
@@ -247,5 +311,66 @@ describe("buildAdvancePatch", () => {
       status: "ready",
       ready_at: NOW,
     });
+  });
+});
+
+describe("ordersAheadOf", () => {
+  it("counts preparing/ready orders ahead of a pending target", () => {
+    const target = order({
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+    });
+    const others = [
+      order({ id: "a", status: "preparing" }),
+      order({ id: "b", status: "ready" }),
+      target,
+    ];
+    expect(ordersAheadOf(others, target)).toBe(2);
+  });
+
+  it("counts only earlier-created orders within the same rank", () => {
+    const target = order({
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+    });
+    const others = [
+      order({
+        id: "before",
+        status: "pending",
+        created_at: "2026-06-12T10:00:00Z",
+      }),
+      order({
+        id: "after",
+        status: "pending",
+        created_at: "2026-06-12T10:10:00Z",
+      }),
+      target,
+    ];
+    expect(ordersAheadOf(others, target)).toBe(1);
+  });
+
+  it("excludes the target order itself even if present in the list", () => {
+    const target = order({ id: "t", status: "preparing" });
+    expect(ordersAheadOf([target], target)).toBe(0);
+  });
+
+  it("returns 0 when nothing ranks ahead", () => {
+    const target = order({ id: "t", status: "preparing" });
+    const other = order({ id: "o", status: "pending" });
+    expect(ordersAheadOf([target, other], target)).toBe(0);
+  });
+});
+
+describe("estimateLabel", () => {
+  it("rounds to the nearest minute", () => {
+    expect(estimateLabel(150)).toBe("~3 min");
+    expect(estimateLabel(89)).toBe("~1 min");
+  });
+
+  it("shows a friendly label for a near-zero estimate", () => {
+    expect(estimateLabel(0)).toBe("Any moment now");
+    expect(estimateLabel(20)).toBe("Any moment now");
   });
 });

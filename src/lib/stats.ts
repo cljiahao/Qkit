@@ -190,6 +190,24 @@ export function avgWaitSeconds(orders: StatsOrder[]): number | null {
 }
 
 /**
+ * Customer-facing wait estimate: recent average prep time × orders ahead in
+ * the queue. Requires at least `minSample` recent orders before returning
+ * anything — a booth's first order of the day gets no number shown rather
+ * than a guess, matching this module's empty-data convention (null, never
+ * a misleading value). Pure.
+ */
+export function estimateWaitSeconds(
+  recentOrders: StatsOrder[],
+  ordersAhead: number,
+  minSample = 10,
+): number | null {
+  if (recentOrders.length < minSample) return null;
+  const avg = avgWaitSeconds(recentOrders);
+  if (avg === null) return null;
+  return ordersAhead * avg;
+}
+
+/**
  * Per-bucket average wait + order volume across a window ending nowMs. Mirrors
  * windowSeries bucketing. A bucket with orders but none readied gets
  * avgWaitSeconds: null (rendered as a gap, not 0). Cancelled excluded.

@@ -66,7 +66,27 @@ export type SocialLinks = {
   tiktok?: string;
 };
 
-export type OptionChoice = { id: string; label: string };
+export type AllergenTag =
+  | "dairy"
+  | "nuts"
+  | "gluten"
+  | "soy"
+  | "egg"
+  | "caffeine";
+
+export type OptionChoice = {
+  id: string;
+  label: string;
+  // Additive only — a selected choice adds cost, never reduces it. Never
+  // trusted from the client; place_order re-derives from the stored menu.
+  price_delta_cents?: number;
+  // Vendor's extra unit cost for this choice. Never shown to customers.
+  cost_delta_cents?: number;
+  // Only tag an allergen that actually varies by choice (e.g. "Regular Milk"
+  // -> ["dairy"], "Oat Milk" -> []) — see MenuItem.allergens for the
+  // fixed-ingredient half of this model.
+  allergens?: AllergenTag[];
+};
 export type OptionGroup = {
   id: string;
   label: string;
@@ -91,6 +111,9 @@ export type MenuItem = {
   // Optional sold-out cap (Pro). null/absent = unlimited. Remaining is computed
   // live from non-cancelled orders (see booth_remaining_stock) — not decremented.
   stock?: number | null;
+  // Only fixed/inherent allergens that no customization changes — see
+  // OptionChoice.allergens for anything that varies by choice.
+  allergens?: AllergenTag[];
 };
 
 export type CartItem = {
@@ -469,6 +492,7 @@ export interface Database {
           updated_at: string;
           idempotency_key: string | null;
           access_token: string;
+          priority_bumped_at: string | null;
         };
         Insert: {
           id?: string;
@@ -487,6 +511,7 @@ export interface Database {
           updated_at?: string;
           idempotency_key?: string | null;
           access_token?: string;
+          priority_bumped_at?: string | null;
         };
         Update: {
           id?: string;
@@ -505,6 +530,7 @@ export interface Database {
           updated_at?: string;
           idempotency_key?: string | null;
           access_token?: string;
+          priority_bumped_at?: string | null;
         };
         Relationships: [
           {

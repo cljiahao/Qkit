@@ -12,9 +12,10 @@ import {
   requestNotifyPermission,
   unlockAudio,
 } from "@/lib/order-alerts";
-import { getOrderStatus } from "./status-actions";
+import { getOrderStatus, getWaitEstimate } from "./status-actions";
 import {
   elapsedLabel,
+  estimateLabel,
   isTerminal,
   orderProgressIndex,
   ORDER_PROGRESS_SEGMENTS,
@@ -57,6 +58,9 @@ export function OrderStatusPoller({
   placedAt,
 }: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
+  // null = no estimate to show (not enough history, or not applicable once
+  // ready/terminal). Recomputed on the same poll as status, live not frozen.
+  const [waitSeconds, setWaitSeconds] = useState<number | null>(null);
   // null until known (avoids SSR/hydration mismatch); "default" = can ask.
   const [permission, setPermission] = useState<NotificationPermission | null>(
     null,
@@ -106,8 +110,12 @@ export function OrderStatusPoller({
   // (no WebSocket dependency); the shared hook pauses while backgrounded and
   // refreshes the instant the tab returns.
   const poll = useCallback(async () => {
-    const next = await getOrderStatus(boothId, orderNumber, token);
+    const [next, estimate] = await Promise.all([
+      getOrderStatus(boothId, orderNumber, token),
+      getWaitEstimate(boothId, orderNumber, token),
+    ]);
     if (next) setStatus(next);
+    setWaitSeconds(estimate);
   }, [boothId, orderNumber, token]);
   usePolling(poll, { intervalMs: POLL_MS, enabled: !isTerminal(status) });
 
@@ -202,6 +210,14 @@ export function OrderStatusPoller({
 
       {!cancelled && elapsed && (
         <p className="-mt-2 text-xs text-muted-foreground">Placed {elapsed}</p>
+      )}
+
+      {/* Only meaningful while still waiting — once ready, "please collect
+          now" replaces any ETA; a terminal/cancelled order has none either. */}
+      {waiting && waitSeconds !== null && (
+        <p className="text-sm font-medium text-primary">
+          {estimateLabel(waitSeconds)}
+        </p>
       )}
 
       {status === "ready" && (

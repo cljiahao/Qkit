@@ -11,7 +11,7 @@ import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
 import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
-import type { MenuItemFormInput } from "@/lib/schemas";
+import { ALLERGEN_TAGS, type MenuItemFormInput } from "@/lib/schemas";
 import type { OptionGroup } from "@/lib/types";
 
 interface Props {
@@ -27,6 +27,12 @@ function centsToDollars(cents?: number): string {
 
 export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Separate collapse state from "Customization" — allergens are a distinct
+  // concept (fixed ingredients, not option groups), collapsed by default
+  // since most items don't need them.
+  const [expandedAdvanced, setExpandedAdvanced] = useState<Set<string>>(
+    new Set(),
+  );
 
   const atItemCap = !canAddMenuItem(entitlement, items.length);
 
@@ -37,6 +43,24 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
       else next.add(id);
       return next;
     });
+  }
+
+  function toggleAdvanced(id: string) {
+    setExpandedAdvanced((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleItemAllergen(index: number, tag: string, checked: boolean) {
+    const item = items[index];
+    const current = item.allergens ?? [];
+    const next = checked
+      ? [...current, tag as (typeof ALLERGEN_TAGS)[number]]
+      : current.filter((a) => a !== tag);
+    update(index, { allergens: next.length ? next : undefined });
   }
 
   function update(index: number, patch: Partial<MenuItemFormInput>) {
@@ -225,6 +249,48 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                 </span>
               </div>
             )}
+
+            {/* Advanced: fixed/inherent allergens — collapsed by default,
+                most items need none. Anything that varies by customization
+                choice is tagged on the choice itself (OptionGroupsEditor). */}
+            <div>
+              <button
+                type="button"
+                onClick={() => toggleAdvanced(item.id)}
+                className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                {expandedAdvanced.has(item.id) ? (
+                  <ChevronDown className="size-3" />
+                ) : (
+                  <ChevronRight className="size-3" />
+                )}
+                Advanced
+              </button>
+              {expandedAdvanced.has(item.id) && (
+                <div className="mt-2 space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    Allergens always present in this item, regardless of
+                    customization.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {ALLERGEN_TAGS.map((tag) => (
+                      <label
+                        key={tag}
+                        className="flex items-center gap-1.5 text-xs capitalize"
+                      >
+                        <Checkbox
+                          checked={(item.allergens ?? []).includes(tag)}
+                          onCheckedChange={(checked) =>
+                            toggleItemAllergen(i, tag, checked === true)
+                          }
+                        />
+                        {tag}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Customization — collapsed by default; most items have none. */}
             {(() => {

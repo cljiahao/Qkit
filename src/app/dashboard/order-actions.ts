@@ -113,6 +113,42 @@ export async function confirmOrderPayment(
   return { success: true };
 }
 
+/**
+ * Manually bump a live order to the front of its status lane — an explicit,
+ * one-time vendor override (e.g. an elderly/non-digital customer at the
+ * counter), not a permanent pin. Rejects a terminal order; no limit on how
+ * often a live order can be re-bumped (deliberate — see
+ * docs/superpowers/specs/2026-07-18-manual-queue-priority-override-design.md).
+ */
+export async function bumpOrder(orderId: string): Promise<ActionResult> {
+  if (!idSchema.safeParse(orderId).success)
+    return { success: false, error: "Invalid order" };
+
+  const { supabase, order } = await loadOwnOrder(orderId);
+  if (!supabase || !order) return { success: false, error: "Order not found" };
+  if (isTerminal(order.status))
+    return { success: false, error: "Order is already closed" };
+
+  // Guard on the status we read, same concurrency pattern as advance/cancel —
+  // a status change between the read and this write means someone else acted
+  // on the order first, so this bump becomes a no-op refresh prompt rather
+  // than silently bumping a now-stale view of the order.
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({ priority_bumped_at: new Date().toISOString() })
+    .eq("id", orderId)
+    .eq("status", order.status)
+    .select("id");
+  if (error) {
+    console.error("bumpOrder failed", error.message);
+    return { success: false, error: "Failed to bump order" };
+  }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed — please refresh." };
+
+  return { success: true };
+}
+
 /** Cancel a live order. Rejects an order that's already completed/cancelled. */
 export async function cancelOrder(orderId: string): Promise<ActionResult> {
   if (!idSchema.safeParse(orderId).success)

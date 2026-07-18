@@ -5,8 +5,9 @@ import userEvent from "@testing-library/user-event";
 import { OrderStatusPoller } from "./order-status-poller";
 import type { OrderStatus } from "@/lib/types";
 
-const { getOrderStatus, alerts } = vi.hoisted(() => ({
+const { getOrderStatus, getWaitEstimate, alerts } = vi.hoisted(() => ({
   getOrderStatus: vi.fn(),
+  getWaitEstimate: vi.fn(),
   alerts: {
     isNotifySupported: vi.fn(() => true),
     notifyPermission: vi.fn((): NotificationPermission | null => "default"),
@@ -19,7 +20,7 @@ const { getOrderStatus, alerts } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("./status-actions", () => ({ getOrderStatus }));
+vi.mock("./status-actions", () => ({ getOrderStatus, getWaitEstimate }));
 vi.mock("@/lib/order-alerts", () => alerts);
 
 function renderPoller(initialStatus: OrderStatus = "preparing") {
@@ -39,6 +40,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   alerts.isNotifySupported.mockReturnValue(true);
   alerts.notifyPermission.mockReturnValue("default");
+  getWaitEstimate.mockResolvedValue(null);
 });
 
 describe("OrderStatusPoller", () => {
@@ -114,6 +116,38 @@ describe("OrderStatusPoller", () => {
         screen.getByText(/We'll alert you the moment it's ready/),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("shows a wait estimate once one is available", async () => {
+    getOrderStatus.mockResolvedValue("preparing");
+    getWaitEstimate.mockResolvedValue(300);
+    renderPoller("preparing");
+
+    await waitFor(() => expect(screen.getByText("~5 min")).toBeInTheDocument());
+  });
+
+  it("shows nothing for the estimate when there isn't enough history", async () => {
+    getOrderStatus.mockResolvedValue("preparing");
+    getWaitEstimate.mockResolvedValue(null);
+    renderPoller("preparing");
+
+    await waitFor(() =>
+      expect(getWaitEstimate).toHaveBeenCalledWith("b1", "0007", "tok"),
+    );
+    expect(screen.queryByText(/min$/)).not.toBeInTheDocument();
+  });
+
+  it("does not show a wait estimate once the order is ready", async () => {
+    getOrderStatus.mockResolvedValue("ready");
+    getWaitEstimate.mockResolvedValue(300);
+    renderPoller("preparing");
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Your order is ready for pickup!"),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("~5 min")).not.toBeInTheDocument();
   });
 
   it("still arms (sound-only) where notifications are unsupported", async () => {

@@ -5,7 +5,7 @@ import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
 // secret, which the board never needs (least privilege). Single source so
 // the two read sites can't drift out of sync with each other.
 export const BOARD_ORDER_COLUMNS =
-  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key" as const;
+  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at" as const;
 
 // A finished order — off the active board, no further transitions. Single
 // source of truth for the "is this done" check that several views need.
@@ -134,14 +134,78 @@ export function buildAdvancePatch(
 
 /**
  * Sort active orders for the vendor board: in-progress (preparing) before
- * ready, then FIFO within a status by created_at (oldest first). created_at is
- * used rather than order_number because order numbers are per-booth and not
- * globally ordered. Pure + non-mutating.
+ * ready, then a manually bumped order (vendor's explicit "help this one now"
+ * override — most-recently-bumped first) before non-bumped, then FIFO within
+ * a status by created_at (oldest first). created_at is used rather than
+ * order_number because order numbers are per-booth and not globally ordered,
+ * and is never touched by a bump — ticket-aging display stays accurate
+ * regardless of bump state. Pure + non-mutating.
  */
 export function sortActiveOrders(orders: BoardOrder[]): BoardOrder[] {
   return [...orders].sort((a, b) => {
     const rank = STATUS_RANK[a.status] - STATUS_RANK[b.status];
     if (rank !== 0) return rank;
+    const aBumped = a.priority_bumped_at != null;
+    const bBumped = b.priority_bumped_at != null;
+    if (aBumped !== bBumped) return aBumped ? -1 : 1;
+    if (aBumped && bBumped) {
+      return (
+        new Date(b.priority_bumped_at!).getTime() -
+        new Date(a.priority_bumped_at!).getTime()
+      );
+    }
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
+}
+
+/**
+ * How many orders rank strictly ahead of `target` in the same queue —
+ * mirrors sortActiveOrders's own comparison (status rank, then bump state,
+ * then created_at/bump time) rather than reimplementing the ordering, so a
+ * wait estimate always matches what the vendor's board actually shows.
+ * Excludes `target` itself and excludes exact ties (undefined ordering,
+ * safer to under-count by one than over-promise). Pure.
+ */
+export function ordersAheadOf(
+  orders: {
+    id: string;
+    status: OrderStatus;
+    created_at: string;
+    priority_bumped_at?: string | null;
+  }[],
+  target: {
+    id: string;
+    status: OrderStatus;
+    created_at: string;
+    priority_bumped_at?: string | null;
+  },
+): number {
+  const targetRank = STATUS_RANK[target.status];
+  const targetBumped = target.priority_bumped_at != null;
+  const targetTime = new Date(
+    target.priority_bumped_at ?? target.created_at,
+  ).getTime();
+  return orders.filter((o) => {
+    if (o.id === target.id) return false;
+    const rank = STATUS_RANK[o.status];
+    if (rank < targetRank) return true;
+    if (rank > targetRank) return false;
+    const oBumped = o.priority_bumped_at != null;
+    if (oBumped !== targetBumped) return oBumped;
+    const oTime = new Date(o.priority_bumped_at ?? o.created_at).getTime();
+    // Bumped orders rank most-recently-bumped-first (descending); everyone
+    // else stays FIFO (ascending) — matches sortActiveOrders exactly.
+    return oBumped ? oTime > targetTime : oTime < targetTime;
+  }).length;
+}
+
+/**
+ * Coarse "ready in ~N min" label for a customer wait estimate — rounds to
+ * the nearest minute (never false second-precision) and reads as "any
+ * moment" near zero rather than "~0 min". Pure.
+ */
+export function estimateLabel(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 1) return "Any moment now";
+  return `~${minutes} min`;
 }
