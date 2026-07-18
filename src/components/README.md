@@ -72,8 +72,8 @@ prompt, metric })`: compact rating widget posting to
   confirm-payment action buttons wired to `@/app/dashboard/order-actions`.
   The name/number block doubles as the bump trigger (chip-styled, confirm
   dialog, disabled once already bumped) instead of a separate icon button.
-  In multi-booth view, a folder-tab element flush on the card's left edge
-  shows the booth name vertically, bordered in that booth's `boothColor()`.
+  In multi-booth view, a full-width banner above the header shows the
+  booth name next to a `boothColor()` dot.
   One "attention wash" background at a time, prioritized overdue >
   payment-claimed > aging.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
