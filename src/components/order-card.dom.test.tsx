@@ -233,51 +233,56 @@ describe("OrderCard payment", () => {
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
-  it("shows a Bump to front button for a live, non-bumped order", () => {
+  it("makes the name/number block a bump-confirmation trigger for a live, non-bumped order", () => {
     render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
       wrapper: TooltipProvider,
     });
-    expect(
-      screen.getByRole("button", { name: /bump to front/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ada/ })).toBeInTheDocument();
   });
 
-  it("calls bumpOrder and shows the bumped badge, hiding the button, once bumped", async () => {
+  it("calls bumpOrder after confirmation and swaps the trigger for a bumped icon", async () => {
     const user = userEvent.setup();
     render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
       wrapper: TooltipProvider,
     });
-    await user.click(screen.getByRole("button", { name: /bump to front/i }));
+    await user.click(screen.getByRole("button", { name: /Ada/ }));
+    await user.click(screen.getByRole("button", { name: "Bump to front" }));
     expect(bumpOrder).toHaveBeenCalledWith("o1");
     await waitFor(() => {
       expect(
-        screen.queryByRole("button", { name: /bump to front/i }),
+        screen.queryByRole("button", { name: /Ada/ }),
       ).not.toBeInTheDocument();
     });
-    expect(screen.getByText(/bumped/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/manually bumped to the front/i),
+    ).toBeInTheDocument();
   });
 
-  it("shows the bumped badge and no button for an order already bumped", () => {
+  it("shows the bumped icon and no confirmation trigger for an order already bumped", () => {
     render(
       <OrderCard
         order={makeOrder({ priority_bumped_at: new Date(0).toISOString() })}
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /bump to front/i }),
+      screen.queryByRole("button", { name: /Ada/ }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/bumped/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/manually bumped to the front/i),
+    ).toBeInTheDocument();
   });
 
-  it("shows no bump button or badge for a closed order", () => {
+  it("shows no bump trigger or bumped icon for a closed order", () => {
     render(
       <OrderCard
         order={makeOrder({ status: "completed", priority_bumped_at: null })}
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /bump to front/i }),
+      screen.queryByRole("button", { name: /Ada/ }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/bumped/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/manually bumped to the front/i),
+    ).not.toBeInTheDocument();
   });
 });
