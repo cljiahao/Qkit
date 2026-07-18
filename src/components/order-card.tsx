@@ -32,7 +32,7 @@ import {
   confirmOrderPayment,
   revertOrderAdvance,
 } from "@/app/dashboard/order-actions";
-import { sgtClock } from "@/lib/tz";
+import { sgtClock, shortDateTime } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { Banknote, ChevronDown, Clock, Undo2, Zap } from "lucide-react";
@@ -72,6 +72,7 @@ export function OrderCard({
   agingMin,
   overdueMin,
   onUndoWindowChange,
+  showDate = false,
 }: {
   order: BoardOrder;
   boothName?: string;
@@ -86,6 +87,11 @@ export function OrderCard({
   // out from under the undo button. No-op when omitted (e.g. the completed-
   // orders history list, which never calls advanceStatus in the first place).
   onUndoWindowChange?: (orderId: string, active: boolean) => void;
+  // Footer stamp reads a bare time ("2:38 AM") by default — fine for the
+  // live board, where every card is from today. A history list spans many
+  // days, so it opts into a date+time stamp instead of a time an ordering
+  // vendor would have to guess the day for.
+  showDate?: boolean;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   // Resync to the (realtime-updated) prop when it actually changes value, so a
@@ -569,7 +575,11 @@ export function OrderCard({
           ) : (
             <span />
           )}
-          <span>{sgtClock(order.created_at)}</span>
+          <span>
+            {showDate
+              ? shortDateTime(order.created_at)
+              : sgtClock(order.created_at)}
+          </span>
         </div>
       </div>
     </Ticket>

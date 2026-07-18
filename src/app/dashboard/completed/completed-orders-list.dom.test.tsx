@@ -199,6 +199,38 @@ describe("CompletedOrdersList", () => {
     expect(screen.getByText("#0002")).toBeInTheDocument();
   });
 
+  it("filters by date range", async () => {
+    const user = userEvent.setup();
+    const now = Date.now();
+    const orders = [
+      makeOrder({
+        id: "recent",
+        order_number: "0001",
+        completed_at: new Date(now - 60_000).toISOString(), // 1 min ago
+      }),
+      makeOrder({
+        id: "old",
+        order_number: "0002",
+        completed_at: new Date(now - 40 * 24 * 60 * 60 * 1000).toISOString(), // 40 days ago
+      }),
+    ];
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={orders}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(screen.getByText("#0002")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "7 days" }));
+
+    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(screen.queryByText("#0002")).not.toBeInTheDocument();
+  });
+
   it("shows a no-match state when the search matches nothing", async () => {
     const user = userEvent.setup();
     render(

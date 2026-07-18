@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OrderCard } from "./order-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { sgtClock, shortDateTime } from "@/lib/tz";
 import type { Order } from "@/lib/types";
 
 // The card delegates mutations to server actions (order-actions.ts). We mock
@@ -78,6 +79,26 @@ describe("OrderCard", () => {
     // Line total (350×2) and order total both read $7.00.
     expect(screen.getAllByText("$7.00")).toHaveLength(2);
     expect(screen.getByText("Total")).toBeInTheDocument();
+  });
+
+  it("footer stamp is a bare time by default, a date+time when showDate is set", () => {
+    const order = makeOrder();
+    const { rerender } = render(<OrderCard order={order} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.getByText(sgtClock(order.created_at))).toBeInTheDocument();
+    expect(
+      screen.queryByText(shortDateTime(order.created_at)),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <TooltipProvider>
+        <OrderCard order={order} showDate />
+      </TooltipProvider>,
+    );
+    expect(
+      screen.getByText(shortDateTime(order.created_at)),
+    ).toBeInTheDocument();
   });
 
   it("shows Free (not $0.00) for an unpriced item in an otherwise-priced order", () => {

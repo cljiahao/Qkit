@@ -66,10 +66,12 @@ prompt, metric })`: compact rating widget posting to
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
 - `order-card.tsx` — `OrderCard({ order, boothName, agingMin, overdueMin,
-onUndoWindowChange })`: the vendor dashboard's live order ticket —
+onUndoWindowChange, showDate })`: the vendor dashboard's live order ticket —
   status/payment badges, an aging clock (`orderAgeTone`, ticks every 30s)
-  moved to the footer beside the arrival timestamp, expandable item options,
-  and the advance/cancel/confirm-payment action buttons wired to
+  moved to the footer beside the arrival timestamp (`sgtClock`, bare time —
+  or `shortDateTime`, date+time, when `showDate` is set, for the completed-
+  orders history list where every card isn't from today), expandable item
+  options, and the advance/cancel/confirm-payment action buttons wired to
   `@/app/dashboard/order-actions`. Advancing (Mark Ready/Mark Picked Up)
   fires instantly — no confirm gate on a tapped-dozens-of-times-a-shift
   button — backed instead by a `UNDO_MS` (4s) undo window: the button
