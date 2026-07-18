@@ -208,29 +208,6 @@ export function OrderCard({
               <Zap className="size-3" /> Bumped
             </span>
           )}
-          {!closed && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 text-[0.7rem] font-semibold tabular-nums",
-                tone === "overdue"
-                  ? "text-status-cancelled"
-                  : tone === "aging"
-                    ? "text-amber-600"
-                    : "text-muted-foreground",
-              )}
-              title="Time since the order arrived"
-              aria-label={`${ageMins} minutes since arrival${
-                tone === "overdue"
-                  ? ", overdue"
-                  : tone === "aging"
-                    ? ", getting old"
-                    : ""
-              }`}
-            >
-              <Clock className="size-3" />
-              {ageMins}m
-            </span>
-          )}
           {boothName && (
             <span className="inline-flex max-w-[8rem] items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
               <span
@@ -426,9 +403,34 @@ export function OrderCard({
           </div>
         )}
 
-        <p className="border-t border-border/60 px-4 py-2 text-right font-mono text-[0.7rem] text-muted-foreground">
-          {sgtClock(order.created_at)}
-        </p>
+        <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 font-mono text-[0.7rem] text-muted-foreground">
+          {!closed ? (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 font-semibold tabular-nums",
+                tone === "overdue"
+                  ? "text-status-cancelled"
+                  : tone === "aging"
+                    ? "text-amber-600"
+                    : "text-muted-foreground",
+              )}
+              title="Time since the order arrived"
+              aria-label={`${ageMins} minutes since arrival${
+                tone === "overdue"
+                  ? ", overdue"
+                  : tone === "aging"
+                    ? ", getting old"
+                    : ""
+              }`}
+            >
+              <Clock className="size-3" />
+              {ageMins}m
+            </span>
+          ) : (
+            <span />
+          )}
+          <span>{sgtClock(order.created_at)}</span>
+        </div>
       </div>
     </Ticket>
   );
