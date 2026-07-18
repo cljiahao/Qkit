@@ -181,7 +181,18 @@ export function OrderCard({
       className={cn(
         "flex w-full flex-col shadow-[0_1px_0_0_var(--color-border),0_12px_28px_-20px_oklch(0.4_0.06_45/0.4)]",
         wash,
+        // A per-booth colour stripe — same boothColor() hash already used for
+        // the filter tabs and the booth pill below, so a staffer's "this
+        // colour = my booth" association carries straight over onto the
+        // card. Only rendered when boothName is (i.e. the vendor actually
+        // has multiple booths); a single-booth card has nothing to
+        // disambiguate. Thin on purpose so it doesn't compete with `wash`,
+        // which carries the higher-priority overdue/aging/payment signal.
+        boothName && "border-l-4",
       )}
+      style={
+        boothName ? { borderLeftColor: boothColor(order.booth_id) } : undefined
+      }
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
         {/* The name/number block doubles as the bump affordance: tapping it
@@ -194,18 +205,21 @@ export function OrderCard({
             <AlertDialogTrigger asChild>
               <button
                 type="button"
-                className="min-w-0 rounded-md text-left transition-colors hover:bg-secondary/50"
+                className="-mx-2 -my-1 min-w-0 rounded-lg border border-dashed border-muted-foreground/40 bg-secondary/40 px-2 py-1 text-left transition-colors hover:border-primary/50 hover:bg-secondary"
                 disabled={updating}
               >
                 <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
                   #{order.order_number}
                   <Zap
-                    className="size-4 shrink-0 text-muted-foreground/40"
+                    className="size-4 shrink-0 text-muted-foreground"
                     aria-hidden="true"
                   />
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {order.customer_name}
+                </p>
+                <p className="text-[0.6rem] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  Tap to bump
                 </p>
               </button>
             </AlertDialogTrigger>
