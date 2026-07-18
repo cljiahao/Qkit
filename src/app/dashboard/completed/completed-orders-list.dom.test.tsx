@@ -10,6 +10,7 @@ vi.mock("@/app/dashboard/order-actions", () => ({
   confirmOrderPayment: vi.fn(),
   cancelOrder: vi.fn(),
   bumpOrder: vi.fn(),
+  revertOrderAdvance: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
@@ -136,5 +137,84 @@ describe("CompletedOrdersList", () => {
     expect(
       screen.getByText(/most recent 1 completed orders/),
     ).toBeInTheDocument();
+  });
+
+  it("shows the x-y of N count even when everything fits on one page", () => {
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={[makeOrder({ id: "o1" })]}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.getByText("1–1 of 1")).toBeInTheDocument();
+  });
+
+  it("filters by booth via the dropdown", async () => {
+    const user = userEvent.setup();
+    const orders = [
+      makeOrder({ id: "o1", order_number: "0001", booth_id: "b1" }),
+      makeOrder({ id: "o2", order_number: "0002", booth_id: "b2" }),
+    ];
+    render(
+      <CompletedOrdersList
+        booths={[...BOOTHS, { id: "b2", name: "Ice Cream Cart" }]}
+        orders={orders}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(screen.getByText("#0002")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: "Kopi Corner" }));
+
+    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(screen.queryByText("#0002")).not.toBeInTheDocument();
+  });
+
+  it("filters by search text matching order number or customer name", async () => {
+    const user = userEvent.setup();
+    const orders = [
+      makeOrder({ id: "o1", order_number: "0001", customer_name: "Ada" }),
+      makeOrder({ id: "o2", order_number: "0002", customer_name: "Priya" }),
+    ];
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={orders}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+
+    await user.type(
+      screen.getByPlaceholderText("Search order # or customer name"),
+      "priya",
+    );
+
+    expect(screen.queryByText("#0001")).not.toBeInTheDocument();
+    expect(screen.getByText("#0002")).toBeInTheDocument();
+  });
+
+  it("shows a no-match state when the search matches nothing", async () => {
+    const user = userEvent.setup();
+    render(
+      <CompletedOrdersList
+        booths={BOOTHS}
+        orders={[makeOrder({ id: "o1" })]}
+        loadError={false}
+        historyLimit={500}
+      />,
+    );
+
+    await user.type(
+      screen.getByPlaceholderText("Search order # or customer name"),
+      "nobody",
+    );
+
+    expect(screen.getByText("No matching orders")).toBeInTheDocument();
   });
 });

@@ -88,12 +88,17 @@ onUndoWindowChange })`: the vendor dashboard's live order ticket —
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
   pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
   cancelled), shared by the dashboard board and the customer status page.
-- `paginated.tsx` — `Paginated({ children, pageSize, variant, label })`:
-  client-side pager over pre-rendered rows — `variant="pager"` (prev/next +
-  "x–y of N", for admin tables) or `"more"` (Load more / Show less, for
-  feeds). The visible rows sit in their own `className`-styled wrapper,
-  separate from the prev/next or Load-more row — a grid `className` (e.g.
-  the completed-orders page) lays out only the rows, not the pager controls.
+- `paginated.tsx` — `Paginated({ children, pageSize, variant, label,
+alwaysShowCount })`: client-side pager over pre-rendered rows —
+  `variant="pager"` (prev/next + "x–y of N", for admin tables) or `"more"`
+  (Load more / Show less, for feeds). `alwaysShowCount` (pager only) shows
+  the "x–y of N" readout even when everything fits on one page — useful
+  when the count itself is meaningful context (e.g. confirming a filtered
+  list wasn't over-narrowed), not just page-count bookkeeping; prev/next
+  buttons still only appear once there's more than one page. The visible
+  rows sit in their own `className`-styled wrapper, separate from the
+  prev/next or Load-more row — a grid `className` (e.g. the completed-orders
+  page) lays out only the rows, not the pager controls.
 - `pro-lock.tsx` — `ProLock({ feature, label })`: an inline upgrade nudge
   linking to `/dashboard/plan`, logging an `upgrade_cta` event tagged with
   the specific gated `feature` for funnel analysis.

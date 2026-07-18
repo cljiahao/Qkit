@@ -23,11 +23,16 @@ integration test that can't run as a fast colocated unit test.
   `.env.local` itself (the repo has no dotenv dependency) and tears down its
   seeded data in `afterAll`.
 - `setup.ts` — the global Vitest setup file: imports
-  `@testing-library/jest-dom/vitest` matchers and runs `cleanup()` from
-  `@testing-library/react` after every test, but only when a DOM exists
-  (component tests opt into `jsdom` via a `// @vitest-environment jsdom`
-  docblock; plain node-environment `lib` tests would throw if this touched
-  `document` unconditionally).
+  `@testing-library/jest-dom/vitest` matchers, polyfills
+  `Element.prototype.hasPointerCapture`/`setPointerCapture`/
+  `releasePointerCapture`/`scrollIntoView` as no-ops (jsdom doesn't
+  implement the Pointer Events capture API — Radix popover-based
+  primitives like `Select` call these on open/close/keyboard-nav and throw
+  without a stand-in), and runs `cleanup()` from `@testing-library/react`
+  after every test, but only when a DOM exists (component tests opt into
+  `jsdom` via a `// @vitest-environment jsdom` docblock; plain
+  node-environment `lib` tests would throw if this touched `document`
+  unconditionally).
 
 ## Connectivity
 

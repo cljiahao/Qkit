@@ -10,13 +10,19 @@ queue stays uncluttered); this is where a vendor pulls it back up.
 
 - `completed-orders-list.dom.test.tsx` — RTL tests for `CompletedOrdersList`:
   the empty state, the load-error banner, one `OrderCard` per order, the
-  booth-name chip only appearing for a multi-booth vendor, pagination past
-  the first page, and the history-cap note.
+  booth banner only appearing for a multi-booth vendor, pagination past the
+  first page, the always-visible page count, the booth filter, the search
+  box, the no-match state, and the history-cap note.
 - `completed-orders-list.tsx` — `CompletedOrdersList({ booths, orders,
-loadError, historyLimit })` client component: renders a `Paginated`
-  (`variant="pager"`, 12/page) grid of `OrderCard`s, an empty state when
-  there are none, a retry banner on a load error, and a one-line note when
-  the fetch hit `historyLimit` (the list isn't unbounded).
+loadError, historyLimit })` client component: a booth-filter `Select`
+  (multi-booth only) and a search `Input` (order number or customer name,
+  case-insensitive substring) narrow `orders` client-side before rendering
+  a `Paginated` (`variant="pager"`, 12/page, `alwaysShowCount` so the "x–y
+  of N" readout confirms nothing got filtered away even on a single page)
+  grid of `OrderCard`s. Separate empty states: "No completed orders yet"
+  (nothing at all) vs. "No matching orders" (filter/search narrowed to
+  zero). A retry banner on a load error, and a one-line note when the fetch
+  hit `historyLimit` (the list isn't unbounded).
 - `page.tsx` — `CompletedOrdersPage()` (server, `revalidate = 0`): reuses
   `requireEntitledVendor()`, reads the vendor's booths, then reads up to 500
   `status = 'completed'` orders across them (`BOARD_ORDER_COLUMNS`, newest
