@@ -10,10 +10,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
-import { isTerminal, sortActiveOrders } from "@/lib/orders";
+import { isTerminal, sortActiveOrders, type AgeSortOrder } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { cn } from "@/lib/utils";
@@ -58,6 +65,7 @@ export function RealtimeOrderBoard({
   const boothIds = booths.map((b) => b.id);
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
   const [filter, setFilter] = useState<BoothFilter>("all");
+  const [sortOrder, setSortOrder] = useState<AgeSortOrder>("earliest");
   // new orders that arrived while hidden
   const [away, setAway] = useState(0);
   const originalTitle = useRef("");
@@ -102,7 +110,10 @@ export function RealtimeOrderBoard({
     handleNewOrder,
   );
 
-  const active = sortActiveOrders(orders.filter((o) => !isTerminal(o.status)));
+  const active = sortActiveOrders(
+    orders.filter((o) => !isTerminal(o.status)),
+    sortOrder,
+  );
   const activeCountFor = (id: string) =>
     active.filter((o) => o.booth_id === id).length;
 
@@ -224,27 +235,60 @@ export function RealtimeOrderBoard({
         </div>
       </div>
 
-      {multiBooth && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          <BoothTab
-            label="All"
-            count={active.length}
-            active={effectiveFilter === "all"}
-            onClick={() => setFilter("all")}
-          />
-          {visibleBooths.map((b) => (
-            <BoothTab
-              key={b.id}
-              label={b.name}
-              color={boothColor(b.id)}
-              count={activeCountFor(b.id)}
-              open={b.open}
-              active={effectiveFilter === b.id}
-              onClick={() => setFilter(b.id)}
-            />
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {/* A dropdown rather than a tab-per-booth row: a vendor running a
+            large event (a dozen-plus booths) would otherwise get a wall of
+            pills wrapping across several lines before a single order card is
+            visible — the opposite of "one look and staff know what to do".
+            A Select scales to any booth count without growing the header. */}
+        {multiBooth && (
+          <Select value={effectiveFilter} onValueChange={setFilter}>
+            <SelectTrigger className="h-9 rounded-lg text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All booths ({active.length})</SelectItem>
+              {visibleBooths.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: boothColor(b.id) }}
+                  />
+                  <span className="truncate">
+                    {b.name} ({activeCountFor(b.id)}){!b.open && " · closed"}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {/* Status-rank/bump grouping (preparing before ready, bumped first)
+            always wins — this only flips the FIFO tie-break within a group,
+            so a rush-hour vendor can check "what's waited longest" without
+            losing that priority structure. */}
+        <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
+          {(
+            [
+              { value: "earliest", label: "Earliest first" },
+              { value: "latest", label: "Latest first" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => setSortOrder(o.value)}
+              className={cn(
+                "rounded-md px-3 py-1.5 font-medium transition-colors",
+                sortOrder === o.value
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {o.label}
+            </button>
           ))}
         </div>
-      )}
+      </div>
 
       {idle ? (
         <Ticket shadow="none" dashed className="mt-10 py-20 text-center">
@@ -267,55 +311,5 @@ export function RealtimeOrderBoard({
         </div>
       )}
     </div>
-  );
-}
-
-function BoothTab({
-  label,
-  count,
-  active,
-  onClick,
-  color,
-  open,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-  color?: string;
-  open?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors",
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-background text-muted-foreground hover:bg-secondary",
-      )}
-    >
-      {color && (
-        <span
-          className="size-2 shrink-0 rounded-full"
-          style={{ backgroundColor: color }}
-        />
-      )}
-      <span className="max-w-[10rem] truncate">{label}</span>
-      {open === false && (
-        <span className="text-[0.6rem] font-bold uppercase tracking-wide opacity-70">
-          closed
-        </span>
-      )}
-      <span
-        className={cn(
-          "rounded-full px-1.5 text-xs tabular-nums",
-          active ? "bg-primary-foreground/20" : "bg-secondary",
-        )}
-      >
-        {count}
-      </span>
-    </button>
   );
 }

@@ -132,16 +132,29 @@ export function buildAdvancePatch(
   return { status: next };
 }
 
+export type AgeSortOrder = "earliest" | "latest";
+
 /**
  * Sort active orders for the vendor board: in-progress (preparing) before
  * ready, then a manually bumped order (vendor's explicit "help this one now"
  * override — most-recently-bumped first) before non-bumped, then FIFO within
- * a status by created_at (oldest first). created_at is used rather than
- * order_number because order numbers are per-booth and not globally ordered,
- * and is never touched by a bump — ticket-aging display stays accurate
- * regardless of bump state. Pure + non-mutating.
+ * a status by created_at (oldest first by default). created_at is used
+ * rather than order_number because order numbers are per-booth and not
+ * globally ordered, and is never touched by a bump — ticket-aging display
+ * stays accurate regardless of bump state.
+ *
+ * `order` only flips the final FIFO tie-break (oldest-first vs
+ * newest-first) — it never reorders across the status-rank/bump grouping
+ * above, since those reflect actual kitchen priority (what needs action
+ * next), not just recency. "latest" lets a vendor spot orders that just
+ * came in without losing the preparing-before-ready / bumped-first
+ * structure. Pure + non-mutating.
  */
-export function sortActiveOrders(orders: BoardOrder[]): BoardOrder[] {
+export function sortActiveOrders(
+  orders: BoardOrder[],
+  order: AgeSortOrder = "earliest",
+): BoardOrder[] {
+  const dir = order === "latest" ? -1 : 1;
   return [...orders].sort((a, b) => {
     const rank = STATUS_RANK[a.status] - STATUS_RANK[b.status];
     if (rank !== 0) return rank;
@@ -154,7 +167,10 @@ export function sortActiveOrders(orders: BoardOrder[]): BoardOrder[] {
         new Date(a.priority_bumped_at!).getTime()
       );
     }
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return (
+      dir *
+      (new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    );
   });
 }
 

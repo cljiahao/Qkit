@@ -166,6 +166,54 @@ describe("sortActiveOrders", () => {
     ]);
     expect(out.map((o) => o.id)).toEqual(["preparing-plain", "ready-bumped"]);
   });
+
+  it('order: "latest" reverses the FIFO tie-break to newest-first', () => {
+    const out = sortActiveOrders(
+      [
+        order({
+          id: "old",
+          status: "preparing",
+          created_at: "2026-06-12T10:00:00Z",
+        }),
+        order({
+          id: "new",
+          status: "preparing",
+          created_at: "2026-06-12T10:05:00Z",
+        }),
+      ],
+      "latest",
+    );
+    expect(out.map((o) => o.id)).toEqual(["new", "old"]);
+  });
+
+  it('order: "latest" still keeps preparing before ready and bumped first', () => {
+    const out = sortActiveOrders(
+      [
+        order({
+          id: "ready-new",
+          status: "ready",
+          created_at: "2026-06-12T10:05:00Z",
+        }),
+        order({
+          id: "prep-old",
+          status: "preparing",
+          created_at: "2026-06-12T10:00:00Z",
+        }),
+        order({
+          id: "prep-bumped",
+          status: "preparing",
+          created_at: "2026-06-12T10:01:00Z",
+          priority_bumped_at: "2026-06-12T10:02:00Z",
+        }),
+      ],
+      "latest",
+    );
+    expect(out.map((o) => o.id)).toEqual([
+      "prep-bumped",
+      "prep-old",
+      "ready-new",
+    ]);
+  });
 });
 
 describe("orderAgeTone", () => {
