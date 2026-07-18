@@ -15,7 +15,7 @@ Next.js App Router tree — every page, layout, route handler, and PWA manifest 
 - `dashboard/` — authenticated vendor area (realtime order board, booth/menu management, stats).
 - `error.tsx` — `Error` client component, the root React error boundary; replaces the Next dev overlay in production, logs via `console.error`, shows a "Try again" button calling `reset()`.
 - `global-error.tsx` — `GlobalError` client component; the boundary Next renders only when the **root layout itself** throws, so it ships its own `<html>/<body>` with inline styles (no Tailwind, since `globals.css` may not have loaded).
-- `globals.css` — Tailwind v4 entry point: theme tokens (OKLCH colors, `--font-*` variables), base layer, and custom utility classes (`.ticket`, `.perforation`, `.fade-rise`, status colors) used across the app.
+- `globals.css` — Tailwind v4 entry point: theme tokens (OKLCH colors, `--font-*` variables), base layer, and custom utility classes (`.ticket`, `.perforation`, `.fade-rise`, `.undo-bar` — the left-to-right drain on `OrderCard`'s advance-undo affordance, duration hardcoded to match its `UNDO_MS` — status colors) used across the app.
 - `icon-192/`, `icon-512/` — PWA icon route folders (each renders a sized PNG, referenced by `manifest.ts`).
 - `icon.tsx` — `Icon` route handler; renders `brandIcon(32)` as a 32×32 PNG favicon.
 - `layout.tsx` — `RootLayout`. Loads `Fraunces`, `Hanken_Grotesk`, `Space_Mono` via `next/font/google`, sets `metadata`/`viewport` (PWA `appleWebApp`, `themeColor` from `BRAND_EMBER`), wraps children in `ServiceWorkerRegistrar` + `Providers`.
