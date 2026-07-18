@@ -14,6 +14,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Ticket } from "@/components/ticket";
 import { parseOrderItems } from "@/lib/schemas";
@@ -356,17 +361,27 @@ export function OrderCard({
             )}
             {/* Deliberately not shown once already bumped — a re-tap would
                 just refresh the timestamp with no visible change, a confusing
-                double-bump affordance for no benefit. */}
+                double-bump affordance for no benefit. Icon-only: this is a
+                secondary, occasional action — a full text label next to the
+                primary advance button crowded the row (esp. at grid-column
+                and mobile widths), giving it equal visual weight it doesn't
+                need. */}
             {!bumped && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-11 rounded-lg text-muted-foreground"
-                onClick={bump}
-                disabled={updating}
-              >
-                <Zap className="size-4" /> Bump to front
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 w-11 shrink-0 rounded-lg text-muted-foreground"
+                    onClick={bump}
+                    disabled={updating}
+                    aria-label="Bump to front"
+                  >
+                    <Zap className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Bump to front</TooltipContent>
+              </Tooltip>
             )}
             {/* No cancel affordance once payment is confirmed — there's no
                 refund rail, so a paid order can only be refunded off-platform

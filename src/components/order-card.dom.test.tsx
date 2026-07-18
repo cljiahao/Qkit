@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OrderCard } from "./order-card";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Order } from "@/lib/types";
 
 // The card delegates mutations to server actions (order-actions.ts). We mock
@@ -61,7 +62,7 @@ beforeEach(() => {
 
 describe("OrderCard", () => {
   it("renders order number, customer, items and total", () => {
-    render(<OrderCard order={makeOrder()} />);
+    render(<OrderCard order={makeOrder()} />, { wrapper: TooltipProvider });
     expect(screen.getByText("#0007")).toBeInTheDocument();
     expect(screen.getByText("Ada")).toBeInTheDocument();
     expect(screen.getByText(/Kopi/)).toBeInTheDocument();
@@ -81,6 +82,7 @@ describe("OrderCard", () => {
           total_cents: 350,
         })}
       />,
+      { wrapper: TooltipProvider },
     );
     expect(screen.getByText("Free")).toBeInTheDocument();
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
@@ -89,7 +91,9 @@ describe("OrderCard", () => {
   it("advances preparing -> ready and relabels the button", async () => {
     const user = userEvent.setup();
     advanceOrder.mockResolvedValue({ success: true, status: "ready" });
-    render(<OrderCard order={makeOrder({ status: "preparing" })} />);
+    render(<OrderCard order={makeOrder({ status: "preparing" })} />, {
+      wrapper: TooltipProvider,
+    });
 
     await user.click(screen.getByRole("button", { name: "Mark Ready" }));
 
@@ -105,7 +109,9 @@ describe("OrderCard", () => {
   it("advances ready -> completed via the action", async () => {
     const user = userEvent.setup();
     advanceOrder.mockResolvedValue({ success: true, status: "completed" });
-    render(<OrderCard order={makeOrder({ status: "ready" })} />);
+    render(<OrderCard order={makeOrder({ status: "ready" })} />, {
+      wrapper: TooltipProvider,
+    });
 
     await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
 
@@ -119,6 +125,7 @@ describe("OrderCard", () => {
       <OrderCard
         order={makeOrder({ status: "ready", payment_status: "not_required" })}
       />,
+      { wrapper: TooltipProvider },
     );
 
     await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
@@ -128,7 +135,9 @@ describe("OrderCard", () => {
 
   it("cancels via the confirm dialog", async () => {
     const user = userEvent.setup();
-    render(<OrderCard order={makeOrder({ status: "preparing" })} />);
+    render(<OrderCard order={makeOrder({ status: "preparing" })} />, {
+      wrapper: TooltipProvider,
+    });
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     // Dialog action (distinct from the trigger / "Keep order").
@@ -143,7 +152,9 @@ describe("OrderCard", () => {
   });
 
   it("shows no action buttons for a completed order", () => {
-    render(<OrderCard order={makeOrder({ status: "completed" })} />);
+    render(<OrderCard order={makeOrder({ status: "completed" })} />, {
+      wrapper: TooltipProvider,
+    });
     expect(
       screen.queryByRole("button", { name: /Mark/ }),
     ).not.toBeInTheDocument();
@@ -153,14 +164,18 @@ describe("OrderCard", () => {
   });
 
   it("renders the booth pill when a name is given", () => {
-    render(<OrderCard order={makeOrder()} boothName="Kopi Cart" />);
+    render(<OrderCard order={makeOrder()} boothName="Kopi Cart" />, {
+      wrapper: TooltipProvider,
+    });
     expect(screen.getByText("Kopi Cart")).toBeInTheDocument();
   });
 });
 
 describe("OrderCard payment", () => {
   it("shows a Confirm payment button for a claimed order", () => {
-    render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />);
+    render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />, {
+      wrapper: TooltipProvider,
+    });
     expect(
       screen.getByRole("button", { name: /confirm payment/i }),
     ).toBeInTheDocument();
@@ -168,18 +183,25 @@ describe("OrderCard payment", () => {
 
   it("confirms payment via the action", async () => {
     const user = userEvent.setup();
-    render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />);
+    render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />, {
+      wrapper: TooltipProvider,
+    });
     await user.click(screen.getByRole("button", { name: /confirm payment/i }));
     expect(confirmOrderPayment).toHaveBeenCalledWith("o1");
   });
 
   it("shows a Paid badge for a confirmed order", () => {
-    render(<OrderCard order={makeOrder({ payment_status: "confirmed" })} />);
+    render(<OrderCard order={makeOrder({ payment_status: "confirmed" })} />, {
+      wrapper: TooltipProvider,
+    });
     expect(screen.getByText(/^Paid$/i)).toBeInTheDocument();
   });
 
   it("shows no payment UI when payment is not required", () => {
-    render(<OrderCard order={makeOrder({ payment_status: "not_required" })} />);
+    render(
+      <OrderCard order={makeOrder({ payment_status: "not_required" })} />,
+      { wrapper: TooltipProvider },
+    );
     expect(
       screen.queryByRole("button", { name: /confirm payment/i }),
     ).not.toBeInTheDocument();
@@ -190,6 +212,7 @@ describe("OrderCard payment", () => {
       <OrderCard
         order={makeOrder({ status: "preparing", payment_status: "confirmed" })}
       />,
+      { wrapper: TooltipProvider },
     );
     // No refund rail — a paid order shows no cancel affordance, but stays live.
     expect(
@@ -205,12 +228,15 @@ describe("OrderCard payment", () => {
       <OrderCard
         order={makeOrder({ status: "preparing", payment_status: "pending" })}
       />,
+      { wrapper: TooltipProvider },
     );
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
   it("shows a Bump to front button for a live, non-bumped order", () => {
-    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />);
+    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
+      wrapper: TooltipProvider,
+    });
     expect(
       screen.getByRole("button", { name: /bump to front/i }),
     ).toBeInTheDocument();
@@ -218,7 +244,9 @@ describe("OrderCard payment", () => {
 
   it("calls bumpOrder and shows the bumped badge, hiding the button, once bumped", async () => {
     const user = userEvent.setup();
-    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />);
+    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
+      wrapper: TooltipProvider,
+    });
     await user.click(screen.getByRole("button", { name: /bump to front/i }));
     expect(bumpOrder).toHaveBeenCalledWith("o1");
     await waitFor(() => {
