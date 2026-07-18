@@ -1,0 +1,41 @@
+name: Tag release
+
+on:
+  push:
+    branches: [main]
+
+# Least-privilege default; the job below widens only what it needs to push a tag.
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    name: auto-tag (patch bump)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0 # full history + tags, so `git describe` sees the real latest tag
+      - name: Compute and push the next patch tag
+        # Manual minor/major tags (vX.Y.0) are a real, deliberate milestone — this
+        # step only ever patch-bumps from whatever the latest tag actually is, so a
+        # manual tag just becomes the new baseline for future auto-bumps. First run
+        # on a repo with no tags at all starts at v0.1.0 (pre-launch, pre-1.0).
+        run: |
+          git fetch --tags
+          LATEST=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST" ]; then
+            NEW="v0.1.0"
+          else
+            VERSION="${LATEST#v}"
+            MAJOR="${VERSION%%.*}"
+            REST="${VERSION#*.}"
+            MINOR="${REST%%.*}"
+            PATCH="${REST#*.}"
+            NEW="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+          echo "Tagging $NEW"
+          git tag -a "$NEW" -m "$NEW"
+          git push origin "$NEW"
