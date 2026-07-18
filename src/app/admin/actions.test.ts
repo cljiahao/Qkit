@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { setVendorPlan, grantPass, resolveSupportMessage } from "./actions";
+import {
+  setVendorPlan,
+  grantPass,
+  resolveSupportMessage,
+  setBanner,
+} from "./actions";
 
 // Mock the SERVICE client's fluent chains + the admin gate. `from(table)`
 // dispatches per table so we can drive each terminal independently and count
@@ -21,6 +26,7 @@ const {
   auditInsert,
   purchaseReqEq,
   supportMsgUpdateSingle,
+  platformSettingsEq,
 } = vi.hoisted(() => ({
   requireAdminMock: vi.fn(),
   vendorsReadSingle: vi.fn(),
@@ -32,6 +38,7 @@ const {
   auditInsert: vi.fn(),
   purchaseReqEq: vi.fn(),
   supportMsgUpdateSingle: vi.fn(),
+  platformSettingsEq: vi.fn(),
 }));
 
 vi.mock("@/lib/admin", () => ({ requireAdmin: requireAdminMock }));
@@ -78,6 +85,8 @@ vi.mock("@/lib/supabase/server", () => ({
                 }),
               }),
             };
+          case "platform_settings":
+            return { update: () => ({ eq: platformSettingsEq }) };
           default:
             throw new Error(`unexpected table ${table}`);
         }
@@ -106,6 +115,7 @@ beforeEach(() => {
   supportMsgUpdateSingle
     .mockReset()
     .mockResolvedValue({ data: { vendor_id: VENDOR }, error: null });
+  platformSettingsEq.mockReset().mockResolvedValue({ error: null });
 });
 
 describe("setVendorPlan", () => {
@@ -226,5 +236,45 @@ describe("resolveSupportMessage", () => {
     const res = await resolveSupportMessage({ id: "nope" });
     expect(res).toEqual({ success: false, error: "Invalid input" });
     expect(supportMsgUpdateSingle).not.toHaveBeenCalled();
+  });
+});
+
+describe("setBanner", () => {
+  it("updates the singleton row and audits the change", async () => {
+    const res = await setBanner({
+      banner_enabled: true,
+      banner_message: "Scheduled maintenance 10pm-11pm SGT",
+    });
+    expect(res).toEqual({ success: true });
+    expect(platformSettingsEq).toHaveBeenCalledWith("id", 1);
+    expect(auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        admin_id: ADMIN,
+        action: "set_banner",
+        detail: {
+          banner_enabled: true,
+          banner_message: "Scheduled maintenance 10pm-11pm SGT",
+        },
+      }),
+    );
+  });
+
+  it("rejects a message over 280 chars before touching the DB", async () => {
+    const res = await setBanner({
+      banner_enabled: true,
+      banner_message: "x".repeat(281),
+    });
+    expect(res).toEqual({ success: false, error: "Invalid input" });
+    expect(platformSettingsEq).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a DB error instead of claiming success", async () => {
+    platformSettingsEq.mockResolvedValue({ error: { message: "boom" } });
+    const res = await setBanner({
+      banner_enabled: false,
+      banner_message: "",
+    });
+    expect(res).toEqual({ success: false, error: "Could not update banner" });
+    expect(auditInsert).not.toHaveBeenCalled();
   });
 });

@@ -335,6 +335,27 @@ export interface Database {
         };
         Relationships: [];
       };
+      platform_settings: {
+        Row: {
+          id: number;
+          banner_enabled: boolean;
+          banner_message: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          banner_enabled?: boolean;
+          banner_message?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          banner_enabled?: boolean;
+          banner_message?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       feedback: {
         Row: {
           id: string;
@@ -628,6 +649,8 @@ export type Order = Database["qkit"]["Tables"]["orders"]["Row"];
 export type BoardOrder = Omit<Order, "access_token">;
 export type License = Database["qkit"]["Tables"]["licenses"]["Row"];
 export type Pricing = Database["qkit"]["Tables"]["pricing"]["Row"];
+export type PlatformSettings =
+  Database["qkit"]["Tables"]["platform_settings"]["Row"];
 export type Payment = Database["qkit"]["Tables"]["payments"]["Row"];
 export type Feedback = Database["qkit"]["Tables"]["feedback"]["Row"];
 export type Admin = Database["qkit"]["Tables"]["admins"]["Row"];

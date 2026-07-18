@@ -12,8 +12,10 @@ import { pctChange, windowSeries, type StatsOrder } from "@/lib/stats";
 import { formatPrice, MS_PER_DAY } from "@/lib/utils";
 import type { Plan } from "@/lib/types";
 import { DEFAULT_PRICING } from "@/lib/pricing";
+import { DEFAULT_PLATFORM_SETTINGS } from "@/lib/platform-settings";
 import { type AdminVendorRow } from "./vendor-manage";
 import { PricingForm } from "./pricing-form";
+import { BannerForm } from "./banner-form";
 import { ActivationFunnelView } from "./activation-funnel";
 import { Paginated } from "@/components/paginated";
 import { Stat } from "./stat";
@@ -67,6 +69,7 @@ export default async function AdminPage() {
     { data: eventRows },
     { data: auditRows },
     { data: pricingRow },
+    { data: platformSettingsRow },
     { data: licenseRows },
     { data: paymentRows },
     { data: requestRows },
@@ -87,6 +90,11 @@ export default async function AdminPage() {
     supabase
       .from("pricing")
       .select("event_pass_cents, monthly_cents, currency")
+      .eq("id", 1)
+      .maybeSingle(),
+    supabase
+      .from("platform_settings")
+      .select("banner_enabled, banner_message")
       .eq("id", 1)
       .maybeSingle(),
     supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
@@ -126,6 +134,7 @@ export default async function AdminPage() {
     passExpiresAt: passByVendor.get(v.id) ?? null,
   }));
   const pricing = pricingRow ?? DEFAULT_PRICING;
+  const bannerSettings = platformSettingsRow ?? DEFAULT_PLATFORM_SETTINGS;
   const booths = boothRows ?? [];
   const orders = orderRows ?? [];
   const events = eventRows ?? [];
@@ -308,6 +317,13 @@ export default async function AdminPage() {
           Pricing
         </h2>
         <PricingForm initial={pricing} />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Platform banner
+        </h2>
+        <BannerForm initial={bannerSettings} />
       </section>
 
       <section className="space-y-3">

@@ -5,8 +5,10 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
+  bannerFormSchema,
   grantPassSchema,
   pricingFormSchema,
+  type BannerFormInput,
   type GrantPassInput,
   type PricingFormInput,
 } from "@/lib/schemas";
@@ -344,5 +346,44 @@ export async function setPricing(
 
   revalidatePath("/admin");
   revalidatePath("/dashboard/plan");
+  return { success: true };
+}
+
+/**
+ * Update the site-wide maintenance banner (the single `platform_settings`
+ * row, id pinned to 1 — same singleton shape as `pricing`). Informational
+ * only: this never blocks any functionality, it just toggles a banner shown
+ * in the root layout. Admin-only.
+ */
+export async function setBanner(input: BannerFormInput): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+
+  const parsed = bannerFormSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Invalid input" };
+
+  const supabase = await createServiceClient();
+  const { error } = await supabase
+    .from("platform_settings")
+    .update({
+      banner_enabled: parsed.data.banner_enabled,
+      banner_message: parsed.data.banner_message,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  if (error) {
+    console.error("setBanner failed", error.message);
+    return { success: false, error: "Could not update banner" };
+  }
+
+  await recordAudit(supabase, {
+    admin_id: user.id,
+    action: "set_banner",
+    detail: {
+      banner_enabled: parsed.data.banner_enabled,
+      banner_message: parsed.data.banner_message,
+    },
+  });
+
+  revalidatePath("/admin");
   return { success: true };
 }
