@@ -226,3 +226,34 @@ export function estimateLabel(seconds: number): string {
   if (minutes < 1) return "Any moment now";
   return `~${minutes} min`;
 }
+
+/**
+ * Range-based "X-Y min" wait estimate rather than a single precise number —
+ * research on waiting-line psychology: a point estimate reads as a promise,
+ * and an average-based estimate that's sometimes wrong erodes trust more
+ * than a range that was upfront about its own uncertainty. ±25% around the
+ * point estimate, floored so a small estimate doesn't degenerate to a
+ * zero-width band (e.g. "3-3 min"). Pure.
+ */
+export function estimateRangeLabel(seconds: number): string {
+  const point = Math.round(seconds / 60);
+  if (point < 1) return "Any moment now";
+  const spread = Math.max(1, Math.round(point * 0.25));
+  const lo = Math.max(1, point - spread);
+  const hi = point + spread;
+  return `${lo}-${hi} min`;
+}
+
+/**
+ * Fallback for when there isn't enough recent order history to trust a
+ * time-based estimate (see estimateWaitSeconds's minimum sample size).
+ * Waiting-line research says an unexplained/silent wait feels worse than an
+ * explained one — showing queue position instead of hiding the estimate
+ * line entirely still answers "how much longer, roughly" without false
+ * precision. Pure.
+ */
+export function queuePositionLabel(ordersAhead: number): string {
+  if (ordersAhead <= 0) return "You're next in line";
+  if (ordersAhead === 1) return "1 order ahead of you";
+  return `${ordersAhead} orders ahead of you`;
+}

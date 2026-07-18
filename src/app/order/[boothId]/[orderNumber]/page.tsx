@@ -162,6 +162,20 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           placedAt={order.created_at}
         />
 
+        {/* Pulled up next to the status/ETA block rather than buried in the
+            footer below payment and items — a customer stares at this page
+            for several idle minutes while waiting, and something to do
+            (follow the booth) belongs near the thing they're already
+            looking at, not past the transactional content. */}
+        {Object.keys(socialLinks).length > 0 && (
+          <div className="flex flex-col items-center gap-2 px-6 pb-6">
+            <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+              Follow {booth?.name}
+            </p>
+            <SocialLinksRow links={socialLinks} />
+          </div>
+        )}
+
         <div className="perforation" />
 
         {showPay && (
@@ -214,15 +228,20 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
         </section>
       </Ticket>
 
-      <div className="mt-6">
-        <FeedbackForm
-          source="customer"
-          boothId={boothId}
-          orderNumber={orderNumber}
-          token={token}
-          prompt="How was ordering here?"
-        />
-      </div>
+      {/* Only once the order is done, not while still in progress — a
+          request made mid-task is both more annoying and yields lower-
+          quality responses than the same ask made after completion. */}
+      {order.status === "completed" && (
+        <div className="mt-6">
+          <FeedbackForm
+            source="customer"
+            boothId={boothId}
+            orderNumber={orderNumber}
+            token={token}
+            prompt="How was ordering here?"
+          />
+        </div>
+      )}
 
       <div className="mt-auto flex flex-col items-center gap-3 pt-8">
         {order.status === "completed" && booth?.vendor_id && (
@@ -241,14 +260,6 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             label="Reorder these items"
             className="h-11 rounded-xl px-5"
           />
-        )}
-        {Object.keys(socialLinks).length > 0 && (
-          <div className="flex flex-col items-center gap-2 pt-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Follow {booth?.name}
-            </p>
-            <SocialLinksRow links={socialLinks} />
-          </div>
         )}
         <Link
           href={`/order/${boothId}`}

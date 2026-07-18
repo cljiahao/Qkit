@@ -10,6 +10,8 @@ import {
   buildAdvancePatch,
   ordersAheadOf,
   estimateLabel,
+  estimateRangeLabel,
+  queuePositionLabel,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
 
@@ -400,5 +402,35 @@ describe("estimateLabel", () => {
   it("shows a friendly label for a near-zero estimate", () => {
     expect(estimateLabel(0)).toBe("Any moment now");
     expect(estimateLabel(20)).toBe("Any moment now");
+  });
+});
+
+describe("estimateRangeLabel", () => {
+  it("bands ±25% around the point estimate", () => {
+    expect(estimateRangeLabel(8 * 60)).toBe("6-10 min");
+    expect(estimateRangeLabel(20 * 60)).toBe("15-25 min");
+  });
+
+  it("floors the band so a small estimate never degenerates to zero-width", () => {
+    expect(estimateRangeLabel(60)).toBe("1-2 min");
+  });
+
+  it("shows a friendly label for a near-zero estimate", () => {
+    expect(estimateRangeLabel(0)).toBe("Any moment now");
+    expect(estimateRangeLabel(20)).toBe("Any moment now");
+  });
+});
+
+describe("queuePositionLabel", () => {
+  it("labels zero orders ahead as next in line", () => {
+    expect(queuePositionLabel(0)).toBe("You're next in line");
+  });
+
+  it("singularizes exactly one order ahead", () => {
+    expect(queuePositionLabel(1)).toBe("1 order ahead of you");
+  });
+
+  it("pluralizes multiple orders ahead", () => {
+    expect(queuePositionLabel(4)).toBe("4 orders ahead of you");
   });
 });

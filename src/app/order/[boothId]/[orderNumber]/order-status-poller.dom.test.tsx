@@ -40,7 +40,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   alerts.isNotifySupported.mockReturnValue(true);
   alerts.notifyPermission.mockReturnValue("default");
-  getWaitEstimate.mockResolvedValue(null);
+  getWaitEstimate.mockResolvedValue({ seconds: null, ordersAhead: 0 });
 });
 
 describe("OrderStatusPoller", () => {
@@ -118,28 +118,29 @@ describe("OrderStatusPoller", () => {
     );
   });
 
-  it("shows a wait estimate once one is available", async () => {
+  it("shows a range-based wait estimate once one is available", async () => {
     getOrderStatus.mockResolvedValue("preparing");
-    getWaitEstimate.mockResolvedValue(300);
-    renderPoller("preparing");
-
-    await waitFor(() => expect(screen.getByText("~5 min")).toBeInTheDocument());
-  });
-
-  it("shows nothing for the estimate when there isn't enough history", async () => {
-    getOrderStatus.mockResolvedValue("preparing");
-    getWaitEstimate.mockResolvedValue(null);
+    getWaitEstimate.mockResolvedValue({ seconds: 300, ordersAhead: 2 });
     renderPoller("preparing");
 
     await waitFor(() =>
-      expect(getWaitEstimate).toHaveBeenCalledWith("b1", "0007", "tok"),
+      expect(screen.getByText("4-6 min")).toBeInTheDocument(),
     );
-    expect(screen.queryByText(/min$/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to a queue-position label when there isn't enough history for a time estimate", async () => {
+    getOrderStatus.mockResolvedValue("preparing");
+    getWaitEstimate.mockResolvedValue({ seconds: null, ordersAhead: 2 });
+    renderPoller("preparing");
+
+    await waitFor(() =>
+      expect(screen.getByText("2 orders ahead of you")).toBeInTheDocument(),
+    );
   });
 
   it("does not show a wait estimate once the order is ready", async () => {
     getOrderStatus.mockResolvedValue("ready");
-    getWaitEstimate.mockResolvedValue(300);
+    getWaitEstimate.mockResolvedValue({ seconds: 300, ordersAhead: 2 });
     renderPoller("preparing");
 
     await waitFor(() =>
@@ -147,7 +148,7 @@ describe("OrderStatusPoller", () => {
         screen.getByText("Your order is ready for pickup!"),
       ).toBeInTheDocument(),
     );
-    expect(screen.queryByText("~5 min")).not.toBeInTheDocument();
+    expect(screen.queryByText("4-6 min")).not.toBeInTheDocument();
   });
 
   it("still arms (sound-only) where notifications are unsupported", async () => {

@@ -20,14 +20,19 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
 - `loading.tsx` — animated skeleton matching the real ticket's shadow/layout,
   shown while `page.tsx`'s server reads resolve.
 - `order-status-poller.tsx` — `OrderStatusPoller` client component: polls
-  `getOrderStatus` every 5s (`usePolling`, paused once terminal) — poll-only
-  by design since Supabase realtime is unreliable on customer devices
-  (Safari/iOS, in-app webviews). Renders the progress bar
-  (`orderProgressIndex`/`ORDER_PROGRESS_SEGMENTS`), an "Alert me when it's
-  ready" opt-in that unlocks audio + requests `Notification` permission, and
-  on transition to `"ready"` fires a system notification
-  (`fireReadyNotification`), plays a chime, or flashes the tab title if
-  backgrounded.
+  `getOrderStatus` + `getWaitEstimate` every 5s (`usePolling`, paused once
+  terminal) — poll-only by design since Supabase realtime is unreliable on
+  customer devices (Safari/iOS, in-app webviews). Renders the progress bar
+  (`orderProgressIndex`/`ORDER_PROGRESS_SEGMENTS`), a prominent range-based
+  wait estimate (`estimateRangeLabel`, e.g. "6-10 min" — a range rather than
+  a precise countdown, since waiting-line research says an unmet precise
+  promise erodes trust more than an upfront-honest range) that falls back to
+  a queue-position label (`queuePositionLabel`, e.g. "2 orders ahead of
+  you") instead of showing nothing when there isn't enough recent history
+  for a time estimate yet, an "Alert me when it's ready" opt-in that unlocks
+  audio + requests `Notification` permission, and on transition to `"ready"`
+  fires a system notification (`fireReadyNotification`), plays a chime, or
+  flashes the tab title if backgrounded.
 - `order-status-poller.dom.test.tsx` — RTL tests covering the poll loop,
   status transitions, the ready-state alert/notification/title-flash paths,
   and the enable-alerts permission flow.
@@ -38,13 +43,18 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   DB error (retryable error boundary) from a genuine 404 (`maybeSingle` →
   null), computes whether to show the pay panel
   (`renderCheckout` from `@/lib/payments/adapters`), and renders the ticket
-  header, `OrderStatusPoller`, `PayPanel`, the itemized order, `FeedbackForm`,
-  `EarnLink` (once completed), the resolved social links (`SocialLinksRow`,
+  header, `OrderStatusPoller`, the resolved social links (`SocialLinksRow`,
   `@/components`, booth override else the vendor's shared default from
   `merqo.vendor_profile` via `getOrCreateVendorProfile` —
   `@/lib/merqo-vendor-profile` — degrading to booth-only links on any RPC
-  error rather than breaking the page for a customer holding a valid,
-  paid order link), and a reorder/"order again" link.
+  error rather than breaking the page for a customer holding a valid, paid
+  order link) pulled up next to the status/ETA block rather than the
+  footer (a customer watches this page idle for several minutes; the
+  engagement content belongs near what they're already looking at), `PayPanel`,
+  the itemized order, then — only once `order.status === "completed"` (a
+  mid-task feedback request is both more annoying and lower-quality than
+  the same ask post-completion) — `FeedbackForm`, `EarnLink`, and a
+  reorder/"order again" link.
 - `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, checkout,
 initialStatus, amountCents })` client component: polls `getPaymentStatus`
   every 5s until `confirmed`/`not_required`; renders a QR
@@ -66,7 +76,13 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal
-  null).
+  null). `getWaitEstimate(boothId, orderNumber, token)`: returns
+  `{ seconds, ordersAhead } | null` — `ordersAhead` (via `ordersAheadOf`) is
+  always computable once the order exists; `seconds` (via
+  `estimateWaitSeconds`, the booth's recent completed-order average ×
+  `ordersAhead`) is null only when there isn't enough recent history to
+  trust. `null` itself means there's nothing to say at all (order not
+  found).
 
 ## Connectivity
 

@@ -129,8 +129,12 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   status-agnostic by design — a bumped order leads, then every order by
   `created_at`; takes an `AgeSortOrder`, `"earliest"` default or `"latest"`),
   `ordersAheadOf` (the separate, status-aware kitchen-priority queue used
-  for the customer-facing wait estimate), `orderProgressIndex` (customer
-  3-segment progress bar).
+  for the customer-facing wait estimate), `estimateLabel`/`estimateRangeLabel`
+  (point vs. range "X-Y min" customer wait-estimate labels — the range form
+  is what the order-status page actually renders, on the theory that an
+  unmet precise promise erodes trust more than an upfront-honest range),
+  `queuePositionLabel` (the no-time-data fallback, "N orders ahead of you"),
+  `orderProgressIndex` (customer 3-segment progress bar).
 - `orders.test.ts` — tests status transitions, patch-building (including the
   payment auto-confirm-on-complete rule), sorting, and age/label formatting.
 - `payments/` — PayNow QR generation and the payment-method adapter registry
