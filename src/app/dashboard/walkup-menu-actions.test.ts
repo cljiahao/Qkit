@@ -39,7 +39,7 @@ describe("getWalkupMenu", () => {
     expect(res).toBeNull();
   });
 
-  it("returns parsed menu items and remaining stock", async () => {
+  it("returns parsed menu items and remaining stock, no payment configured", async () => {
     fromMock.mockReturnValue(
       chain({
         data: {
@@ -53,6 +53,7 @@ describe("getWalkupMenu", () => {
               price_cents: 350,
             },
           ],
+          payment: null,
         },
         error: null,
       }),
@@ -75,13 +76,50 @@ describe("getWalkupMenu", () => {
         },
       ],
       remaining: { m1: 4 },
+      expectsPayment: false,
+      paymentKind: null,
     });
+  });
+
+  it("reports expectsPayment=true for a configured payment kind", async () => {
+    fromMock.mockReturnValue(
+      chain({
+        data: {
+          id: BOOTH_ID,
+          menu_items: [],
+          payment: {
+            kind: "paynow",
+            payee_name: "Kopi Corner",
+            uen: "12345678A",
+          },
+        },
+        error: null,
+      }),
+    );
+    const res = await getWalkupMenu(BOOTH_ID);
+    expect(res?.expectsPayment).toBe(true);
+    expect(res?.paymentKind).toBe("paynow");
+  });
+
+  it("treats a stripe config as not expecting payment (reserved, dark)", async () => {
+    fromMock.mockReturnValue(
+      chain({
+        data: {
+          id: BOOTH_ID,
+          menu_items: [],
+          payment: { kind: "stripe", account_id: "acct_1" },
+        },
+        error: null,
+      }),
+    );
+    const res = await getWalkupMenu(BOOTH_ID);
+    expect(res?.expectsPayment).toBe(false);
   });
 
   it("drops malformed menu item entries", async () => {
     fromMock.mockReturnValue(
       chain({
-        data: { id: BOOTH_ID, menu_items: [{ bogus: true }] },
+        data: { id: BOOTH_ID, menu_items: [{ bogus: true }], payment: null },
         error: null,
       }),
     );

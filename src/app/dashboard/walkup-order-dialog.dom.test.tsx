@@ -30,6 +30,8 @@ beforeEach(() => {
       },
     ],
     remaining: {},
+    expectsPayment: false,
+    paymentKind: null,
   });
   placeWalkupOrder.mockResolvedValue({
     success: true,
@@ -70,13 +72,69 @@ describe("WalkupOrderDialog", () => {
     );
 
     await waitFor(() => expect(placeWalkupOrder).toHaveBeenCalled());
-    const [boothId, input] = placeWalkupOrder.mock.calls[0];
+    const [boothId, input, paid] = placeWalkupOrder.mock.calls[0];
     expect(boothId).toBe("b1");
     expect(input.customerName).toBe("Walk-up");
     expect(input.items).toEqual([
       { menuItemId: "m1", name: "Kopi", price_cents: 350, quantity: 1 },
     ]);
+    expect(paid).toBe(false);
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("offers a payment-collected switch only when the booth expects payment", async () => {
+    getWalkupMenu.mockResolvedValue({
+      menuItems: [
+        {
+          id: "m1",
+          name: "Kopi",
+          description: "",
+          available: true,
+          price_cents: 350,
+        },
+      ],
+      remaining: {},
+      expectsPayment: true,
+      paymentKind: "paynow",
+    });
+    const user = userEvent.setup();
+    render(
+      <WalkupOrderDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        booths={BOOTHS}
+        initialBoothId="b1"
+      />,
+    );
+
+    const toggle = await screen.findByRole("switch", {
+      name: "Payment collected",
+    });
+    expect(toggle).not.toBeChecked();
+
+    await user.click(await screen.findByRole("button", { name: "Add" }));
+    await user.click(toggle);
+    await user.click(
+      screen.getByRole("button", { name: /add order · 1 item/i }),
+    );
+
+    await waitFor(() => expect(placeWalkupOrder).toHaveBeenCalled());
+    expect(placeWalkupOrder.mock.calls[0][2]).toBe(true);
+  });
+
+  it("omits the payment switch when the booth takes no payment", async () => {
+    render(
+      <WalkupOrderDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        booths={BOOTHS}
+        initialBoothId="b1"
+      />,
+    );
+    await screen.findByText("Kopi");
+    expect(
+      screen.queryByRole("switch", { name: "Payment collected" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a no-booths state instead of fetching a menu", () => {

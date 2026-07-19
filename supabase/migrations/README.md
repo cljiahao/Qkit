@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-61 files, `0000` through `0060`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0060` tail; skimmed by filename/theme otherwise. The
+62 files, `0000` through `0061`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0061` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -145,7 +145,15 @@ schema evolved in five broad waves:
   verbatim — the money-correctness rules don't change just because staff
   is typing instead of a customer. Deliberately skips `booth_servable`/
   `booth_open`: those gate the customer-facing schedule, not a vendor's
-  own staff standing at the counter.
+  own staff standing at the counter. `0061_walkup_order_paid_flag.sql`
+  adds a `p_paid` argument to `place_walkup_order` so staff who already
+  collected payment at the counter (cash, tap-to-pay) can land the order
+  with `payment_status = 'confirmed'` in one step, instead of a separate
+  "Confirm payment" tap on the board right after — same end state
+  `confirmOrderPayment` (`src/app/dashboard/order-actions.ts`) produces.
+  A new argument changes the function's signature, so this `DROP FUNCTION`s
+  the old 3-arg version explicitly before `CREATE OR REPLACE`, rather than
+  leaving it behind as a second, stale overload.
 
 ## Connectivity
 

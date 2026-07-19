@@ -226,6 +226,8 @@ describe("RealtimeOrderBoard walk-up order button", () => {
     vi.mocked(getWalkupMenu).mockResolvedValue({
       menuItems: [],
       remaining: {},
+      expectsPayment: false,
+      paymentKind: null,
     });
     const user = userEvent.setup();
     render(

@@ -19,26 +19,28 @@ across devices.
 - `settings-form.tsx` — `SettingsForm({ initial })` client component, the
   actual UI: three `Section` cards (from `ticket-section.tsx`) for "Board
   timing" (amber/red minute inputs plus the `undo_seconds` advance-undo
-  window, 2-15s, validated live via `boardSettingsSchema` — an `Info` icon
-  next to the undo-window label opens a `Tooltip` spelling out what it does,
-  since "Advance undo window" alone doesn't say what it's undoing or when),
-  "New-order sound"
+  window, 2-15s, validated live via `boardSettingsSchema`), "New-order sound"
   (a `ToggleGroup` of `SOUND_OPTIONS` — chime/bell/ding/horn/triple/off —
   that previews via `playSound` on pick and saves immediately), and
   "Notifications" (a `Switch` that unlocks audio + requests `Notification`
   permission via `@/lib/order-alerts` before saving `desktop_notify`,
-  reverting on denial). Each section calls `updateBoardSettings`
-  independently through `useAsyncAction` and `router.refresh()`s on success
-  — every call sends the full `BoardSettings` shape (it's one JSONB blob),
-  so each section's handler carries the other two sections' current values
-  along to avoid clobbering them.
-- `settings-form.dom.test.tsx` — RTL/jsdom tests: rejects `overdue_min <=
-aging_min` and an out-of-range `undo_seconds` client-side without calling
-  the action, saves valid thresholds and a changed undo window,
-  previews+saves a sound pick, and covers both notification-permission
-  branches (granted → saves and enables; denied → reverts the switch and
-  shows an error), all with `updateBoardSettings`/`sonner`/`order-alerts`
-  mocked.
+  reverting on denial). An `Info` icon next to the undo-window label opens a
+  `Tooltip` (heading line plus two short muted paragraphs, not one run-on
+  sentence) spelling out what the setting actually does, since "Advance undo
+  window" alone doesn't say what it's undoing or when it locks in. Each
+  section calls `updateBoardSettings` independently through `useAsyncAction`
+  and `router.refresh()`s on success; every call sends the full
+  `BoardSettings` shape (it's one JSONB blob), so each section's handler
+  carries the other two sections' current values along to avoid clobbering
+  them.
+- `settings-form.dom.test.tsx` — RTL/jsdom tests (rendered inside
+  `TooltipProvider`, required by the undo-window info tooltip): rejects
+  `overdue_min <= aging_min` and an out-of-range `undo_seconds` client-side
+  without calling the action, saves valid thresholds and a changed undo
+  window, previews+saves a sound pick, and covers both
+  notification-permission branches (granted saves and enables; denied
+  reverts the switch and shows an error), all with
+  `updateBoardSettings`/`sonner`/`order-alerts` mocked.
 
 ## Connectivity
 

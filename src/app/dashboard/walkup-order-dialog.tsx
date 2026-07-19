@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { Banknote, Minus, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
 import { ItemCustomizer } from "@/components/item-customizer";
 import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
 import { remainingFor, type Remaining } from "@/lib/stock";
+import { cn } from "@/lib/utils";
 import {
   count,
   formatOptions,
@@ -32,7 +34,12 @@ import {
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { getWalkupMenu } from "./walkup-menu-actions";
 import { placeWalkupOrder } from "./walkup-actions";
-import type { CartItem, MenuItem, SelectedOption } from "@/lib/types";
+import type {
+  CartItem,
+  MenuItem,
+  PaymentKind,
+  SelectedOption,
+} from "@/lib/types";
 
 interface Booth {
   id: string;
@@ -42,24 +49,34 @@ interface Booth {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Active booths only — the caller (RealtimeOrderBoard) filters is_active
-  // before offering this, a paused booth isn't a walk-up target.
+  // Active booths only. The caller (RealtimeOrderBoard) filters is_active
+  // before offering this; a paused booth isn't a walk-up target.
   booths: Booth[];
   initialBoothId?: string;
 }
 
+function paymentKindNote(kind: PaymentKind | null): string {
+  if (kind === "paynow") return "This booth takes PayNow.";
+  if (kind === "pointer") return "This booth takes a payment link or QR.";
+  return "This booth takes payment.";
+}
+
 /**
- * Staff-entered order for a customer at the counter — same menu/cart/pricing
+ * Staff-entered order for a customer at the counter. Same menu/cart/pricing
  * rules as the customer's own ordering flow (place_walkup_order re-derives
- * every price server-side, migration 0060), deliberately NOT the same
+ * every price server-side, migration 0061), deliberately NOT the same
  * payment UI: PayPanel is written in the customer's own voice ("waiting for
  * the stall to confirm") and polls for a claim the staff themselves would be
- * making, which reads wrong from this side. Once placed, payment is tracked
- * the same way any order's is — the board's existing OrderCard "Mark as
- * paid"/"Confirm payment" affordance, no new payment surface.
+ * making, which reads wrong from this side. The one payment control here is
+ * a plain "payment collected" switch, for the common counter case where
+ * staff take cash or tap-to-pay in person and already know the outcome
+ * before the ticket is even placed; anything more (QR display, a customer
+ * polling for their own claim) belongs to the flows above, not this one.
+ * Left off, payment is tracked the normal way: the board's existing
+ * OrderCard "Confirm payment" affordance.
  *
  * Split-pane layout (menu left, order summary right) rather than a single
- * scrolling column — a staff member building a multi-item order needs to see
+ * scrolling column: a staff member building a multi-item order needs to see
  * what's already in the cart and hit submit without scrolling past the whole
  * menu first. Panes stack on narrow screens, where there's no room for two
  * columns anyway.
@@ -73,13 +90,16 @@ export function WalkupOrderDialog({
   const [boothId, setBoothId] = useState(initialBoothId ?? booths[0]?.id ?? "");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [remaining, setRemaining] = useState<Remaining>({});
+  const [expectsPayment, setExpectsPayment] = useState(false);
+  const [paymentKind, setPaymentKind] = useState<PaymentKind | null>(null);
+  const [paid, setPaid] = useState(false);
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [customerName, setCustomerName] = useState("Walk-up");
   const [submitting, setSubmitting] = useState(false);
 
-  // Fresh state each time the dialog opens — a leftover cart/booth from the
+  // Fresh state each time the dialog opens. A leftover cart/booth from the
   // last walk-up order has no business surviving into the next one.
   useEffect(() => {
     if (!open) return;
@@ -87,6 +107,7 @@ export function WalkupOrderDialog({
     setBoothId(initialBoothId ?? booths[0]?.id ?? "");
     setCart(new Map());
     setCustomerName("Walk-up");
+    setPaid(false);
     // Only the dialog's own open transition should reset — booths/
     // initialBoothId are stable-ish props, not per-keystroke deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,9 +118,12 @@ export function WalkupOrderDialog({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingMenu(true);
     setCart(new Map());
+    setPaid(false);
     void getWalkupMenu(boothId).then((res) => {
       setMenuItems(res?.menuItems ?? []);
       setRemaining(res?.remaining ?? {});
+      setExpectsPayment(res?.expectsPayment ?? false);
+      setPaymentKind(res?.paymentKind ?? null);
       setLoadingMenu(false);
     });
   }, [open, boothId]);
@@ -197,7 +221,7 @@ export function WalkupOrderDialog({
       return;
     }
     setSubmitting(true);
-    const res = await placeWalkupOrder(boothId, parsed.data);
+    const res = await placeWalkupOrder(boothId, parsed.data, paid);
     setSubmitting(false);
     if (!res.success) {
       toast.error(res.error);
@@ -218,8 +242,8 @@ export function WalkupOrderDialog({
         <DialogHeader className="border-b border-border px-6 py-4">
           <DialogTitle>New walk-up order</DialogTitle>
           <DialogDescription>
-            For a customer ordering at the counter — same menu and pricing as an
-            online order.
+            For a customer ordering at the counter, with the same menu and
+            pricing as an online order.
           </DialogDescription>
         </DialogHeader>
 
@@ -248,7 +272,7 @@ export function WalkupOrderDialog({
 
             {booths.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No open booths to take a walk-up order for — turn one on first.
+                No open booths to take a walk-up order for. Turn one on first.
               </p>
             ) : loadingMenu ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
@@ -411,7 +435,7 @@ export function WalkupOrderDialog({
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No items yet — tap items on the left to add them.
+                  No items yet. Tap items on the left to add them.
                 </p>
               )}
 
@@ -430,6 +454,30 @@ export function WalkupOrderDialog({
                   maxLength={100}
                 />
               </div>
+
+              {expectsPayment && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Banknote
+                      className={cn(
+                        "size-4 shrink-0",
+                        paid ? "text-emerald-600" : "text-muted-foreground",
+                      )}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Payment collected</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {paymentKindNote(paymentKind)}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={paid}
+                    onCheckedChange={setPaid}
+                    aria-label="Payment collected"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="border-t border-border p-4">

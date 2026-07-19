@@ -31,30 +31,35 @@ beforeEach(() => {
 
 describe("placeWalkupOrder", () => {
   it("rejects an invalid booth id without calling the RPC", async () => {
-    const res = await placeWalkupOrder("not-a-uuid", makeInput());
+    const res = await placeWalkupOrder("not-a-uuid", makeInput(), false);
     expect(res).toEqual({ success: false, error: "Invalid booth" });
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("rejects invalid order details (schema) without calling the RPC", async () => {
-    const res = await placeWalkupOrder(BOOTH_ID, makeInput({ items: [] }));
+    const res = await placeWalkupOrder(
+      BOOTH_ID,
+      makeInput({ items: [] }),
+      false,
+    );
     expect(res).toEqual({ success: false, error: "Invalid order details" });
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("calls place_walkup_order with the booth id, name, and items", async () => {
+  it("calls place_walkup_order with the booth id, name, items, and paid flag", async () => {
     rpcMock.mockResolvedValue({
       data: { order_number: "0001", access_token: "tok" },
       error: null,
     });
     const input = makeInput();
 
-    const res = await placeWalkupOrder(BOOTH_ID, input);
+    const res = await placeWalkupOrder(BOOTH_ID, input, false);
 
     expect(rpcMock).toHaveBeenCalledWith("place_walkup_order", {
       p_booth_id: BOOTH_ID,
       p_customer_name: input.customerName,
       p_items: input.items,
+      p_paid: false,
     });
     expect(res).toEqual({
       success: true,
@@ -63,12 +68,25 @@ describe("placeWalkupOrder", () => {
     });
   });
 
+  it("passes paid=true through to p_paid", async () => {
+    rpcMock.mockResolvedValue({
+      data: { order_number: "0001", access_token: "tok" },
+      error: null,
+    });
+    await placeWalkupOrder(BOOTH_ID, makeInput(), true);
+
+    expect(rpcMock).toHaveBeenCalledWith(
+      "place_walkup_order",
+      expect.objectContaining({ p_paid: true }),
+    );
+  });
+
   it("maps ORDER_UNAUTHORIZED to a not-your-booth message", async () => {
     rpcMock.mockResolvedValue({
       data: null,
       error: { message: "ORDER_UNAUTHORIZED: not your booth" },
     });
-    const res = await placeWalkupOrder(BOOTH_ID, makeInput());
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
     expect(res).toEqual({ success: false, error: "Not your booth." });
   });
 
@@ -77,10 +95,10 @@ describe("placeWalkupOrder", () => {
       data: null,
       error: { message: "ORDER_SOLD_OUT: m1" },
     });
-    const res = await placeWalkupOrder(BOOTH_ID, makeInput());
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
     expect(res).toEqual({
       success: false,
-      error: "An item just sold out — adjust the order.",
+      error: "An item just sold out. Adjust the order.",
     });
   });
 
@@ -89,10 +107,10 @@ describe("placeWalkupOrder", () => {
       data: null,
       error: { message: "ORDER_RATE_LIMITED: booth flood" },
     });
-    const res = await placeWalkupOrder(BOOTH_ID, makeInput());
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
     expect(res).toEqual({
       success: false,
-      error: "Too many orders too fast — wait a moment and try again.",
+      error: "Too many orders too fast. Wait a moment and try again.",
     });
   });
 
@@ -102,7 +120,7 @@ describe("placeWalkupOrder", () => {
       data: null,
       error: { message: "boom" },
     });
-    const res = await placeWalkupOrder(BOOTH_ID, makeInput());
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
     expect(res).toEqual({
       success: false,
       error: "Could not place order. Please try again.",
@@ -114,7 +132,7 @@ describe("placeWalkupOrder", () => {
   it("handles a malformed RPC success payload", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     rpcMock.mockResolvedValue({ data: { unexpected: true }, error: null });
-    const res = await placeWalkupOrder(BOOTH_ID, makeInput());
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
     expect(res).toEqual({
       success: false,
       error: "Could not place order. Please try again.",

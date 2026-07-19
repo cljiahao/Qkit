@@ -630,6 +630,7 @@ export interface Database {
           p_booth_id: string;
           p_customer_name: string;
           p_items: Json;
+          p_paid: boolean;
         };
         Returns: Json;
       };

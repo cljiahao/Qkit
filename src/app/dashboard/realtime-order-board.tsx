@@ -75,26 +75,43 @@ function BoothRow({
   showDot,
   active,
   onToggle,
+  compact = false,
 }: {
   b: BoothView;
   showDot: boolean;
   active: boolean;
   onToggle: (checked: boolean) => void;
+  // Header context (a single booth selected via the board's filter) needs a
+  // pill that fits alongside the other header buttons, not the full row —
+  // same info, name/switch/label only, no outside-hours note.
+  compact?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+    <div
+      className={cn(
+        "flex items-center gap-3 border border-border text-sm",
+        compact ? "rounded-full px-3 py-1.5" : "rounded-lg px-3 py-2",
+      )}
+    >
       {showDot && (
         <span
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: boothColor(b.id) }}
         />
       )}
-      <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
-      {/* Manually active but outside scheduled hours — customers still see
+      <span
+        className={cn(
+          "min-w-0 truncate font-medium",
+          compact ? "max-w-[8rem]" : "flex-1",
+        )}
+      >
+        {b.name}
+      </span>
+      {/* Manually active but outside scheduled hours: customers still see
           it closed. A distinct state from the switch itself, worth
           surfacing so the vendor isn't confused about why orders still
-          aren't landing. */}
-      {active && !b.open && (
+          aren't landing. Skipped in the compact header pill, no room. */}
+      {!compact && active && !b.open && (
         <span className="shrink-0 text-xs text-muted-foreground">
           (outside hours)
         </span>
@@ -243,6 +260,13 @@ export function RealtimeOrderBoard({
     filter !== "all" && !visibleBooths.some((b) => b.id === filter)
       ? "all"
       : filter;
+  // A vendor who's already filtered the board down to one booth doesn't need
+  // to open a dialog and find that same booth again just to pause it — the
+  // header control becomes that booth's own switch directly.
+  const selectedBooth =
+    multiBooth && effectiveFilter !== "all"
+      ? booths.find((b) => b.id === effectiveFilter)
+      : undefined;
   const visible =
     effectiveFilter === "all"
       ? active
@@ -302,15 +326,25 @@ export function RealtimeOrderBoard({
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          {booths.length > 1 && (
-            <Button
-              variant="outline"
-              className="rounded-full"
-              onClick={() => setBoothDialogOpen(true)}
-            >
-              <Store className="size-3.5" />
-              Booths · {activeBoothCount}/{booths.length} open
-            </Button>
+          {selectedBooth ? (
+            <BoothRow
+              b={selectedBooth}
+              showDot={false}
+              active={boothIsActive(selectedBooth)}
+              onToggle={(checked) => setBoothActive(selectedBooth, checked)}
+              compact
+            />
+          ) : (
+            booths.length > 1 && (
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setBoothDialogOpen(true)}
+              >
+                <Store className="size-3.5" />
+                Booths · {activeBoothCount}/{booths.length} open
+              </Button>
+            )
           )}
           <Button
             variant="outline"
@@ -381,7 +415,7 @@ export function RealtimeOrderBoard({
             <DialogTitle>Booth status</DialogTitle>
             <DialogDescription>
               Pause a booth to stop new orders landing without closing it for
-              the day — a rush-hour breather. Resume anytime.
+              the day. Handy for clearing a rush-hour backlog. Resume anytime.
             </DialogDescription>
           </DialogHeader>
           {/* Deliberately keyed on the full `booths` list, not visibleBooths,

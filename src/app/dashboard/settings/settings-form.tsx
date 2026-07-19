@@ -205,12 +205,18 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 >
                   <Info className="size-3.5" />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-64">
-                  Tapping Mark Ready or Mark Picked Up on a ticket applies
-                  instantly — this is how long the button stays as an
-                  &quot;Undo&quot; before that change locks in. Longer gives
-                  staff more time to catch a wrong tap; shorter clears the board
-                  and frees the button up faster.
+                <TooltipContent className="max-w-72 text-pretty">
+                  <p className="font-semibold">What this controls</p>
+                  <p className="mt-1 text-background/85">
+                    Mark Ready and Mark Picked Up apply the moment staff tap
+                    them. This sets how long the button then shows Undo before
+                    that change locks in.
+                  </p>
+                  <p className="mt-1.5 text-background/70">
+                    Longer: more time to catch a wrong tap.
+                    <br />
+                    Shorter: the board clears faster.
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </div>
