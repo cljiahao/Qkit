@@ -36,6 +36,7 @@ function order(over: Partial<Order>): Order {
     idempotency_key: over.idempotency_key ?? null,
     access_token: over.access_token ?? "tok-test",
     priority_bumped_at: over.priority_bumped_at ?? null,
+    source: over.source ?? "qr",
   };
 }
 

@@ -14,6 +14,11 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
+// "qr" = customer-placed via their own device; "walkup" = staff-entered from
+// the dashboard on behalf of a counter customer. Defaults to "qr" at the DB
+// level (migration 0060) — every pre-existing order was.
+export type OrderSource = "qr" | "walkup";
+
 export type Plan = "free" | "pro";
 
 export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
@@ -519,6 +524,7 @@ export interface Database {
           idempotency_key: string | null;
           access_token: string;
           priority_bumped_at: string | null;
+          source: OrderSource;
         };
         Insert: {
           id?: string;
@@ -538,6 +544,7 @@ export interface Database {
           idempotency_key?: string | null;
           access_token?: string;
           priority_bumped_at?: string | null;
+          source?: OrderSource;
         };
         Update: {
           id?: string;
@@ -557,6 +564,7 @@ export interface Database {
           idempotency_key?: string | null;
           access_token?: string;
           priority_bumped_at?: string | null;
+          source?: OrderSource;
         };
         Relationships: [
           {
@@ -614,6 +622,14 @@ export interface Database {
           p_customer_name: string;
           p_items: Json;
           p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
+      place_walkup_order: {
+        Args: {
+          p_booth_id: string;
+          p_customer_name: string;
+          p_items: Json;
         };
         Returns: Json;
       };

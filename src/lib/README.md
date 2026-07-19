@@ -216,13 +216,14 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
 - `supabase/` — the three Supabase client factories (browser/server/service-
   role) plus entitlement/user/vendor read helpers; see its own README.
 - `types.ts` — the hand-maintained mirror of the `qkit` Postgres schema: core
-  domain types (`OrderStatus`, `Plan`, `PaymentConfig`, `MenuItem`, `CartItem`,
+  domain types (`OrderStatus`, `OrderSource` — `"qr"` | `"walkup"`, migration
+  0060 — `Plan`, `PaymentConfig`, `MenuItem`, `CartItem`,
   `OrderItem`, `BoardSettings`/`DEFAULT_BOARD_SETTINGS`), and the full
   `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
   admin_audit, events, licenses, payments, pricing, feedback,
   purchase_requests, support_messages, booths, orders, booth_item_sold; RPCs
   `next_order_number`, `booth_remaining_stock`, `booth_servable`,
-  `check_rate_limit`, `place_order`, `get_booth_for_order`,
+  `check_rate_limit`, `place_order`, `place_walkup_order`, `get_booth_for_order`,
   `regenerate_short_code`, `submit_feedback`, `set_license_label`,
   `gen_short_code`) plus derived row-type aliases (`Vendor`, `Booth`, `Order`,
   `BoardOrder` = `Order` minus `access_token`, `License`, `Pricing`, `Payment`,

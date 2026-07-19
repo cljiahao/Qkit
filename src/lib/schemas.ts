@@ -529,6 +529,9 @@ export const orderRowSchema = z.object({
   // of dropping the whole event.
   access_token: z.string().catch(""),
   priority_bumped_at: z.string().nullable(),
+  // Tolerant like payment_method_kind above — a payload from mid-deploy
+  // (before migration 0060 landed everywhere) shouldn't drop the event.
+  source: z.enum(["qr", "walkup"]).catch("qr"),
 });
 
 /** Parse a JSONB menu_items value, dropping any malformed entries. */

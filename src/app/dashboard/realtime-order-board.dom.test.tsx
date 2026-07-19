@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { RealtimeOrderBoard } from "./realtime-order-board";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toggleBoothActive } from "./booths/actions";
+import { getWalkupMenu } from "./walkup-menu-actions";
 import { DEFAULT_BOARD_SETTINGS } from "@/lib/types";
 import type { BoardOrder } from "@/lib/types";
 
@@ -26,6 +27,7 @@ function order(overrides: Partial<BoardOrder> = {}): BoardOrder {
     updated_at: "2026-06-12T04:00:00Z",
     idempotency_key: null,
     priority_bumped_at: null,
+    source: "qr",
     ...overrides,
   };
 }
@@ -59,6 +61,8 @@ vi.mock("sonner", () => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./booths/actions", () => ({ toggleBoothActive: vi.fn() }));
+vi.mock("./walkup-menu-actions", () => ({ getWalkupMenu: vi.fn() }));
+vi.mock("./walkup-actions", () => ({ placeWalkupOrder: vi.fn() }));
 
 const BOOTHS = [{ id: "b1", name: "Kopi Corner", is_active: true, open: true }];
 
@@ -188,5 +192,50 @@ describe("RealtimeOrderBoard booth active toggle", () => {
     await user.click(toggle);
 
     await waitFor(() => expect(toggle).toBeChecked());
+  });
+});
+
+describe("RealtimeOrderBoard walk-up order button", () => {
+  it("opens the walk-up sheet for the sole active booth", async () => {
+    vi.mocked(getWalkupMenu).mockResolvedValue({
+      menuItems: [],
+      remaining: {},
+    });
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /new order/i }));
+
+    expect(screen.getByText("New walk-up order")).toBeInTheDocument();
+    await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b1"));
+  });
+
+  it("does not offer a paused booth as a walk-up target", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={[
+          { id: "b1", name: "Kopi Corner", is_active: false, open: false },
+        ]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /new order/i }));
+
+    expect(
+      screen.getByText(/no open booths to take a walk-up order for/i),
+    ).toBeInTheDocument();
+    // No active booth to preselect — getWalkupMenu never fires.
+    expect(getWalkupMenu).not.toHaveBeenCalled();
   });
 });

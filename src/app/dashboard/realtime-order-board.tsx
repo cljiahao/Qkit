@@ -26,6 +26,7 @@ import { isTerminal, sortActiveOrders, type AgeSortOrder } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
+import { WalkupOrderSheet } from "./walkup-order-sheet";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
 
@@ -118,6 +119,7 @@ export function RealtimeOrderBoard({
     },
     [],
   );
+  const [walkupOpen, setWalkupOpen] = useState(false);
   // new orders that arrived while hidden
   const [away, setAway] = useState(0);
   const originalTitle = useRef("");
@@ -240,6 +242,13 @@ export function RealtimeOrderBoard({
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => setWalkupOpen(true)}
+          >
+            <Plus className="size-3.5" /> New order
+          </Button>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -408,6 +417,13 @@ export function RealtimeOrderBoard({
           ))}
         </div>
       )}
+
+      <WalkupOrderSheet
+        open={walkupOpen}
+        onOpenChange={setWalkupOpen}
+        booths={booths.filter(boothIsActive)}
+        initialBoothId={effectiveFilter !== "all" ? effectiveFilter : undefined}
+      />
     </div>
   );
 }

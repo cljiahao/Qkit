@@ -32,6 +32,7 @@ function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
     updated_at: new Date(0).toISOString(),
     idempotency_key: null,
     priority_bumped_at: null,
+    source: "qr",
     ...overrides,
   };
 }

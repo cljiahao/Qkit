@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-60 files, `0000` through `0059`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0059` tail; skimmed by filename/theme otherwise. The
+61 files, `0000` through `0060`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0060` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -134,7 +134,18 @@ schema evolved in five broad waves:
   `OrderCard`'s advance-undo affordance) — since `board_settings` is JSONB
   rather than a real column, this both bumps the column `DEFAULT` (future
   inserts) and backfills the key onto every existing row that lacks it
-  (`board_settings ? 'undo_seconds'`).
+  (`board_settings ? 'undo_seconds'`). `0060_walkup_orders.sql` adds
+  `orders.source` (`'qr' | 'walkup'`, default `'qr'`) and
+  `qkit.place_walkup_order` — a SECURITY DEFINER RPC for staff-entered
+  counter orders. Direct `INSERT` on `orders` stays revoked for everyone
+  (`0033`), so this can't reuse `place_order`'s anon/short-code model
+  either way; instead it checks `vendor_id = auth.uid()` (same
+  ownership-check pattern as `set_license_label`, `0020`) and otherwise
+  mirrors `place_order`'s repricing/option-delta/stock-check logic
+  verbatim — the money-correctness rules don't change just because staff
+  is typing instead of a customer. Deliberately skips `booth_servable`/
+  `booth_open`: those gate the customer-facing schedule, not a vendor's
+  own staff standing at the counter.
 
 ## Connectivity
 

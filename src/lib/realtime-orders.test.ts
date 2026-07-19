@@ -25,6 +25,7 @@ function row(overrides: Partial<Order> = {}): Order {
     idempotency_key: null,
     access_token: "tok-test",
     priority_bumped_at: null,
+    source: "qr",
     ...overrides,
   };
 }
