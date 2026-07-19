@@ -19,7 +19,10 @@ across devices.
 - `settings-form.tsx` — `SettingsForm({ initial })` client component, the
   actual UI: three `Section` cards (from `ticket-section.tsx`) for "Board
   timing" (amber/red minute inputs plus the `undo_seconds` advance-undo
-  window, 2-15s, validated live via `boardSettingsSchema`), "New-order sound"
+  window, 2-15s, validated live via `boardSettingsSchema` — an `Info` icon
+  next to the undo-window label opens a `Tooltip` spelling out what it does,
+  since "Advance undo window" alone doesn't say what it's undoing or when),
+  "New-order sound"
   (a `ToggleGroup` of `SOUND_OPTIONS` — chime/bell/ding/horn/triple/off —
   that previews via `playSound` on pick and saves immediately), and
   "Notifications" (a `Switch` that unlocks audio + requests `Notification`

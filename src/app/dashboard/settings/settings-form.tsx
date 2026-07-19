@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, Clock, Volume2 } from "lucide-react";
+import { Bell, Clock, Info, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Section } from "@/components/ticket-section";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { boardSettingsSchema } from "@/lib/schemas";
@@ -188,9 +193,27 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
-              Advance undo window
-            </Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
+                Advance undo window
+              </Label>
+              <Tooltip>
+                <TooltipTrigger
+                  type="button"
+                  aria-label="More about this setting"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">
+                  Tapping Mark Ready or Mark Picked Up on a ticket applies
+                  instantly — this is how long the button stays as an
+                  &quot;Undo&quot; before that change locks in. Longer gives
+                  staff more time to catch a wrong tap; shorter clears the board
+                  and frees the button up faster.
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="flex items-center gap-2">
               <Input
                 id="undo-seconds"

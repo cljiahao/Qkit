@@ -107,14 +107,10 @@ describe("RealtimeOrderBoard sort toggle", () => {
 });
 
 describe("RealtimeOrderBoard booth active toggle", () => {
-  it("reflects each booth's is_active state via a Switch", () => {
-    const booths = [
-      { id: "b1", name: "Kopi Corner", is_active: true, open: true },
-      { id: "b2", name: "Ice Cream Cart", is_active: false, open: false },
-    ];
+  it("shows a single booth's switch inline, no modal needed", () => {
     render(
       <RealtimeOrderBoard
-        booths={booths}
+        booths={BOOTHS}
         initialOrders={[]}
         boardSettings={DEFAULT_BOARD_SETTINGS}
       />,
@@ -124,14 +120,12 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       screen.getByRole("switch", { name: "Kopi Corner taking orders" }),
     ).toBeChecked();
     expect(
-      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
-    ).not.toBeChecked();
+      screen.queryByRole("button", { name: /booths ·/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("stays reachable for a paused booth with no active orders", () => {
-    // visibleBooths (the filter dropdown's source) drops an inactive booth
-    // with nothing in flight — the toggle row must not, or there'd be no
-    // way to turn it back on.
+  it("gates 2+ booths behind a 'Booths' dialog, reflecting each is_active state", async () => {
+    const user = userEvent.setup();
     const booths = [
       { id: "b1", name: "Kopi Corner", is_active: true, open: true },
       { id: "b2", name: "Ice Cream Cart", is_active: false, open: false },
@@ -144,6 +138,38 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       />,
       { wrapper: TooltipProvider },
     );
+    expect(
+      screen.queryByRole("switch", { name: "Kopi Corner taking orders" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Booths · 1/2 open" }));
+
+    expect(
+      screen.getByRole("switch", { name: "Kopi Corner taking orders" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
+    ).not.toBeChecked();
+  });
+
+  it("stays reachable for a paused booth with no active orders", async () => {
+    // visibleBooths (the filter dropdown's source) drops an inactive booth
+    // with nothing in flight — the dialog's list must not, or there'd be no
+    // way to turn it back on.
+    const user = userEvent.setup();
+    const booths = [
+      { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+      { id: "b2", name: "Ice Cream Cart", is_active: false, open: false },
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={booths}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(screen.getByRole("button", { name: "Booths · 1/2 open" }));
     expect(
       screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
     ).toBeInTheDocument();
@@ -196,7 +222,7 @@ describe("RealtimeOrderBoard booth active toggle", () => {
 });
 
 describe("RealtimeOrderBoard walk-up order button", () => {
-  it("opens the walk-up sheet for the sole active booth", async () => {
+  it("opens the walk-up dialog for the sole active booth", async () => {
     vi.mocked(getWalkupMenu).mockResolvedValue({
       menuItems: [],
       remaining: {},

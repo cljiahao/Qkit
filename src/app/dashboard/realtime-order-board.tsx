@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Settings as SettingsIcon } from "lucide-react";
+import { Plus, Settings as SettingsIcon, Store } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
@@ -26,7 +33,7 @@ import { isTerminal, sortActiveOrders, type AgeSortOrder } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
-import { WalkupOrderSheet } from "./walkup-order-sheet";
+import { WalkupOrderDialog } from "./walkup-order-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
 
@@ -56,6 +63,55 @@ function LoadErrorBanner() {
     >
       Couldn&apos;t load your current orders. Some in-flight orders may be
       missing. Refresh to try again.
+    </div>
+  );
+}
+
+// One booth's open/paused row — shared between the solo inline case (a
+// single-booth vendor, no need for a modal over one switch) and the
+// multi-booth status dialog below.
+function BoothRow({
+  b,
+  showDot,
+  active,
+  onToggle,
+}: {
+  b: BoothView;
+  showDot: boolean;
+  active: boolean;
+  onToggle: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+      {showDot && (
+        <span
+          className="size-2 shrink-0 rounded-full"
+          style={{ backgroundColor: boothColor(b.id) }}
+        />
+      )}
+      <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
+      {/* Manually active but outside scheduled hours — customers still see
+          it closed. A distinct state from the switch itself, worth
+          surfacing so the vendor isn't confused about why orders still
+          aren't landing. */}
+      {active && !b.open && (
+        <span className="shrink-0 text-xs text-muted-foreground">
+          (outside hours)
+        </span>
+      )}
+      <span
+        className={cn(
+          "shrink-0 font-semibold",
+          active ? "text-emerald-600" : "text-muted-foreground",
+        )}
+      >
+        {active ? "Open" : "Paused"}
+      </span>
+      <Switch
+        checked={active}
+        onCheckedChange={onToggle}
+        aria-label={`${b.name} taking orders`}
+      />
     </div>
   );
 }
@@ -102,6 +158,9 @@ export function RealtimeOrderBoard({
       router.refresh();
     })();
   }
+  const activeBoothCount = booths.filter(boothIsActive).length;
+  const soleBooth = booths.length === 1 ? booths[0] : undefined;
+
   // Order ids currently inside an OrderCard undo window (see order-card.tsx) —
   // kept on the active board below even once their status is terminal, so the
   // undo affordance a vendor just tapped doesn't get yanked out from under
@@ -120,6 +179,7 @@ export function RealtimeOrderBoard({
     [],
   );
   const [walkupOpen, setWalkupOpen] = useState(false);
+  const [boothDialogOpen, setBoothDialogOpen] = useState(false);
   // new orders that arrived while hidden
   const [away, setAway] = useState(0);
   const originalTitle = useRef("");
@@ -242,6 +302,16 @@ export function RealtimeOrderBoard({
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          {booths.length > 1 && (
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => setBoothDialogOpen(true)}
+            >
+              <Store className="size-3.5" />
+              Booths · {activeBoothCount}/{booths.length} open
+            </Button>
+          )}
           <Button
             variant="outline"
             className="rounded-full"
@@ -288,56 +358,51 @@ export function RealtimeOrderBoard({
         </div>
       </div>
 
-      {/* A quick pause/resume per booth — deliberately keyed on the full
-          `booths` list, not visibleBooths, so a paused booth with no orders
-          in flight (which visibleBooths would otherwise hide) stays
-          reachable to turn back on. Instant toggle + an undo toast, same
-          pattern as OrderCard's advance buttons: a vendor managing a
-          rush-hour backlog needs this fast and reversible, not gated behind
-          a confirm dialog. */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        {booths.map((b) => {
-          const active = boothIsActive(b);
-          return (
-            <div
-              key={b.id}
-              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm"
-            >
-              {booths.length > 1 && (
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: boothColor(b.id) }}
-                />
-              )}
-              <span className="max-w-[8rem] truncate font-medium">
-                {b.name}
-              </span>
-              <Switch
-                checked={active}
-                onCheckedChange={(checked) => setBoothActive(b, checked)}
-                aria-label={`${b.name} taking orders`}
+      {/* A single-booth vendor gets the pause/resume switch inline — no
+          point wrapping one switch in a dialog. Two-plus booths go behind
+          the "Booths" header button instead (see below): a wall of pause
+          rows would otherwise wrap across the top of the board and push
+          every order card down, worse the more booths there are — exactly
+          the clutter problem a modal avoids regardless of booth count. */}
+      {booths.length === 1 && soleBooth && (
+        <div className="mb-6 max-w-sm">
+          <BoothRow
+            b={soleBooth}
+            showDot={false}
+            active={boothIsActive(soleBooth)}
+            onToggle={(checked) => setBoothActive(soleBooth, checked)}
+          />
+        </div>
+      )}
+
+      <Dialog open={boothDialogOpen} onOpenChange={setBoothDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Booth status</DialogTitle>
+            <DialogDescription>
+              Pause a booth to stop new orders landing without closing it for
+              the day — a rush-hour breather. Resume anytime.
+            </DialogDescription>
+          </DialogHeader>
+          {/* Deliberately keyed on the full `booths` list, not visibleBooths,
+              so a paused booth with no orders in flight (which
+              visibleBooths would otherwise hide) stays reachable to turn
+              back on. Instant toggle + an undo toast, same pattern as
+              OrderCard's advance buttons: this needs to be fast and
+              reversible, not gated behind a confirm step of its own. */}
+          <div className="space-y-2">
+            {booths.map((b) => (
+              <BoothRow
+                key={b.id}
+                b={b}
+                showDot
+                active={boothIsActive(b)}
+                onToggle={(checked) => setBoothActive(b, checked)}
               />
-              <span
-                className={cn(
-                  "font-semibold",
-                  active ? "text-emerald-600" : "text-muted-foreground",
-                )}
-              >
-                {active ? "Open" : "Paused"}
-              </span>
-              {/* Manually active but outside scheduled hours — customers
-                  still see it closed. A distinct state from the switch
-                  itself, worth surfacing so the vendor isn't confused about
-                  why orders still aren't landing. */}
-              {active && !b.open && (
-                <span className="text-xs text-muted-foreground">
-                  (outside hours)
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         {/* A dropdown rather than a tab-per-booth row: a vendor running a
@@ -418,7 +483,7 @@ export function RealtimeOrderBoard({
         </div>
       )}
 
-      <WalkupOrderSheet
+      <WalkupOrderDialog
         open={walkupOpen}
         onOpenChange={setWalkupOpen}
         booths={booths.filter(boothIsActive)}

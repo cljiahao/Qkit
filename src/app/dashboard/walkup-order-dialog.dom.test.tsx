@@ -2,7 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { WalkupOrderSheet } from "./walkup-order-sheet";
+import { WalkupOrderDialog } from "./walkup-order-dialog";
 
 const { getWalkupMenu, placeWalkupOrder } = vi.hoisted(() => ({
   getWalkupMenu: vi.fn(),
@@ -38,10 +38,10 @@ beforeEach(() => {
   });
 });
 
-describe("WalkupOrderSheet", () => {
+describe("WalkupOrderDialog", () => {
   it("loads the booth's menu once opened", async () => {
     render(
-      <WalkupOrderSheet
+      <WalkupOrderDialog
         open={true}
         onOpenChange={vi.fn()}
         booths={BOOTHS}
@@ -56,7 +56,7 @@ describe("WalkupOrderSheet", () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     render(
-      <WalkupOrderSheet
+      <WalkupOrderDialog
         open={true}
         onOpenChange={onOpenChange}
         booths={BOOTHS}
@@ -80,7 +80,9 @@ describe("WalkupOrderSheet", () => {
   });
 
   it("shows a no-booths state instead of fetching a menu", () => {
-    render(<WalkupOrderSheet open={true} onOpenChange={vi.fn()} booths={[]} />);
+    render(
+      <WalkupOrderDialog open={true} onOpenChange={vi.fn()} booths={[]} />,
+    );
     expect(
       screen.getByText(/no open booths to take a walk-up order for/i),
     ).toBeInTheDocument();
@@ -89,7 +91,7 @@ describe("WalkupOrderSheet", () => {
 
   it("disables submit with an empty cart", async () => {
     render(
-      <WalkupOrderSheet
+      <WalkupOrderDialog
         open={true}
         onOpenChange={vi.fn()}
         booths={BOOTHS}
