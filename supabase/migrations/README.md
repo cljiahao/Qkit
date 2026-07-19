@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-58 files, `0000` through `0057`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0057` tail; skimmed by filename/theme otherwise. The
+60 files, `0000` through `0059`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0059` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -126,6 +126,15 @@ schema evolved in five broad waves:
   "bump to front" board action — not caught by the existing freeze
   trigger (denylist, not allowlist), rides the existing
   `orders_vendor_update` RLS policy with no new policy needed.
+  `0058_platform_settings.sql` adds `qkit.platform_settings` — a
+  public-read singleton (same shape as `qkit.pricing`, `0010`) backing a
+  maintenance banner; no UPDATE policy at all, writes go through the
+  service-role admin action only. `0059_board_settings_undo_seconds.sql`
+  adds `undo_seconds` to `board_settings` (vendor-configurable duration for
+  `OrderCard`'s advance-undo affordance) — since `board_settings` is JSONB
+  rather than a real column, this both bumps the column `DEFAULT` (future
+  inserts) and backfills the key onto every existing row that lacks it
+  (`board_settings ? 'undo_seconds'`).
 
 ## Connectivity
 

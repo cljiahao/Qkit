@@ -197,6 +197,7 @@ describe("boardSettingsSchema", () => {
     overdue_min: 10,
     sound_id: "chime" as const,
     desktop_notify: false,
+    undo_seconds: 4,
   };
 
   it("accepts the default shape", () => {
@@ -224,6 +225,15 @@ describe("boardSettingsSchema", () => {
   it("rejects a threshold over the 240min cap", () => {
     expect(
       boardSettingsSchema.safeParse({ ...valid, overdue_min: 241 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects undo_seconds outside the 2-15s range", () => {
+    expect(
+      boardSettingsSchema.safeParse({ ...valid, undo_seconds: 1 }).success,
+    ).toBe(false);
+    expect(
+      boardSettingsSchema.safeParse({ ...valid, undo_seconds: 16 }).success,
     ).toBe(false);
   });
 });

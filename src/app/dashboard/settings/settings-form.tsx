@@ -36,6 +36,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
   const router = useRouter();
   const [agingMin, setAgingMin] = useState(String(initial.aging_min));
   const [overdueMin, setOverdueMin] = useState(String(initial.overdue_min));
+  const [undoSeconds, setUndoSeconds] = useState(String(initial.undo_seconds));
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const { pending: savingThresholds, run: runThresholds } = useAsyncAction();
 
@@ -51,6 +52,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       overdue_min: Number(overdueMin),
       sound_id: soundId,
       desktop_notify: desktopNotify,
+      undo_seconds: Number(undoSeconds),
     });
     if (!parsed.success) {
       setThresholdError(
@@ -82,6 +84,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         overdue_min: Number(overdueMin),
         sound_id: id,
         desktop_notify: desktopNotify,
+        undo_seconds: Number(undoSeconds),
       });
       if (!res.success) {
         toast.error(res.error);
@@ -117,6 +120,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         overdue_min: Number(overdueMin),
         sound_id: soundId,
         desktop_notify: next,
+        undo_seconds: Number(undoSeconds),
       });
       if (!res.success) {
         toast.error(res.error);
@@ -130,14 +134,15 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
 
   const thresholdsUnchanged =
     agingMin === String(initial.aging_min) &&
-    overdueMin === String(initial.overdue_min);
+    overdueMin === String(initial.overdue_min) &&
+    undoSeconds === String(initial.undo_seconds);
 
   return (
     <div className="md:columns-2 md:gap-5">
       <Section
         icon={<Clock className="size-5" />}
-        title="Attention thresholds"
-        description="How long before a waiting ticket flags itself on the board."
+        title="Board timing"
+        description="How long before a waiting ticket flags itself, and how long staff have to undo an accidental Mark Ready / Mark Picked Up tap."
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -182,6 +187,27 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
               <span className="text-sm text-muted-foreground">min</span>
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
+              Advance undo window
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="undo-seconds"
+                type="number"
+                min={2}
+                max={15}
+                value={undoSeconds}
+                onChange={(e) => setUndoSeconds(e.target.value)}
+                className="h-11 rounded-xl"
+                aria-invalid={!!thresholdError}
+                aria-describedby={
+                  thresholdError ? "threshold-error" : undefined
+                }
+              />
+              <span className="text-sm text-muted-foreground">sec</span>
+            </div>
+          </div>
         </div>
         {thresholdError && (
           <p id="threshold-error" className={FORM_ERROR_CLASS}>
@@ -195,7 +221,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             disabled={savingThresholds || thresholdsUnchanged}
             className="h-10 rounded-xl font-semibold"
           >
-            {savingThresholds ? "Saving…" : "Save thresholds"}
+            {savingThresholds ? "Saving…" : "Save timing"}
           </Button>
         </div>
       </Section>

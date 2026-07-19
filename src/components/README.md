@@ -66,20 +66,23 @@ prompt, metric })`: compact rating widget posting to
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
 - `order-card.tsx` — `OrderCard({ order, boothName, agingMin, overdueMin,
-onUndoWindowChange, showDate })`: the vendor dashboard's live order ticket —
-  status/payment badges, an aging clock (`orderAgeTone`, ticks every 30s)
-  moved to the footer beside the arrival timestamp (`sgtClock`, bare time —
-  or `shortDateTime`, date+time, when `showDate` is set, for the completed-
-  orders history list where every card isn't from today), expandable item
-  options, and the advance/cancel/confirm-payment action buttons wired to
-  `@/app/dashboard/order-actions`. Advancing (Mark Ready/Mark Picked Up)
-  fires instantly — no confirm gate on a tapped-dozens-of-times-a-shift
-  button — backed instead by a `UNDO_MS` (4s) undo window: the button
-  becomes an Undo affordance with a left-to-right drain (`.undo-bar` in
-  `globals.css`), and `onUndoWindowChange(orderId, active)` tells the board
-  to keep a just-completed (terminal) order on the active grid for that
-  window, since the realtime echo of the very write being offered for undo
-  would otherwise filter the card off the board first. The name/number
+onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's live order
+  ticket — status/payment badges, an aging clock (`orderAgeTone`, ticks
+  every 30s) moved to the footer beside the arrival timestamp (`sgtClock`,
+  bare time — or `shortDateTime`, date+time, when `showDate` is set, for
+  the completed-orders history list where every card isn't from today),
+  expandable item options, and the advance/cancel/confirm-payment action
+  buttons wired to `@/app/dashboard/order-actions`. Advancing (Mark
+  Ready/Mark Picked Up) fires instantly — no confirm gate on a
+  tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
+  (default `DEFAULT_UNDO_MS`, 4s; vendor-configurable via
+  `board_settings.undo_seconds * 1000`) undo window: the button becomes an
+  Undo affordance with a left-to-right drain (`.undo-bar` in `globals.css`,
+  duration set inline to match `undoMs`), and `onUndoWindowChange(orderId,
+  active)` tells the board to keep a just-completed (terminal) order on the
+  active grid for that window, since the realtime echo of the very write
+  being offered for undo would otherwise filter the card off the board
+  first. The name/number
   block doubles as the bump trigger (chip-styled, confirm dialog, disabled
   once already bumped) instead of a separate icon button. In multi-booth
   view, a full-width banner above the header shows the booth name next to a

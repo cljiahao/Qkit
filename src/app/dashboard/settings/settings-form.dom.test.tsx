@@ -31,6 +31,7 @@ const DEFAULTS: BoardSettings = {
   overdue_min: 10,
   sound_id: "chime",
   desktop_notify: false,
+  undo_seconds: 4,
 };
 
 beforeEach(() => {
@@ -49,7 +50,7 @@ describe("SettingsForm thresholds", () => {
     const overdue = screen.getByLabelText(/turn red after/i);
     await user.clear(overdue);
     await user.type(overdue, "3");
-    await user.click(screen.getByRole("button", { name: /save thresholds/i }));
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
 
     expect(
       screen.getByText(/overdue must be later than amber/i),
@@ -65,11 +66,38 @@ describe("SettingsForm thresholds", () => {
     const aging = screen.getByLabelText(/turn amber after/i);
     await user.clear(aging);
     await user.type(aging, "3");
-    await user.click(screen.getByRole("button", { name: /save thresholds/i }));
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
 
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ aging_min: 3, overdue_min: 10 }),
     );
+  });
+
+  it("saves a changed undo window", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} />);
+
+    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    await user.clear(undoSeconds);
+    await user.type(undoSeconds, "8");
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ undo_seconds: 8 }),
+    );
+  });
+
+  it("rejects an undo window outside 2-15s without calling the action", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} />);
+
+    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    await user.clear(undoSeconds);
+    await user.type(undoSeconds, "30");
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+
+    expect(updateBoardSettings).not.toHaveBeenCalled();
   });
 });
 

@@ -42,8 +42,9 @@ import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
 // no hold-to-confirm gate (research: confirmation friction on a high-frequency
 // action causes habituation and increases errors instead of preventing them),
 // backed instead by a short, visible undo. Matches Square KDS's own 3s undo on
-// its equivalent complete action; 4s here for a touch fat-finger margin.
-const UNDO_MS = 4000;
+// its equivalent complete action; vendor-configurable (board_settings.
+// undo_seconds) via the `undoMs` prop, this 4s is just the fallback.
+const DEFAULT_UNDO_MS = 4000;
 
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   if (status === "not_required") return null;
@@ -73,6 +74,7 @@ export function OrderCard({
   overdueMin,
   onUndoWindowChange,
   showDate = false,
+  undoMs = DEFAULT_UNDO_MS,
 }: {
   order: BoardOrder;
   boothName?: string;
@@ -87,6 +89,9 @@ export function OrderCard({
   // out from under the undo button. No-op when omitted (e.g. the completed-
   // orders history list, which never calls advanceStatus in the first place).
   onUndoWindowChange?: (orderId: string, active: boolean) => void;
+  // board_settings.undo_seconds * 1000, vendor-configurable. Falls back to
+  // DEFAULT_UNDO_MS when omitted (e.g. before the board thread it through).
+  undoMs?: number;
   // Footer stamp reads a bare time ("2:38 AM") by default — fine for the
   // live board, where every card is from today. A history list spans many
   // days, so it opts into a date+time stamp instead of a time an ordering
@@ -174,14 +179,14 @@ export function OrderCard({
           setConfirmedLocally(true);
 
         // Instant tap, no confirm gate — a short undo window is the recovery
-        // path instead (see UNDO_MS). onUndoWindowChange keeps a just-
+        // path instead (see undoMs). onUndoWindowChange keeps a just-
         // completed order on the active board for this window; without it,
         // the realtime echo of this very write would filter the card off the
         // board before the vendor could react to a mis-tap.
         setPendingUndo({ revertTo, revertFrom: res.status, prevPaymentStatus });
         onUndoWindowChange?.(order.id, true);
         if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-        undoTimerRef.current = setTimeout(() => dismissUndo(order.id), UNDO_MS);
+        undoTimerRef.current = setTimeout(() => dismissUndo(order.id), undoMs);
       }
     });
   }
@@ -486,6 +491,7 @@ export function OrderCard({
               >
                 <span
                   className="undo-bar absolute inset-y-0 left-0 bg-secondary"
+                  style={{ animationDuration: `${undoMs}ms` }}
                   aria-hidden="true"
                 />
                 <span className="relative flex items-center gap-1.5">

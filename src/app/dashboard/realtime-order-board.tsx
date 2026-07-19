@@ -324,6 +324,7 @@ export function RealtimeOrderBoard({
               boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
               agingMin={boardSettings.aging_min}
               overdueMin={boardSettings.overdue_min}
+              undoMs={boardSettings.undo_seconds * 1000}
               onUndoWindowChange={handleUndoWindowChange}
             />
           ))}

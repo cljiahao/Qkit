@@ -216,9 +216,10 @@ html::-webkit-scrollbar {
 }
 
 /* Left-to-right drain on an undo affordance (order-card.tsx) — a visible
-   countdown to when a just-tapped advance finalizes. 4s must match
-   order-card.tsx's UNDO_MS constant — purely decorative if they drift, but
-   keep them in sync. */
+   countdown to when a just-tapped advance finalizes. 4s here is only the
+   fallback; order-card.tsx sets an inline animation-duration matching its
+   (vendor-configurable) undoMs prop, which — being inline — always wins
+   over this shorthand's duration component. */
 @keyframes undo-drain {
   from {
     width: 100%;
