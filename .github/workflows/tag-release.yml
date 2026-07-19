@@ -24,6 +24,8 @@ jobs:
         # manual tag just becomes the new baseline for future auto-bumps. First run
         # on a repo with no tags at all starts at v0.1.0 (pre-launch, pre-1.0).
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags
           LATEST=$(git tag -l 'v*' --sort=-v:refname | head -n1)
           if [ -z "$LATEST" ]; then
