@@ -48,20 +48,30 @@ export async function getOrderStatus(
   return data?.status ?? null;
 }
 
+export type WaitEstimate = {
+  // null whenever there isn't enough recent history to trust a time-based
+  // estimate — see estimateWaitSeconds's own minimum-sample-size guard. The
+  // page falls back to `ordersAhead` (a queue-position label) instead of
+  // showing nothing — see queuePositionLabel in @/lib/orders.
+  seconds: number | null;
+  ordersAhead: number;
+};
+
 /**
  * Live "ready in ~N min" estimate for one order — recent average prep time
  * (this booth's last RECENT_ORDER_LIMIT completed orders) times how many
  * orders currently rank ahead of it. Polled the same cadence as
  * getOrderStatus (this page is poll-only by design, not realtime — see
- * order-status-poller.tsx), so this recomputes live as the queue moves,
- * not a one-time snapshot. null whenever there isn't enough recent history
- * to trust — see estimateWaitSeconds's own minimum-sample-size guard.
+ * order-status-poller.tsx), so this recomputes live as the queue moves, not
+ * a one-time snapshot. Returns null only when there's nothing to say at all
+ * (invalid token, order not found) — `ordersAhead` is otherwise always
+ * computable and returned even when `seconds` isn't.
  */
 export async function getWaitEstimate(
   boothId: string,
   orderNumber: string,
   token: string,
-): Promise<number | null> {
+): Promise<WaitEstimate | null> {
   if (!parseOrderRef(boothId, orderNumber, token).ok) return null;
 
   const supabase = await createServiceClient();
@@ -102,5 +112,9 @@ export async function getWaitEstimate(
   }
 
   const ordersAhead = ordersAheadOf(active ?? [], target);
-  return estimateWaitSeconds((recent ?? []) as StatsOrder[], ordersAhead);
+  const seconds = estimateWaitSeconds(
+    (recent ?? []) as StatsOrder[],
+    ordersAhead,
+  );
+  return { seconds, ordersAhead };
 }

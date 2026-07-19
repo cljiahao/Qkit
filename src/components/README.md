@@ -65,23 +65,45 @@ prompt, metric })`: compact rating widget posting to
   optimization.
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
-- `order-card.tsx` — `OrderCard({ order, boothName, agingMin, overdueMin })`:
-  the vendor dashboard's live order ticket — status/payment badges, an
-  aging clock (`orderAgeTone`, ticks every 30s), expandable item options,
-  and the advance/cancel/confirm-payment action buttons wired to
-  `@/app/dashboard/order-actions`. One "attention wash" background at a
-  time, prioritized overdue > payment-claimed > aging.
+- `order-card.tsx` — `OrderCard({ order, boothName, agingMin, overdueMin,
+onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's live order
+  ticket — status/payment badges, an aging clock (`orderAgeTone`, ticks
+  every 30s) moved to the footer beside the arrival timestamp (`sgtClock`,
+  bare time — or `shortDateTime`, date+time, when `showDate` is set, for
+  the completed-orders history list where every card isn't from today),
+  expandable item options, and the advance/cancel/confirm-payment action
+  buttons wired to `@/app/dashboard/order-actions`. Advancing (Mark
+  Ready/Mark Picked Up) fires instantly — no confirm gate on a
+  tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
+  (default `DEFAULT_UNDO_MS`, 4s; vendor-configurable via
+  `board_settings.undo_seconds * 1000`) undo window: the button becomes an
+  Undo affordance with a left-to-right drain (`.undo-bar` in `globals.css`,
+  duration set inline to match `undoMs`), and `onUndoWindowChange(orderId,
+  active)` tells the board to keep a just-completed (terminal) order on the
+  active grid for that window, since the realtime echo of the very write
+  being offered for undo would otherwise filter the card off the board
+  first. The name/number
+  block doubles as the bump trigger (chip-styled, confirm dialog, disabled
+  once already bumped) instead of a separate icon button. In multi-booth
+  view, a full-width banner above the header shows the booth name next to a
+  `boothColor()` dot. One "attention wash" background at a time,
+  prioritized overdue > payment-claimed > aging.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
   transitions and action-button wiring.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
   pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
   cancelled), shared by the dashboard board and the customer status page.
-- `paginated.tsx` — `Paginated({ children, pageSize, variant, label })`:
-  client-side pager over pre-rendered rows — `variant="pager"` (prev/next +
-  "x–y of N", for admin tables) or `"more"` (Load more / Show less, for
-  feeds). The visible rows sit in their own `className`-styled wrapper,
-  separate from the prev/next or Load-more row — a grid `className` (e.g.
-  the completed-orders page) lays out only the rows, not the pager controls.
+- `paginated.tsx` — `Paginated({ children, pageSize, variant, label,
+alwaysShowCount })`: client-side pager over pre-rendered rows —
+  `variant="pager"` (prev/next + "x–y of N", for admin tables) or `"more"`
+  (Load more / Show less, for feeds). `alwaysShowCount` (pager only) shows
+  the "x–y of N" readout even when everything fits on one page — useful
+  when the count itself is meaningful context (e.g. confirming a filtered
+  list wasn't over-narrowed), not just page-count bookkeeping; prev/next
+  buttons still only appear once there's more than one page. The visible
+  rows sit in their own `className`-styled wrapper, separate from the
+  prev/next or Load-more row — a grid `className` (e.g. the completed-orders
+  page) lays out only the rows, not the pager controls.
 - `pro-lock.tsx` — `ProLock({ feature, label })`: an inline upgrade nudge
   linking to `/dashboard/plan`, logging an `upgrade_cta` event tagged with
   the specific gated `feature` for funnel analysis.

@@ -15,9 +15,10 @@ import {
 import { getOrderStatus, getWaitEstimate } from "./status-actions";
 import {
   elapsedLabel,
-  estimateLabel,
+  estimateRangeLabel,
   isTerminal,
   orderProgressIndex,
+  queuePositionLabel,
   ORDER_PROGRESS_SEGMENTS,
 } from "@/lib/orders";
 import type { OrderStatus } from "@/lib/types";
@@ -58,9 +59,15 @@ export function OrderStatusPoller({
   placedAt,
 }: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
-  // null = no estimate to show (not enough history, or not applicable once
-  // ready/terminal). Recomputed on the same poll as status, live not frozen.
-  const [waitSeconds, setWaitSeconds] = useState<number | null>(null);
+  // null = nothing to show at all (order not found — shouldn't happen once
+  // mounted, but poll-only pages must tolerate a transient blip). Otherwise
+  // seconds may itself be null (not enough recent history) while ordersAhead
+  // is still known — the queue-position fallback covers that case instead of
+  // showing nothing. Recomputed on the same poll as status, live not frozen.
+  const [wait, setWait] = useState<{
+    seconds: number | null;
+    ordersAhead: number;
+  } | null>(null);
   // null until known (avoids SSR/hydration mismatch); "default" = can ask.
   const [permission, setPermission] = useState<NotificationPermission | null>(
     null,
@@ -115,7 +122,7 @@ export function OrderStatusPoller({
       getWaitEstimate(boothId, orderNumber, token),
     ]);
     if (next) setStatus(next);
-    setWaitSeconds(estimate);
+    setWait(estimate);
   }, [boothId, orderNumber, token]);
   usePolling(poll, { intervalMs: POLL_MS, enabled: !isTerminal(status) });
 
@@ -213,11 +220,24 @@ export function OrderStatusPoller({
       )}
 
       {/* Only meaningful while still waiting — once ready, "please collect
-          now" replaces any ETA; a terminal/cancelled order has none either. */}
-      {waiting && waitSeconds !== null && (
-        <p className="text-sm font-medium text-primary">
-          {estimateLabel(waitSeconds)}
-        </p>
+          now" replaces any ETA; a terminal/cancelled order has none either.
+          Prominent (not small body text) and range-based rather than a
+          precise countdown: waiting-line research says uncertainty is what
+          makes a wait feel worse, not the wait itself, so a visible-but-
+          honest estimate beats hiding it or over-promising a single number.
+          Falls back to queue position instead of showing nothing when
+          there's not enough recent history for a time estimate yet. */}
+      {waiting && wait && (
+        <div className="mx-auto inline-flex flex-col items-center gap-0.5 rounded-xl bg-primary/[0.06] px-5 py-3">
+          <p className="text-[0.65rem] font-semibold tracking-[0.15em] text-muted-foreground uppercase">
+            {wait.seconds !== null ? "Estimated wait" : "In the queue"}
+          </p>
+          <p className="font-display text-2xl font-bold text-primary">
+            {wait.seconds !== null
+              ? estimateRangeLabel(wait.seconds)
+              : queuePositionLabel(wait.ordersAhead)}
+          </p>
+        </div>
       )}
 
       {status === "ready" && (

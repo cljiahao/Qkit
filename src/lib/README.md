@@ -125,8 +125,16 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   excluding `access_token`), `TERMINAL_STATUSES`/`isTerminal`, `ADVANCE` (legal
   forward-status map + button label), `orderAgeTone`/`elapsedMinutes`/
   `elapsedLabel`, `buildAdvancePatch` (status transition patch, auto-confirming
-  payment on completion), `sortActiveOrders`, `orderProgressIndex` (customer
-  3-segment progress bar).
+  payment on completion), `sortActiveOrders` (vendor-board display sort,
+  status-agnostic by design — a bumped order leads, then every order by
+  `created_at`; takes an `AgeSortOrder`, `"earliest"` default or `"latest"`),
+  `ordersAheadOf` (the separate, status-aware kitchen-priority queue used
+  for the customer-facing wait estimate), `estimateLabel`/`estimateRangeLabel`
+  (point vs. range "X-Y min" customer wait-estimate labels — the range form
+  is what the order-status page actually renders, on the theory that an
+  unmet precise promise erodes trust more than an upfront-honest range),
+  `queuePositionLabel` (the no-time-data fallback, "N orders ahead of you"),
+  `orderProgressIndex` (customer 3-segment progress bar).
 - `orders.test.ts` — tests status transitions, patch-building (including the
   payment auto-confirm-on-complete rule), sorting, and age/label formatting.
 - `payments/` — PayNow QR generation and the payment-method adapter registry
@@ -208,13 +216,14 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
 - `supabase/` — the three Supabase client factories (browser/server/service-
   role) plus entitlement/user/vendor read helpers; see its own README.
 - `types.ts` — the hand-maintained mirror of the `qkit` Postgres schema: core
-  domain types (`OrderStatus`, `Plan`, `PaymentConfig`, `MenuItem`, `CartItem`,
+  domain types (`OrderStatus`, `OrderSource` — `"qr"` | `"walkup"`, migration
+  0060 — `Plan`, `PaymentConfig`, `MenuItem`, `CartItem`,
   `OrderItem`, `BoardSettings`/`DEFAULT_BOARD_SETTINGS`), and the full
   `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
   admin_audit, events, licenses, payments, pricing, feedback,
   purchase_requests, support_messages, booths, orders, booth_item_sold; RPCs
   `next_order_number`, `booth_remaining_stock`, `booth_servable`,
-  `check_rate_limit`, `place_order`, `get_booth_for_order`,
+  `check_rate_limit`, `place_order`, `place_walkup_order`, `get_booth_for_order`,
   `regenerate_short_code`, `submit_feedback`, `set_license_label`,
   `gen_short_code`) plus derived row-type aliases (`Vendor`, `Booth`, `Order`,
   `BoardOrder` = `Order` minus `access_token`, `License`, `Pricing`, `Payment`,

@@ -22,6 +22,7 @@ function order(overrides: Partial<BoardOrder> = {}): BoardOrder {
     updated_at: "2026-06-12T04:00:00Z",
     idempotency_key: null,
     priority_bumped_at: null,
+    source: "qr",
     ...overrides,
   };
 }

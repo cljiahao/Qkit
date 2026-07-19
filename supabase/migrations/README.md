@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-58 files, `0000` through `0057`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0057` tail; skimmed by filename/theme otherwise. The
+62 files, `0000` through `0061`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0061` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -126,6 +126,34 @@ schema evolved in five broad waves:
   "bump to front" board action — not caught by the existing freeze
   trigger (denylist, not allowlist), rides the existing
   `orders_vendor_update` RLS policy with no new policy needed.
+  `0058_platform_settings.sql` adds `qkit.platform_settings` — a
+  public-read singleton (same shape as `qkit.pricing`, `0010`) backing a
+  maintenance banner; no UPDATE policy at all, writes go through the
+  service-role admin action only. `0059_board_settings_undo_seconds.sql`
+  adds `undo_seconds` to `board_settings` (vendor-configurable duration for
+  `OrderCard`'s advance-undo affordance) — since `board_settings` is JSONB
+  rather than a real column, this both bumps the column `DEFAULT` (future
+  inserts) and backfills the key onto every existing row that lacks it
+  (`board_settings ? 'undo_seconds'`). `0060_walkup_orders.sql` adds
+  `orders.source` (`'qr' | 'walkup'`, default `'qr'`) and
+  `qkit.place_walkup_order` — a SECURITY DEFINER RPC for staff-entered
+  counter orders. Direct `INSERT` on `orders` stays revoked for everyone
+  (`0033`), so this can't reuse `place_order`'s anon/short-code model
+  either way; instead it checks `vendor_id = auth.uid()` (same
+  ownership-check pattern as `set_license_label`, `0020`) and otherwise
+  mirrors `place_order`'s repricing/option-delta/stock-check logic
+  verbatim — the money-correctness rules don't change just because staff
+  is typing instead of a customer. Deliberately skips `booth_servable`/
+  `booth_open`: those gate the customer-facing schedule, not a vendor's
+  own staff standing at the counter. `0061_walkup_order_paid_flag.sql`
+  adds a `p_paid` argument to `place_walkup_order` so staff who already
+  collected payment at the counter (cash, tap-to-pay) can land the order
+  with `payment_status = 'confirmed'` in one step, instead of a separate
+  "Confirm payment" tap on the board right after — same end state
+  `confirmOrderPayment` (`src/app/dashboard/order-actions.ts`) produces.
+  A new argument changes the function's signature, so this `DROP FUNCTION`s
+  the old 3-arg version explicitly before `CREATE OR REPLACE`, rather than
+  leaving it behind as a second, stale overload.
 
 ## Connectivity
 

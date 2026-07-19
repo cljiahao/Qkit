@@ -5,7 +5,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
 import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
 import type { ActionResult } from "@/lib/action-result";
-import type { OrderStatus } from "@/lib/types";
+import type { OrderStatus, PaymentStatus } from "@/lib/types";
 
 // Vendor order-board mutations behind a validated server boundary. Authorization
 // is enforced in Postgres: getUser() gates signed-in, and RLS
@@ -74,6 +74,67 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
     return { success: false, error: "Order changed — please refresh." };
 
   return { success: true, status: adv.next };
+}
+
+/**
+ * Undo a just-made advanceOrder call within its short undo window (see
+ * order-card.tsx). `revertFrom` must be the legal ADVANCE target of
+ * `revertTo` — the client can't use this to jump an order to an arbitrary
+ * status, only to walk back the single transition it just made.
+ * `prevPaymentStatus` is what payment_status was BEFORE that transition
+ * (the client already has it — it read the order before calling
+ * advanceOrder): undoing a completion also undoes the auto-confirm
+ * buildAdvancePatch applied, exactly mirroring what advanceOrder did.
+ */
+export async function revertOrderAdvance(
+  orderId: string,
+  revertTo: OrderStatus,
+  revertFrom: OrderStatus,
+  prevPaymentStatus: PaymentStatus,
+): Promise<StatusResult> {
+  if (!idSchema.safeParse(orderId).success)
+    return { success: false, error: "Invalid order" };
+  if (ADVANCE[revertTo]?.next !== revertFrom)
+    return { success: false, error: "Not a valid undo" };
+
+  const { supabase, order } = await loadOwnOrder(orderId);
+  if (!supabase || !order) return { success: false, error: "Order not found" };
+
+  const patch: {
+    status: OrderStatus;
+    ready_at?: null;
+    completed_at?: null;
+    payment_status?: PaymentStatus;
+    paid_at?: null;
+  } = { status: revertTo };
+  if (revertFrom === "ready") patch.ready_at = null;
+  if (revertFrom === "completed") {
+    patch.completed_at = null;
+    // Mirrors buildAdvancePatch's own auto-confirm condition — only undo the
+    // payment flip if advanceOrder is what caused it.
+    if (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed") {
+      patch.payment_status = prevPaymentStatus;
+      patch.paid_at = null;
+    }
+  }
+
+  // Guard on the status we read: if something else moved the order during
+  // the undo window (e.g. another device advanced it further), this becomes
+  // a no-op refresh prompt instead of clobbering that concurrent change.
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update(patch)
+    .eq("id", orderId)
+    .eq("status", revertFrom)
+    .select("id");
+  if (error) {
+    console.error("revertOrderAdvance failed", error.message);
+    return { success: false, error: "Failed to undo" };
+  }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed — please refresh." };
+
+  return { success: true, status: revertTo };
 }
 
 /**

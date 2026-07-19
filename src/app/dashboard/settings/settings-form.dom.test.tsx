@@ -24,6 +24,7 @@ vi.mock("@/lib/order-alerts", () => ({
 }));
 
 import { SettingsForm } from "./settings-form";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { BoardSettings } from "@/lib/types";
 
 const DEFAULTS: BoardSettings = {
@@ -31,6 +32,7 @@ const DEFAULTS: BoardSettings = {
   overdue_min: 10,
   sound_id: "chime",
   desktop_notify: false,
+  undo_seconds: 4,
 };
 
 beforeEach(() => {
@@ -44,12 +46,12 @@ beforeEach(() => {
 describe("SettingsForm thresholds", () => {
   it("rejects overdue <= aging without calling the action", async () => {
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} />);
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
     const overdue = screen.getByLabelText(/turn red after/i);
     await user.clear(overdue);
     await user.type(overdue, "3");
-    await user.click(screen.getByRole("button", { name: /save thresholds/i }));
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
 
     expect(
       screen.getByText(/overdue must be later than amber/i),
@@ -60,16 +62,43 @@ describe("SettingsForm thresholds", () => {
   it("saves valid thresholds", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} />);
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
     const aging = screen.getByLabelText(/turn amber after/i);
     await user.clear(aging);
     await user.type(aging, "3");
-    await user.click(screen.getByRole("button", { name: /save thresholds/i }));
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
 
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ aging_min: 3, overdue_min: 10 }),
     );
+  });
+
+  it("saves a changed undo window", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
+
+    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    await user.clear(undoSeconds);
+    await user.type(undoSeconds, "8");
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ undo_seconds: 8 }),
+    );
+  });
+
+  it("rejects an undo window outside 2-15s without calling the action", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
+
+    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    await user.clear(undoSeconds);
+    await user.type(undoSeconds, "30");
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+
+    expect(updateBoardSettings).not.toHaveBeenCalled();
   });
 });
 
@@ -77,7 +106,7 @@ describe("SettingsForm sound", () => {
   it("selecting a preset previews it and saves immediately", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} />);
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
     await user.click(screen.getByRole("radio", { name: "Bell" }));
     expect(playSound).toHaveBeenCalledWith("bell");
@@ -91,7 +120,7 @@ describe("SettingsForm desktop notifications", () => {
   it("turning on requests permission then saves", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} />);
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
     await user.click(
       screen.getByRole("switch", { name: /desktop notifications/i }),
@@ -105,7 +134,7 @@ describe("SettingsForm desktop notifications", () => {
   it("reverts and shows an error when permission is denied", async () => {
     requestNotifyPermission.mockResolvedValueOnce("denied");
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} />);
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
     await user.click(
       screen.getByRole("switch", { name: /desktop notifications/i }),

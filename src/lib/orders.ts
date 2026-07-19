@@ -5,7 +5,7 @@ import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
 // secret, which the board never needs (least privilege). Single source so
 // the two read sites can't drift out of sync with each other.
 export const BOARD_ORDER_COLUMNS =
-  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at" as const;
+  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at, source" as const;
 
 // A finished order — off the active board, no further transitions. Single
 // source of truth for the "is this done" check that several views need.
@@ -132,19 +132,30 @@ export function buildAdvancePatch(
   return { status: next };
 }
 
+export type AgeSortOrder = "earliest" | "latest";
+
 /**
- * Sort active orders for the vendor board: in-progress (preparing) before
- * ready, then a manually bumped order (vendor's explicit "help this one now"
- * override — most-recently-bumped first) before non-bumped, then FIFO within
- * a status by created_at (oldest first). created_at is used rather than
- * order_number because order numbers are per-booth and not globally ordered,
- * and is never touched by a bump — ticket-aging display stays accurate
- * regardless of bump state. Pure + non-mutating.
+ * Sort active orders for the vendor board display: a manually bumped order
+ * (vendor's explicit "help this one now" override — most-recently-bumped
+ * first) always leads, then every order by created_at — oldest first
+ * ("earliest", the default) or newest first ("latest"). created_at is used
+ * rather than order_number because order numbers are per-booth and not
+ * globally ordered, and is never touched by a bump — ticket-aging display
+ * stays accurate regardless of bump state.
+ *
+ * Deliberately status-agnostic: an old "ready" order sitting unclaimed is
+ * exactly the kind of "been waiting longest" case a vendor wants surfaced
+ * during a rush, so it can't be pinned below every "preparing" order just
+ * because of its status. (The kitchen's own build-priority — what to cook
+ * next — is a separate concern; see `ordersAheadOf`, which stays
+ * status-aware for the customer-facing wait estimate.) Pure + non-mutating.
  */
-export function sortActiveOrders(orders: BoardOrder[]): BoardOrder[] {
+export function sortActiveOrders(
+  orders: BoardOrder[],
+  order: AgeSortOrder = "earliest",
+): BoardOrder[] {
+  const dir = order === "latest" ? -1 : 1;
   return [...orders].sort((a, b) => {
-    const rank = STATUS_RANK[a.status] - STATUS_RANK[b.status];
-    if (rank !== 0) return rank;
     const aBumped = a.priority_bumped_at != null;
     const bBumped = b.priority_bumped_at != null;
     if (aBumped !== bBumped) return aBumped ? -1 : 1;
@@ -154,17 +165,23 @@ export function sortActiveOrders(orders: BoardOrder[]): BoardOrder[] {
         new Date(a.priority_bumped_at!).getTime()
       );
     }
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return (
+      dir *
+      (new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    );
   });
 }
 
 /**
- * How many orders rank strictly ahead of `target` in the same queue —
- * mirrors sortActiveOrders's own comparison (status rank, then bump state,
- * then created_at/bump time) rather than reimplementing the ordering, so a
- * wait estimate always matches what the vendor's board actually shows.
- * Excludes `target` itself and excludes exact ties (undefined ordering,
- * safer to under-count by one than over-promise). Pure.
+ * How many orders rank strictly ahead of `target` in the kitchen's own
+ * build queue — status rank (preparing before ready), then bump state, then
+ * created_at/bump time. This is the customer-facing wait estimate, a
+ * separate concern from the vendor board's display order
+ * (`sortActiveOrders`, which is deliberately status-agnostic so a vendor
+ * can triage by pure age): what matters here is what the kitchen still has
+ * to *do*, not how the board is currently sorted on screen. Excludes
+ * `target` itself and excludes exact ties (undefined ordering, safer to
+ * under-count by one than over-promise). Pure.
  */
 export function ordersAheadOf(
   orders: {
@@ -208,4 +225,35 @@ export function estimateLabel(seconds: number): string {
   const minutes = Math.round(seconds / 60);
   if (minutes < 1) return "Any moment now";
   return `~${minutes} min`;
+}
+
+/**
+ * Range-based "X-Y min" wait estimate rather than a single precise number —
+ * research on waiting-line psychology: a point estimate reads as a promise,
+ * and an average-based estimate that's sometimes wrong erodes trust more
+ * than a range that was upfront about its own uncertainty. ±25% around the
+ * point estimate, floored so a small estimate doesn't degenerate to a
+ * zero-width band (e.g. "3-3 min"). Pure.
+ */
+export function estimateRangeLabel(seconds: number): string {
+  const point = Math.round(seconds / 60);
+  if (point < 1) return "Any moment now";
+  const spread = Math.max(1, Math.round(point * 0.25));
+  const lo = Math.max(1, point - spread);
+  const hi = point + spread;
+  return `${lo}-${hi} min`;
+}
+
+/**
+ * Fallback for when there isn't enough recent order history to trust a
+ * time-based estimate (see estimateWaitSeconds's minimum sample size).
+ * Waiting-line research says an unexplained/silent wait feels worse than an
+ * explained one — showing queue position instead of hiding the estimate
+ * line entirely still answers "how much longer, roughly" without false
+ * precision. Pure.
+ */
+export function queuePositionLabel(ordersAhead: number): string {
+  if (ordersAhead <= 0) return "You're next in line";
+  if (ordersAhead === 1) return "1 order ahead of you";
+  return `${ordersAhead} orders ahead of you`;
 }

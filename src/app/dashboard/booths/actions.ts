@@ -205,3 +205,55 @@ export async function saveBooth(
   }
   return { success: true, boothId: inserted.id };
 }
+
+/**
+ * Flip a single booth's is_active without going through the full booth-edit
+ * form — a quick pause/resume for a vendor managing rush-hour pace (toggle
+ * off to let a backlog clear, back on once caught up), not a booth-details
+ * edit. Same free-plan single-active-booth cap as saveBooth when turning ON;
+ * turning OFF is always allowed (never blocks giving yourself a breather).
+ */
+export async function toggleBoothActive(
+  boothId: string,
+  active: boolean,
+): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+
+  const { user, entitlement } = await loadEntitlement();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const supabase = await createServerClient();
+
+  if (active && entitlement.maxBooths !== null) {
+    const { count, error: countErr } = await supabase
+      .from("booths")
+      .select("id", { count: "exact", head: true })
+      .eq("vendor_id", user.id)
+      .eq("is_active", true)
+      .neq("id", boothId);
+    if (countErr)
+      console.error(
+        "toggleBoothActive active-cap count failed",
+        countErr.message,
+      );
+    if ((count ?? 0) >= entitlement.maxBooths)
+      return {
+        success: false,
+        error: `Your plan serves ${entitlement.maxBooths} active booth at a time. Deactivate another booth first, or upgrade.`,
+      };
+  }
+
+  // RLS (booths_vendor_all) scopes the update to this vendor's own booths.
+  const { data: updated, error } = await supabase
+    .from("booths")
+    .update({ is_active: active })
+    .eq("id", boothId)
+    .select("id")
+    .maybeSingle();
+  if (error || !updated)
+    return { success: false, error: "Could not update booth" };
+
+  revalidatePath("/dashboard", "layout");
+  return { success: true };
+}

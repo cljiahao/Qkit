@@ -10,6 +10,8 @@ import {
   buildAdvancePatch,
   ordersAheadOf,
   estimateLabel,
+  estimateRangeLabel,
+  queuePositionLabel,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
 
@@ -34,35 +36,32 @@ function order(over: Partial<Order>): Order {
     idempotency_key: over.idempotency_key ?? null,
     access_token: over.access_token ?? "tok-test",
     priority_bumped_at: over.priority_bumped_at ?? null,
+    source: over.source ?? "qr",
   };
 }
 
 describe("sortActiveOrders", () => {
-  it("puts preparing before ready", () => {
-    const out = sortActiveOrders([
-      order({ id: "r", status: "ready" }),
-      order({ id: "p", status: "preparing" }),
-    ]);
-    expect(out.map((o) => o.id)).toEqual(["p", "r"]);
-  });
-
-  it("FIFO within a status: oldest created_at first", () => {
+  it('defaults to "earliest": oldest created_at first, regardless of status', () => {
     const out = sortActiveOrders([
       order({
-        id: "new",
-        status: "preparing",
+        id: "ready-new",
+        status: "ready",
         created_at: "2026-06-12T10:05:00Z",
       }),
       order({
-        id: "old",
+        id: "prep-old",
         status: "preparing",
         created_at: "2026-06-12T10:00:00Z",
       }),
     ]);
-    expect(out.map((o) => o.id)).toEqual(["old", "new"]);
+    // The ready order is newer, but a vendor triaging "who's waited
+    // longest" needs the older order first even though its status differs —
+    // status is intentionally not part of this ordering (see ordersAheadOf
+    // for the status-aware kitchen-priority queue).
+    expect(out.map((o) => o.id)).toEqual(["prep-old", "ready-new"]);
   });
 
-  it("orders a mixed multi-booth set: all preparing (FIFO) then all ready (FIFO)", () => {
+  it("orders a mixed multi-booth, mixed-status set purely by age", () => {
     const out = sortActiveOrders([
       order({
         id: "ready-old",
@@ -91,31 +90,37 @@ describe("sortActiveOrders", () => {
     ]);
     expect(out.map((o) => o.id)).toEqual([
       "prep-old",
-      "prep-new",
       "ready-old",
       "ready-new",
+      "prep-new",
     ]);
   });
 
   it("does not mutate the input array", () => {
     const input = [
-      order({ id: "r", status: "ready" }),
-      order({ id: "p", status: "preparing" }),
+      order({
+        id: "r",
+        status: "ready",
+        created_at: "2026-06-12T10:05:00Z",
+      }),
+      order({
+        id: "p",
+        status: "preparing",
+        created_at: "2026-06-12T10:00:00Z",
+      }),
     ];
     sortActiveOrders(input);
     expect(input.map((o) => o.id)).toEqual(["r", "p"]);
   });
 
-  it("ranks a bumped order ahead of older non-bumped orders in the same status tier", () => {
+  it("ranks a bumped order ahead of older non-bumped orders", () => {
     const out = sortActiveOrders([
       order({
         id: "old",
-        status: "preparing",
         created_at: "2026-06-12T10:00:00Z",
       }),
       order({
         id: "bumped",
-        status: "preparing",
         created_at: "2026-06-12T10:05:00Z",
         priority_bumped_at: "2026-06-12T10:06:00Z",
       }),
@@ -127,44 +132,70 @@ describe("sortActiveOrders", () => {
     const out = sortActiveOrders([
       order({
         id: "bumped-first",
-        status: "preparing",
         priority_bumped_at: "2026-06-12T10:00:00Z",
       }),
       order({
         id: "bumped-second",
-        status: "preparing",
         priority_bumped_at: "2026-06-12T10:05:00Z",
       }),
     ]);
     expect(out.map((o) => o.id)).toEqual(["bumped-second", "bumped-first"]);
   });
 
-  it("does not touch created_at-based FIFO among non-bumped orders", () => {
+  it("keeps a bumped order ahead even of an older order in a different status", () => {
     const out = sortActiveOrders([
       order({
-        id: "new",
+        id: "ready-old",
+        status: "ready",
+        created_at: "2026-06-12T09:00:00Z",
+      }),
+      order({
+        id: "prep-bumped",
         status: "preparing",
         created_at: "2026-06-12T10:05:00Z",
-      }),
-      order({
-        id: "old",
-        status: "preparing",
-        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: "2026-06-12T10:06:00Z",
       }),
     ]);
-    expect(out.map((o) => o.id)).toEqual(["old", "new"]);
+    expect(out.map((o) => o.id)).toEqual(["prep-bumped", "ready-old"]);
   });
 
-  it("still ranks by status before considering bump state", () => {
-    const out = sortActiveOrders([
-      order({
-        id: "ready-bumped",
-        status: "ready",
-        priority_bumped_at: "2026-06-12T10:05:00Z",
-      }),
-      order({ id: "preparing-plain", status: "preparing" }),
-    ]);
-    expect(out.map((o) => o.id)).toEqual(["preparing-plain", "ready-bumped"]);
+  it('order: "latest" reverses to newest-first, still status-agnostic', () => {
+    const out = sortActiveOrders(
+      [
+        order({
+          id: "old",
+          status: "preparing",
+          created_at: "2026-06-12T10:00:00Z",
+        }),
+        order({
+          id: "new",
+          status: "ready",
+          created_at: "2026-06-12T10:05:00Z",
+        }),
+      ],
+      "latest",
+    );
+    expect(out.map((o) => o.id)).toEqual(["new", "old"]);
+  });
+
+  it('order: "latest" still keeps a bumped order first', () => {
+    const out = sortActiveOrders(
+      [
+        order({
+          id: "ready-new",
+          status: "ready",
+          created_at: "2026-06-12T10:05:00Z",
+        }),
+        order({
+          id: "prep-bumped",
+          status: "preparing",
+          created_at: "2026-06-12T10:01:00Z",
+          priority_bumped_at: "2026-06-12T10:02:00Z",
+        }),
+      ],
+      "latest",
+    );
+    expect(out.map((o) => o.id)).toEqual(["prep-bumped", "ready-new"]);
   });
 });
 
@@ -372,5 +403,35 @@ describe("estimateLabel", () => {
   it("shows a friendly label for a near-zero estimate", () => {
     expect(estimateLabel(0)).toBe("Any moment now");
     expect(estimateLabel(20)).toBe("Any moment now");
+  });
+});
+
+describe("estimateRangeLabel", () => {
+  it("bands ±25% around the point estimate", () => {
+    expect(estimateRangeLabel(8 * 60)).toBe("6-10 min");
+    expect(estimateRangeLabel(20 * 60)).toBe("15-25 min");
+  });
+
+  it("floors the band so a small estimate never degenerates to zero-width", () => {
+    expect(estimateRangeLabel(60)).toBe("1-2 min");
+  });
+
+  it("shows a friendly label for a near-zero estimate", () => {
+    expect(estimateRangeLabel(0)).toBe("Any moment now");
+    expect(estimateRangeLabel(20)).toBe("Any moment now");
+  });
+});
+
+describe("queuePositionLabel", () => {
+  it("labels zero orders ahead as next in line", () => {
+    expect(queuePositionLabel(0)).toBe("You're next in line");
+  });
+
+  it("singularizes exactly one order ahead", () => {
+    expect(queuePositionLabel(1)).toBe("1 order ahead of you");
+  });
+
+  it("pluralizes multiple orders ahead", () => {
+    expect(queuePositionLabel(4)).toBe("4 orders ahead of you");
   });
 });

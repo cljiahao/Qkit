@@ -109,22 +109,31 @@ describe("getWaitEstimate", () => {
       .mockReturnValueOnce(chain({ data: recent, error: null }));
 
     const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
-    expect(res).toBe(120); // 1 order ahead * 120s avg
+    expect(res).toEqual({ seconds: 120, ordersAhead: 1 }); // 1 ahead * 120s avg
   });
 
-  it("returns null below the minimum recent-order sample size", async () => {
+  it("returns ordersAhead but a null seconds estimate below the minimum recent-order sample size", async () => {
     const target = {
       id: "t",
       status: "pending",
       created_at: "2026-06-12T10:05:00Z",
       priority_bumped_at: null,
     };
+    const active = [
+      target,
+      {
+        id: "a",
+        status: "preparing",
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+      },
+    ];
     fromMock
       .mockReturnValueOnce(chain({ data: target, error: null }))
-      .mockReturnValueOnce(chain({ data: [target], error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }))
       .mockReturnValueOnce(chain({ data: [], error: null }));
 
     const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
-    expect(res).toBeNull();
+    expect(res).toEqual({ seconds: null, ordersAhead: 1 });
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,12 +30,21 @@ import {
   bumpOrder,
   cancelOrder as cancelOrderAction,
   confirmOrderPayment,
+  revertOrderAdvance,
 } from "@/app/dashboard/order-actions";
-import { sgtClock } from "@/lib/tz";
+import { sgtClock, shortDateTime } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
-import { Banknote, ChevronDown, Clock, Zap } from "lucide-react";
-import type { BoardOrder, OrderStatus } from "@/lib/types";
+import { Banknote, ChevronDown, Clock, Undo2, Zap } from "lucide-react";
+import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
+
+// Undo window for advanceStatus (Mark Ready / Mark Picked Up) — instant tap,
+// no hold-to-confirm gate (research: confirmation friction on a high-frequency
+// action causes habituation and increases errors instead of preventing them),
+// backed instead by a short, visible undo. Matches Square KDS's own 3s undo on
+// its equivalent complete action; vendor-configurable (board_settings.
+// undo_seconds) via the `undoMs` prop, this 4s is just the fallback.
+const DEFAULT_UNDO_MS = 4000;
 
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   if (status === "not_required") return null;
@@ -63,6 +72,9 @@ export function OrderCard({
   boothName,
   agingMin,
   overdueMin,
+  onUndoWindowChange,
+  showDate = false,
+  undoMs = DEFAULT_UNDO_MS,
 }: {
   order: BoardOrder;
   boothName?: string;
@@ -70,6 +82,21 @@ export function OrderCard({
   // Fall through to orderAgeTone's own defaults when not supplied.
   agingMin?: number;
   overdueMin?: number;
+  // Notifies the board while an advance's undo window is open, so it can
+  // keep a just-completed order (a terminal status, normally filtered off
+  // the active board) visible until the window closes — otherwise the
+  // realtime echo of the very advance being undone could unmount this card
+  // out from under the undo button. No-op when omitted (e.g. the completed-
+  // orders history list, which never calls advanceStatus in the first place).
+  onUndoWindowChange?: (orderId: string, active: boolean) => void;
+  // board_settings.undo_seconds * 1000, vendor-configurable. Falls back to
+  // DEFAULT_UNDO_MS when omitted (e.g. before the board thread it through).
+  undoMs?: number;
+  // Footer stamp reads a bare time ("2:38 AM") by default — fine for the
+  // live board, where every card is from today. A history list spans many
+  // days, so it opts into a date+time stamp instead of a time an ordering
+  // vendor would have to guess the day for.
+  showDate?: boolean;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   // Resync to the (realtime-updated) prop when it actually changes value, so a
@@ -95,6 +122,22 @@ export function OrderCard({
   const { pending: updating, run } = useAsyncAction();
   const [expanded, setExpanded] = useState(false);
 
+  // A just-tapped advanceStatus sits here until the undo window closes (timer
+  // in undoTimerRef) or the vendor taps Undo. Cleared on unmount too, so a
+  // card that scrolls out of view (or the completed order finally leaving the
+  // board once the window ends) never fires a late setState.
+  const [pendingUndo, setPendingUndo] = useState<{
+    revertTo: OrderStatus;
+    revertFrom: OrderStatus;
+    prevPaymentStatus: PaymentStatus;
+  } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
   // Ticket aging: tick the clock each 30s (only while live) so the vendor sees
   // at a glance how long an order has waited against a ~10-min prep target.
   const nowMs = useNow(30_000, !isTerminal(status));
@@ -106,10 +149,19 @@ export function OrderCard({
   const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
 
-  // All three mutations go through validated server actions (order-actions.ts);
-  // the DB enforces ownership (RLS) and column integrity (a freeze trigger).
+  // A dismissed/expired undo window just clears local state — the DB write
+  // it's undoing (or not) already happened; there's nothing left to do here.
+  function dismissUndo(orderId: string) {
+    setPendingUndo(null);
+    onUndoWindowChange?.(orderId, false);
+  }
+
+  // All mutations go through validated server actions (order-actions.ts); the
+  // DB enforces ownership (RLS) and column integrity (a freeze trigger).
   function advanceStatus() {
     if (!advance) return;
+    const revertTo = status;
+    const prevPaymentStatus = order.payment_status;
     return run(async () => {
       const res = await advanceOrder(order.id);
       if (!res.success) {
@@ -122,11 +174,54 @@ export function OrderCard({
         // stray "Paid" badge into the aging-clock's spot for one frame.
         if (
           res.status === "completed" &&
-          (order.payment_status === "pending" ||
-            order.payment_status === "claimed")
+          (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed")
         )
           setConfirmedLocally(true);
+
+        // Instant tap, no confirm gate — a short undo window is the recovery
+        // path instead (see undoMs). onUndoWindowChange keeps a just-
+        // completed order on the active board for this window; without it,
+        // the realtime echo of this very write would filter the card off the
+        // board before the vendor could react to a mis-tap.
+        setPendingUndo({ revertTo, revertFrom: res.status, prevPaymentStatus });
+        onUndoWindowChange?.(order.id, true);
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = setTimeout(() => dismissUndo(order.id), undoMs);
       }
+    });
+  }
+
+  function undoAdvance() {
+    if (!pendingUndo) return;
+    const { revertTo, revertFrom, prevPaymentStatus } = pendingUndo;
+    const orderId = order.id;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    return run(async () => {
+      const res = await revertOrderAdvance(
+        orderId,
+        revertTo,
+        revertFrom,
+        prevPaymentStatus,
+      );
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        setStatus(res.status);
+        if (
+          revertFrom === "completed" &&
+          (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed")
+        )
+          setConfirmedLocally(false);
+      }
+      // Clearing the local pendingUndo is enough to restore this card's own
+      // buttons — status is no longer terminal, so `closed` already flips
+      // false. Releasing the board's keep-alive override is delayed instead
+      // of immediate: the board's `orders` (realtime-sourced) still reads
+      // "completed" until THIS revert's own echo lands, so releasing right
+      // away risks a one-frame flicker where the card gets filtered off the
+      // board before it flips back.
+      setPendingUndo(null);
+      setTimeout(() => onUndoWindowChange?.(orderId, false), 1000);
     });
   }
 
@@ -183,6 +278,25 @@ export function OrderCard({
         wash,
       )}
     >
+      {/* A full-width booth banner instead of squeezing the name into a
+          corner icon/tab — those blocked or truncated past readability. In
+          normal flow (not absolutely positioned) so it can't overlap the
+          name/number block below it, and the full card width means a
+          booth's actual name reads at a glance instead of being guessed
+          from a dot. Same boothColor() hash as the filter tabs/dropdown, so
+          the colour association still carries onto the card. Only rendered
+          in multi-booth view. */}
+      {boothName && (
+        <div className="flex items-center gap-1.5 rounded-t-xl border-b border-border/60 bg-secondary/40 px-4 py-1.5">
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: boothColor(order.booth_id) }}
+          />
+          <span className="truncate text-xs font-semibold tracking-wide text-foreground uppercase">
+            {boothName}
+          </span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
         {/* The name/number block doubles as the bump affordance: tapping it
             prompts a confirmation instead of sitting as a separate icon
@@ -194,18 +308,21 @@ export function OrderCard({
             <AlertDialogTrigger asChild>
               <button
                 type="button"
-                className="min-w-0 rounded-md text-left transition-colors hover:bg-secondary/50"
+                className="-mx-2 -my-1 min-w-0 rounded-lg border border-dashed border-muted-foreground/40 bg-secondary/40 px-2 py-1 text-left transition-colors hover:border-primary/50 hover:bg-secondary"
                 disabled={updating}
               >
                 <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
                   #{order.order_number}
                   <Zap
-                    className="size-4 shrink-0 text-muted-foreground/40"
+                    className="size-4 shrink-0 text-muted-foreground"
                     aria-hidden="true"
                   />
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {order.customer_name}
+                </p>
+                <p className="mt-1.5 text-[0.55rem] font-medium uppercase tracking-wider text-muted-foreground/50">
+                  Tap to bump
                 </p>
               </button>
             </AlertDialogTrigger>
@@ -248,15 +365,6 @@ export function OrderCard({
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <OrderStatusBadge status={status} />
           <PaymentBadge status={payStatus} />
-          {boothName && (
-            <span className="inline-flex max-w-[8rem] items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-secondary-foreground">
-              <span
-                className="size-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: boothColor(order.booth_id) }}
-              />
-              <span className="truncate">{boothName}</span>
-            </span>
-          )}
         </div>
       </div>
 
@@ -364,57 +472,85 @@ export function OrderCard({
           </div>
         )}
 
-        {!closed && (
+        {/* Stays visible through a pending undo window even once `closed`
+            (e.g. a just-completed order) — otherwise the undo affordance
+            itself would vanish along with the row. */}
+        {(!closed || pendingUndo) && (
           <div className="flex gap-2 px-4 pb-4">
-            {advance && (
+            {pendingUndo && status === pendingUndo.revertFrom ? (
+              // Instant tap, no confirm gate on the advance itself — this is
+              // the recovery path instead: a few seconds to catch a mis-tap,
+              // draining left-to-right so the deadline is visible at a glance.
               <Button
+                type="button"
                 size="sm"
-                className="h-11 flex-1 rounded-lg font-semibold"
-                onClick={advanceStatus}
+                variant="outline"
+                className="relative h-11 flex-1 overflow-hidden rounded-lg font-semibold"
+                onClick={undoAdvance}
                 disabled={updating}
               >
-                {advance.label}
+                <span
+                  className="undo-bar absolute inset-y-0 left-0 bg-secondary"
+                  style={{ animationDuration: `${undoMs}ms` }}
+                  aria-hidden="true"
+                />
+                <span className="relative flex items-center gap-1.5">
+                  <Undo2 className="size-4" /> Undo
+                </span>
               </Button>
-            )}
-            {/* No cancel affordance once payment is confirmed — there's no
-                refund rail, so a paid order can only be refunded off-platform
-                (the server action rejects the cancel too). */}
-            {payStatus !== "confirmed" && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+            ) : (
+              <>
+                {advance && (
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
+                    className="h-11 flex-1 rounded-lg font-semibold"
+                    onClick={advanceStatus}
                     disabled={updating}
                   >
-                    Cancel
+                    {advance.label}
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Cancel order #{order.order_number}?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This permanently cancels the order and removes it from the
-                      board. This can&apos;t be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={updating}>
-                      Keep order
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={cancelOrder}
-                      disabled={updating}
-                      className="bg-destructive text-white hover:bg-destructive/90"
-                    >
-                      Cancel order
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                )}
+                {/* No cancel affordance once payment is confirmed — there's no
+                    refund rail, so a paid order can only be refunded off-platform
+                    (the server action rejects the cancel too). */}
+                {payStatus !== "confirmed" && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
+                        disabled={updating}
+                      >
+                        Cancel
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Cancel order #{order.order_number}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This permanently cancels the order and removes it from
+                          the board. This can&apos;t be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={updating}>
+                          Keep order
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={cancelOrder}
+                          disabled={updating}
+                          className="bg-destructive text-white hover:bg-destructive/90"
+                        >
+                          Cancel order
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
             )}
           </div>
         )}
@@ -445,7 +581,11 @@ export function OrderCard({
           ) : (
             <span />
           )}
-          <span>{sgtClock(order.created_at)}</span>
+          <span>
+            {showDate
+              ? shortDateTime(order.created_at)
+              : sgtClock(order.created_at)}
+          </span>
         </div>
       </div>
     </Ticket>

@@ -442,6 +442,11 @@ export const boardSettingsSchema = z
     overdue_min: z.number().int().min(1).max(240),
     sound_id: z.enum(["chime", "bell", "ding", "horn", "triple", "none"]),
     desktop_notify: z.boolean(),
+    // Bounded well below the aging/overdue minute range — this is a
+    // seconds-scale undo grace period, not a display threshold. 2s floor
+    // keeps it long enough to actually tap; 15s ceiling matches what a
+    // vendor originally proposed as a reasonable outer bound.
+    undo_seconds: z.number().int().min(2).max(15),
   })
   .refine((d) => d.overdue_min > d.aging_min, {
     message: "Overdue must be later than amber",
@@ -524,6 +529,9 @@ export const orderRowSchema = z.object({
   // of dropping the whole event.
   access_token: z.string().catch(""),
   priority_bumped_at: z.string().nullable(),
+  // Tolerant like payment_method_kind above — a payload from mid-deploy
+  // (before migration 0060 landed everywhere) shouldn't drop the event.
+  source: z.enum(["qr", "walkup"]).catch("qr"),
 });
 
 /** Parse a JSONB menu_items value, dropping any malformed entries. */

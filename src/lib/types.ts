@@ -14,12 +14,18 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
+// "qr" = customer-placed via their own device; "walkup" = staff-entered from
+// the dashboard on behalf of a counter customer. Defaults to "qr" at the DB
+// level (migration 0060) — every pre-existing order was.
+export type OrderSource = "qr" | "walkup";
+
 export type Plan = "free" | "pro";
 
 export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
 
 // Vendor live-order-board preferences (qkit.vendors.board_settings jsonb).
-// Defaults here must match the column default in migration 0050.
+// Defaults here must match the column default in migration 0050
+// (undo_seconds added + backfilled in migration 0059).
 export type BoardSettings = {
   // Amber threshold, minutes since order created.
   aging_min: number;
@@ -27,17 +33,21 @@ export type BoardSettings = {
   overdue_min: number;
   sound_id: SoundId;
   desktop_notify: boolean;
+  // How long OrderCard's advance-undo affordance (Mark Ready/Mark Picked
+  // Up) stays live before finalizing — see order-card.tsx's UNDO_MS.
+  undo_seconds: number;
 };
 
 // Falls back to this until migration 0050 (board_settings column) has been
 // applied to the environment's DB — app deploy and DB migration aren't
-// atomic, so a vendor row can briefly lack the column even though this type
-// says it's required.
+// atomic, so a vendor row can briefly lack the column (or a key added to it
+// later, e.g. undo_seconds pre-0059) even though this type says it's required.
 export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   aging_min: 5,
   overdue_min: 10,
   sound_id: "chime",
   desktop_notify: false,
+  undo_seconds: 4,
 };
 
 export type PaymentStatus =
@@ -514,6 +524,7 @@ export interface Database {
           idempotency_key: string | null;
           access_token: string;
           priority_bumped_at: string | null;
+          source: OrderSource;
         };
         Insert: {
           id?: string;
@@ -533,6 +544,7 @@ export interface Database {
           idempotency_key?: string | null;
           access_token?: string;
           priority_bumped_at?: string | null;
+          source?: OrderSource;
         };
         Update: {
           id?: string;
@@ -552,6 +564,7 @@ export interface Database {
           idempotency_key?: string | null;
           access_token?: string;
           priority_bumped_at?: string | null;
+          source?: OrderSource;
         };
         Relationships: [
           {
@@ -609,6 +622,15 @@ export interface Database {
           p_customer_name: string;
           p_items: Json;
           p_idempotency_key: string;
+        };
+        Returns: Json;
+      };
+      place_walkup_order: {
+        Args: {
+          p_booth_id: string;
+          p_customer_name: string;
+          p_items: Json;
+          p_paid: boolean;
         };
         Returns: Json;
       };
