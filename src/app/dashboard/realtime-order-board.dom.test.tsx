@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RealtimeOrderBoard } from "./realtime-order-board";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { toggleBoothActive } from "./booths/actions";
 import { DEFAULT_BOARD_SETTINGS } from "@/lib/types";
 import type { BoardOrder } from "@/lib/types";
 
@@ -53,12 +54,17 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-vi.mock("sonner", () => ({ toast: vi.fn() }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("./booths/actions", () => ({ toggleBoothActive: vi.fn() }));
 
 const BOOTHS = [{ id: "b1", name: "Kopi Corner", is_active: true, open: true }];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(toggleBoothActive).mockResolvedValue({ success: true });
 });
 
 describe("RealtimeOrderBoard sort toggle", () => {
@@ -93,5 +99,94 @@ describe("RealtimeOrderBoard sort toggle", () => {
     await user.click(screen.getByRole("button", { name: "Latest first" }));
 
     expect(numbersInOrder()).toEqual(["#0002", "#0001"]);
+  });
+});
+
+describe("RealtimeOrderBoard booth active toggle", () => {
+  it("reflects each booth's is_active state via a Switch", () => {
+    const booths = [
+      { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+      { id: "b2", name: "Ice Cream Cart", is_active: false, open: false },
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={booths}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("switch", { name: "Kopi Corner taking orders" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
+    ).not.toBeChecked();
+  });
+
+  it("stays reachable for a paused booth with no active orders", () => {
+    // visibleBooths (the filter dropdown's source) drops an inactive booth
+    // with nothing in flight — the toggle row must not, or there'd be no
+    // way to turn it back on.
+    const booths = [
+      { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+      { id: "b2", name: "Ice Cream Cart", is_active: false, open: false },
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={booths}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
+    ).toBeInTheDocument();
+  });
+
+  it("toggles instantly and calls toggleBoothActive", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    const toggle = screen.getByRole("switch", {
+      name: "Kopi Corner taking orders",
+    });
+    expect(toggle).toBeChecked();
+
+    await user.click(toggle);
+
+    expect(toggle).not.toBeChecked();
+    expect(toggleBoothActive).toHaveBeenCalledWith("b1", false);
+  });
+
+  it("reverts the switch when the toggle fails", async () => {
+    vi.mocked(toggleBoothActive).mockResolvedValue({
+      success: false,
+      error: "Could not update booth",
+    });
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    const toggle = screen.getByRole("switch", {
+      name: "Kopi Corner taking orders",
+    });
+    await user.click(toggle);
+
+    await waitFor(() => expect(toggle).toBeChecked());
   });
 });

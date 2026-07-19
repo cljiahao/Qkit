@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ENTITLEMENTS } from "@/lib/plan";
 import type { BoothFormInput } from "@/lib/schemas";
-import { saveBooth } from "./actions";
+import { saveBooth, toggleBoothActive } from "./actions";
+
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 // Mock the entitlement loader and the supabase server client. saveBooth's entry
 // order is: parse → loadEntitlement → count-cap checks (no DB) → strip
@@ -224,5 +226,42 @@ describe("saveBooth entitlement enforcement", () => {
     expect(res).toEqual({ success: true, boothId: "b-new" });
     const row = h.insertSpy.mock.calls[0][0] as { social_links: unknown };
     expect(row.social_links).toEqual(socialLinks);
+  });
+});
+
+describe("toggleBoothActive", () => {
+  it("rejects an invalid booth id without any DB calls", async () => {
+    const res = await toggleBoothActive("not-a-uuid", true);
+    expect(res).toEqual({ success: false, error: "Invalid booth" });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("always allows turning off, no active-cap check", async () => {
+    h.state.count = 5; // would fail the cap if it were checked
+    const res = await toggleBoothActive(BOOTH_ID, false);
+
+    expect(res).toEqual({ success: true });
+    expect(h.updateSpy).toHaveBeenCalledWith({ is_active: false });
+  });
+
+  it("rejects turning on when the active-booth cap is already reached", async () => {
+    h.state.count = 1; // one OTHER active booth, free plan caps at 1
+    const res = await toggleBoothActive(BOOTH_ID, true);
+
+    expect(res).toEqual({
+      success: false,
+      error:
+        "Your plan serves 1 active booth at a time. Deactivate another booth first, or upgrade.",
+    });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("allows turning on when under the active-booth cap, excluding itself via neq", async () => {
+    h.state.count = 0;
+    const res = await toggleBoothActive(BOOTH_ID, true);
+
+    expect(res).toEqual({ success: true });
+    expect(h.neqSpy).toHaveBeenCalledWith("id", BOOTH_ID);
+    expect(h.updateSpy).toHaveBeenCalledWith({ is_active: true });
   });
 });

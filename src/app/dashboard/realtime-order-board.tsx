@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +25,7 @@ import { Ticket } from "@/components/ticket";
 import { isTerminal, sortActiveOrders, type AgeSortOrder } from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
+import { toggleBoothActive } from "./booths/actions";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
 
@@ -62,10 +65,42 @@ export function RealtimeOrderBoard({
   boardSettings,
   loadError = false,
 }: Props) {
+  const router = useRouter();
   const boothIds = booths.map((b) => b.id);
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
   const [filter, setFilter] = useState<BoothFilter>("all");
   const [sortOrder, setSortOrder] = useState<AgeSortOrder>("earliest");
+  // Optimistic is_active overrides, keyed by booth id — instant toggle
+  // feedback ahead of the server round-trip/router.refresh(). Deliberately
+  // keyed on the FULL `booths` prop, not visibleBooths: a paused booth with
+  // no orders in flight drops out of visibleBooths (see below), which would
+  // otherwise make it impossible to find and turn back on.
+  const [activeOverrides, setActiveOverrides] = useState<Map<string, boolean>>(
+    new Map(),
+  );
+  function boothIsActive(b: BoothView) {
+    return activeOverrides.get(b.id) ?? b.is_active;
+  }
+  // Instant toggle, no confirm gate — same instant-tap-plus-undo pattern as
+  // OrderCard's advance buttons, for the same reason (a vendor pausing to
+  // clear a rush-hour backlog needs this fast and reversible, not gated
+  // behind a dialog). Also doubles as its own Undo handler (called with the
+  // pre-toggle value).
+  function setBoothActive(b: BoothView, active: boolean) {
+    setActiveOverrides((prev) => new Map(prev).set(b.id, active));
+    void (async () => {
+      const res = await toggleBoothActive(b.id, active);
+      if (!res.success) {
+        toast.error(res.error);
+        setActiveOverrides((prev) => new Map(prev).set(b.id, !active));
+        return;
+      }
+      toast(active ? `${b.name} is open for orders` : `${b.name} is paused`, {
+        action: { label: "Undo", onClick: () => setBoothActive(b, !active) },
+      });
+      router.refresh();
+    })();
+  }
   // Order ids currently inside an OrderCard undo window (see order-card.tsx) —
   // kept on the active board below even once their status is terminal, so the
   // undo affordance a vendor just tapped doesn't get yanked out from under
@@ -179,9 +214,6 @@ export function RealtimeOrderBoard({
   }
 
   const idle = visible.length === 0;
-  // Single-booth boards show an open/closed pill in the header (multi-booth gets
-  // it per tab instead).
-  const soleBooth = visibleBooths.length === 1 ? visibleBooths[0] : null;
 
   return (
     <div>
@@ -223,11 +255,6 @@ export function RealtimeOrderBoard({
             </TooltipTrigger>
             <TooltipContent>Board settings</TooltipContent>
           </Tooltip>
-          {soleBooth && !soleBooth.open && (
-            <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1.5 text-sm font-semibold text-muted-foreground">
-              Closed
-            </span>
-          )}
           <span
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold",
@@ -250,6 +277,57 @@ export function RealtimeOrderBoard({
             {idle ? "All clear" : `${visible.length} active`}
           </span>
         </div>
+      </div>
+
+      {/* A quick pause/resume per booth — deliberately keyed on the full
+          `booths` list, not visibleBooths, so a paused booth with no orders
+          in flight (which visibleBooths would otherwise hide) stays
+          reachable to turn back on. Instant toggle + an undo toast, same
+          pattern as OrderCard's advance buttons: a vendor managing a
+          rush-hour backlog needs this fast and reversible, not gated behind
+          a confirm dialog. */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        {booths.map((b) => {
+          const active = boothIsActive(b);
+          return (
+            <div
+              key={b.id}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm"
+            >
+              {booths.length > 1 && (
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: boothColor(b.id) }}
+                />
+              )}
+              <span className="max-w-[8rem] truncate font-medium">
+                {b.name}
+              </span>
+              <Switch
+                checked={active}
+                onCheckedChange={(checked) => setBoothActive(b, checked)}
+                aria-label={`${b.name} taking orders`}
+              />
+              <span
+                className={cn(
+                  "font-semibold",
+                  active ? "text-emerald-600" : "text-muted-foreground",
+                )}
+              >
+                {active ? "Open" : "Paused"}
+              </span>
+              {/* Manually active but outside scheduled hours — customers
+                  still see it closed. A distinct state from the switch
+                  itself, worth surfacing so the vendor isn't confused about
+                  why orders still aren't landing. */}
+              {active && !b.open && (
+                <span className="text-xs text-muted-foreground">
+                  (outside hours)
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
