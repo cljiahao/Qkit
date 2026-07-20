@@ -185,13 +185,13 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         : "");
 
   return (
-    <div className="md:columns-2 md:gap-5">
+    <div className="md:grid md:grid-cols-2 md:items-start md:gap-5">
       <Section
         icon={<Clock className="size-5" />}
         title="Board timing"
-        description="How long before a waiting ticket flags itself, and how long staff have to undo an accidental Mark Ready / Mark Picked Up tap."
+        description="How fast a waiting ticket changes color, and how long staff have to undo an accidental tap."
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
               Turn amber after
@@ -237,7 +237,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
-                Advance undo window
+                Time to undo a tap
               </Label>
               <Tooltip>
                 <TooltipTrigger
@@ -250,14 +250,15 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 <TooltipContent className="max-w-72 text-pretty">
                   <p className="font-semibold">What this controls</p>
                   <p className="mt-1 text-background/85">
-                    Mark Ready and Mark Picked Up apply the moment staff tap
-                    them. This sets how long the button then shows Undo before
-                    that change locks in.
+                    Tapping Mark Ready or Mark Picked Up on a ticket applies
+                    right away — no &quot;are you sure?&quot; prompt. For that
+                    many seconds after, the button turns into an Undo button
+                    instead, in case of a wrong tap.
                   </p>
                   <p className="mt-1.5 text-background/70">
-                    Longer: more time to catch a wrong tap.
+                    Longer: more time to catch a mistake.
                     <br />
-                    Shorter: the board clears faster.
+                    Shorter: the ticket locks in and clears sooner.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -357,28 +358,37 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
 
       <Section
         icon={<Hourglass className="size-5" />}
-        title="Order display"
-        description="What customers and staff see for an order's number and how long it'll take."
+        title="Customer order screen"
+        description="Two optional tweaks to what a customer sees on the page they land on right after ordering."
       >
         <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
           <Switch
             checked={dailyReset}
             onCheckedChange={setDailyReset}
-            aria-label="Show today's order number instead of the permanent one"
+            aria-label="Show a simple daily order number instead of the permanent one"
           />
           <span className="text-sm">
-            <span className="font-medium">Reset order numbers daily</span>
+            <span className="font-medium">
+              Show a simple daily order number
+            </span>
             <span className="block text-muted-foreground">
-              Customers and staff both see the order&apos;s position among
-              today&apos;s orders (1, 2, 3…) instead of the permanent number.
-              Records, receipts, and reports always keep the real one.
+              Handy at a busy event: customers and staff see a small number like
+              #3 instead of #847. Your real records, receipts, and reports
+              always keep the permanent number underneath — nothing about them
+              changes.
             </span>
           </span>
         </label>
 
-        <div className="space-y-2">
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="text-sm text-muted-foreground">
+            qkit estimates a customer&apos;s wait from your booth&apos;s own
+            recent orders. Early in the day — or a booth&apos;s very first
+            orders — there isn&apos;t enough data yet to do that, so you can set
+            a backup number to show instead.
+          </p>
           <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
-            Fallback wait estimate
+            Backup prep time
           </Label>
           <div className="flex items-center gap-2">
             <Input
@@ -396,10 +406,9 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             <span className="text-sm text-muted-foreground">min per order</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Used on the customer&apos;s order-status page only when there&apos;s
-            not yet enough of today&apos;s order history to estimate live (e.g.
-            the first orders of the day). Leave blank to just show queue
-            position instead.
+            Only used while there&apos;s not enough of today&apos;s history yet.
+            Leave blank to just show the customer their position in the queue
+            instead of a time.
           </p>
         </div>
 
@@ -415,7 +424,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             disabled={savingDisplay || displayUnchanged}
             className="h-10 rounded-xl font-semibold"
           >
-            {savingDisplay ? "Saving…" : "Save order display"}
+            {savingDisplay ? "Saving…" : "Save customer screen"}
           </Button>
         </div>
       </Section>

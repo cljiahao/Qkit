@@ -81,7 +81,7 @@ describe("SettingsForm thresholds", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    const undoSeconds = screen.getByLabelText(/time to undo a tap/i);
     await user.clear(undoSeconds);
     await user.type(undoSeconds, "8");
     await user.click(screen.getByRole("button", { name: /save timing/i }));
@@ -95,7 +95,7 @@ describe("SettingsForm thresholds", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    const undoSeconds = screen.getByLabelText(/time to undo a tap/i);
     await user.clear(undoSeconds);
     await user.type(undoSeconds, "30");
     await user.click(screen.getByRole("button", { name: /save timing/i }));
@@ -148,7 +148,7 @@ describe("SettingsForm desktop notifications", () => {
   });
 });
 
-describe("SettingsForm order display", () => {
+describe("SettingsForm customer order screen", () => {
   it("saves the daily order-number reset toggle", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
@@ -156,11 +156,11 @@ describe("SettingsForm order display", () => {
 
     await user.click(
       screen.getByRole("switch", {
-        name: /show today's order number instead of the permanent one/i,
+        name: /show a simple daily order number instead of the permanent one/i,
       }),
     );
     await user.click(
-      screen.getByRole("button", { name: /save order display/i }),
+      screen.getByRole("button", { name: /save customer screen/i }),
     );
 
     expect(updateBoardSettings).toHaveBeenCalledWith(
@@ -168,15 +168,15 @@ describe("SettingsForm order display", () => {
     );
   });
 
-  it("saves a configured fallback wait estimate", async () => {
+  it("saves a configured backup prep time", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const prepMin = screen.getByLabelText(/fallback wait estimate/i);
+    const prepMin = screen.getByLabelText(/backup prep time/i);
     await user.type(prepMin, "8");
     await user.click(
-      screen.getByRole("button", { name: /save order display/i }),
+      screen.getByRole("button", { name: /save customer screen/i }),
     );
 
     expect(updateBoardSettings).toHaveBeenCalledWith(
@@ -184,7 +184,7 @@ describe("SettingsForm order display", () => {
     );
   });
 
-  it("saves null when the fallback wait estimate is cleared", async () => {
+  it("saves null when the backup prep time is cleared", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
     render(
@@ -192,10 +192,10 @@ describe("SettingsForm order display", () => {
       { wrapper: TooltipProvider },
     );
 
-    const prepMin = screen.getByLabelText(/fallback wait estimate/i);
+    const prepMin = screen.getByLabelText(/backup prep time/i);
     await user.clear(prepMin);
     await user.click(
-      screen.getByRole("button", { name: /save order display/i }),
+      screen.getByRole("button", { name: /save customer screen/i }),
     );
 
     expect(updateBoardSettings).toHaveBeenCalledWith(
@@ -203,14 +203,14 @@ describe("SettingsForm order display", () => {
     );
   });
 
-  it("rejects a fallback wait estimate outside 1-60min without calling the action", async () => {
+  it("rejects a backup prep time outside 1-60min without calling the action", async () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const prepMin = screen.getByLabelText(/fallback wait estimate/i);
+    const prepMin = screen.getByLabelText(/backup prep time/i);
     await user.type(prepMin, "90");
     await user.click(
-      screen.getByRole("button", { name: /save order display/i }),
+      screen.getByRole("button", { name: /save customer screen/i }),
     );
 
     expect(updateBoardSettings).not.toHaveBeenCalled();

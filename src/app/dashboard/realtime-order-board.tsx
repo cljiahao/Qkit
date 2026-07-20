@@ -326,17 +326,17 @@ export function RealtimeOrderBoard({
       )}
       <div
         data-tour="order-board"
-        className="mb-7 flex items-end justify-between gap-3"
+        className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             The pass
           </p>
-          <h1 className="font-display text-4xl font-semibold leading-none">
+          <h1 className="font-display text-3xl font-semibold leading-none sm:text-4xl">
             Live orders
           </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {selectedBooth ? (
             <BoothRow
               b={selectedBooth}
