@@ -28,7 +28,11 @@ integration test that can't run as a fast colocated unit test.
   `releasePointerCapture`/`scrollIntoView` as no-ops (jsdom doesn't
   implement the Pointer Events capture API — Radix popover-based
   primitives like `Select` call these on open/close/keyboard-nav and throw
-  without a stand-in), and runs `cleanup()` from `@testing-library/react`
+  without a stand-in), stubs a no-op `ResizeObserver` (jsdom doesn't
+  implement it at all; Radix's Tooltip/Select/Popover primitives use it via
+  `@radix-ui/react-use-size` to measure an anchor, throwing once more than
+  one is mounted at the same time — e.g. several booth-toggle tooltips
+  inside an open dialog), and runs `cleanup()` from `@testing-library/react`
   after every test, but only when a DOM exists (component tests opt into
   `jsdom` via a `// @vitest-environment jsdom` docblock; plain
   node-environment `lib` tests would throw if this touched `document`
