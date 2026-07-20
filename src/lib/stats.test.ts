@@ -518,6 +518,22 @@ describe("estimateWaitSeconds", () => {
     expect(estimateWaitSeconds(readiedOrders(3, 120), 2, 3)).toBe(240);
     expect(estimateWaitSeconds(readiedOrders(2, 120), 2, 3)).toBeNull();
   });
+
+  it("falls back to the vendor-set average below the sample size", () => {
+    // 2 orders ahead * 8min (480s) fallback = 960s, ignoring the too-small
+    // real sample entirely (its own 120s-per-order average is never used).
+    expect(estimateWaitSeconds(readiedOrders(9, 120), 2, 10, 480)).toBe(960);
+  });
+
+  it("ignores the fallback once the real sample size is met", () => {
+    // 10 readied orders meets the default minSample — the real average (120s)
+    // wins over the fallback (480s) even though both are supplied.
+    expect(estimateWaitSeconds(readiedOrders(10, 120), 3, 10, 480)).toBe(360);
+  });
+
+  it("still returns null below the sample size when no fallback is configured", () => {
+    expect(estimateWaitSeconds(readiedOrders(9, 120), 2, 10, null)).toBeNull();
+  });
 });
 
 describe("waitSeries", () => {

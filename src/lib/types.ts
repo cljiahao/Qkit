@@ -25,7 +25,8 @@ export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
 
 // Vendor live-order-board preferences (qkit.vendors.board_settings jsonb).
 // Defaults here must match the column default in migration 0050
-// (undo_seconds added + backfilled in migration 0059).
+// (undo_seconds added + backfilled in migration 0059; daily_order_number_reset
+// + default_prep_minutes added + backfilled in migration 0062).
 export type BoardSettings = {
   // Amber threshold, minutes since order created.
   aging_min: number;
@@ -36,6 +37,16 @@ export type BoardSettings = {
   // How long OrderCard's advance-undo affordance (Mark Ready/Mark Picked
   // Up) stays live before finalizing — see order-card.tsx's UNDO_MS.
   undo_seconds: number;
+  // Display-only: the board and the customer status page show each order's
+  // position among today's orders (1, 2, 3…) instead of its real, permanent
+  // order_number. That real number never changes — see
+  // src/lib/orders.ts#displayOrderNumber.
+  daily_order_number_reset: boolean;
+  // Vendor-set fallback prep time (minutes) for the customer wait estimate,
+  // used only when there isn't enough of today's order history yet to
+  // compute one from real data (see estimateWaitSeconds in @/lib/stats).
+  // null = no fallback configured; the page shows queue position instead.
+  default_prep_minutes: number | null;
 };
 
 // Falls back to this until migration 0050 (board_settings column) has been
@@ -47,6 +58,8 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   overdue_min: 10,
   sound_id: "chime",
   desktop_notify: false,
+  daily_order_number_reset: false,
+  default_prep_minutes: null,
   undo_seconds: 4,
 };
 

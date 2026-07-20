@@ -1,7 +1,7 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { parseOrderRef } from "@/lib/schemas";
+import { boardSettingsSchema, parseOrderRef } from "@/lib/schemas";
 import { ordersAheadOf } from "@/lib/orders";
 import { estimateWaitSeconds, type StatsOrder } from "@/lib/stats";
 import type { OrderStatus } from "@/lib/types";
@@ -111,10 +111,33 @@ export async function getWaitEstimate(
     return null;
   }
 
+  // Vendor-set fallback (board_settings.default_prep_minutes), used only
+  // when `recent` is too small for estimateWaitSeconds to trust — see its
+  // own doc comment. Decorative: any failure here just means no fallback
+  // (estimateWaitSeconds already handles null cleanly), never a page error.
+  let fallbackAvgSeconds: number | null = null;
+  const { data: booth } = await supabase
+    .from("booths")
+    .select("vendor_id")
+    .eq("id", boothId)
+    .maybeSingle();
+  if (booth?.vendor_id) {
+    const { data: vendor } = await supabase
+      .from("vendors")
+      .select("board_settings")
+      .eq("id", booth.vendor_id)
+      .maybeSingle();
+    const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
+    if (settings.success && settings.data.default_prep_minutes !== null)
+      fallbackAvgSeconds = settings.data.default_prep_minutes * 60;
+  }
+
   const ordersAhead = ordersAheadOf(active ?? [], target);
   const seconds = estimateWaitSeconds(
     (recent ?? []) as StatsOrder[],
     ordersAhead,
+    undefined,
+    fallbackAvgSeconds,
   );
   return { seconds, ordersAhead };
 }

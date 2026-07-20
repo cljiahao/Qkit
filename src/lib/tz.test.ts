@@ -7,6 +7,7 @@ import {
   shortDateTime,
   sgtClock,
   sgtWeekdayTime,
+  sgtStartOfDayIso,
 } from "./tz";
 
 // SGT is UTC+8, no DST. 2026-06-12 is a Friday.
@@ -73,5 +74,29 @@ describe("tz (Asia/Singapore)", () => {
     expect(sgtWeekdayTime("2026-06-12T05:00:00Z")).toMatch(/Fri.*1:00/i);
     // 17:00Z Fri -> 01:00 SGT Sat (weekday rolls)
     expect(sgtWeekdayTime("2026-06-12T17:00:00Z")).toMatch(/Sat.*1:00/i);
+  });
+
+  describe("sgtStartOfDayIso", () => {
+    it("gives midnight SGT as a UTC instant (16:00 the previous day)", () => {
+      // "Now" is 13:00 SGT (05:00Z) on 12 Jun -> midnight SGT that day is
+      // 16:00Z on 11 Jun (SGT is a fixed UTC+8, no DST).
+      expect(sgtStartOfDayIso(new Date("2026-06-12T05:00:00Z"))).toBe(
+        "2026-06-11T16:00:00.000Z",
+      );
+    });
+
+    it("doesn't roll to the next SGT day just before midnight SGT", () => {
+      // 15:59Z 11 Jun -> 23:59 SGT 11 Jun — still "today" is the 11th.
+      expect(sgtStartOfDayIso(new Date("2026-06-11T15:59:00Z"))).toBe(
+        "2026-06-10T16:00:00.000Z",
+      );
+    });
+
+    it("rolls to the next SGT day right at midnight SGT", () => {
+      // 16:00Z 11 Jun -> 00:00 SGT 12 Jun — "today" is now the 12th.
+      expect(sgtStartOfDayIso(new Date("2026-06-11T16:00:00Z"))).toBe(
+        "2026-06-11T16:00:00.000Z",
+      );
+    });
   });
 });

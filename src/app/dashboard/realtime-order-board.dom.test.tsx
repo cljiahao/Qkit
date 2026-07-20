@@ -106,6 +106,37 @@ describe("RealtimeOrderBoard sort toggle", () => {
   });
 });
 
+describe("RealtimeOrderBoard daily order-number reset", () => {
+  it("shows the real order_number when no baseline is supplied (feature off)", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[order({ order_number: "0847" })]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText("#0847")).toBeInTheDocument();
+  });
+
+  it("shows the daily-reset display number when a baseline is supplied", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[order({ order_number: "0847" })]}
+        boardSettings={{
+          ...DEFAULT_BOARD_SETTINGS,
+          daily_order_number_reset: true,
+        }}
+        dailyOrderNumberBaselines={{ b1: "0845" }}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText("#3")).toBeInTheDocument();
+    expect(screen.queryByText("#0847")).not.toBeInTheDocument();
+  });
+});
+
 describe("RealtimeOrderBoard booth active toggle", () => {
   it("shows a single booth's switch inline, no modal needed", () => {
     render(

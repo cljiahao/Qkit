@@ -29,7 +29,12 @@ import {
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
-import { isTerminal, sortActiveOrders, type AgeSortOrder } from "@/lib/orders";
+import {
+  displayOrderNumber,
+  isTerminal,
+  sortActiveOrders,
+  type AgeSortOrder,
+} from "@/lib/orders";
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
@@ -51,6 +56,11 @@ interface Props {
   // The initial server-side read errored — the board may be missing in-flight
   // orders, so warn instead of silently showing "All clear".
   loadError?: boolean;
+  // Each booth's first order_number of the SGT day, keyed by booth id — only
+  // populated (by the server page) when boardSettings.daily_order_number_reset
+  // is on; empty otherwise, which naturally makes displayOrderNumber fall
+  // back to each order's real, permanent number.
+  dailyOrderNumberBaselines?: Record<string, string>;
 }
 
 type BoothFilter = "all" | string;
@@ -138,6 +148,7 @@ export function RealtimeOrderBoard({
   initialOrders,
   boardSettings,
   loadError = false,
+  dailyOrderNumberBaselines = {},
 }: Props) {
   const router = useRouter();
   const boothIds = booths.map((b) => b.id);
@@ -507,6 +518,10 @@ export function RealtimeOrderBoard({
             <OrderCard
               key={order.id}
               order={order}
+              displayNumber={displayOrderNumber(
+                order.order_number,
+                dailyOrderNumberBaselines[order.booth_id] ?? null,
+              )}
               boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
               agingMin={boardSettings.aging_min}
               overdueMin={boardSettings.overdue_min}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, Clock, Info, Volume2 } from "lucide-react";
+import { Bell, Clock, Hourglass, Info, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,14 +51,35 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
   const [desktopNotify, setDesktopNotify] = useState(initial.desktop_notify);
   const { pending: savingNotify, run: runNotify } = useAsyncAction();
 
-  function saveThresholds() {
-    const parsed = boardSettingsSchema.safeParse({
+  const [dailyReset, setDailyReset] = useState(
+    initial.daily_order_number_reset,
+  );
+  const [defaultPrepMin, setDefaultPrepMin] = useState(
+    initial.default_prep_minutes != null
+      ? String(initial.default_prep_minutes)
+      : "",
+  );
+  const [displayError, setDisplayError] = useState<string | null>(null);
+  const { pending: savingDisplay, run: runDisplay } = useAsyncAction();
+
+  // Every save writes the FULL BoardSettings shape (it's one JSONB blob) —
+  // each section's handler carries the other sections' current values along
+  // so it doesn't clobber them.
+  function currentSettings() {
+    return {
       aging_min: Number(agingMin),
       overdue_min: Number(overdueMin),
       sound_id: soundId,
       desktop_notify: desktopNotify,
       undo_seconds: Number(undoSeconds),
-    });
+      daily_order_number_reset: dailyReset,
+      default_prep_minutes:
+        defaultPrepMin.trim() === "" ? null : Number(defaultPrepMin),
+    };
+  }
+
+  function saveThresholds() {
+    const parsed = boardSettingsSchema.safeParse(currentSettings());
     if (!parsed.success) {
       setThresholdError(
         parsed.error.issues[0]?.message ?? "Check the thresholds",
@@ -85,11 +106,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
     void playSound(id);
     return runSound(async () => {
       const res = await updateBoardSettings({
-        aging_min: Number(agingMin),
-        overdue_min: Number(overdueMin),
+        ...currentSettings(),
         sound_id: id,
-        desktop_notify: desktopNotify,
-        undo_seconds: Number(undoSeconds),
       });
       if (!res.success) {
         toast.error(res.error);
@@ -121,11 +139,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       }
       setDesktopNotify(next);
       const res = await updateBoardSettings({
-        aging_min: Number(agingMin),
-        overdue_min: Number(overdueMin),
-        sound_id: soundId,
+        ...currentSettings(),
         desktop_notify: next,
-        undo_seconds: Number(undoSeconds),
       });
       if (!res.success) {
         toast.error(res.error);
@@ -137,10 +152,37 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
     });
   }
 
+  function saveDisplay() {
+    const parsed = boardSettingsSchema.safeParse(currentSettings());
+    if (!parsed.success) {
+      setDisplayError(
+        parsed.error.issues[0]?.message ?? "Check the wait estimate",
+      );
+      return;
+    }
+    setDisplayError(null);
+    return runDisplay(async () => {
+      const res = await updateBoardSettings(parsed.data);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Order display saved");
+      router.refresh();
+    });
+  }
+
   const thresholdsUnchanged =
     agingMin === String(initial.aging_min) &&
     overdueMin === String(initial.overdue_min) &&
     undoSeconds === String(initial.undo_seconds);
+
+  const displayUnchanged =
+    dailyReset === initial.daily_order_number_reset &&
+    defaultPrepMin ===
+      (initial.default_prep_minutes != null
+        ? String(initial.default_prep_minutes)
+        : "");
 
   return (
     <div className="md:columns-2 md:gap-5">
@@ -311,6 +353,71 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             won&apos;t show popups until you re-enable it here.
           </p>
         )}
+      </Section>
+
+      <Section
+        icon={<Hourglass className="size-5" />}
+        title="Order display"
+        description="What customers and staff see for an order's number and how long it'll take."
+      >
+        <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <Switch
+            checked={dailyReset}
+            onCheckedChange={setDailyReset}
+            aria-label="Show today's order number instead of the permanent one"
+          />
+          <span className="text-sm">
+            <span className="font-medium">Reset order numbers daily</span>
+            <span className="block text-muted-foreground">
+              Customers and staff both see the order&apos;s position among
+              today&apos;s orders (1, 2, 3…) instead of the permanent number.
+              Records, receipts, and reports always keep the real one.
+            </span>
+          </span>
+        </label>
+
+        <div className="space-y-2">
+          <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
+            Fallback wait estimate
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="default-prep-min"
+              type="number"
+              min={1}
+              max={60}
+              placeholder="Not set"
+              value={defaultPrepMin}
+              onChange={(e) => setDefaultPrepMin(e.target.value)}
+              className="h-11 w-28 rounded-xl"
+              aria-invalid={!!displayError}
+              aria-describedby={displayError ? "display-error" : undefined}
+            />
+            <span className="text-sm text-muted-foreground">min per order</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Used on the customer&apos;s order-status page only when there&apos;s
+            not yet enough of today&apos;s order history to estimate live (e.g.
+            the first orders of the day). Leave blank to just show queue
+            position instead.
+          </p>
+        </div>
+
+        {displayError && (
+          <p id="display-error" className={FORM_ERROR_CLASS}>
+            {displayError}
+          </p>
+        )}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={saveDisplay}
+            disabled={savingDisplay || displayUnchanged}
+            className="h-10 rounded-xl font-semibold"
+          >
+            {savingDisplay ? "Saving…" : "Save order display"}
+          </Button>
+        </div>
       </Section>
     </div>
   );

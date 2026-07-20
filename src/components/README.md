@@ -65,14 +65,14 @@ prompt, metric })`: compact rating widget posting to
   optimization.
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
-- `order-card.tsx` — `OrderCard({ order, boothName, agingMin, overdueMin,
-onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's live order
-  ticket — status/payment badges, an aging clock (`orderAgeTone`, ticks
-  every 30s) moved to the footer beside the arrival timestamp (`sgtClock`,
-  bare time — or `shortDateTime`, date+time, when `showDate` is set, for
-  the completed-orders history list where every card isn't from today),
-  expandable item options, and the advance/cancel/confirm-payment action
-  buttons wired to `@/app/dashboard/order-actions`. Advancing (Mark
+- `order-card.tsx` — `OrderCard({ order, displayNumber, boothName, agingMin,
+overdueMin, onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's
+  live order ticket — status/payment badges, an aging clock (`orderAgeTone`,
+  ticks every 30s) moved to the footer beside the arrival timestamp
+  (`sgtClock`, bare time — or `shortDateTime`, date+time, when `showDate` is
+  set, for the completed-orders history list where every card isn't from
+  today), expandable item options, and the advance/cancel/confirm-payment
+  action buttons wired to `@/app/dashboard/order-actions`. Advancing (Mark
   Ready/Mark Picked Up) fires instantly — no confirm gate on a
   tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
   (default `DEFAULT_UNDO_MS`, 4s; vendor-configurable via
@@ -82,14 +82,20 @@ onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's live order
   active)` tells the board to keep a just-completed (terminal) order on the
   active grid for that window, since the realtime echo of the very write
   being offered for undo would otherwise filter the card off the board
-  first. The name/number
-  block doubles as the bump trigger (chip-styled, confirm dialog, disabled
-  once already bumped) instead of a separate icon button. In multi-booth
-  view, a full-width banner above the header shows the booth name next to a
-  `boothColor()` dot. One "attention wash" background at a time,
-  prioritized overdue > payment-claimed > aging.
+  first. `displayNumber` (optional, board_settings.daily_order_number_reset
+  — see `displayOrderNumber` in `@/lib/orders`) overrides what's shown/
+  referenced everywhere the card names "this order" by number — the
+  name/number block itself, and both its own bump/cancel confirm dialogs —
+  falling back to the real `order.order_number` when omitted (every call
+  site except the live board itself, e.g. the completed-orders history list,
+  which intentionally always shows the real, permanent number). The
+  name/number block doubles as the bump trigger (chip-styled, confirm
+  dialog, disabled once already bumped) instead of a separate icon button.
+  In multi-booth view, a full-width banner above the header shows the booth
+  name next to a `boothColor()` dot. One "attention wash" background at a
+  time, prioritized overdue > payment-claimed > aging.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
-  transitions and action-button wiring.
+  transitions, action-button wiring, and the `displayNumber` override.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
   pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
   cancelled), shared by the dashboard board and the customer status page.

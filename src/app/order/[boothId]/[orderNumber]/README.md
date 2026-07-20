@@ -54,7 +54,15 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   the itemized order, then — only once `order.status === "completed"` (a
   mid-task feedback request is both more annoying and lower-quality than
   the same ask post-completion) — `FeedbackForm`, `EarnLink`, and a
-  reorder/"order again" link.
+  reorder/"order again" link. The big order-number heading is
+  `order.order_number` by default, or (when the vendor's
+  `board_settings.daily_order_number_reset` is on) a `displayOrderNumber`
+  computed from a small extra read of that vendor's setting plus the booth's
+  first order of the SGT day (`sgtStartOfDayIso`) — same display-only rule
+  the vendor board applies, degrading silently to the real number on any
+  read failure (decorative, never worth breaking the page over). `PayPanel`'s
+  `orderRef` always stays the real, permanent number regardless — that one's
+  for payment reconciliation, not display.
 - `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, checkout,
 initialStatus, amountCents })` client component: polls `getPaymentStatus`
   every 5s until `confirmed`/`not_required`; renders a QR
@@ -80,8 +88,10 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
   `{ seconds, ordersAhead } | null` — `ordersAhead` (via `ordersAheadOf`) is
   always computable once the order exists; `seconds` (via
   `estimateWaitSeconds`, the booth's recent completed-order average ×
-  `ordersAhead`) is null only when there isn't enough recent history to
-  trust. `null` itself means there's nothing to say at all (order not
+  `ordersAhead`) falls back to the vendor's `board_settings.
+default_prep_minutes` (× 60 × `ordersAhead`) when there isn't enough recent
+  history to trust the real average, and is null only when neither is
+  available. `null` itself means there's nothing to say at all (order not
   found).
 
 ## Connectivity

@@ -447,6 +447,12 @@ export const boardSettingsSchema = z
     // keeps it long enough to actually tap; 15s ceiling matches what a
     // vendor originally proposed as a reasonable outer bound.
     undo_seconds: z.number().int().min(2).max(15),
+    daily_order_number_reset: z.boolean(),
+    // null = no vendor-set fallback (the wait estimate falls back to a
+    // queue-position label instead — see estimateWaitSeconds). 1-60min is a
+    // generous bound against a fat-fingered value, same rationale as the
+    // aging/overdue caps above.
+    default_prep_minutes: z.number().int().min(1).max(60).nullable(),
   })
   .refine((d) => d.overdue_min > d.aging_min, {
     message: "Overdue must be later than amber",

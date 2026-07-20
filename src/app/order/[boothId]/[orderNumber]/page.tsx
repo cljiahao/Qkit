@@ -9,6 +9,7 @@ import {
 import { Ticket } from "@/components/ticket";
 import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import {
+  boardSettingsSchema,
   orderBoothIdSchema,
   orderNumberSchema,
   orderTokenSchema,
@@ -17,6 +18,8 @@ import {
   parseSocialLinks,
   resolveSocialLinks,
 } from "@/lib/schemas";
+import { displayOrderNumber } from "@/lib/orders";
+import { sgtStartOfDayIso } from "@/lib/tz";
 import { renderCheckout } from "@/lib/payments/adapters";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
@@ -113,6 +116,44 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
     parseSocialLinks(vendorProfile?.social_links ?? null),
   );
 
+  // Daily order-number reset (board_settings.daily_order_number_reset):
+  // shows this order's position among today's orders instead of its
+  // permanent order_number — same display-only rule the vendor board
+  // applies (see displayOrderNumber in @/lib/orders). Decorative, so any
+  // failure here degrades to the real number rather than breaking the page
+  // — same philosophy as the vendorProfile read above.
+  let headingNumber = order.order_number;
+  if (booth?.vendor_id) {
+    try {
+      const { data: vendorRow } = await supabase
+        .from("vendors")
+        .select("board_settings")
+        .eq("id", booth.vendor_id)
+        .maybeSingle();
+      const settings = boardSettingsSchema.safeParse(vendorRow?.board_settings);
+      if (settings.success && settings.data.daily_order_number_reset) {
+        const { data: firstToday } = await supabase
+          .from("orders")
+          .select("order_number")
+          .eq("booth_id", boothId)
+          .gte("created_at", sgtStartOfDayIso())
+          .order("order_number", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (firstToday)
+          headingNumber = displayOrderNumber(
+            order.order_number,
+            firstToday.order_number,
+          );
+      }
+    } catch (err) {
+      console.error(
+        "order-status: daily display-number read failed",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
 
@@ -144,7 +185,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             Order
           </p>
           <h1 className="font-mono text-6xl font-bold leading-none tracking-tight">
-            #{order.order_number}
+            #{headingNumber}
           </h1>
           <p className="mt-3 text-muted-foreground">
             for {order.customer_name}

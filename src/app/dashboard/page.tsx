@@ -3,6 +3,7 @@ import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { parseBoothHours } from "@/lib/schemas";
 import { isBoothOpen } from "@/lib/hours";
 import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
+import { sgtStartOfDayIso } from "@/lib/tz";
 import { RealtimeOrderBoard } from "./realtime-order-board";
 import type { BoardOrder } from "@/lib/types";
 
@@ -54,12 +55,44 @@ export default async function DashboardPage() {
   // the queue is clear when it isn't. Surface a retry banner instead.
   const loadError = Boolean(boothErr) || Boolean(ordersErr);
 
+  // Daily order-number reset (board_settings.daily_order_number_reset): the
+  // board shows each order's position among *today's* orders instead of its
+  // permanent order_number (see displayOrderNumber in @/lib/orders). The
+  // baseline — each booth's first order_number of the SGT day — only needs
+  // computing once per page load (it can't change again until midnight), so
+  // this is one extra query total, not one per booth, and skipped entirely
+  // when the setting is off (the common case).
+  const dailyOrderNumberBaselines: Record<string, string> = {};
+  if (vendor.board_settings.daily_order_number_reset && boothIds.length) {
+    const { data: todaysOrders, error: baselineErr } = await supabase
+      .from("orders")
+      .select("booth_id, order_number")
+      .in("booth_id", boothIds)
+      .gte("created_at", sgtStartOfDayIso())
+      .order("order_number", { ascending: true });
+    if (baselineErr) {
+      // Non-critical/decorative — degrade to showing the real order_number
+      // (displayOrderNumber's own null-baseline fallback) rather than fail
+      // the whole board over it.
+      console.error(
+        "dashboard daily-baseline read failed",
+        baselineErr.message,
+      );
+    } else {
+      for (const o of todaysOrders ?? []) {
+        if (!(o.booth_id in dailyOrderNumberBaselines))
+          dailyOrderNumberBaselines[o.booth_id] = o.order_number;
+      }
+    }
+  }
+
   return (
     <RealtimeOrderBoard
       booths={boothViews}
       initialOrders={orders}
       boardSettings={vendor.board_settings}
       loadError={loadError}
+      dailyOrderNumberBaselines={dailyOrderNumberBaselines}
     />
   );
 }

@@ -231,6 +231,21 @@ html::-webkit-scrollbar {
 .undo-bar {
   animation: undo-drain 4s linear forwards;
 }
+
+/* Left-to-right fill on a hold-to-confirm button (close-booth-control.tsx) —
+   the visible progress of a 3-second press. The actual timing is a JS
+   setTimeout, independent of this; the animation is feedback only. */
+@keyframes hold-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+.hold-fill-bar {
+  animation: hold-fill 3s linear forwards;
+}
 @media (prefers-reduced-motion: reduce) {
   .fade-rise {
     animation: none;
@@ -238,6 +253,10 @@ html::-webkit-scrollbar {
   .undo-bar {
     animation: none;
     width: 40%;
+  }
+  .hold-fill-bar {
+    animation: none;
+    width: 60%;
   }
   /* Tailwind's always-on animation utilities don't self-respect the
      preference: the live board's pulsing "N active" dot, skeleton shimmers,

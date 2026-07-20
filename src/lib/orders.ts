@@ -257,3 +257,25 @@ export function queuePositionLabel(ordersAhead: number): string {
   if (ordersAhead === 1) return "1 order ahead of you";
   return `${ordersAhead} orders ahead of you`;
 }
+
+/**
+ * The vendor-facing "daily reset" display number for an order (board_settings
+ * .daily_order_number_reset) — its position among the booth's orders placed
+ * so far today (1-indexed), computed from the permanent `order_number`
+ * relative to `baselineNumber` (the booth's first order_number of the SGT
+ * day, from `sgtStartOfDayIso`). Immutable once computed: it never shifts as
+ * later orders complete or drop off the active board, since both inputs
+ * (order_number, created_at) are frozen at creation by the 0032 freeze
+ * trigger — this is arithmetic on fixed values, not a live recount. Falls
+ * back to the real, permanent order_number when the setting is off
+ * (`baselineNumber` null) or the arithmetic would be non-positive (a data
+ * inconsistency, not something to ever show as "#0" or negative). Pure.
+ */
+export function displayOrderNumber(
+  orderNumber: string,
+  baselineNumber: string | null,
+): string {
+  if (baselineNumber === null) return orderNumber;
+  const rank = Number(orderNumber) - Number(baselineNumber) + 1;
+  return rank > 0 ? String(rank) : orderNumber;
+}

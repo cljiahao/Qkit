@@ -134,9 +134,14 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   is what the order-status page actually renders, on the theory that an
   unmet precise promise erodes trust more than an upfront-honest range),
   `queuePositionLabel` (the no-time-data fallback, "N orders ahead of you"),
-  `orderProgressIndex` (customer 3-segment progress bar).
+  `orderProgressIndex` (customer 3-segment progress bar), `displayOrderNumber`
+  (board_settings.daily_order_number_reset's display-only "position among
+  today's orders" number — pure arithmetic on the immutable `order_number`/
+  `created_at` relative to a caller-supplied baseline, never a live recount;
+  falls back to the real number when there's no baseline).
 - `orders.test.ts` — tests status transitions, patch-building (including the
-  payment auto-confirm-on-complete rule), sorting, and age/label formatting.
+  payment auto-confirm-on-complete rule), sorting, age/label formatting, and
+  `displayOrderNumber`'s baseline arithmetic + real-number fallbacks.
 - `payments/` — PayNow QR generation and the payment-method adapter registry
   (pointer/PayNow/Stripe-stub); see its own README.
 - `plan.test.ts` — tests entitlement resolution across plan/pass/pro
@@ -195,8 +200,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `parseRealtimeOrderEvent`'s dependency, `parseOrderRef` (validates the
   boothId/orderNumber/token triple every customer order action receives),
   `feedbackSchema`, `supportMessageSchema`, `profileNameSchema`/
-  `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema`,
-  `pricingFormSchema`/`grantPassSchema`, `parseMenuItems`/`parseOrderItems`.
+  `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema` (now also
+  `daily_order_number_reset: boolean` and `default_prep_minutes:
+1-60|null`, migration 0062), `pricingFormSchema`/`grantPassSchema`,
+  `parseMenuItems`/`parseOrderItems`.
 - `schemas.test.ts` — the largest test file in `lib/`: validates every schema
   above, including the payment-config cross-field rules (xor of UEN/mobile,
   pointer requiring a link or QR) and the tolerant vs. strict read/write
@@ -206,9 +213,16 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   profit aggregation (`topItems`), hourly and day×hour (SGT) buckets,
   `optionBreakdown`, `grossMargin` (only computed when at least one item
   carries a cost); also `windowSeries`/`waitSeries` (bucketed trend/wait-time
-  series), `avgWaitSeconds`, `peakThroughput`, `pctChange`.
+  series), `avgWaitSeconds`, `peakThroughput`, `pctChange`,
+  `estimateWaitSeconds` (recent-average × orders-ahead customer wait
+  estimate, null below `minSample`; takes an optional
+  `fallbackAvgSecondsPerOrder` — board_settings.default_prep_minutes × 60 —
+  used only below that sample size, so a vendor's manual estimate never
+  overrides real, trusted data).
 - `stats.test.ts` — tests bucketing, margin computation, refund detection,
-  fulfilment-rate math, and the trend/wait series against synthetic orders.
+  fulfilment-rate math, the trend/wait series against synthetic orders, and
+  `estimateWaitSeconds`'s fallback (used below the sample size, ignored once
+  real data meets it, null when neither is available).
 - `stock.ts` — `parseRemaining`/`remainingFor`: parses the
   `booth_remaining_stock` JSONB RPC result into a typed per-item remaining-
   count map (Postgres is authoritative; this just reports it to the cart UI).
@@ -218,25 +232,29 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
 - `types.ts` — the hand-maintained mirror of the `qkit` Postgres schema: core
   domain types (`OrderStatus`, `OrderSource` — `"qr"` | `"walkup"`, migration
   0060 — `Plan`, `PaymentConfig`, `MenuItem`, `CartItem`,
-  `OrderItem`, `BoardSettings`/`DEFAULT_BOARD_SETTINGS`), and the full
-  `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
+  `OrderItem`, `BoardSettings`/`DEFAULT_BOARD_SETTINGS` — now also
+  `daily_order_number_reset`/`default_prep_minutes`, migration 0062), and the
+  full `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
   admin_audit, events, licenses, payments, pricing, feedback,
   purchase_requests, support_messages, booths, orders, booth_item_sold; RPCs
   `next_order_number`, `booth_remaining_stock`, `booth_servable`,
-  `check_rate_limit`, `place_order`, `place_walkup_order`, `get_booth_for_order`,
-  `regenerate_short_code`, `submit_feedback`, `set_license_label`,
-  `gen_short_code`) plus derived row-type aliases (`Vendor`, `Booth`, `Order`,
-  `BoardOrder` = `Order` minus `access_token`, `License`, `Pricing`, `Payment`,
-  `Feedback`, `Admin`, `AdminAudit`). Must be kept in sync with
-  `supabase/migrations/` by hand (or via `supabase gen types typescript`).
+  `check_rate_limit`, `place_order`, `place_walkup_order` (now with `p_paid`,
+  migration 0061), `get_booth_for_order`, `regenerate_short_code`,
+  `submit_feedback`, `set_license_label`, `gen_short_code`) plus derived
+  row-type aliases (`Vendor`, `Booth`, `Order`, `BoardOrder` = `Order` minus
+  `access_token`, `License`, `Pricing`, `Payment`, `Feedback`, `Admin`,
+  `AdminAudit`). Must be kept in sync with `supabase/migrations/` by hand (or
+  via `supabase gen types typescript`).
 - `tz.ts` — Singapore-only wall-clock helpers built on cached
   `Intl.DateTimeFormat` instances: `sgtHour`/`sgtMinutes`/`sgtWeekday`,
-  `WEEKDAY_ORDER`/`WEEKDAY_LABELS`, and display formatters `shortDay`/
-  `sgtClock`/`sgtWeekdayTime`/`shortDateTime` — always formats in
-  `Asia/Singapore`, never server UTC or the browser's tz, to stay
-  hydration-safe.
-- `tz.test.ts` — tests hour/weekday extraction and each display formatter
-  against fixed ISO instants.
+  `WEEKDAY_ORDER`/`WEEKDAY_LABELS`, display formatters `shortDay`/
+  `sgtClock`/`sgtWeekdayTime`/`shortDateTime`, and `sgtStartOfDayIso` (the UTC
+  instant for SGT midnight of a given moment — the query boundary for
+  "today" in SGT, e.g. the daily order-number reset baseline) — always
+  formats/computes in `Asia/Singapore`, never server UTC or the browser's tz,
+  to stay hydration-safe.
+- `tz.test.ts` — tests hour/weekday extraction, each display formatter
+  against fixed ISO instants, and `sgtStartOfDayIso`'s day-boundary rollover.
 - `utils.ts` — `cn` (clsx + tailwind-merge), shared form style constants
   (`FORM_LABEL_CLASS`, `FORM_ERROR_CLASS`), `MS_PER_HOUR`/`MS_PER_DAY`,
   `formatPrice`, `centsToDollarString`, `parseDollarsToCents` (keystroke-level
