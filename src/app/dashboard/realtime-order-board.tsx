@@ -3,10 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Settings as SettingsIcon, Store } from "lucide-react";
+import {
+  Pause,
+  Play,
+  Plus,
+  Settings as SettingsIcon,
+  Store,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -77,68 +82,95 @@ function LoadErrorBanner() {
   );
 }
 
-// One booth's open/paused row — shared between the solo inline case (a
-// single-booth vendor, no need for a modal over one switch) and the
-// multi-booth status dialog below.
+// One booth's open/paused toggle — a single button, not a two-segment
+// control: this is fundamentally one binary action (pause it / resume it),
+// and a segmented Open|Paused control cost 2-3x the width to say so. Icon
+// alone (a first pass) turned out to be a step too far — without hover on a
+// phone, an icon-only Pause/Play read as ambiguous. Icon + the current
+// state's own word fixes that at a fraction of the segmented control's
+// width. Same play/pause convention as a media player: showing Pause means
+// "this is running, tap to stop it"; Play means the reverse. Color still
+// carries the state too (emerald = open), so nothing rests on any one cue.
+function BoothToggle({
+  active,
+  onChange,
+  boothName,
+}: {
+  active: boolean;
+  onChange: (next: boolean) => void;
+  boothName: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onChange(!active)}
+          aria-label={
+            active
+              ? `${boothName} is open. Tap to pause.`
+              : `${boothName} is paused. Tap to resume.`
+          }
+          className={cn(
+            "h-8 shrink-0 gap-1.5 rounded-full px-2.5 text-xs font-semibold",
+            active
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15 hover:text-emerald-600"
+              : "text-muted-foreground",
+          )}
+        >
+          {active ? (
+            <Pause className="size-3.5" />
+          ) : (
+            <Play className="size-3.5" />
+          )}
+          {active ? "Open" : "Paused"}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {active ? "Pause taking orders" : "Resume taking orders"}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// One booth's row — shared between the solo inline case (a single-booth
+// vendor, no need for a modal over one toggle) and the multi-booth status
+// dialog below. The header's own compact case (a booth already selected via
+// the board's filter dropdown) skips this row entirely and renders
+// BoothToggle directly — the dropdown right below already says which booth
+// this is, so a bordered pill wrapping just the (already-bordered) toggle
+// button would be a border around a border for no reason.
 function BoothRow({
   b,
   showDot,
   active,
   onToggle,
-  compact = false,
 }: {
   b: BoothView;
   showDot: boolean;
   active: boolean;
   onToggle: (checked: boolean) => void;
-  // Header context (a single booth selected via the board's filter) needs a
-  // pill that fits alongside the other header buttons, not the full row —
-  // same info, name/switch/label only, no outside-hours note.
-  compact?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 border border-border text-sm",
-        compact ? "rounded-full px-3 py-1.5" : "rounded-lg px-3 py-2",
-      )}
-    >
+    <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
       {showDot && (
         <span
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: boothColor(b.id) }}
         />
       )}
-      <span
-        className={cn(
-          "min-w-0 truncate font-medium",
-          compact ? "max-w-[8rem]" : "flex-1",
-        )}
-      >
-        {b.name}
-      </span>
+      <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
       {/* Manually active but outside scheduled hours: customers still see
-          it closed. A distinct state from the switch itself, worth
+          it closed. A distinct state from the toggle itself, worth
           surfacing so the vendor isn't confused about why orders still
-          aren't landing. Skipped in the compact header pill, no room. */}
-      {!compact && active && !b.open && (
+          aren't landing. */}
+      {active && !b.open && (
         <span className="shrink-0 text-xs text-muted-foreground">
           (outside hours)
         </span>
       )}
-      <span
-        className={cn(
-          "shrink-0 font-semibold",
-          active ? "text-emerald-600" : "text-muted-foreground",
-        )}
-      >
-        {active ? "Open" : "Paused"}
-      </span>
-      <Switch
-        checked={active}
-        onCheckedChange={onToggle}
-        aria-label={`${b.name} taking orders`}
-      />
+      <BoothToggle active={active} onChange={onToggle} boothName={b.name} />
     </div>
   );
 }
@@ -259,10 +291,16 @@ export function RealtimeOrderBoard({
   const activeCountFor = (id: string) =>
     active.filter((o) => o.booth_id === id).length;
 
-  // A booth's tab shows only if it's active OR still has orders in flight — a
-  // turned-off booth with a queue stays until it clears, then self-removes.
+  // A booth's tab shows only if it's active, still has orders in flight, or
+  // is the one the vendor has the board filtered to right now — a turned-off
+  // booth with a queue stays until it clears, then self-removes. That last
+  // clause matters: without it, pausing the booth you're currently filtered
+  // to (with nothing in flight) dropped it from this list on the very same
+  // render, which collapsed multiBooth to false and yanked both the filter
+  // Select and the header's own toggle out from under the tap that just
+  // paused it.
   const visibleBooths = booths.filter(
-    (b) => b.is_active || activeCountFor(b.id) > 0,
+    (b) => b.is_active || activeCountFor(b.id) > 0 || b.id === filter,
   );
   const multiBooth = visibleBooths.length > 1;
 
@@ -338,12 +376,10 @@ export function RealtimeOrderBoard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {selectedBooth ? (
-            <BoothRow
-              b={selectedBooth}
-              showDot={false}
+            <BoothToggle
               active={boothIsActive(selectedBooth)}
-              onToggle={(checked) => setBoothActive(selectedBooth, checked)}
-              compact
+              onChange={(checked) => setBoothActive(selectedBooth, checked)}
+              boothName={selectedBooth.name}
             />
           ) : (
             booths.length > 1 && (
@@ -351,9 +387,12 @@ export function RealtimeOrderBoard({
                 variant="outline"
                 className="rounded-full"
                 onClick={() => setBoothDialogOpen(true)}
+                aria-label={`Booth status, ${activeBoothCount} of ${booths.length} open`}
               >
                 <Store className="size-3.5" />
-                Booths · {activeBoothCount}/{booths.length} open
+                <span className="hidden sm:inline">Booths · </span>
+                {activeBoothCount}/{booths.length}
+                <span className="hidden sm:inline"> open</span>
               </Button>
             )
           )}
@@ -361,8 +400,10 @@ export function RealtimeOrderBoard({
             variant="outline"
             className="rounded-full"
             onClick={() => setWalkupOpen(true)}
+            aria-label="New order"
           >
-            <Plus className="size-3.5" /> New order
+            <Plus className="size-3.5" />
+            New<span className="hidden sm:inline"> order</span>
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -481,11 +522,15 @@ export function RealtimeOrderBoard({
             surface too, not stay pinned below every preparing order just
             because of its status. A bumped order still always leads either
             way (see sortActiveOrders). */}
-        <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
+        <div
+          role="group"
+          aria-label="Sort by order age"
+          className="inline-flex rounded-lg border border-border p-0.5 text-sm"
+        >
           {(
             [
-              { value: "earliest", label: "Earliest first" },
-              { value: "latest", label: "Latest first" },
+              { value: "earliest", label: "Earliest" },
+              { value: "latest", label: "Latest" },
             ] as const
           ).map((o) => (
             <button

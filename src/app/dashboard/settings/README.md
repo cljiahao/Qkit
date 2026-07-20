@@ -18,31 +18,39 @@ Settings are stored on the vendor's own row and sync across devices.
   renders the header/back-button chrome, and passes `vendor.board_settings` as
   `initial` into `SettingsForm`. `revalidate = 0` (always fresh).
 - `settings-form.tsx` — `SettingsForm({ initial })` client component, the
-  actual UI: four `Section` cards (from `ticket-section.tsx`, laid out in a
-  proper `md:grid md:grid-cols-2` — not CSS multi-column `columns`, which let
-  a card's visual position drift from its actual reading order once there
-  were four of them) for "Board timing" (amber/red minute inputs plus the
-  `undo_seconds` "Time to undo a tap" field, 2-15s, validated live via
-  `boardSettingsSchema`), "New-order sound" (a `ToggleGroup` of
-  `SOUND_OPTIONS` — chime/bell/ding/horn/triple/off — that previews via
-  `playSound` on pick and saves immediately), "Notifications" (a `Switch`
-  that unlocks audio + requests `Notification` permission via
-  `@/lib/order-alerts` before saving `desktop_notify`, reverting on denial),
-  and "Customer order screen" (a `Switch` labeled "Show a simple daily order
-  number" for `daily_order_number_reset` — see `displayOrderNumber` in
-  `@/lib/orders` for what it actually changes — plus a 1-60min "Backup prep
-  time" `default_prep_minutes` number input, blank = null = "just show queue
-  position", used by the customer status page's wait estimate only when
-  there isn't enough of today's history yet; see `estimateWaitSeconds` in
-  `@/lib/stats`). An `Info` icon next to the undo field opens a `Tooltip`
-  (heading line plus two short muted paragraphs, not one run-on sentence)
-  spelling out what it does, why it fires with no confirm step, and what
-  longer/shorter trades off. Each section calls `updateBoardSettings`
-  independently through `useAsyncAction` (via a shared `currentSettings()`
-  helper) and `router.refresh()`s on success; every call sends the full
-  `BoardSettings` shape (it's one JSONB blob), so each section's handler
-  carries every other section's current values along to avoid clobbering
-  them.
+  actual UI: four `Section` cards (from `ticket-section.tsx`) split across two
+  independent flex-column stacks side by side on `md`+ — "Board timing" +
+  "Notifications" in the left stack, "New-order sound" + "Customer order
+  screen" in the right, each column just `flex flex-col gap-5` on its own
+  two sections. Deliberately not a single `md:grid md:grid-cols-2` over all
+  four: a CSS grid's row tracks size to the tallest cell in that row, so once
+  "Board timing" (3 inputs) outgrew "New-order sound" (1 button row), row 2
+  started late in _both_ columns — a visible gap over "Customer order
+  screen" that had nothing to do with its own content. Nor CSS multi-column
+  `columns` (the layout before that), which packs tightly but lets a card's
+  visual position drift from its actual reading order. "Board timing" holds
+  the amber/red minute inputs plus the `undo_seconds` "Time to undo a tap"
+  field (2-15s, validated live via `boardSettingsSchema`); "New-order sound"
+  is a `ToggleGroup` of `SOUND_OPTIONS` — chime/bell/ding/horn/triple/off —
+  that previews via `playSound` on pick and saves immediately;
+  "Notifications" is a `Switch` that unlocks audio + requests `Notification`
+  permission via `@/lib/order-alerts` before saving `desktop_notify`,
+  reverting on denial; "Customer order screen" is a `Switch` labeled "Show a
+  simple daily order number" for `daily_order_number_reset` (see
+  `displayOrderNumber` in `@/lib/orders` for what it actually changes) plus a
+  1-60min "Backup prep time" `default_prep_minutes` number input, blank =
+  null = "just show queue position" (its helper text is styled `italic`,
+  read as an aside rather than another instruction), used by the customer
+  status page's wait estimate only when there isn't enough of today's
+  history yet; see `estimateWaitSeconds` in `@/lib/stats`. An `Info` icon
+  next to the undo field opens a `Tooltip` (heading line plus two short
+  muted paragraphs, not one run-on sentence) spelling out what it does, why
+  it fires with no confirm step, and what longer/shorter trades off. Each
+  section calls `updateBoardSettings` independently through `useAsyncAction`
+  (via a shared `currentSettings()` helper) and `router.refresh()`s on
+  success; every call sends the full `BoardSettings` shape (it's one JSONB
+  blob), so each section's handler carries every other section's current
+  values along to avoid clobbering them.
 - `settings-form.dom.test.tsx` — RTL/jsdom tests (rendered inside
   `TooltipProvider`, required by the undo-field info tooltip): rejects
   `overdue_min <= aging_min` and an out-of-range `undo_seconds` client-side

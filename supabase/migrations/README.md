@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-63 files, `0000` through `0062`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0062` tail; skimmed by filename/theme otherwise. The
+64 files, `0000` through `0063`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0063` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -163,6 +163,19 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   `src/lib/orders.ts`), and `default_prep_minutes` only ever feeds a client-
   side wait-estimate fallback (`estimateWaitSeconds` in `src/lib/stats.ts`),
   never anything written back to the database.
+  `0063_order_number_no_truncate.sql` fixes a real bug in both `place_order`
+  and `place_walkup_order`'s numbering: `lpad(v_seq::text, 4, '0')` doesn't
+  just zero-pad, Postgres's `lpad` _truncates_ a string already longer than
+  the target length, so a booth's 10000th order got
+  `lpad('10000', 4, '0') = '1000'` — colliding with that booth's real order
+  #1000 and violating `UNIQUE (booth_id, order_number)` (`0001`'s
+  constraint), failing the order outright. Recreates both functions
+  verbatim from their current (`0056`/`0061`) bodies with
+  `lpad(v_seq::text, greatest(4, length(v_seq::text)), '0')` instead — pads
+  short numbers to 4 digits, never shrinks a longer one.
+  `qkit.next_order_number` (`0008`) has the same bug but is dead code (its
+  EXECUTE grant was revoked from every role in `0041`; `place_order` has
+  inlined its own numbering since `0030`), so it's left alone.
 
 ## Connectivity
 

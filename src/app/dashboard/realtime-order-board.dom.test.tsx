@@ -100,7 +100,7 @@ describe("RealtimeOrderBoard sort toggle", () => {
 
     expect(numbersInOrder()).toEqual(["#0001", "#0002"]);
 
-    await user.click(screen.getByRole("button", { name: "Latest first" }));
+    await user.click(screen.getByRole("button", { name: "Latest" }));
 
     expect(numbersInOrder()).toEqual(["#0002", "#0001"]);
   });
@@ -138,7 +138,7 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
 });
 
 describe("RealtimeOrderBoard booth active toggle", () => {
-  it("shows a single booth's switch inline, no modal needed", () => {
+  it("shows a single booth's open/pause toggle inline, no modal needed", () => {
     render(
       <RealtimeOrderBoard
         booths={BOOTHS}
@@ -148,10 +148,12 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.getByRole("switch", { name: "Kopi Corner taking orders" }),
-    ).toBeChecked();
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /booths ·/i }),
+      screen.queryByRole("button", { name: /booth status/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -170,17 +172,23 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.queryByRole("switch", { name: "Kopi Corner taking orders" }),
+      screen.queryByRole("button", { name: /Kopi Corner is/ }),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Booths · 1/2 open" }));
+    await user.click(
+      screen.getByRole("button", { name: "Booth status, 1 of 2 open" }),
+    );
 
     expect(
-      screen.getByRole("switch", { name: "Kopi Corner taking orders" }),
-    ).toBeChecked();
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
-    ).not.toBeChecked();
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is paused. Tap to resume.",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("stays reachable for a paused booth with no active orders", async () => {
@@ -200,9 +208,13 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    await user.click(screen.getByRole("button", { name: "Booths · 1/2 open" }));
+    await user.click(
+      screen.getByRole("button", { name: "Booth status, 1 of 2 open" }),
+    );
     expect(
-      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is paused. Tap to resume.",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -217,18 +229,21 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
 
-    const toggle = screen.getByRole("switch", {
-      name: "Kopi Corner taking orders",
-    });
-    expect(toggle).toBeChecked();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    );
 
-    await user.click(toggle);
-
-    expect(toggle).not.toBeChecked();
+    expect(
+      screen.getByRole("button", {
+        name: "Kopi Corner is paused. Tap to resume.",
+      }),
+    ).toBeInTheDocument();
     expect(toggleBoothActive).toHaveBeenCalledWith("b1", false);
   });
 
-  it("reverts the switch when the toggle fails", async () => {
+  it("reverts the toggle when it fails", async () => {
     vi.mocked(toggleBoothActive).mockResolvedValue({
       success: false,
       error: "Could not update booth",
@@ -243,12 +258,56 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
 
-    const toggle = screen.getByRole("switch", {
-      name: "Kopi Corner taking orders",
-    });
-    await user.click(toggle);
+    await user.click(
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    );
 
-    await waitFor(() => expect(toggle).toBeChecked());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", {
+          name: "Kopi Corner is open. Tap to pause.",
+        }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("keeps the filter dropdown and header toggle after pausing the booth you're filtered to, even with nothing in flight", async () => {
+    // Regression: visibleBooths used to drop a paused-and-empty booth
+    // unconditionally, including the one the vendor had the board filtered
+    // to — which collapsed multiBooth to false on the same render and
+    // yanked the Select + the header's own toggle out from under the tap
+    // that had just paused it.
+    const user = userEvent.setup();
+    const booths = [
+      { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+      { id: "b2", name: "Ice Cream Cart", is_active: true, open: true },
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={booths}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: /Ice Cream Cart/ }));
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is open. Tap to pause.",
+      }),
+    );
+
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is paused. Tap to resume.",
+      }),
+    ).toBeInTheDocument();
   });
 });
 

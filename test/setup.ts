@@ -21,6 +21,18 @@ if (typeof Element !== "undefined") {
   if (!Element.prototype.scrollIntoView) {
     Element.prototype.scrollIntoView = () => {};
   }
+  // jsdom doesn't implement ResizeObserver at all — Radix's Tooltip/Select/
+  // Popover primitives use it (via @radix-ui/react-use-size) to measure an
+  // anchor element, throwing "ResizeObserver is not defined" the moment more
+  // than one is mounted at once (e.g. several booth-toggle tooltips inside an
+  // open dialog). A no-op stand-in is enough — no test asserts on layout.
+  if (typeof globalThis.ResizeObserver === "undefined") {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
 }
 
 afterEach(async () => {

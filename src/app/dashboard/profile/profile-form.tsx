@@ -163,7 +163,7 @@ export function ProfileForm({
   }
 
   return (
-    <div className="md:columns-2 md:gap-5">
+    <div className="md:grid md:grid-cols-2 md:items-start md:gap-5">
       <Section
         icon={<Store className="size-5" />}
         eyebrow="Shown to customers"
