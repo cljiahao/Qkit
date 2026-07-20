@@ -222,6 +222,27 @@ lot for a mobile cart), label size/content (name + order number minimum;
 does it need the drink spec too?), and whether it prints automatically on
 order-placed or on a vendor tap.
 
+**2026-07-21 research finding:** a fully generic "any vendor's printer"
+browser-only integration is not realistic (no open cross-vendor protocol a
+plain web app can target; WebUSB/WebSerial/WebBluetooth are Chromium-only
+with zero Safari/iOS support, ruling them out for phone/tablet-based solo
+vendors; Square and Lightspeed themselves don't offer generic BYO-printer
+either). Real options are (a) Star Micronics CloudPRNT — printer polls a
+server URL, clean fit for a Vercel API route, but Star hardware only, or
+(b) a cloud print-relay like PrintNode — broader brand coverage but needs
+a locally-installed companion client on a machine wired to the printer.
+Epson ePOS-Print (local-IP HTTP, no local client) is a real open gap the
+research didn't close — worth a follow-up look before committing to a
+family, since Epson hardware is common/cheap. Parked until a pilot vendor
+has a specific printer in hand — no code yet.
+
+When this does get built: structure it as a `kind`-discriminated adapter,
+the same shape `src/lib/payments/adapters.ts` already uses for payment
+methods (`PrinterConfig` JSONB column on `booths`, one dispatcher, one
+small module per printer family/protocol). Adding a second printer family
+later then costs one new adapter + one union variant, not a rewrite — but
+don't scaffold this shell before a first real adapter exists to justify it.
+
 ---
 
 ## Suggested order
