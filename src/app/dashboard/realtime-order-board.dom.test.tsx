@@ -272,6 +272,43 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       ).toBeInTheDocument(),
     );
   });
+
+  it("keeps the filter dropdown and header toggle after pausing the booth you're filtered to, even with nothing in flight", async () => {
+    // Regression: visibleBooths used to drop a paused-and-empty booth
+    // unconditionally, including the one the vendor had the board filtered
+    // to — which collapsed multiBooth to false on the same render and
+    // yanked the Select + the header's own toggle out from under the tap
+    // that had just paused it.
+    const user = userEvent.setup();
+    const booths = [
+      { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+      { id: "b2", name: "Ice Cream Cart", is_active: true, open: true },
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={booths}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("option", { name: /Ice Cream Cart/ }));
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is open. Tap to pause.",
+      }),
+    );
+
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is paused. Tap to resume.",
+      }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("RealtimeOrderBoard walk-up order button", () => {

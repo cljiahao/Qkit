@@ -82,13 +82,15 @@ function LoadErrorBanner() {
   );
 }
 
-// One booth's open/paused toggle — a single icon button, not a two-segment
+// One booth's open/paused toggle — a single button, not a two-segment
 // control: this is fundamentally one binary action (pause it / resume it),
-// and a segmented Open|Paused control cost 2-3x the width to say so. Same
-// play/pause convention as any media player: showing Pause means "this is
-// running, tap to stop it"; showing Play means "this is stopped, tap to
-// start it". Color still carries the current state (emerald = open) so
-// nothing rests on icon recognition alone.
+// and a segmented Open|Paused control cost 2-3x the width to say so. Icon
+// alone (a first pass) turned out to be a step too far — without hover on a
+// phone, an icon-only Pause/Play read as ambiguous. Icon + the current
+// state's own word fixes that at a fraction of the segmented control's
+// width. Same play/pause convention as a media player: showing Pause means
+// "this is running, tap to stop it"; Play means the reverse. Color still
+// carries the state too (emerald = open), so nothing rests on any one cue.
 function BoothToggle({
   active,
   onChange,
@@ -104,7 +106,6 @@ function BoothToggle({
         <Button
           type="button"
           variant="outline"
-          size="icon"
           onClick={() => onChange(!active)}
           aria-label={
             active
@@ -112,7 +113,7 @@ function BoothToggle({
               : `${boothName} is paused. Tap to resume.`
           }
           className={cn(
-            "size-8 shrink-0 rounded-full",
+            "h-8 shrink-0 gap-1.5 rounded-full px-2.5 text-xs font-semibold",
             active
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15 hover:text-emerald-600"
               : "text-muted-foreground",
@@ -123,6 +124,7 @@ function BoothToggle({
           ) : (
             <Play className="size-3.5" />
           )}
+          {active ? "Open" : "Paused"}
         </Button>
       </TooltipTrigger>
       <TooltipContent>
@@ -289,10 +291,16 @@ export function RealtimeOrderBoard({
   const activeCountFor = (id: string) =>
     active.filter((o) => o.booth_id === id).length;
 
-  // A booth's tab shows only if it's active OR still has orders in flight — a
-  // turned-off booth with a queue stays until it clears, then self-removes.
+  // A booth's tab shows only if it's active, still has orders in flight, or
+  // is the one the vendor has the board filtered to right now — a turned-off
+  // booth with a queue stays until it clears, then self-removes. That last
+  // clause matters: without it, pausing the booth you're currently filtered
+  // to (with nothing in flight) dropped it from this list on the very same
+  // render, which collapsed multiBooth to false and yanked both the filter
+  // Select and the header's own toggle out from under the tap that just
+  // paused it.
   const visibleBooths = booths.filter(
-    (b) => b.is_active || activeCountFor(b.id) > 0,
+    (b) => b.is_active || activeCountFor(b.id) > 0 || b.id === filter,
   );
   const multiBooth = visibleBooths.length > 1;
 
@@ -395,7 +403,7 @@ export function RealtimeOrderBoard({
             aria-label="New order"
           >
             <Plus className="size-3.5" />
-            <span className="hidden sm:inline">New order</span>
+            New<span className="hidden sm:inline"> order</span>
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
