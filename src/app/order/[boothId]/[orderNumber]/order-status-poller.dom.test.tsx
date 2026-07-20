@@ -5,22 +5,29 @@ import userEvent from "@testing-library/user-event";
 import { OrderStatusPoller } from "./order-status-poller";
 import type { OrderStatus } from "@/lib/types";
 
-const { getOrderStatus, getWaitEstimate, alerts } = vi.hoisted(() => ({
-  getOrderStatus: vi.fn(),
-  getWaitEstimate: vi.fn(),
-  alerts: {
-    isNotifySupported: vi.fn(() => true),
-    notifyPermission: vi.fn((): NotificationPermission | null => "default"),
-    requestNotifyPermission: vi.fn(
-      async () => "granted" as NotificationPermission,
-    ),
-    fireReadyNotification: vi.fn(async () => undefined),
-    playReadyChime: vi.fn(async () => true),
-    unlockAudio: vi.fn(),
-  },
-}));
+const { getOrderStatus, getWaitEstimate, confirmArrival, alerts } = vi.hoisted(
+  () => ({
+    getOrderStatus: vi.fn(),
+    getWaitEstimate: vi.fn(),
+    confirmArrival: vi.fn(),
+    alerts: {
+      isNotifySupported: vi.fn(() => true),
+      notifyPermission: vi.fn((): NotificationPermission | null => "default"),
+      requestNotifyPermission: vi.fn(
+        async () => "granted" as NotificationPermission,
+      ),
+      fireReadyNotification: vi.fn(async () => undefined),
+      playReadyChime: vi.fn(async () => true),
+      unlockAudio: vi.fn(),
+    },
+  }),
+);
 
-vi.mock("./status-actions", () => ({ getOrderStatus, getWaitEstimate }));
+vi.mock("./status-actions", () => ({
+  getOrderStatus,
+  getWaitEstimate,
+  confirmArrival,
+}));
 vi.mock("@/lib/order-alerts", () => alerts);
 
 function renderPoller(initialStatus: OrderStatus = "preparing") {
@@ -41,6 +48,7 @@ beforeEach(() => {
   alerts.isNotifySupported.mockReturnValue(true);
   alerts.notifyPermission.mockReturnValue("default");
   getWaitEstimate.mockResolvedValue({ seconds: null, ordersAhead: 0 });
+  confirmArrival.mockResolvedValue({ success: true });
 });
 
 describe("OrderStatusPoller", () => {
@@ -168,6 +176,32 @@ describe("OrderStatusPoller", () => {
     expect(alerts.requestNotifyPermission).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(screen.getByText(/keep this tab open/)).toBeInTheDocument(),
+    );
+  });
+});
+
+describe("OrderStatusPoller — arrival confirmation", () => {
+  it("shows the arrival prompt instead of the progress bar when pending", async () => {
+    getOrderStatus.mockResolvedValue("pending");
+    renderPoller("pending");
+    expect(
+      await screen.findByRole("button", { name: /i'm here/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/estimated wait/i)).not.toBeInTheDocument();
+  });
+
+  it("calls confirmArrival and shows the progress view on success", async () => {
+    getOrderStatus.mockResolvedValue("pending");
+    renderPoller("pending");
+    const user = userEvent.setup();
+    const btn = await screen.findByRole("button", { name: /i'm here/i });
+    getOrderStatus.mockResolvedValue("preparing");
+    await user.click(btn);
+    expect(confirmArrival).toHaveBeenCalledWith("b1", "0007", "tok");
+    await waitFor(() =>
+      expect(
+        screen.getByText("Your order is being prepared"),
+      ).toBeInTheDocument(),
     );
   });
 });
