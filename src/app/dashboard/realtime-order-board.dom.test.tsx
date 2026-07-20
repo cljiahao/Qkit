@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RealtimeOrderBoard } from "./realtime-order-board";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -100,7 +100,7 @@ describe("RealtimeOrderBoard sort toggle", () => {
 
     expect(numbersInOrder()).toEqual(["#0001", "#0002"]);
 
-    await user.click(screen.getByRole("button", { name: "Latest first" }));
+    await user.click(screen.getByRole("button", { name: "Latest" }));
 
     expect(numbersInOrder()).toEqual(["#0002", "#0001"]);
   });
@@ -138,7 +138,7 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
 });
 
 describe("RealtimeOrderBoard booth active toggle", () => {
-  it("shows a single booth's switch inline, no modal needed", () => {
+  it("shows a single booth's Open/Paused toggle inline, no modal needed", () => {
     render(
       <RealtimeOrderBoard
         booths={BOOTHS}
@@ -147,11 +147,12 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       />,
       { wrapper: TooltipProvider },
     );
+    const group = screen.getByRole("group", {
+      name: "Kopi Corner taking orders",
+    });
+    expect(within(group).getByRole("radio", { name: "Open" })).toBeChecked();
     expect(
-      screen.getByRole("switch", { name: "Kopi Corner taking orders" }),
-    ).toBeChecked();
-    expect(
-      screen.queryByRole("button", { name: /booths ·/i }),
+      screen.queryByRole("button", { name: /booth status/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -170,16 +171,22 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.queryByRole("switch", { name: "Kopi Corner taking orders" }),
+      screen.queryByRole("group", { name: "Kopi Corner taking orders" }),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Booths · 1/2 open" }));
+    await user.click(
+      screen.getByRole("button", { name: "Booth status, 1 of 2 open" }),
+    );
 
     expect(
-      screen.getByRole("switch", { name: "Kopi Corner taking orders" }),
+      within(
+        screen.getByRole("group", { name: "Kopi Corner taking orders" }),
+      ).getByRole("radio", { name: "Open" }),
     ).toBeChecked();
     expect(
-      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
+      within(
+        screen.getByRole("group", { name: "Ice Cream Cart taking orders" }),
+      ).getByRole("radio", { name: "Open" }),
     ).not.toBeChecked();
   });
 
@@ -200,9 +207,11 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    await user.click(screen.getByRole("button", { name: "Booths · 1/2 open" }));
+    await user.click(
+      screen.getByRole("button", { name: "Booth status, 1 of 2 open" }),
+    );
     expect(
-      screen.getByRole("switch", { name: "Ice Cream Cart taking orders" }),
+      screen.getByRole("group", { name: "Ice Cream Cart taking orders" }),
     ).toBeInTheDocument();
   });
 
@@ -217,18 +226,18 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
 
-    const toggle = screen.getByRole("switch", {
+    const group = screen.getByRole("group", {
       name: "Kopi Corner taking orders",
     });
-    expect(toggle).toBeChecked();
+    expect(within(group).getByRole("radio", { name: "Open" })).toBeChecked();
 
-    await user.click(toggle);
+    await user.click(within(group).getByRole("radio", { name: "Paused" }));
 
-    expect(toggle).not.toBeChecked();
+    expect(within(group).getByRole("radio", { name: "Paused" })).toBeChecked();
     expect(toggleBoothActive).toHaveBeenCalledWith("b1", false);
   });
 
-  it("reverts the switch when the toggle fails", async () => {
+  it("reverts the toggle when it fails", async () => {
     vi.mocked(toggleBoothActive).mockResolvedValue({
       success: false,
       error: "Could not update booth",
@@ -243,12 +252,14 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
 
-    const toggle = screen.getByRole("switch", {
+    const group = screen.getByRole("group", {
       name: "Kopi Corner taking orders",
     });
-    await user.click(toggle);
+    await user.click(within(group).getByRole("radio", { name: "Paused" }));
 
-    await waitFor(() => expect(toggle).toBeChecked());
+    await waitFor(() =>
+      expect(within(group).getByRole("radio", { name: "Open" })).toBeChecked(),
+    );
   });
 });
 

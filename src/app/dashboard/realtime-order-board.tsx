@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Settings as SettingsIcon, Store } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
   TooltipContent,
@@ -77,9 +77,53 @@ function LoadErrorBanner() {
   );
 }
 
-// One booth's open/paused row — shared between the solo inline case (a
-// single-booth vendor, no need for a modal over one switch) and the
-// multi-booth status dialog below.
+// One booth's open/paused toggle — a single two-segment control rather than
+// a status word plus a separate switch (the two used to say the same thing
+// twice and cost twice the width). The active segment reads as pressed-in,
+// the other as flush, so the state is legible at a glance without text
+// color doing the only work — same segmented pattern as the sort control
+// below, reused here for one consistent "this is how a toggle looks" language
+// across the board.
+function BoothToggle({
+  active,
+  onChange,
+  ariaLabel,
+}: {
+  active: boolean;
+  onChange: (next: boolean) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <ToggleGroup
+      type="single"
+      variant="outline"
+      size="sm"
+      value={active ? "open" : "paused"}
+      onValueChange={(v) => {
+        if (v) onChange(v === "open");
+      }}
+      aria-label={ariaLabel}
+      className="shrink-0"
+    >
+      <ToggleGroupItem
+        value="open"
+        className="text-xs font-semibold data-[state=on]:bg-emerald-500/15 data-[state=on]:text-emerald-600"
+      >
+        Open
+      </ToggleGroupItem>
+      <ToggleGroupItem
+        value="paused"
+        className="text-xs font-semibold data-[state=on]:bg-muted data-[state=on]:text-foreground"
+      >
+        Paused
+      </ToggleGroupItem>
+    </ToggleGroup>
+  );
+}
+
+// One booth's row — shared between the solo inline case (a single-booth
+// vendor, no need for a modal over one toggle) and the multi-booth status
+// dialog below.
 function BoothRow({
   b,
   showDot,
@@ -93,13 +137,13 @@ function BoothRow({
   onToggle: (checked: boolean) => void;
   // Header context (a single booth selected via the board's filter) needs a
   // pill that fits alongside the other header buttons, not the full row —
-  // same info, name/switch/label only, no outside-hours note.
+  // same info, name/toggle only, no outside-hours note.
   compact?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 border border-border text-sm",
+        "flex items-center gap-2 border border-border text-sm",
         compact ? "rounded-full px-3 py-1.5" : "rounded-lg px-3 py-2",
       )}
     >
@@ -112,13 +156,13 @@ function BoothRow({
       <span
         className={cn(
           "min-w-0 truncate font-medium",
-          compact ? "max-w-[8rem]" : "flex-1",
+          compact ? "max-w-[6rem]" : "flex-1",
         )}
       >
         {b.name}
       </span>
       {/* Manually active but outside scheduled hours: customers still see
-          it closed. A distinct state from the switch itself, worth
+          it closed. A distinct state from the toggle itself, worth
           surfacing so the vendor isn't confused about why orders still
           aren't landing. Skipped in the compact header pill, no room. */}
       {!compact && active && !b.open && (
@@ -126,18 +170,10 @@ function BoothRow({
           (outside hours)
         </span>
       )}
-      <span
-        className={cn(
-          "shrink-0 font-semibold",
-          active ? "text-emerald-600" : "text-muted-foreground",
-        )}
-      >
-        {active ? "Open" : "Paused"}
-      </span>
-      <Switch
-        checked={active}
-        onCheckedChange={onToggle}
-        aria-label={`${b.name} taking orders`}
+      <BoothToggle
+        active={active}
+        onChange={onToggle}
+        ariaLabel={`${b.name} taking orders`}
       />
     </div>
   );
@@ -351,9 +387,12 @@ export function RealtimeOrderBoard({
                 variant="outline"
                 className="rounded-full"
                 onClick={() => setBoothDialogOpen(true)}
+                aria-label={`Booth status, ${activeBoothCount} of ${booths.length} open`}
               >
                 <Store className="size-3.5" />
-                Booths · {activeBoothCount}/{booths.length} open
+                <span className="hidden sm:inline">Booths · </span>
+                {activeBoothCount}/{booths.length}
+                <span className="hidden sm:inline"> open</span>
               </Button>
             )
           )}
@@ -361,8 +400,10 @@ export function RealtimeOrderBoard({
             variant="outline"
             className="rounded-full"
             onClick={() => setWalkupOpen(true)}
+            aria-label="New order"
           >
-            <Plus className="size-3.5" /> New order
+            <Plus className="size-3.5" />
+            <span className="hidden sm:inline">New order</span>
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -481,11 +522,15 @@ export function RealtimeOrderBoard({
             surface too, not stay pinned below every preparing order just
             because of its status. A bumped order still always leads either
             way (see sortActiveOrders). */}
-        <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
+        <div
+          role="group"
+          aria-label="Sort by order age"
+          className="inline-flex rounded-lg border border-border p-0.5 text-sm"
+        >
           {(
             [
-              { value: "earliest", label: "Earliest first" },
-              { value: "latest", label: "Latest first" },
+              { value: "earliest", label: "Earliest" },
+              { value: "latest", label: "Latest" },
             ] as const
           ).map((o) => (
             <button

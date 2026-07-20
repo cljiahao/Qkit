@@ -373,9 +373,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             </span>
             <span className="block text-muted-foreground">
               Handy at a busy event: customers and staff see a small number like
-              #3 instead of #847. Your real records, receipts, and reports
-              always keep the permanent number underneath — nothing about them
-              changes.
+              #3 instead of #847. Your real records, receipts, and reports still
+              use the permanent number underneath, unchanged.
             </span>
           </span>
         </label>
@@ -383,9 +382,9 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         <div className="space-y-2 border-t border-border pt-4">
           <p className="text-sm text-muted-foreground">
             qkit estimates a customer&apos;s wait from your booth&apos;s own
-            recent orders. Early in the day — or a booth&apos;s very first
-            orders — there isn&apos;t enough data yet to do that, so you can set
-            a backup number to show instead.
+            recent orders. Early in the day, or for a booth&apos;s very first
+            orders, there isn&apos;t enough data yet to do that. Set a backup
+            number to use until then.
           </p>
           <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
             Backup prep time
