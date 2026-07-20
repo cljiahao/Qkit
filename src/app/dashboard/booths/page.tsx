@@ -41,12 +41,12 @@ export default async function BoothsPage() {
 
   return (
     <div>
-      <div className="mb-7 flex items-end justify-between">
+      <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Your stalls
           </p>
-          <h1 className="font-display text-4xl font-semibold leading-none">
+          <h1 className="font-display text-3xl font-semibold leading-none sm:text-4xl">
             Booths
           </h1>
         </div>
