@@ -135,16 +135,17 @@ function BoothRow({
   showDot: boolean;
   active: boolean;
   onToggle: (checked: boolean) => void;
-  // Header context (a single booth selected via the board's filter) needs a
-  // pill that fits alongside the other header buttons, not the full row —
-  // same info, name/toggle only, no outside-hours note.
+  // Header context (a single booth already selected via the board's own
+  // filter dropdown) drops the name — the dropdown right below already
+  // says which booth this is, so repeating it in the header pill was just
+  // width spent on a duplicate label. Toggle only, no outside-hours note.
   compact?: boolean;
 }) {
   return (
     <div
       className={cn(
         "flex items-center gap-2 border border-border text-sm",
-        compact ? "rounded-full px-3 py-1.5" : "rounded-lg px-3 py-2",
+        compact ? "rounded-full px-2 py-1" : "rounded-lg px-3 py-2",
       )}
     >
       {showDot && (
@@ -153,14 +154,9 @@ function BoothRow({
           style={{ backgroundColor: boothColor(b.id) }}
         />
       )}
-      <span
-        className={cn(
-          "min-w-0 truncate font-medium",
-          compact ? "max-w-[6rem]" : "flex-1",
-        )}
-      >
-        {b.name}
-      </span>
+      {!compact && (
+        <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
+      )}
       {/* Manually active but outside scheduled hours: customers still see
           it closed. A distinct state from the toggle itself, worth
           surfacing so the vendor isn't confused about why orders still
