@@ -3,10 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Settings as SettingsIcon, Store } from "lucide-react";
+import {
+  Pause,
+  Play,
+  Plus,
+  Settings as SettingsIcon,
+  Store,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
   TooltipContent,
@@ -77,100 +82,93 @@ function LoadErrorBanner() {
   );
 }
 
-// One booth's open/paused toggle — a single two-segment control rather than
-// a status word plus a separate switch (the two used to say the same thing
-// twice and cost twice the width). The active segment reads as pressed-in,
-// the other as flush, so the state is legible at a glance without text
-// color doing the only work — same segmented pattern as the sort control
-// below, reused here for one consistent "this is how a toggle looks" language
-// across the board.
+// One booth's open/paused toggle — a single icon button, not a two-segment
+// control: this is fundamentally one binary action (pause it / resume it),
+// and a segmented Open|Paused control cost 2-3x the width to say so. Same
+// play/pause convention as any media player: showing Pause means "this is
+// running, tap to stop it"; showing Play means "this is stopped, tap to
+// start it". Color still carries the current state (emerald = open) so
+// nothing rests on icon recognition alone.
 function BoothToggle({
   active,
   onChange,
-  ariaLabel,
+  boothName,
 }: {
   active: boolean;
   onChange: (next: boolean) => void;
-  ariaLabel: string;
+  boothName: string;
 }) {
   return (
-    <ToggleGroup
-      type="single"
-      variant="outline"
-      size="sm"
-      value={active ? "open" : "paused"}
-      onValueChange={(v) => {
-        if (v) onChange(v === "open");
-      }}
-      aria-label={ariaLabel}
-      className="shrink-0"
-    >
-      <ToggleGroupItem
-        value="open"
-        className="text-xs font-semibold data-[state=on]:bg-emerald-500/15 data-[state=on]:text-emerald-600"
-      >
-        Open
-      </ToggleGroupItem>
-      <ToggleGroupItem
-        value="paused"
-        className="text-xs font-semibold data-[state=on]:bg-muted data-[state=on]:text-foreground"
-      >
-        Paused
-      </ToggleGroupItem>
-    </ToggleGroup>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => onChange(!active)}
+          aria-label={
+            active
+              ? `${boothName} is open. Tap to pause.`
+              : `${boothName} is paused. Tap to resume.`
+          }
+          className={cn(
+            "size-8 shrink-0 rounded-full",
+            active
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15 hover:text-emerald-600"
+              : "text-muted-foreground",
+          )}
+        >
+          {active ? (
+            <Pause className="size-3.5" />
+          ) : (
+            <Play className="size-3.5" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {active ? "Pause taking orders" : "Resume taking orders"}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
 // One booth's row — shared between the solo inline case (a single-booth
 // vendor, no need for a modal over one toggle) and the multi-booth status
-// dialog below.
+// dialog below. The header's own compact case (a booth already selected via
+// the board's filter dropdown) skips this row entirely and renders
+// BoothToggle directly — the dropdown right below already says which booth
+// this is, so a bordered pill wrapping just the (already-bordered) toggle
+// button would be a border around a border for no reason.
 function BoothRow({
   b,
   showDot,
   active,
   onToggle,
-  compact = false,
 }: {
   b: BoothView;
   showDot: boolean;
   active: boolean;
   onToggle: (checked: boolean) => void;
-  // Header context (a single booth already selected via the board's own
-  // filter dropdown) drops the name — the dropdown right below already
-  // says which booth this is, so repeating it in the header pill was just
-  // width spent on a duplicate label. Toggle only, no outside-hours note.
-  compact?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 border border-border text-sm",
-        compact ? "rounded-full px-2 py-1" : "rounded-lg px-3 py-2",
-      )}
-    >
+    <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm">
       {showDot && (
         <span
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: boothColor(b.id) }}
         />
       )}
-      {!compact && (
-        <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
-      )}
+      <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
       {/* Manually active but outside scheduled hours: customers still see
           it closed. A distinct state from the toggle itself, worth
           surfacing so the vendor isn't confused about why orders still
-          aren't landing. Skipped in the compact header pill, no room. */}
-      {!compact && active && !b.open && (
+          aren't landing. */}
+      {active && !b.open && (
         <span className="shrink-0 text-xs text-muted-foreground">
           (outside hours)
         </span>
       )}
-      <BoothToggle
-        active={active}
-        onChange={onToggle}
-        ariaLabel={`${b.name} taking orders`}
-      />
+      <BoothToggle active={active} onChange={onToggle} boothName={b.name} />
     </div>
   );
 }
@@ -370,12 +368,10 @@ export function RealtimeOrderBoard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {selectedBooth ? (
-            <BoothRow
-              b={selectedBooth}
-              showDot={false}
+            <BoothToggle
               active={boothIsActive(selectedBooth)}
-              onToggle={(checked) => setBoothActive(selectedBooth, checked)}
-              compact
+              onChange={(checked) => setBoothActive(selectedBooth, checked)}
+              boothName={selectedBooth.name}
             />
           ) : (
             booths.length > 1 && (

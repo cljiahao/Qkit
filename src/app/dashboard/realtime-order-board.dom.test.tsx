@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RealtimeOrderBoard } from "./realtime-order-board";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -138,7 +138,7 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
 });
 
 describe("RealtimeOrderBoard booth active toggle", () => {
-  it("shows a single booth's Open/Paused toggle inline, no modal needed", () => {
+  it("shows a single booth's open/pause toggle inline, no modal needed", () => {
     render(
       <RealtimeOrderBoard
         booths={BOOTHS}
@@ -147,10 +147,11 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    const group = screen.getByRole("group", {
-      name: "Kopi Corner taking orders",
-    });
-    expect(within(group).getByRole("radio", { name: "Open" })).toBeChecked();
+    expect(
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /booth status/i }),
     ).not.toBeInTheDocument();
@@ -171,7 +172,7 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.queryByRole("group", { name: "Kopi Corner taking orders" }),
+      screen.queryByRole("button", { name: /Kopi Corner is/ }),
     ).not.toBeInTheDocument();
 
     await user.click(
@@ -179,15 +180,15 @@ describe("RealtimeOrderBoard booth active toggle", () => {
     );
 
     expect(
-      within(
-        screen.getByRole("group", { name: "Kopi Corner taking orders" }),
-      ).getByRole("radio", { name: "Open" }),
-    ).toBeChecked();
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    ).toBeInTheDocument();
     expect(
-      within(
-        screen.getByRole("group", { name: "Ice Cream Cart taking orders" }),
-      ).getByRole("radio", { name: "Open" }),
-    ).not.toBeChecked();
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is paused. Tap to resume.",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("stays reachable for a paused booth with no active orders", async () => {
@@ -211,7 +212,9 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       screen.getByRole("button", { name: "Booth status, 1 of 2 open" }),
     );
     expect(
-      screen.getByRole("group", { name: "Ice Cream Cart taking orders" }),
+      screen.getByRole("button", {
+        name: "Ice Cream Cart is paused. Tap to resume.",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -226,14 +229,17 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
 
-    const group = screen.getByRole("group", {
-      name: "Kopi Corner taking orders",
-    });
-    expect(within(group).getByRole("radio", { name: "Open" })).toBeChecked();
+    await user.click(
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    );
 
-    await user.click(within(group).getByRole("radio", { name: "Paused" }));
-
-    expect(within(group).getByRole("radio", { name: "Paused" })).toBeChecked();
+    expect(
+      screen.getByRole("button", {
+        name: "Kopi Corner is paused. Tap to resume.",
+      }),
+    ).toBeInTheDocument();
     expect(toggleBoothActive).toHaveBeenCalledWith("b1", false);
   });
 
@@ -252,13 +258,18 @@ describe("RealtimeOrderBoard booth active toggle", () => {
       { wrapper: TooltipProvider },
     );
 
-    const group = screen.getByRole("group", {
-      name: "Kopi Corner taking orders",
-    });
-    await user.click(within(group).getByRole("radio", { name: "Paused" }));
+    await user.click(
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    );
 
     await waitFor(() =>
-      expect(within(group).getByRole("radio", { name: "Open" })).toBeChecked(),
+      expect(
+        screen.getByRole("button", {
+          name: "Kopi Corner is open. Tap to pause.",
+        }),
+      ).toBeInTheDocument(),
     );
   });
 });
