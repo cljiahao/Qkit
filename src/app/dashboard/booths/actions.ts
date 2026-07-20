@@ -159,6 +159,7 @@ export async function saveBooth(
     menu_items,
     payment: data.payment,
     social_links: data.social_links,
+    requires_arrival_confirm: data.requires_arrival_confirm,
   };
 
   if (data.boothId) {
