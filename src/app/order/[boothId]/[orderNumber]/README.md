@@ -84,7 +84,12 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal
-  null). `getWaitEstimate(boothId, orderNumber, token)`: returns
+  null). `confirmArrival(boothId, orderNumber, token)`: customer-triggered
+  arrival confirmation, rate-limited like `claimPayment` (10/60s per
+  IP+booth), narrowly guarded to flip only `pending → preparing`; a 0-row
+  update re-reads to distinguish a harmless double-tap (already `preparing`
+  or beyond — idempotent success) from a genuine failure (still `pending`,
+  `cancelled`, or missing). `getWaitEstimate(boothId, orderNumber, token)`: returns
   `{ seconds, ordersAhead } | null` — `ordersAhead` (via `ordersAheadOf`) is
   always computable once the order exists; `seconds` (via
   `estimateWaitSeconds`, the booth's recent completed-order average ×
