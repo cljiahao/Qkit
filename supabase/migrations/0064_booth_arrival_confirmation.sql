@@ -144,6 +144,9 @@ BEGIN
     v_priced := v_priced || jsonb_build_array(
       (line - 'price_cents' - 'cost_cents' - 'name')
       || jsonb_build_object('name', menu_item->>'name')
+      -- Same "Free" convention as base price: only stamp price_cents when
+      -- the item was priced OR a selected choice added a cost — an unpriced
+      -- item with no priced choices stays keyless, not price_cents:0.
       || CASE WHEN v_price IS NOT NULL OR v_option_price_delta > 0
            THEN jsonb_build_object('price_cents', v_combined_price)
            ELSE '{}'::jsonb END
@@ -186,6 +189,7 @@ BEGIN
   RETURNING access_token INTO v_token;
 
   IF NOT FOUND THEN
+    -- Lost the idempotency race: another request inserted first. Return its row.
     SELECT order_number, access_token INTO v_number, v_token
     FROM qkit.orders
     WHERE booth_id = b.id AND idempotency_key = p_idempotency_key;
