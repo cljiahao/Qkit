@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-62 files, `0000` through `0061`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0061` tail; skimmed by filename/theme otherwise. The
+63 files, `0000` through `0062`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0062` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -153,7 +153,16 @@ schema evolved in five broad waves:
   `confirmOrderPayment` (`src/app/dashboard/order-actions.ts`) produces.
   A new argument changes the function's signature, so this `DROP FUNCTION`s
   the old 3-arg version explicitly before `CREATE OR REPLACE`, rather than
-  leaving it behind as a second, stale overload.
+  leaving it behind as a second, stale overload. `0062_board_settings_
+display_options.sql` adds `daily_order_number_reset` (bool, default
+  `false`) and `default_prep_minutes` (int, nullable, default `null`) to
+  `board_settings` — same JSONB-blob `DEFAULT` bump + per-row backfill
+  pattern as `0059`. Both are display-only: `daily_order_number_reset` never
+  touches the real `order_number` counter (the board/status page compute a
+  day-local rank at read time instead — `displayOrderNumber` in
+  `src/lib/orders.ts`), and `default_prep_minutes` only ever feeds a client-
+  side wait-estimate fallback (`estimateWaitSeconds` in `src/lib/stats.ts`),
+  never anything written back to the database.
 
 ## Connectivity
 

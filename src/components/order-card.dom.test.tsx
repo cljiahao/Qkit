@@ -82,6 +82,14 @@ describe("OrderCard", () => {
     expect(screen.getByText("Total")).toBeInTheDocument();
   });
 
+  it("shows displayNumber instead of the real order_number when supplied", () => {
+    render(<OrderCard order={makeOrder()} displayNumber="3" />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.getByText("#3")).toBeInTheDocument();
+    expect(screen.queryByText("#0007")).not.toBeInTheDocument();
+  });
+
   it("footer stamp is a bare time by default, a date+time when showDate is set", () => {
     const order = makeOrder();
     const { rerender } = render(<OrderCard order={order} />, {

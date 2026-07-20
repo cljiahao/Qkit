@@ -136,4 +136,63 @@ describe("getWaitEstimate", () => {
     const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({ seconds: null, ordersAhead: 1 });
   });
+
+  it("falls back to the vendor's default_prep_minutes below the sample size", async () => {
+    const target = {
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    const active = [
+      target,
+      {
+        id: "a",
+        status: "preparing",
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+      },
+    ];
+    fromMock
+      .mockReturnValueOnce(chain({ data: target, error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }))
+      .mockReturnValueOnce(chain({ data: [], error: null }))
+      .mockReturnValueOnce(chain({ data: { vendor_id: "v1" }, error: null }))
+      .mockReturnValueOnce(
+        chain({
+          data: {
+            board_settings: {
+              aging_min: 5,
+              overdue_min: 10,
+              sound_id: "chime",
+              desktop_notify: false,
+              undo_seconds: 4,
+              daily_order_number_reset: false,
+              default_prep_minutes: 8,
+            },
+          },
+          error: null,
+        }),
+      );
+
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ seconds: 480, ordersAhead: 1 }); // 1 ahead * 8min
+  });
+
+  it("ignores an unconfigured default_prep_minutes (no vendor row found)", async () => {
+    const target = {
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    fromMock
+      .mockReturnValueOnce(chain({ data: target, error: null }))
+      .mockReturnValueOnce(chain({ data: [], error: null }))
+      .mockReturnValueOnce(chain({ data: [], error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: null }));
+
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ seconds: null, ordersAhead: 0 });
+  });
 });

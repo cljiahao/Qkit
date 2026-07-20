@@ -143,3 +143,24 @@ const SGT_DATETIME_FORMAT = new Intl.DateTimeFormat("en-GB", {
 export function shortDateTime(iso: string): string {
   return SGT_DATETIME_FORMAT.format(new Date(iso));
 }
+
+// Cached: SGT calendar date as an ISO-sortable "YYYY-MM-DD" string — used to
+// find the boundary of "today" in SGT regardless of the server's own tz.
+const SGT_YMD_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BOOTH_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * Start of "today" in SGT, as a UTC ISO instant — the boundary for any
+ * same-calendar-day-in-SGT query (e.g. the daily order-number reset
+ * baseline: "the booth's first order today"). SGT is a fixed UTC+8 with no
+ * DST, so this is a plain offset subtraction, not a real timezone
+ * conversion. `now` defaults to the current instant; pass one in for tests.
+ */
+export function sgtStartOfDayIso(now: Date = new Date()): string {
+  const [y, m, d] = SGT_YMD_FORMAT.format(now).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) - 8 * 60 * 60 * 1000).toISOString();
+}

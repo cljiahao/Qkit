@@ -12,6 +12,7 @@ import {
   estimateLabel,
   estimateRangeLabel,
   queuePositionLabel,
+  displayOrderNumber,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
 
@@ -433,5 +434,28 @@ describe("queuePositionLabel", () => {
 
   it("pluralizes multiple orders ahead", () => {
     expect(queuePositionLabel(4)).toBe("4 orders ahead of you");
+  });
+});
+
+describe("displayOrderNumber", () => {
+  it("returns the real order_number when there's no baseline (feature off)", () => {
+    expect(displayOrderNumber("0847", null)).toBe("0847");
+  });
+
+  it("computes a 1-indexed rank relative to the baseline", () => {
+    expect(displayOrderNumber("0001", "0001")).toBe("1");
+    expect(displayOrderNumber("0002", "0001")).toBe("2");
+    expect(displayOrderNumber("0847", "0845")).toBe("3");
+  });
+
+  it("stays stable regardless of later orders completing — pure arithmetic on fixed inputs, not a live recount", () => {
+    // Order #0847, whatever the baseline is, gives the same rank every call —
+    // nothing here depends on which other orders are still active.
+    expect(displayOrderNumber("0847", "0845")).toBe("3");
+    expect(displayOrderNumber("0847", "0845")).toBe("3");
+  });
+
+  it("falls back to the real order_number for a non-positive rank (data inconsistency)", () => {
+    expect(displayOrderNumber("0001", "0005")).toBe("0001");
   });
 });

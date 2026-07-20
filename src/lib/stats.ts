@@ -191,17 +191,26 @@ export function avgWaitSeconds(orders: StatsOrder[]): number | null {
 
 /**
  * Customer-facing wait estimate: recent average prep time × orders ahead in
- * the queue. Requires at least `minSample` recent orders before returning
- * anything — a booth's first order of the day gets no number shown rather
- * than a guess, matching this module's empty-data convention (null, never
- * a misleading value). Pure.
+ * the queue. Requires at least `minSample` recent orders before trusting the
+ * booth's own history — a booth's first order of the day would otherwise get
+ * a guess built from almost nothing. Below that threshold, falls back to
+ * `fallbackAvgSecondsPerOrder` (board_settings.default_prep_minutes × 60,
+ * vendor-set) if the vendor configured one; null (no estimate, the page
+ * falls back to a queue-position label instead — see queuePositionLabel in
+ * @/lib/orders) if they didn't, matching this module's empty-data
+ * convention of never showing a misleading value. Pure.
  */
 export function estimateWaitSeconds(
   recentOrders: StatsOrder[],
   ordersAhead: number,
   minSample = 10,
+  fallbackAvgSecondsPerOrder: number | null = null,
 ): number | null {
-  if (recentOrders.length < minSample) return null;
+  if (recentOrders.length < minSample) {
+    return fallbackAvgSecondsPerOrder !== null
+      ? ordersAhead * fallbackAvgSecondsPerOrder
+      : null;
+  }
   const avg = avgWaitSeconds(recentOrders);
   if (avg === null) return null;
   return ordersAhead * avg;

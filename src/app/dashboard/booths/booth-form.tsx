@@ -33,6 +33,7 @@ import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
 import { SocialLinksSection } from "./social-links-section";
+import { CloseBoothControl } from "./close-booth-control";
 import { saveBooth, deleteBooth } from "./actions";
 import {
   boothFormSchema,
@@ -201,18 +202,27 @@ export function BoothForm({
             title="Hours & availability"
             description="Turn ordering on/off and set your hours."
           >
-            <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-              <Checkbox
-                checked={isActive}
-                onCheckedChange={(checked) => setIsActive(checked === true)}
+            {initial?.boothId ? (
+              <CloseBoothControl
+                boothId={initial.boothId}
+                boothName={name || initial.name}
+                isActive={isActive}
+                onChanged={setIsActive}
               />
-              <span className="text-sm">
-                <span className="font-medium">Active</span>
-                <span className="block text-muted-foreground">
-                  Customers can only order from active booths.
+            ) : (
+              <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                <Checkbox
+                  checked={isActive}
+                  onCheckedChange={(checked) => setIsActive(checked === true)}
+                />
+                <span className="text-sm">
+                  <span className="font-medium">Active</span>
+                  <span className="block text-muted-foreground">
+                    Customers can only order from active booths.
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+            )}
 
             <WorkingHoursEditor
               value={hours}

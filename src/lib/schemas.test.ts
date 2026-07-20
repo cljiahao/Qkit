@@ -198,6 +198,8 @@ describe("boardSettingsSchema", () => {
     sound_id: "chime" as const,
     desktop_notify: false,
     undo_seconds: 4,
+    daily_order_number_reset: false,
+    default_prep_minutes: null,
   };
 
   it("accepts the default shape", () => {
@@ -234,6 +236,24 @@ describe("boardSettingsSchema", () => {
     ).toBe(false);
     expect(
       boardSettingsSchema.safeParse({ ...valid, undo_seconds: 16 }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a null default_prep_minutes (no fallback configured)", () => {
+    expect(
+      boardSettingsSchema.safeParse({ ...valid, default_prep_minutes: null })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects default_prep_minutes outside the 1-60min range", () => {
+    expect(
+      boardSettingsSchema.safeParse({ ...valid, default_prep_minutes: 0 })
+        .success,
+    ).toBe(false);
+    expect(
+      boardSettingsSchema.safeParse({ ...valid, default_prep_minutes: 61 })
+        .success,
     ).toBe(false);
   });
 });

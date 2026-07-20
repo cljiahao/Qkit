@@ -69,6 +69,7 @@ function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
 
 export function OrderCard({
   order,
+  displayNumber,
   boothName,
   agingMin,
   overdueMin,
@@ -77,6 +78,11 @@ export function OrderCard({
   undoMs = DEFAULT_UNDO_MS,
 }: {
   order: BoardOrder;
+  // board_settings.daily_order_number_reset display number (see
+  // displayOrderNumber in @/lib/orders) — falls back to the real, permanent
+  // order_number when omitted (e.g. the completed-orders history list, which
+  // deliberately never gets one; see its own README for why).
+  displayNumber?: string;
   boothName?: string;
   // Vendor-configurable board_settings thresholds (see /dashboard/settings).
   // Fall through to orderAgeTone's own defaults when not supplied.
@@ -146,6 +152,12 @@ export function OrderCard({
   const ageMins = elapsedMinutes(elapsedMs);
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
+  // What's actually printed on this ticket — the daily-reset display number
+  // when supplied, else the real one. Used everywhere the card refers to
+  // "this order" by number, including its own confirm dialogs: a vendor
+  // reading "order #3" off the card shouldn't then see "#0847" in the
+  // dialog asking them to confirm it.
+  const number = displayNumber ?? order.order_number;
   const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
 
@@ -312,7 +324,7 @@ export function OrderCard({
                 disabled={updating}
               >
                 <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
-                  #{order.order_number}
+                  #{number}
                   <Zap
                     className="size-4 shrink-0 text-muted-foreground"
                     aria-hidden="true"
@@ -329,7 +341,7 @@ export function OrderCard({
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  Bump order #{order.order_number} to front?
+                  Bump order #{number} to front?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   Moves this order ahead of the others still waiting in the
@@ -349,7 +361,7 @@ export function OrderCard({
         ) : (
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
-              #{order.order_number}
+              #{number}
               {!closed && bumped && (
                 <Zap
                   className="size-4 shrink-0 text-primary"
@@ -528,7 +540,7 @@ export function OrderCard({
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>
-                          Cancel order #{order.order_number}?
+                          Cancel order #{number}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                           This permanently cancels the order and removes it from

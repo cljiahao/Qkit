@@ -33,6 +33,8 @@ const DEFAULTS: BoardSettings = {
   sound_id: "chime",
   desktop_notify: false,
   undo_seconds: 4,
+  daily_order_number_reset: false,
+  default_prep_minutes: null,
 };
 
 beforeEach(() => {
@@ -79,7 +81,7 @@ describe("SettingsForm thresholds", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    const undoSeconds = screen.getByLabelText(/time to undo a tap/i);
     await user.clear(undoSeconds);
     await user.type(undoSeconds, "8");
     await user.click(screen.getByRole("button", { name: /save timing/i }));
@@ -93,7 +95,7 @@ describe("SettingsForm thresholds", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const undoSeconds = screen.getByLabelText(/advance undo window/i);
+    const undoSeconds = screen.getByLabelText(/time to undo a tap/i);
     await user.clear(undoSeconds);
     await user.type(undoSeconds, "30");
     await user.click(screen.getByRole("button", { name: /save timing/i }));
@@ -143,5 +145,74 @@ describe("SettingsForm desktop notifications", () => {
     expect(
       screen.getByRole("switch", { name: /desktop notifications/i }),
     ).not.toBeChecked();
+  });
+});
+
+describe("SettingsForm customer order screen", () => {
+  it("saves the daily order-number reset toggle", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
+
+    await user.click(
+      screen.getByRole("switch", {
+        name: /show a simple daily order number instead of the permanent one/i,
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /save customer screen/i }),
+    );
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ daily_order_number_reset: true }),
+    );
+  });
+
+  it("saves a configured backup prep time", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
+
+    const prepMin = screen.getByLabelText(/backup prep time/i);
+    await user.type(prepMin, "8");
+    await user.click(
+      screen.getByRole("button", { name: /save customer screen/i }),
+    );
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ default_prep_minutes: 8 }),
+    );
+  });
+
+  it("saves null when the backup prep time is cleared", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(
+      <SettingsForm initial={{ ...DEFAULTS, default_prep_minutes: 8 }} />,
+      { wrapper: TooltipProvider },
+    );
+
+    const prepMin = screen.getByLabelText(/backup prep time/i);
+    await user.clear(prepMin);
+    await user.click(
+      screen.getByRole("button", { name: /save customer screen/i }),
+    );
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ default_prep_minutes: null }),
+    );
+  });
+
+  it("rejects a backup prep time outside 1-60min without calling the action", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
+
+    const prepMin = screen.getByLabelText(/backup prep time/i);
+    await user.type(prepMin, "90");
+    await user.click(
+      screen.getByRole("button", { name: /save customer screen/i }),
+    );
+
+    expect(updateBoardSettings).not.toHaveBeenCalled();
   });
 });
