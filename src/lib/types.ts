@@ -480,6 +480,7 @@ export interface Database {
           created_at: string;
           short_code: string;
           social_links: Json | null;
+          requires_arrival_confirm: boolean;
         };
         Insert: {
           id?: string;
@@ -494,6 +495,7 @@ export interface Database {
           created_at?: string;
           short_code?: string;
           social_links?: Json | null;
+          requires_arrival_confirm?: boolean;
         };
         Update: {
           id?: string;
@@ -508,6 +510,7 @@ export interface Database {
           created_at?: string;
           short_code?: string;
           social_links?: Json | null;
+          requires_arrival_confirm?: boolean;
         };
         Relationships: [
           {

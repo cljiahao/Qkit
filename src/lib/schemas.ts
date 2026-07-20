@@ -336,6 +336,9 @@ export const boothFormSchema = z.object({
   // null = inherit the vendor's profile-level defaults; non-null = a
   // complete per-booth override. See resolveSocialLinks.
   social_links: socialLinksSchema.nullable().default(null),
+  // Perishable-immediately items (ice cream) — hold prep until the customer
+  // confirms arrival on their status page. See migration 0064.
+  requires_arrival_confirm: z.boolean().default(false),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */
