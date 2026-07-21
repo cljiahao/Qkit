@@ -22,7 +22,16 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
 - `order-status-poller.tsx` — `OrderStatusPoller` client component: polls
   `getOrderStatus` + `getWaitEstimate` every 5s (`usePolling`, paused once
   terminal) — poll-only by design since Supabase realtime is unreliable on
-  customer devices (Safari/iOS, in-app webviews). Renders the progress bar
+  customer devices (Safari/iOS, in-app webviews). While `status === "pending"`
+  (a booth with `requires_arrival_confirm` on — see
+  `src/app/dashboard/booths/README.md`) it renders a dedicated early-return
+  branch instead of the normal ticket: no progress bar/badge chrome, just a
+  "We start making it fresh once you're at the counter" message and a big
+  "I'm here, start my order" button that calls `confirmArrival` (optimistic
+  local `setStatus("preparing")` on success, an error toast on failure) —
+  the customer stays on this branch until either they tap it or the next
+  poll observes the vendor already started it some other way (e.g. the
+  vendor's own board). Once past `pending`, renders the progress bar
   (`orderProgressIndex`/`ORDER_PROGRESS_SEGMENTS`), a prominent range-based
   wait estimate (`estimateRangeLabel`, e.g. "6-10 min" — a range rather than
   a precise countdown, since waiting-line research says an unmet precise
@@ -84,15 +93,27 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal
-  null). `getWaitEstimate(boothId, orderNumber, token)`: returns
+  null). `confirmArrival(boothId, orderNumber, token)`: the customer-
+  triggered arrival confirmation for a booth with `requires_arrival_confirm`
+  on — flips the order from `'pending'` (the status `place_order`, migration
+  0064, inserts it at when the booth requires arrival confirmation) to
+  `'preparing'`, starting prep. Token-gated and rate-limited exactly like
+  `claimPayment` in `payment-actions.ts` (10/60s per IP+booth — small
+  sequential order numbers are easy to enumerate); on a 0-row update it
+  re-reads the order to distinguish a harmless double-tap (already started,
+  e.g. the vendor hit "Start now" first — reported as success) from a real
+  failure (still pending, cancelled, or missing). `getWaitEstimate(boothId, orderNumber, token)`: returns
   `{ seconds, ordersAhead } | null` — `ordersAhead` (via `ordersAheadOf`) is
-  always computable once the order exists; `seconds` (via
-  `estimateWaitSeconds`, the booth's recent completed-order average ×
-  `ordersAhead`) falls back to the vendor's `board_settings.
+  always computable once the order exists and is unaffected by anything
+  below; `seconds` is forced `null` outright when the vendor's
+  `board_settings.show_wait_estimate` is off (default `true` — never a
+  minute guess in that case, however much real history exists), otherwise
+  computed via `estimateWaitSeconds` (the booth's recent completed-order
+  average × `ordersAhead`), falling back to the vendor's `board_settings.
 default_prep_minutes` (× 60 × `ordersAhead`) when there isn't enough recent
-  history to trust the real average, and is null only when neither is
-  available. `null` itself means there's nothing to say at all (order not
-  found).
+  history to trust the real average, and null only when neither is
+  available. `null` for the whole result (not just `seconds`) means there's
+  nothing to say at all (order not found).
 
 ## Connectivity
 

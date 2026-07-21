@@ -8,6 +8,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **"Show wait-time estimate" toggle** on `/dashboard/settings` (default on).
+  Off makes the customer status page always show only the queue-position
+  label ("2 orders ahead of you"), never a minute guess, regardless of how
+  much real order history the booth has — the backup prep-time input
+  disables itself while this is off since it would have no effect either
+  way (migration `0068`).
+- **Arrival confirmation ("hold prep until the customer arrives")**: a new
+  per-booth setting, meant for items made fresh per order (ice cream is the
+  motivating case), that holds a new order back instead of starting prep
+  the moment it's placed. With it on, the customer's order-status page shows
+  a big "I'm here, start my order" button; prep only starts once they tap
+  it, or a vendor starts it manually from the board. Off by default, and
+  walk-up (counter-entered) orders are never held, since there's no
+  "customer arrives later" for those.
+- **Ready orders now auto-clear after a timeout.** A ticket marked "ready"
+  that nobody collects used to sit on the live board forever until a vendor
+  manually marked it picked up. Vendors can now set an auto-clear timeout
+  (1 to 60 minutes, default 3, or turned off entirely) on the board
+  settings page; a forgotten ready order past that timeout completes on its
+  own so it stops cluttering the active queue.
+- **Restore to ready**, for when the auto-clear above fires too eagerly. On
+  the completed-orders history page, an order the auto-clear timeout closed
+  (not one a vendor closed by hand) now shows a "Restore to ready" button
+  that puts it right back on the live board.
 - **Completed-orders history**: the live board drops a ticket the moment
   it's marked picked up, which is right for the active queue but left no
   way to pull it back up. A new `/dashboard/completed` page shows a
@@ -78,6 +102,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Double-spaced button labels ("New order", "Booths · 3/5 open").**
+  Both buttons split their label across several elements (an icon, plain
+  text, a couple of responsive-hide spans) as direct children of a flex
+  container with `gap-2` — the gap applies between every child, so it added
+  extra space between words on top of the literal spaces already in the
+  text, on the live order board's "New order" and booth-status buttons.
+  Each label is now one child instead of several, so the gap only fires
+  once, between the icon and the label.
+- **Profile page's two-column layout desynced under a tall card.** A raw
+  CSS grid tracks row height to its tallest cell, so once "Social &
+  website" outgrew "Stall name," every row after it started late in both
+  columns, leaving a visible gap under the shorter cards below. Switched to
+  two independent stacking columns — the same fix already applied to the
+  board-settings page.
 - **A free item in an otherwise-priced order showed "$0.00" instead of
   "Free"**, on both the customer order-status page and the vendor live
   board/completed-orders card. Two layers: the UI's price column was gated
@@ -252,6 +290,26 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
+- **Profile page column order**: column 1 is stall name → profile picture →
+  change password; column 2 is display name → social links (was social
+  links above display name). Meant as the standard profile-page order
+  across every kit, not just qkit.
+- **Completed-orders history now defaults to "Today"** instead of "All
+  time" — a vendor lands on today's picked-up orders instead of scrolling
+  through their entire history first. The cutoff comes from a server-
+  computed SGT day-start rather than each device's own local clock, so it
+  can't drift by hours if the vendor's browser timezone differs from the
+  server's.
+- **Daily order-number reset now defaults on, for every vendor, and the
+  display number is zero-padded to 3 digits.** The board and customer
+  status page show a small daily-reset ticket number (e.g. #003, was a bare
+  "3") instead of the permanent one (#0847) by default now, matching how
+  event/pop-up food-booth counters commonly number orders — previously off
+  by default (migration `0067`, applied to existing vendors too, not just
+  new ones). Grows past 3 digits rather than truncating on a heavy day, same
+  never-shrink convention as the permanent number's own padding. Display-
+  only: the real, permanent `order_number` is unaffected either way, and a
+  vendor can still turn it off from `/dashboard/settings`.
 - **Brand name standardized to lowercase `qkit`** across prose, UI copy, aria-labels,
   and docs (was inconsistently "QKit"/"Qkit" in ~87 files) — matches the sibling
   kits (`loopkit`) and the Merqo dashboard's kit registry. The navbar/hero/footer

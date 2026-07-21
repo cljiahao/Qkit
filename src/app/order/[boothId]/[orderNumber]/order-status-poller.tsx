@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Bell, BellRing } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { toast } from "sonner";
 import { usePolling } from "@/hooks/use-polling";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import {
@@ -12,7 +15,11 @@ import {
   requestNotifyPermission,
   unlockAudio,
 } from "@/lib/order-alerts";
-import { getOrderStatus, getWaitEstimate } from "./status-actions";
+import {
+  getOrderStatus,
+  getWaitEstimate,
+  confirmArrival,
+} from "./status-actions";
 import {
   elapsedLabel,
   estimateRangeLabel,
@@ -42,7 +49,7 @@ interface Props {
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, string> = {
-  pending: "Your order is being reviewed",
+  pending: "Waiting for you to arrive",
   confirmed: "Your order has been confirmed",
   preparing: "Your order is being prepared",
   ready: "Your order is ready for pickup!",
@@ -84,6 +91,19 @@ export function OrderStatusPoller({
   // agree. Ticks each 30s (matches the minute-granular label); stops once the
   // order is terminal — a finished order's stamp no longer changes.
   const [nowMs, setNowMs] = useState<number | null>(null);
+
+  const { pending: confirming, run: runConfirmArrival } = useAsyncAction();
+
+  function onConfirmArrival() {
+    return runConfirmArrival(async () => {
+      const res = await confirmArrival(boothId, orderNumber, token);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      setStatus("preparing");
+    });
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -182,6 +202,31 @@ export function OrderStatusPoller({
   const willNotify = waiting && (armed || permission === "granted");
   // Be honest about what they'll get: a system popup only where supported.
   const notifyWorks = isNotifySupported() && permission === "granted";
+
+  if (status === "pending") {
+    return (
+      <div className="space-y-5 px-6 py-6 text-center">
+        <div className="flex justify-center">
+          <OrderStatusBadge status={status} />
+        </div>
+        <p className="font-display text-xl font-semibold">
+          We start making it fresh once you&apos;re at the counter.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Tap below when you arrive to pick up.
+        </p>
+        <Button
+          type="button"
+          size="lg"
+          className="h-14 w-full rounded-xl text-base font-semibold"
+          onClick={onConfirmArrival}
+          disabled={confirming}
+        >
+          {confirming ? "Starting…" : "I'm here, start my order"}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 px-6 py-6 text-center">

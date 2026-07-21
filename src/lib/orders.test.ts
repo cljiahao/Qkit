@@ -38,6 +38,7 @@ function order(over: Partial<Order>): Order {
     access_token: over.access_token ?? "tok-test",
     priority_bumped_at: over.priority_bumped_at ?? null,
     source: over.source ?? "qr",
+    auto_completed: over.auto_completed ?? false,
   };
 }
 
@@ -442,17 +443,21 @@ describe("displayOrderNumber", () => {
     expect(displayOrderNumber("0847", null)).toBe("0847");
   });
 
-  it("computes a 1-indexed rank relative to the baseline", () => {
-    expect(displayOrderNumber("0001", "0001")).toBe("1");
-    expect(displayOrderNumber("0002", "0001")).toBe("2");
-    expect(displayOrderNumber("0847", "0845")).toBe("3");
+  it("computes a 1-indexed rank relative to the baseline, zero-padded to 3 digits", () => {
+    expect(displayOrderNumber("0001", "0001")).toBe("001");
+    expect(displayOrderNumber("0002", "0001")).toBe("002");
+    expect(displayOrderNumber("0847", "0845")).toBe("003");
   });
 
   it("stays stable regardless of later orders completing — pure arithmetic on fixed inputs, not a live recount", () => {
     // Order #0847, whatever the baseline is, gives the same rank every call —
     // nothing here depends on which other orders are still active.
-    expect(displayOrderNumber("0847", "0845")).toBe("3");
-    expect(displayOrderNumber("0847", "0845")).toBe("3");
+    expect(displayOrderNumber("0847", "0845")).toBe("003");
+    expect(displayOrderNumber("0847", "0845")).toBe("003");
+  });
+
+  it("grows past 3 digits instead of truncating a rank of 1000+", () => {
+    expect(displayOrderNumber("2040", "1000")).toBe("1041");
   });
 
   it("falls back to the real order_number for a non-positive rank (data inconsistency)", () => {

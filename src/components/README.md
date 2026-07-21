@@ -39,6 +39,11 @@ prompt, metric })`: compact rating widget posting to
 })`: client-side resize-to-WebP (`resizeToWebp`, capped 1600px banner /
   1000px thumb) then upload to the `booth-images` Supabase Storage bucket;
   validates type (jpeg/png/webp) and a 15MB source cap.
+- `info-tooltip.tsx` — `InfoTooltip({ children, label })`: the shared (i)
+  trigger + `Tooltip`/`TooltipContent` shape for a one-sentence explanation
+  next to a label/switch/section title — extracted from `ticket-section.tsx`
+  and the settings form's six near-identical inline copies (both now use
+  this instead).
 - `item-customizer.tsx` — `ItemCustomizer({ item, onClose, onAdd })`: a
   bottom `Sheet` for picking a menu item's option groups (single-select via
   `ToggleGroup type="single"`, multi-select via `type="multiple"`) before
@@ -93,7 +98,11 @@ overdueMin, onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's
   dialog, disabled once already bumped) instead of a separate icon button.
   In multi-booth view, a full-width banner above the header shows the booth
   name next to a `boothColor()` dot. One "attention wash" background at a
-  time, prioritized overdue > payment-claimed > aging.
+  time, prioritized overdue > payment-claimed > aging. A closed card whose
+  `order.auto_completed` is true (the ready-order auto-clear sweep, not a
+  vendor's own "Mark Picked Up" tap, completed it) shows a "Restore to
+  ready" button calling `restoreAutoCompleted` — this is where the
+  completed-orders history list's undo for a premature auto-clear lives.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
   transitions, action-button wiring, and the `displayNumber` override.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
@@ -144,8 +153,11 @@ idPrefix })`: the vendor profile/booth-edit form inputs for the four social
   pick a category (pass/payment/pro/other) + free-text body, posts via
   `submitSupportMessage`.
 - `ticket-section.tsx` — `Section({ icon, eyebrow, title, description,
-children })`: the bordered "ticket card" section shell (icon chip + title +
-  description + content) used by settings/profile/booth-form pages.
+tooltip, children })`: the bordered "ticket card" section shell (icon chip +
+  title + description + content) used by settings/profile/booth-form pages.
+  `tooltip` (optional) renders an `InfoTooltip` next to the title for detail
+  that doesn't need to be visible by default — used by the settings page's
+  Notifications card for its iOS/Android caveat.
 - `ticket.tsx` — `Ticket({ as, shadow, radius, dashed, clip, borderColor,
 ...props })`: the shared "kitchen ticket" card look (scalloped/perforated
   edge via the `.ticket` CSS class) — centralizes border/radius/shadow so

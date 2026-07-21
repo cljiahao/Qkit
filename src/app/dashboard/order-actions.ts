@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
+import { boardSettingsSchema } from "@/lib/schemas";
 import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus, PaymentStatus } from "@/lib/types";
@@ -26,7 +27,7 @@ async function loadOwnOrder(orderId: string) {
   const supabase = await createServerClient();
   const { data: order, error } = await supabase
     .from("orders")
-    .select("id, status, payment_status")
+    .select("id, status, payment_status, auto_completed")
     .eq("id", orderId)
     .maybeSingle();
   // A read error (not a missing row) is otherwise indistinguishable from
@@ -138,6 +139,49 @@ export async function revertOrderAdvance(
 }
 
 /**
+ * Restore an order the auto-clear sweep completed prematurely back to
+ * 'ready'. Deliberately narrower than revertOrderAdvance — this is a fresh
+ * page load with no client-held prior state (the completed-orders history
+ * page, not the live board's short undo window) — and only ever applies to
+ * a sweep-driven completion (auto_completed=true), never a vendor's own
+ * manual "Mark Picked Up" tap. Restamps ready_at to now — without this, the
+ * restored order still carries its original (pre-sweep) ready_at and the
+ * very next sweepReadyOrders poll would immediately re-complete it, making
+ * the restore a no-op in practice.
+ */
+export async function restoreAutoCompleted(
+  orderId: string,
+): Promise<StatusResult> {
+  if (!idSchema.safeParse(orderId).success)
+    return { success: false, error: "Invalid order" };
+
+  const { supabase, order } = await loadOwnOrder(orderId);
+  if (!supabase || !order) return { success: false, error: "Order not found" };
+  if (order.status !== "completed" || !order.auto_completed)
+    return { success: false, error: "This order can't be restored" };
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({
+      status: "ready",
+      ready_at: new Date().toISOString(),
+      completed_at: null,
+      auto_completed: false,
+    })
+    .eq("id", orderId)
+    .eq("status", "completed")
+    .select("id");
+  if (error) {
+    console.error("restoreAutoCompleted failed", error.message);
+    return { success: false, error: "Failed to restore order" };
+  }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed — please refresh." };
+
+  return { success: true, status: "ready" };
+}
+
+/**
  * Mark a claimed/pending order as paid. Idempotent if already confirmed;
  * rejects orders that never needed payment.
  */
@@ -244,4 +288,41 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     return { success: false, error: "Order changed — please refresh." };
 
   return { success: true };
+}
+
+/**
+ * Auto-clear sweep: flips every 'ready' order older than the vendor's
+ * configured ready_auto_clear_min (board_settings) to 'completed'. No id
+ * param — bulk, RLS-scoped to the caller's own booths (orders_vendor_update)
+ * exactly like every other mutation here. Called on a client poll (see
+ * realtime-order-board.tsx) rather than a DB cron job, matching this
+ * codebase's existing usePolling pattern. Returns void: this is a background
+ * sweep the caller doesn't surface a toast for — a real failure is logged,
+ * and the next poll simply retries.
+ */
+export async function sweepReadyOrders(): Promise<void> {
+  const user = await getUser();
+  if (!user) return;
+
+  const supabase = await createServerClient();
+  const { data: vendor } = await supabase
+    .from("vendors")
+    .select("board_settings")
+    .eq("id", user.id)
+    .maybeSingle();
+  const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
+  const minutes = settings.success ? settings.data.ready_auto_clear_min : null;
+  if (minutes === null) return;
+
+  const cutoff = new Date(Date.now() - minutes * 60_000).toISOString();
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      auto_completed: true,
+    })
+    .eq("status", "ready")
+    .lt("ready_at", cutoff);
+  if (error) console.error("sweepReadyOrders failed", error.message);
 }

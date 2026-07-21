@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePolling } from "@/hooks/use-polling";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -43,6 +44,7 @@ import {
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
+import { sweepReadyOrders } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
@@ -284,6 +286,18 @@ export function RealtimeOrderBoard({
     handleNewOrder,
   );
 
+  // Auto-clear sweep for stale 'ready' orders (board_settings.
+  // ready_auto_clear_min) — a plain periodic tick, not tied to any local
+  // state. The board's own realtime channel (useRealtimeOrders above)
+  // already reflects whatever this flips, so no client-side merge is
+  // needed here.
+  usePolling(
+    useCallback(async () => {
+      await sweepReadyOrders();
+    }, []),
+    { intervalMs: 30_000, enabled: boardSettings.ready_auto_clear_min != null },
+  );
+
   const active = sortActiveOrders(
     orders.filter((o) => !isTerminal(o.status) || undoWindowIds.has(o.id)),
     sortOrder,
@@ -390,9 +404,16 @@ export function RealtimeOrderBoard({
                 aria-label={`Booth status, ${activeBoothCount} of ${booths.length} open`}
               >
                 <Store className="size-3.5" />
-                <span className="hidden sm:inline">Booths · </span>
-                {activeBoothCount}/{booths.length}
-                <span className="hidden sm:inline"> open</span>
+                {/* One flex child, not four: Button's `gap-2` inserts space
+                    between EVERY direct child, so "Booths · "/count/" open"
+                    as separate children each got an extra gap stacked on
+                    top of their own literal spaces. Wrapping the label in a
+                    single span makes gap-2 fire once (icon → label). */}
+                <span>
+                  <span className="hidden sm:inline">Booths · </span>
+                  {activeBoothCount}/{booths.length}
+                  <span className="hidden sm:inline"> open</span>
+                </span>
               </Button>
             )
           )}
@@ -403,7 +424,12 @@ export function RealtimeOrderBoard({
             aria-label="New order"
           >
             <Plus className="size-3.5" />
-            New<span className="hidden sm:inline"> order</span>
+            {/* Same fix as the booth-status button above: one label child,
+                not two, so gap-2 doesn't add space between "New" and the
+                span on top of the span's own leading space. */}
+            <span>
+              New<span className="hidden sm:inline"> order</span>
+            </span>
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>

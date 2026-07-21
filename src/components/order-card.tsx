@@ -24,6 +24,7 @@ import {
   isTerminal,
   orderAgeTone,
   elapsedMinutes,
+  type AgeTone,
 } from "@/lib/orders";
 import {
   advanceOrder,
@@ -31,6 +32,7 @@ import {
   cancelOrder as cancelOrderAction,
   confirmOrderPayment,
   revertOrderAdvance,
+  restoreAutoCompleted,
 } from "@/app/dashboard/order-actions";
 import { sgtClock, shortDateTime } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
@@ -148,7 +150,15 @@ export function OrderCard({
   // at a glance how long an order has waited against a ~10-min prep target.
   const nowMs = useNow(30_000, !isTerminal(status));
   const elapsedMs = nowMs - Date.parse(order.created_at);
-  const tone = orderAgeTone(elapsedMs, agingMin, overdueMin);
+  // Pending is pre-arrival (arrival-confirmation booth, customer hasn't
+  // tapped "I'm here" yet) — nothing is cooking or waiting yet, so the
+  // ticket-aging clock's premise doesn't apply. Force "fresh" instead of
+  // running the elapsed time through orderAgeTone, so a pending order never
+  // gets the amber/red attention wash meant for food getting cold.
+  const tone: AgeTone =
+    status === "pending"
+      ? "fresh"
+      : orderAgeTone(elapsedMs, agingMin, overdueMin);
   const ageMins = elapsedMinutes(elapsedMs);
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
@@ -264,6 +274,14 @@ export function OrderCard({
     });
   }
 
+  function restoreToReady() {
+    return run(async () => {
+      const res = await restoreAutoCompleted(order.id);
+      if (!res.success) toast.error(res.error);
+      else setStatus(res.status);
+    });
+  }
+
   const closed = isTerminal(status);
 
   // One full-card attention wash at a time, by priority. A background (not a
@@ -296,15 +314,24 @@ export function OrderCard({
           name/number block below it, and the full card width means a
           booth's actual name reads at a glance instead of being guessed
           from a dot. Same boothColor() hash as the filter tabs/dropdown, so
-          the colour association still carries onto the card. Only rendered
-          in multi-booth view. */}
+          the colour association still carries onto the card. Tinted
+          background + bigger dot (not just a small quiet dot on a neutral
+          bar) — staff triaging a lot of orders at once need the booth to
+          register at a glance, not on close reading. Only rendered in
+          multi-booth view. */}
       {boothName && (
-        <div className="flex items-center gap-1.5 rounded-t-xl border-b border-border/60 bg-secondary/40 px-4 py-1.5">
+        <div
+          className="flex items-center gap-2 rounded-t-xl border-b px-4 py-2"
+          style={{
+            backgroundColor: `color-mix(in oklch, ${boothColor(order.booth_id)} 22%, var(--color-secondary))`,
+            borderColor: `color-mix(in oklch, ${boothColor(order.booth_id)} 45%, var(--color-border))`,
+          }}
+        >
           <span
-            className="size-2 shrink-0 rounded-full"
+            className="size-3 shrink-0 rounded-full ring-2 ring-background"
             style={{ backgroundColor: boothColor(order.booth_id) }}
           />
-          <span className="truncate text-xs font-semibold tracking-wide text-foreground uppercase">
+          <span className="truncate text-sm font-bold tracking-wide text-foreground uppercase">
             {boothName}
           </span>
         </div>
@@ -474,8 +501,7 @@ export function OrderCard({
           <div className="px-4 pb-3">
             <Button
               size="sm"
-              variant="outline"
-              className="h-10 w-full rounded-lg text-muted-foreground"
+              className="h-10 w-full rounded-lg bg-blue-600 font-semibold text-white hover:bg-blue-700"
               onClick={confirmPayment}
               disabled={updating}
             >
@@ -564,6 +590,21 @@ export function OrderCard({
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {closed && !pendingUndo && order.auto_completed && (
+          <div className="flex gap-2 px-4 pb-4">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-11 flex-1 rounded-lg font-semibold"
+              onClick={restoreToReady}
+              disabled={updating}
+            >
+              <Undo2 className="size-4" /> Restore to ready
+            </Button>
           </div>
         )}
 

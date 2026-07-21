@@ -5,7 +5,7 @@ import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
 // secret, which the board never needs (least privilege). Single source so
 // the two read sites can't drift out of sync with each other.
 export const BOARD_ORDER_COLUMNS =
-  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at, source" as const;
+  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at, source, auto_completed" as const;
 
 // A finished order — off the active board, no further transitions. Single
 // source of truth for the "is this done" check that several views need.
@@ -25,6 +25,7 @@ export function isTerminal(status: OrderStatus): boolean {
 export const ADVANCE: Partial<
   Record<OrderStatus, { next: OrderStatus; label: string }>
 > = {
+  pending: { next: "preparing", label: "Start now" },
   preparing: { next: "ready", label: "Mark Ready" },
   ready: { next: "completed", label: "Mark Picked Up" },
 };
@@ -269,7 +270,10 @@ export function queuePositionLabel(ordersAhead: number): string {
  * trigger — this is arithmetic on fixed values, not a live recount. Falls
  * back to the real, permanent order_number when the setting is off
  * (`baselineNumber` null) or the arithmetic would be non-positive (a data
- * inconsistency, not something to ever show as "#0" or negative). Pure.
+ * inconsistency, not something to ever show as "#0" or negative). Zero-padded
+ * to 3 digits like a ticket counter ("003", not "3") — grows past that
+ * rather than truncating, same never-shrink convention as the real
+ * order_number's own 4-digit pad (migration 0063). Pure.
  */
 export function displayOrderNumber(
   orderNumber: string,
@@ -277,5 +281,5 @@ export function displayOrderNumber(
 ): string {
   if (baselineNumber === null) return orderNumber;
   const rank = Number(orderNumber) - Number(baselineNumber) + 1;
-  return rank > 0 ? String(rank) : orderNumber;
+  return rank > 0 ? String(rank).padStart(3, "0") : orderNumber;
 }

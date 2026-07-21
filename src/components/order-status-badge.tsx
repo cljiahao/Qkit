@@ -4,7 +4,7 @@ import type { OrderStatus } from "@/lib/types";
 const STATUS_CONFIG: Record<OrderStatus, { label: string; className: string }> =
   {
     pending: {
-      label: "Pending",
+      label: "Waiting for you",
       className:
         "text-status-pending border-status-pending/35 bg-status-pending/12",
     },

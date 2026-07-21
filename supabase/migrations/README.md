@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-64 files, `0000` through `0063`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0063` tail; skimmed by filename/theme otherwise. The
+69 files, `0000` through `0068`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0068` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -176,6 +176,57 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   `qkit.next_order_number` (`0008`) has the same bug but is dead code (its
   EXECUTE grant was revoked from every role in `0041`; `place_order` has
   inlined its own numbering since `0030`), so it's left alone.
+  `0064_booth_arrival_confirmation.sql` adds "scan-to-start" arrival
+  confirmation: `booths.requires_arrival_confirm` (bool, default `false`),
+  and recreates `place_order` (verbatim from its `0063` body otherwise) so a
+  new order's initial `status` is `'pending'` instead of a hardcoded
+  `'preparing'` when the booth has the flag on — for items made fresh per
+  order (e.g. ice cream) where prep shouldn't start until the customer is
+  actually at the counter; the customer's own status page then prompts them
+  to confirm arrival (`confirmArrival`,
+  `src/app/order/[boothId]/[orderNumber]/status-actions.ts`), which flips the
+  order to `'preparing'` itself. `place_walkup_order` is deliberately left
+  untouched — a vendor keying in a counter order in person has no "customer
+  arrives later" to wait for. `0065_ready_auto_clear.sql` adds the
+  ready-order auto-clear sweep: `orders.auto_completed` (bool, default
+  `false`, set only by `sweepReadyOrders` and cleared only by
+  `restoreAutoCompleted` or a fresh manual advance — see
+  `src/app/dashboard/order-actions.ts` — so a completed-orders "Restore to
+  ready" affordance can tell a sweep-driven completion apart from a vendor's
+  own "Mark Picked Up" tap) plus a `ready_auto_clear_min` key added to
+  `board_settings`'s `DEFAULT` and backfilled onto every existing vendor row
+  (same JSONB-blob pattern as `0059`/`0062`), defaulting to `3` minutes — a
+  deliberately conservative default (see the job board's own reasoning
+  against the originally-floated 15 seconds) that a vendor can retune (or
+  set to `null` to disable the sweep) from `/dashboard/settings`.
+  `0066_menu_categories.sql` adds `booths.menu_categories` (jsonb, default
+  `[]`): an ordered list of `{id, label}` menu sections. Each `menu_items`
+  entry may reference one by `id` via its own `category` key (added
+  client-side only, not a DB column — `menu_items` stays a flat jsonb
+  array); a stable id means renaming a section never requires rewriting
+  every item that references it, and an item with no/unknown category id
+  renders in an "Other" bucket, always last. `get_booth_for_order` is
+  recreated (verbatim from its `0053` body otherwise) to also return
+  `menu_categories`, so the customer menu page can group items by section
+  in the same round trip that already fetches the menu. No UI reads or
+  writes this column yet (menu-editor, booth-form, customer menu grouping)
+  — schema/RPC only. `0067_daily_order_number_reset_default_on.sql` flips
+  `daily_order_number_reset`'s column `DEFAULT` from `false` to `true` and,
+  unlike every prior JSONB-blob default bump in this history, also
+  unconditionally overwrites the key on every existing vendor row (not the
+  usual `WHERE NOT (... ? 'key')` backfill guard, since every row already
+  has the key by now) — a deliberate product default change, not a missing-
+  key backfill: qkit's pop-up/event booths expect a small daily-reset
+  ticket number by default, matching e.g. bubble-tea-chain counter
+  numbering. Purely display (see `0062`); the real `order_number` is
+  untouched. `0068_show_wait_estimate.sql` adds `board_settings
+  .show_wait_estimate` (bool, default `true`): an opt-OUT toggle for the
+  customer status page's numeric wait estimate — off leaves only the
+  queue-position label shown, never a minute guess, regardless of how much
+  real order history exists (`getWaitEstimate` in
+  `src/app/order/[boothId]/[orderNumber]/status-actions.ts`). Normal
+  missing-key backfill (unlike `0067`'s unconditional overwrite) since
+  every vendor starts at the same `true` default with nothing to preserve.
 
 ## Connectivity
 

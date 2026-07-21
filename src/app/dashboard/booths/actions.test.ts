@@ -116,8 +116,10 @@ function makeBooth(over: Partial<BoothFormInput> = {}): BoothFormInput {
     is_active: false,
     hours: null,
     menu_items: [makeItem()],
+    menu_categories: [],
     payment: null,
     social_links: null,
+    requires_arrival_confirm: false,
     ...over,
   };
 }
@@ -226,6 +228,22 @@ describe("saveBooth entitlement enforcement", () => {
     expect(res).toEqual({ success: true, boothId: "b-new" });
     const row = h.insertSpy.mock.calls[0][0] as { social_links: unknown };
     expect(row.social_links).toEqual(socialLinks);
+  });
+});
+
+describe("saveBooth — requires_arrival_confirm", () => {
+  it("passes the arrival-confirm flag through to the stored row", async () => {
+    await saveBooth(makeBooth({ requires_arrival_confirm: true }));
+    expect(h.insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ requires_arrival_confirm: true }),
+    );
+  });
+
+  it("defaults to false when omitted", async () => {
+    await saveBooth(makeBooth());
+    expect(h.insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ requires_arrival_confirm: false }),
+    );
   });
 });
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type {
+  MenuCategory,
   MenuItem,
   OptionGroup,
   OrderItem,
@@ -142,6 +143,10 @@ export const menuItemFormSchema = z.object({
   // The menu editor builds these; sanitizeOptionGroups runs before save so a
   // half-filled group never reaches optionGroupSchema (choices.min(1)).
   option_groups: z.array(optionGroupSchema).optional(),
+  // Id of an entry in the booth's menu_categories list. Not itself
+  // validated against that list here (a stale/removed id is treated as
+  // "Other" at render time) — see MenuItem.category.
+  category: z.string().nullable().optional(),
   available: z.boolean(),
   // Optional sold-out cap (Pro). null/absent = unlimited.
   stock: z.number().int().nonnegative().max(1_000_000).nullable().optional(),
@@ -149,6 +154,16 @@ export const menuItemFormSchema = z.object({
   // optionChoiceSchema's allergens for anything that varies by choice.
   allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
 });
+
+/** One ordered menu section (`booths.menu_categories`). Stable `id` so
+ * renaming a section never requires rewriting every item that references it. */
+export const menuCategorySchema = z.object({
+  id: z.string().min(1),
+  label: z.string().trim().min(1).max(40),
+});
+
+/** Ordered menu sections (`booths.menu_categories`). */
+export const menuCategoriesSchema = z.array(menuCategorySchema).max(40);
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
 const dayWindowSchema = z.object({ open: hhmm, close: hhmm });
@@ -331,11 +346,15 @@ export const boothFormSchema = z.object({
   is_active: z.boolean(),
   hours: boothHoursSchema.default(null),
   menu_items: z.array(menuItemFormSchema),
+  menu_categories: menuCategoriesSchema.default([]),
   // Optional BYO payment method; null = queue-only. Reuses paymentConfigSchema.
   payment: paymentConfigSchema.nullable().default(null),
   // null = inherit the vendor's profile-level defaults; non-null = a
   // complete per-booth override. See resolveSocialLinks.
   social_links: socialLinksSchema.nullable().default(null),
+  // Perishable-immediately items (ice cream) — hold prep until the customer
+  // confirms arrival on their status page. See migration 0064.
+  requires_arrival_confirm: z.boolean().default(false),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */
@@ -448,11 +467,19 @@ export const boardSettingsSchema = z
     // vendor originally proposed as a reasonable outer bound.
     undo_seconds: z.number().int().min(2).max(15),
     daily_order_number_reset: z.boolean(),
+    // false = the status page always shows a queue-position label, never a
+    // minute guess — the "orders ahead of you" line itself is unaffected,
+    // this only gates the numeric estimate layered on top of it (see
+    // getWaitEstimate in status-actions.ts).
+    show_wait_estimate: z.boolean(),
     // null = no vendor-set fallback (the wait estimate falls back to a
     // queue-position label instead — see estimateWaitSeconds). 1-60min is a
     // generous bound against a fat-fingered value, same rationale as the
     // aging/overdue caps above.
     default_prep_minutes: z.number().int().min(1).max(60).nullable(),
+    // null = the auto-clear sweep is off. 1-60min mirrors default_prep_minutes'
+    // bound rationale — generous headroom against a fat-fingered value.
+    ready_auto_clear_min: z.number().int().min(1).max(60).nullable(),
   })
   .refine((d) => d.overdue_min > d.aging_min, {
     message: "Overdue must be later than amber",
@@ -484,9 +511,16 @@ export const menuItemSchema = z.object({
   image_url: menuImageUrl,
   available: z.boolean(),
   option_groups: z.array(optionGroupSchema).optional(),
+  category: z.string().nullable().optional(),
   stock: z.number().int().nonnegative().nullable().optional(),
   allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
 });
+
+/** Parse a JSONB booths.menu_categories value; any malformed shape degrades to []. */
+export function parseMenuCategories(data: unknown): MenuCategory[] {
+  const parsed = menuCategoriesSchema.safeParse(data);
+  return parsed.success ? parsed.data : [];
+}
 
 export const orderItemSchema = z.object({
   menuItemId: z.string(),
@@ -538,6 +572,10 @@ export const orderRowSchema = z.object({
   // Tolerant like payment_method_kind above — a payload from mid-deploy
   // (before migration 0060 landed everywhere) shouldn't drop the event.
   source: z.enum(["qr", "walkup"]).catch("qr"),
+  // Tolerant like source above — a payload from mid-deploy (before migration
+  // 0065 lands everywhere) shouldn't drop the event; degrade to false,
+  // matching the column's own DB default.
+  auto_completed: z.boolean().catch(false),
 });
 
 /** Parse a JSONB menu_items value, dropping any malformed entries. */

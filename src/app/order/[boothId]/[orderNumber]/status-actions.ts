@@ -1,9 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { boardSettingsSchema, parseOrderRef } from "@/lib/schemas";
 import { ordersAheadOf } from "@/lib/orders";
 import { estimateWaitSeconds, type StatsOrder } from "@/lib/stats";
+import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus } from "@/lib/types";
 
 // Active (non-terminal) statuses that occupy a spot in the live queue.
@@ -46,6 +49,67 @@ export async function getOrderStatus(
   if (error) console.error("getOrderStatus failed", error.message);
 
   return data?.status ?? null;
+}
+
+/**
+ * Customer-triggered arrival confirmation: flips a booth-gated order from
+ * 'pending' (see migration 0064's place_order branch) to 'preparing',
+ * starting prep. Token-gated and rate-limited exactly like claimPayment
+ * (payment-actions.ts) — both are unauthenticated, customer-initiated state
+ * flips on the same order row.
+ */
+export async function confirmArrival(
+  boothId: string,
+  orderNumber: string,
+  token: string,
+): Promise<ActionResult> {
+  const parsed = parseOrderRef(boothId, orderNumber, token);
+  if (!parsed.ok)
+    return {
+      success: false,
+      error: parsed.field === "booth" ? "Invalid booth" : "Invalid order",
+    };
+
+  const supabase = await createServiceClient();
+
+  // Throttle per IP+booth for the same reason as claimPayment's guard — small
+  // sequential order numbers are easy to enumerate.
+  const ip = clientIp(await headers());
+  const allowed = await rateLimit(supabase, `arrival:${boothId}:${ip}`, 10, 60);
+  if (!allowed)
+    return { success: false, error: "Too many attempts. Wait a moment." };
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({ status: "preparing" })
+    .eq("booth_id", boothId)
+    .eq("order_number", orderNumber)
+    .eq("access_token", token)
+    .eq("status", "pending")
+    .select("id");
+  if (error) {
+    console.error("confirmArrival failed", error.message);
+    return {
+      success: false,
+      error: "Could not start your order. Try again.",
+    };
+  }
+  if (rows && rows.length > 0) return { success: true };
+
+  // Re-read to distinguish a harmless double-tap (already preparing — the
+  // vendor may have hit "Start now" first) from a genuine problem: any
+  // non-pending, non-cancelled status counts as already started (idempotent
+  // success); a still-pending, cancelled, or missing order reports failure.
+  const { data: cur } = await supabase
+    .from("orders")
+    .select("status")
+    .eq("booth_id", boothId)
+    .eq("order_number", orderNumber)
+    .eq("access_token", token)
+    .maybeSingle();
+  if (cur && cur.status !== "pending" && cur.status !== "cancelled")
+    return { success: true };
+  return { success: false, error: "Could not start your order. Try again." };
 }
 
 export type WaitEstimate = {
@@ -113,9 +177,12 @@ export async function getWaitEstimate(
 
   // Vendor-set fallback (board_settings.default_prep_minutes), used only
   // when `recent` is too small for estimateWaitSeconds to trust — see its
-  // own doc comment. Decorative: any failure here just means no fallback
-  // (estimateWaitSeconds already handles null cleanly), never a page error.
+  // own doc comment. Also reads show_wait_estimate here (same row, no extra
+  // query). Decorative: any failure here just means no fallback and the
+  // estimate defaulting to shown (estimateWaitSeconds already handles null
+  // cleanly), never a page error.
   let fallbackAvgSeconds: number | null = null;
+  let showWaitEstimate = true;
   const { data: booth } = await supabase
     .from("booths")
     .select("vendor_id")
@@ -128,16 +195,24 @@ export async function getWaitEstimate(
       .eq("id", booth.vendor_id)
       .maybeSingle();
     const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
-    if (settings.success && settings.data.default_prep_minutes !== null)
-      fallbackAvgSeconds = settings.data.default_prep_minutes * 60;
+    if (settings.success) {
+      if (settings.data.default_prep_minutes !== null)
+        fallbackAvgSeconds = settings.data.default_prep_minutes * 60;
+      showWaitEstimate = settings.data.show_wait_estimate;
+    }
   }
 
   const ordersAhead = ordersAheadOf(active ?? [], target);
-  const seconds = estimateWaitSeconds(
-    (recent ?? []) as StatsOrder[],
-    ordersAhead,
-    undefined,
-    fallbackAvgSeconds,
-  );
+  // show_wait_estimate off means never a minute guess, even with plenty of
+  // real data — the queue-position label (ordersAhead, always returned
+  // above) is the only thing this vendor wants shown.
+  const seconds = showWaitEstimate
+    ? estimateWaitSeconds(
+        (recent ?? []) as StatsOrder[],
+        ordersAhead,
+        undefined,
+        fallbackAvgSeconds,
+      )
+    : null;
   return { seconds, ordersAhead };
 }

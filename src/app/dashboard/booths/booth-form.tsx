@@ -57,6 +57,7 @@ interface Props {
     menu_items: MenuItemFormInput[];
     payment: PaymentConfig | null;
     social_links: SocialLinks | null;
+    requires_arrival_confirm: boolean;
   };
 }
 
@@ -81,6 +82,9 @@ export function BoothForm({
   );
   const [socialLinks, setSocialLinks] = useState<SocialLinks | null>(
     initial?.social_links ?? null,
+  );
+  const [requiresArrivalConfirm, setRequiresArrivalConfirm] = useState(
+    initial?.requires_arrival_confirm ?? false,
   );
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
@@ -115,6 +119,7 @@ export function BoothForm({
       })),
       payment,
       social_links: socialLinks,
+      requires_arrival_confirm: requiresArrivalConfirm,
     };
     const parsed = boothFormSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -229,6 +234,25 @@ export function BoothForm({
               onChange={setHours}
               entitlement={entitlement}
             />
+
+            <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+              <Checkbox
+                checked={requiresArrivalConfirm}
+                onCheckedChange={(checked) =>
+                  setRequiresArrivalConfirm(checked === true)
+                }
+              />
+              <span className="text-sm">
+                <span className="font-medium">
+                  Hold prep until the customer arrives
+                </span>
+                <span className="block text-muted-foreground">
+                  For items made fresh per order, like ice cream. The order
+                  waits until the customer taps &quot;I&apos;m here&quot; on
+                  their status page.
+                </span>
+              </span>
+            </label>
           </Section>
 
           <Section

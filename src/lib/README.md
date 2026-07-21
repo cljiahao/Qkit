@@ -138,10 +138,13 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   (board_settings.daily_order_number_reset's display-only "position among
   today's orders" number — pure arithmetic on the immutable `order_number`/
   `created_at` relative to a caller-supplied baseline, never a live recount;
-  falls back to the real number when there's no baseline).
+  zero-padded to 3 digits like a ticket counter ("003"), growing past that
+  rather than truncating; falls back to the real number when there's no
+  baseline).
 - `orders.test.ts` — tests status transitions, patch-building (including the
   payment auto-confirm-on-complete rule), sorting, age/label formatting, and
-  `displayOrderNumber`'s baseline arithmetic + real-number fallbacks.
+  `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth, and
+  real-number fallbacks.
 - `payments/` — PayNow QR generation and the payment-method adapter registry
   (pointer/PayNow/Stripe-stub); see its own README.
 - `plan.test.ts` — tests entitlement resolution across plan/pass/pro
@@ -202,8 +205,12 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `feedbackSchema`, `supportMessageSchema`, `profileNameSchema`/
   `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema` (now also
   `daily_order_number_reset: boolean` and `default_prep_minutes:
-1-60|null`, migration 0062), `pricingFormSchema`/`grantPassSchema`,
-  `parseMenuItems`/`parseOrderItems`.
+1-60|null`, migration 0062; `show_wait_estimate: boolean`, migration 0068),
+  `pricingFormSchema`/`grantPassSchema`,
+  `parseMenuItems`/`parseOrderItems`, `menuCategorySchema`/
+  `menuCategoriesSchema`/`parseMenuCategories` (booth's ordered
+  `{id, label}` menu sections, migration 0066 — schema/types only, no UI
+  yet).
 - `schemas.test.ts` — the largest test file in `lib/`: validates every schema
   above, including the payment-config cross-field rules (xor of UEN/mobile,
   pointer requiring a link or QR) and the tolerant vs. strict read/write
@@ -218,11 +225,17 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   estimate, null below `minSample`; takes an optional
   `fallbackAvgSecondsPerOrder` — board_settings.default_prep_minutes × 60 —
   used only below that sample size, so a vendor's manual estimate never
-  overrides real, trusted data).
+  overrides real, trusted data), `currentPrepEstimate` (same threshold gate
+  as `estimateWaitSeconds`, but returns the recent average in minutes plus
+  the raw sample count/`minSample` instead of multiplying by orders-ahead —
+  a vendor-facing "here's what's live right now" label for the Settings
+  page, not part of any customer-facing wait calculation).
 - `stats.test.ts` — tests bucketing, margin computation, refund detection,
-  fulfilment-rate math, the trend/wait series against synthetic orders, and
+  fulfilment-rate math, the trend/wait series against synthetic orders,
   `estimateWaitSeconds`'s fallback (used below the sample size, ignored once
-  real data meets it, null when neither is available).
+  real data meets it, null when neither is available), and
+  `currentPrepEstimate`'s below/at/custom-sample-size cases and its
+  sample-met-but-no-usable-wait-data null case.
 - `stock.ts` — `parseRemaining`/`remainingFor`: parses the
   `booth_remaining_stock` JSONB RPC result into a typed per-item remaining-
   count map (Postgres is authoritative; this just reports it to the cart UI).
@@ -250,9 +263,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `WEEKDAY_ORDER`/`WEEKDAY_LABELS`, display formatters `shortDay`/
   `sgtClock`/`sgtWeekdayTime`/`shortDateTime`, and `sgtStartOfDayIso` (the UTC
   instant for SGT midnight of a given moment — the query boundary for
-  "today" in SGT, e.g. the daily order-number reset baseline) — always
-  formats/computes in `Asia/Singapore`, never server UTC or the browser's tz,
-  to stay hydration-safe.
+  "today" in SGT, e.g. the daily order-number reset baseline and the
+  completed-orders page's default "Today" filter) — always formats/computes
+  in `Asia/Singapore`, never server UTC or the browser's tz, to stay
+  hydration-safe.
 - `tz.test.ts` — tests hour/weekday extraction, each display formatter
   against fixed ISO instants, and `sgtStartOfDayIso`'s day-boundary rollover.
 - `utils.ts` — `cn` (clsx + tailwind-merge), shared form style constants

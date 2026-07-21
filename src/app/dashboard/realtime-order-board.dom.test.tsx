@@ -28,6 +28,7 @@ function order(overrides: Partial<BoardOrder> = {}): BoardOrder {
     idempotency_key: null,
     priority_bumped_at: null,
     source: "qr",
+    auto_completed: false,
     ...overrides,
   };
 }
@@ -63,6 +64,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./booths/actions", () => ({ toggleBoothActive: vi.fn() }));
 vi.mock("./walkup-menu-actions", () => ({ getWalkupMenu: vi.fn() }));
 vi.mock("./walkup-actions", () => ({ placeWalkupOrder: vi.fn() }));
+vi.mock("./order-actions", () => ({ sweepReadyOrders: vi.fn() }));
 
 const BOOTHS = [{ id: "b1", name: "Kopi Corner", is_active: true, open: true }];
 
@@ -107,12 +109,19 @@ describe("RealtimeOrderBoard sort toggle", () => {
 });
 
 describe("RealtimeOrderBoard daily order-number reset", () => {
-  it("shows the real order_number when no baseline is supplied (feature off)", () => {
+  it("shows the real order_number when no baseline is supplied", () => {
+    // The component itself only reacts to dailyOrderNumberBaselines being
+    // populated — whether to fetch/pass one at all is decided server-side
+    // (page.tsx) from boardSettings.daily_order_number_reset, so this covers
+    // "no baseline" regardless of that flag's value.
     render(
       <RealtimeOrderBoard
         booths={BOOTHS}
         initialOrders={[order({ order_number: "0847" })]}
-        boardSettings={DEFAULT_BOARD_SETTINGS}
+        boardSettings={{
+          ...DEFAULT_BOARD_SETTINGS,
+          daily_order_number_reset: false,
+        }}
       />,
       { wrapper: TooltipProvider },
     );
@@ -132,7 +141,7 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("#3")).toBeInTheDocument();
+    expect(screen.getByText("#003")).toBeInTheDocument();
     expect(screen.queryByText("#0847")).not.toBeInTheDocument();
   });
 });

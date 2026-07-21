@@ -16,12 +16,14 @@ const {
   cancelOrder,
   bumpOrder,
   revertOrderAdvance,
+  restoreAutoCompleted,
 } = vi.hoisted(() => ({
   advanceOrder: vi.fn(),
   confirmOrderPayment: vi.fn(),
   cancelOrder: vi.fn(),
   bumpOrder: vi.fn(),
   revertOrderAdvance: vi.fn(),
+  restoreAutoCompleted: vi.fn(),
 }));
 
 vi.mock("@/app/dashboard/order-actions", () => ({
@@ -30,6 +32,7 @@ vi.mock("@/app/dashboard/order-actions", () => ({
   cancelOrder,
   bumpOrder,
   revertOrderAdvance,
+  restoreAutoCompleted,
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -54,6 +57,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     access_token: "tok-test",
     priority_bumped_at: null,
     source: "qr",
+    auto_completed: false,
     ...overrides,
   };
 }
@@ -64,11 +68,13 @@ beforeEach(() => {
   cancelOrder.mockReset();
   bumpOrder.mockReset();
   revertOrderAdvance.mockReset();
+  restoreAutoCompleted.mockReset();
   advanceOrder.mockResolvedValue({ success: true, status: "ready" });
   confirmOrderPayment.mockResolvedValue({ success: true });
   cancelOrder.mockResolvedValue({ success: true });
   bumpOrder.mockResolvedValue({ success: true });
   revertOrderAdvance.mockResolvedValue({ success: true, status: "preparing" });
+  restoreAutoCompleted.mockResolvedValue({ success: true, status: "ready" });
 });
 
 describe("OrderCard", () => {
@@ -369,5 +375,69 @@ describe("OrderCard payment", () => {
     expect(
       screen.queryByLabelText(/manually bumped to the front/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("OrderCard — pending arrival aging", () => {
+  it("never shows the aging/overdue wash or footer colour for a pending order, however old", () => {
+    const { container } = render(
+      <OrderCard
+        order={makeOrder({
+          status: "pending",
+          created_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    // Pre-arrival: nothing is cooking/waiting yet, so the ticket-aging clock's
+    // premise doesn't apply even though created_at is an hour old.
+    expect(
+      container.querySelector(".ticket-aging,.ticket-overdue,.ticket-alert"),
+    ).toBeNull();
+    const clock = screen.getByTitle("Time since the order arrived");
+    expect(clock).toHaveAttribute("aria-label", "60 minutes since arrival");
+    expect(clock.className).not.toMatch(/text-amber-600|text-status-cancelled/);
+  });
+});
+
+describe("OrderCard — restore auto-completed", () => {
+  it("shows Restore to ready only for a sweep-completed order", () => {
+    render(
+      <TooltipProvider>
+        <OrderCard
+          order={makeOrder({ status: "completed", auto_completed: true })}
+        />
+      </TooltipProvider>,
+    );
+    expect(
+      screen.getByRole("button", { name: /restore to ready/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the button for a manually completed order", () => {
+    render(
+      <TooltipProvider>
+        <OrderCard
+          order={makeOrder({ status: "completed", auto_completed: false })}
+        />
+      </TooltipProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: /restore to ready/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("calls restoreAutoCompleted and updates the badge on success", async () => {
+    render(
+      <TooltipProvider>
+        <OrderCard
+          order={makeOrder({ status: "completed", auto_completed: true })}
+        />
+      </TooltipProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /restore to ready/i }));
+    expect(restoreAutoCompleted).toHaveBeenCalledWith("o1");
+    await waitFor(() => expect(screen.getByText("Ready")).toBeInTheDocument());
   });
 });

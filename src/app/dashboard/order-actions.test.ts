@@ -4,32 +4,57 @@ import {
   confirmOrderPayment,
   cancelOrder,
   bumpOrder,
+  restoreAutoCompleted,
+  sweepReadyOrders,
 } from "./order-actions";
 
 // Mock the supabase server client's fluent chain and the vendor gate. Two
 // chains hang off `from("orders")`: a read (select→eq→maybeSingle) and a write
 // (update→eq→eq→select). `maybeSingle` is set per-test to the "current" order
 // row; `updateSelect` returns the updated rows — [] models a concurrent change
-// that the status/payment guard filtered out.
-const { getUserMock, maybeSingle, update, updateSelect } = vi.hoisted(() => {
+// that the status/payment guard filtered out. `from("vendors")` is a separate
+// branch (select→eq→maybeSingle) for sweepReadyOrders' board_settings read;
+// `update(...)` on the orders branch also exposes a `.eq().lt(...)` chain for
+// the sweep's bulk update alongside the existing `.eq().eq().select(...)`.
+const {
+  getUserMock,
+  maybeSingle,
+  update,
+  updateSelect,
+  vendorSingle,
+  sweepLt,
+} = vi.hoisted(() => {
   const updateSelect = vi.fn();
+  const sweepLt = vi.fn();
+  const vendorSingle = vi.fn();
   return {
     getUserMock: vi.fn(),
     maybeSingle: vi.fn(),
     update: vi.fn(() => ({
-      eq: () => ({ eq: () => ({ select: updateSelect }) }),
+      eq: () => ({
+        eq: () => ({ select: updateSelect }),
+        lt: sweepLt,
+      }),
     })),
     updateSelect,
+    vendorSingle,
+    sweepLt,
   };
 });
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: () =>
     Promise.resolve({
-      from: () => ({
-        select: () => ({ eq: () => ({ maybeSingle }) }),
-        update,
-      }),
+      from: (table: string) => {
+        if (table === "vendors")
+          return {
+            select: () => ({ eq: () => ({ maybeSingle: vendorSingle }) }),
+          };
+        return {
+          select: () => ({ eq: () => ({ maybeSingle }) }),
+          update,
+        };
+      },
     }),
 }));
 vi.mock("@/lib/supabase/get-user", () => ({ getUser: getUserMock }));
@@ -44,6 +69,25 @@ beforeEach(() => {
   updateSelect
     .mockReset()
     .mockResolvedValue({ data: [{ id: ID }], error: null });
+  // board_settings is always the full object in the DB (0065_ready_auto_clear
+  // sets a complete JSONB default) — boardSettingsSchema validates all its
+  // fields, not just ready_auto_clear_min, so the mock must be complete too.
+  vendorSingle.mockReset().mockResolvedValue({
+    data: {
+      board_settings: {
+        aging_min: 5,
+        overdue_min: 10,
+        sound_id: "chime",
+        desktop_notify: false,
+        undo_seconds: 4,
+        daily_order_number_reset: false,
+        show_wait_estimate: true,
+        default_prep_minutes: null,
+        ready_auto_clear_min: 3,
+      },
+    },
+  });
+  sweepLt.mockReset().mockResolvedValue({ error: null });
 });
 
 describe("advanceOrder", () => {
@@ -224,5 +268,107 @@ describe("bumpOrder", () => {
       success: false,
       error: "Order changed — please refresh.",
     });
+  });
+});
+
+describe("restoreAutoCompleted", () => {
+  it("restores an auto-cleared order back to ready", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "completed",
+        payment_status: "not_required",
+        auto_completed: true,
+      },
+    });
+    const res = await restoreAutoCompleted(ID);
+    expect(res).toEqual({ success: true, status: "ready" });
+    expect(update).toHaveBeenCalledWith({
+      status: "ready",
+      ready_at: expect.any(String),
+      completed_at: null,
+      auto_completed: false,
+    });
+  });
+
+  it("rejects an order the vendor completed manually", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "completed",
+        payment_status: "not_required",
+        auto_completed: false,
+      },
+    });
+    const res = await restoreAutoCompleted(ID);
+    expect(res.success).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an order that isn't completed at all", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "ready",
+        payment_status: "not_required",
+        auto_completed: false,
+      },
+    });
+    const res = await restoreAutoCompleted(ID);
+    expect(res.success).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh when the order changed concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "completed",
+        payment_status: "not_required",
+        auto_completed: true,
+      },
+    });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await restoreAutoCompleted(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed — please refresh.",
+    });
+  });
+});
+
+describe("sweepReadyOrders", () => {
+  it("sweeps ready orders older than the vendor's configured minutes", async () => {
+    await sweepReadyOrders();
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "completed", auto_completed: true }),
+    );
+    expect(sweepLt).toHaveBeenCalledWith("ready_at", expect.any(String));
+  });
+
+  it("does nothing when the vendor has disabled the sweep (null)", async () => {
+    vendorSingle.mockResolvedValue({
+      data: {
+        board_settings: {
+          aging_min: 5,
+          overdue_min: 10,
+          sound_id: "chime",
+          desktop_notify: false,
+          undo_seconds: 4,
+          daily_order_number_reset: false,
+          show_wait_estimate: true,
+          default_prep_minutes: null,
+          ready_auto_clear_min: null,
+        },
+      },
+    });
+    await sweepReadyOrders();
+    expect(sweepLt).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when not signed in", async () => {
+    getUserMock.mockResolvedValue(null);
+    await sweepReadyOrders();
+    expect(vendorSingle).not.toHaveBeenCalled();
   });
 });

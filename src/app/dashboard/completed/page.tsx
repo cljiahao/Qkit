@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
+import { sgtStartOfDayIso } from "@/lib/tz";
 import { CompletedOrdersList } from "./completed-orders-list";
 import type { BoardOrder } from "@/lib/types";
 
@@ -54,6 +55,7 @@ export default async function CompletedOrdersPage() {
         orders={orders}
         loadError={loadError}
         historyLimit={HISTORY_LIMIT}
+        todayStartIso={sgtStartOfDayIso()}
       />
     </div>
   );

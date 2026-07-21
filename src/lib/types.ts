@@ -26,7 +26,9 @@ export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
 // Vendor live-order-board preferences (qkit.vendors.board_settings jsonb).
 // Defaults here must match the column default in migration 0050
 // (undo_seconds added + backfilled in migration 0059; daily_order_number_reset
-// + default_prep_minutes added + backfilled in migration 0062).
+// + default_prep_minutes added + backfilled in migration 0062;
+// daily_order_number_reset flipped true, vendor-wide, in migration 0067;
+// show_wait_estimate added + backfilled true in migration 0068).
 export type BoardSettings = {
   // Amber threshold, minutes since order created.
   aging_min: number;
@@ -42,11 +44,20 @@ export type BoardSettings = {
   // order_number. That real number never changes — see
   // src/lib/orders.ts#displayOrderNumber.
   daily_order_number_reset: boolean;
+  // false = the status page always shows a queue-position label, never a
+  // minute guess — the "orders ahead of you" line itself is unaffected,
+  // only the numeric estimate layered on top of it. See getWaitEstimate in
+  // status-actions.ts. Default true.
+  show_wait_estimate: boolean;
   // Vendor-set fallback prep time (minutes) for the customer wait estimate,
   // used only when there isn't enough of today's order history yet to
   // compute one from real data (see estimateWaitSeconds in @/lib/stats).
   // null = no fallback configured; the page shows queue position instead.
   default_prep_minutes: number | null;
+  // Minutes a 'ready' order can sit uncollected before it auto-flips to
+  // 'completed' (sweepReadyOrders, order-actions.ts). null disables the
+  // sweep. Default 3 — see migration 0065.
+  ready_auto_clear_min: number | null;
 };
 
 // Falls back to this until migration 0050 (board_settings column) has been
@@ -58,9 +69,11 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   overdue_min: 10,
   sound_id: "chime",
   desktop_notify: false,
-  daily_order_number_reset: false,
+  daily_order_number_reset: true,
+  show_wait_estimate: true,
   default_prep_minutes: null,
   undo_seconds: 4,
+  ready_auto_clear_min: 3,
 };
 
 export type PaymentStatus =
@@ -120,6 +133,10 @@ export type OptionGroup = {
 };
 export type SelectedOption = { group: string; choice: string };
 
+// One ordered menu section (`booths.menu_categories`). Stable `id` so
+// renaming a section never requires rewriting every item that references it.
+export type MenuCategory = { id: string; label: string };
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -131,6 +148,9 @@ export type MenuItem = {
   image_url?: string | null;
   available: boolean;
   option_groups?: OptionGroup[];
+  // Id of an entry in the booth's menu_categories list. Unset/unmatched
+  // falls into the "Other" bucket, always rendered last.
+  category?: string | null;
   // Optional sold-out cap (Pro). null/absent = unlimited. Remaining is computed
   // live from non-cancelled orders (see booth_remaining_stock) — not decremented.
   stock?: number | null;
@@ -472,6 +492,7 @@ export interface Database {
           vendor_id: string;
           name: string;
           menu_items: Json;
+          menu_categories: Json;
           is_active: boolean;
           image_url: string | null;
           hours: Json | null;
@@ -480,12 +501,14 @@ export interface Database {
           created_at: string;
           short_code: string;
           social_links: Json | null;
+          requires_arrival_confirm: boolean;
         };
         Insert: {
           id?: string;
           vendor_id: string;
           name: string;
           menu_items?: Json;
+          menu_categories?: Json;
           is_active?: boolean;
           image_url?: string | null;
           hours?: Json | null;
@@ -494,12 +517,14 @@ export interface Database {
           created_at?: string;
           short_code?: string;
           social_links?: Json | null;
+          requires_arrival_confirm?: boolean;
         };
         Update: {
           id?: string;
           vendor_id?: string;
           name?: string;
           menu_items?: Json;
+          menu_categories?: Json;
           is_active?: boolean;
           image_url?: string | null;
           hours?: Json | null;
@@ -508,6 +533,7 @@ export interface Database {
           created_at?: string;
           short_code?: string;
           social_links?: Json | null;
+          requires_arrival_confirm?: boolean;
         };
         Relationships: [
           {
@@ -538,6 +564,7 @@ export interface Database {
           access_token: string;
           priority_bumped_at: string | null;
           source: OrderSource;
+          auto_completed: boolean;
         };
         Insert: {
           id?: string;
@@ -558,6 +585,7 @@ export interface Database {
           access_token?: string;
           priority_bumped_at?: string | null;
           source?: OrderSource;
+          auto_completed?: boolean;
         };
         Update: {
           id?: string;
@@ -578,6 +606,7 @@ export interface Database {
           access_token?: string;
           priority_bumped_at?: string | null;
           source?: OrderSource;
+          auto_completed?: boolean;
         };
         Relationships: [
           {

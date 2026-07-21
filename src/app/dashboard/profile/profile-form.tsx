@@ -163,193 +163,206 @@ export function ProfileForm({
   }
 
   return (
-    <div className="md:grid md:grid-cols-2 md:items-start md:gap-5">
-      <Section
-        icon={<Store className="size-5" />}
-        eyebrow="Shown to customers"
-        title="Stall name"
-        description="The name on your booth page and order tickets."
-      >
-        <div className="space-y-2">
-          <Label htmlFor="stall-name" className={FORM_LABEL_CLASS}>
-            Stall name
-          </Label>
-          <Input
-            id="stall-name"
-            value={name}
-            maxLength={100}
-            onChange={(e) => setName(e.target.value)}
-            className="h-11 rounded-xl"
-            aria-invalid={!!nameError}
-            aria-describedby={nameError ? "stall-name-error" : undefined}
-          />
-          {nameError && (
-            <p id="stall-name-error" className={FORM_ERROR_CLASS}>
-              {nameError}
+    // Two independent flex-column stacks, not a CSS grid: a grid's row
+    // tracks size to the tallest cell in that row, so once "Social &
+    // website" (SocialLinksFields, several rows) outgrew "Stall name" (one
+    // input), every row after it started late in BOTH columns — a gap under
+    // "Profile icon"/"Display name" that had nothing to do with their own
+    // content. Same fix as settings-form.tsx's board-timing layout; each
+    // column stacks its own sections instead. Column 1: stall name, profile
+    // picture, change password. Column 2: display name, social links — the
+    // standard order for every kit's profile page, not just qkit's.
+    <div className="flex flex-col gap-5 md:flex-row md:items-start">
+      <div className="flex flex-1 flex-col gap-5">
+        <Section
+          icon={<Store className="size-5" />}
+          eyebrow="Shown to customers"
+          title="Stall name"
+          description="The name on your booth page and order tickets."
+        >
+          <div className="space-y-2">
+            <Label htmlFor="stall-name" className={FORM_LABEL_CLASS}>
+              Stall name
+            </Label>
+            <Input
+              id="stall-name"
+              value={name}
+              maxLength={100}
+              onChange={(e) => setName(e.target.value)}
+              className="h-11 rounded-xl"
+              aria-invalid={!!nameError}
+              aria-describedby={nameError ? "stall-name-error" : undefined}
+            />
+            {nameError && (
+              <p id="stall-name-error" className={FORM_ERROR_CLASS}>
+                {nameError}
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={saveStall}
+              disabled={savingName || name === stallName}
+              className="h-10 rounded-xl font-semibold"
+            >
+              {savingName ? "Saving…" : "Save stall name"}
+            </Button>
+          </div>
+        </Section>
+
+        <Section
+          icon={<UserRound className="size-5" />}
+          eyebrow="Your account menu"
+          title="Profile icon"
+          description="A small image for your account menu. Defaults to your initials."
+        >
+          <div className="flex items-center gap-4">
+            <ImageUploader
+              vendorId={vendorId}
+              value={avatar}
+              onChange={saveAvatar}
+              variant="thumb"
+            />
+            <p className="text-xs text-muted-foreground">
+              Square images look best. Remove it any time to fall back to your
+              initials badge.
             </p>
-          )}
-        </div>
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={saveStall}
-            disabled={savingName || name === stallName}
-            className="h-10 rounded-xl font-semibold"
-          >
-            {savingName ? "Saving…" : "Save stall name"}
-          </Button>
-        </div>
-      </Section>
+          </div>
+        </Section>
 
-      <Section
-        icon={<Share2 className="size-5" />}
-        eyebrow="Shown to customers"
-        title="Social & website"
-        description="Shown on the order-status page after a customer orders. Applies to every booth unless overridden on that booth's own page."
-      >
-        <SocialLinksFields
-          value={links}
-          onChange={setLinks}
-          idPrefix="profile"
-        />
-        {linksError && <p className={FORM_ERROR_CLASS}>{linksError}</p>}
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={saveLinks}
-            disabled={savingLinks}
-            className="h-10 rounded-xl font-semibold"
-          >
-            {savingLinks ? "Saving…" : "Save links"}
-          </Button>
-        </div>
-      </Section>
-
-      <Section
-        icon={<UserRound className="size-5" />}
-        eyebrow="Your account menu"
-        title="Profile icon"
-        description="A small image for your account menu. Defaults to your initials."
-      >
-        <div className="flex items-center gap-4">
-          <ImageUploader
-            vendorId={vendorId}
-            value={avatar}
-            onChange={saveAvatar}
-            variant="thumb"
-          />
-          <p className="text-xs text-muted-foreground">
-            Square images look best. Remove it any time to fall back to your
-            initials badge.
-          </p>
-        </div>
-      </Section>
-
-      <Section
-        icon={<IdCard className="size-5" />}
-        eyebrow="Just for you"
-        title="Display name"
-        description="How qkit addresses you. Customers never see this."
-      >
-        <div className="space-y-2">
-          <Label htmlFor="display-name" className={FORM_LABEL_CLASS}>
-            Display name
-          </Label>
-          <Input
-            id="display-name"
-            value={display}
-            maxLength={60}
-            placeholder="e.g. Aisha"
-            onChange={(e) => setDisplay(e.target.value)}
-            className="h-11 rounded-xl"
-            aria-invalid={!!displayError}
-            aria-describedby={displayError ? "display-name-error" : undefined}
-          />
-          {displayError && (
-            <p id="display-name-error" className={FORM_ERROR_CLASS}>
-              {displayError}
+        <Section
+          icon={<KeyRound className="size-5" />}
+          eyebrow="Sign-in security"
+          title="Change password"
+          description="Set a new password. At least 8 characters."
+        >
+          <div className="space-y-2">
+            <Label htmlFor="email" className={FORM_LABEL_CLASS}>
+              Email
+            </Label>
+            <Input
+              id="email"
+              value={email}
+              readOnly
+              disabled
+              className="h-11 rounded-xl bg-secondary/60"
+            />
+            <p className="text-xs text-muted-foreground">
+              Your sign-in email. It can&apos;t be changed here.
             </p>
-          )}
-        </div>
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={saveDisplayName}
-            disabled={savingDisplay || display === displayName}
-            className="h-10 rounded-xl font-semibold"
-          >
-            {savingDisplay ? "Saving…" : "Save display name"}
-          </Button>
-        </div>
-      </Section>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-password" className={FORM_LABEL_CLASS}>
+              New password
+            </Label>
+            <Input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              placeholder="••••••••"
+              onChange={(e) => setPassword(e.target.value)}
+              className="h-11 rounded-xl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password" className={FORM_LABEL_CLASS}>
+              Confirm new password
+            </Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              placeholder="••••••••"
+              onChange={(e) => setConfirm(e.target.value)}
+              className="h-11 rounded-xl"
+              aria-invalid={!!pwError}
+              aria-describedby={pwError ? "confirm-password-error" : undefined}
+            />
+            {pwError && (
+              <p id="confirm-password-error" className={FORM_ERROR_CLASS}>
+                {pwError}
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={savePassword}
+              disabled={savingPw || !password || !confirm}
+              className="h-10 rounded-xl font-semibold"
+            >
+              {savingPw ? "Updating…" : "Update password"}
+            </Button>
+          </div>
+        </Section>
+      </div>
 
-      <Section
-        icon={<KeyRound className="size-5" />}
-        eyebrow="Sign-in security"
-        title="Change password"
-        description="Set a new password. At least 8 characters."
-      >
-        <div className="space-y-2">
-          <Label htmlFor="email" className={FORM_LABEL_CLASS}>
-            Email
-          </Label>
-          <Input
-            id="email"
-            value={email}
-            readOnly
-            disabled
-            className="h-11 rounded-xl bg-secondary/60"
+      <div className="flex flex-1 flex-col gap-5">
+        <Section
+          icon={<IdCard className="size-5" />}
+          eyebrow="Just for you"
+          title="Display name"
+          description="How qkit addresses you. Customers never see this."
+        >
+          <div className="space-y-2">
+            <Label htmlFor="display-name" className={FORM_LABEL_CLASS}>
+              Display name
+            </Label>
+            <Input
+              id="display-name"
+              value={display}
+              maxLength={60}
+              placeholder="e.g. Aisha"
+              onChange={(e) => setDisplay(e.target.value)}
+              className="h-11 rounded-xl"
+              aria-invalid={!!displayError}
+              aria-describedby={displayError ? "display-name-error" : undefined}
+            />
+            {displayError && (
+              <p id="display-name-error" className={FORM_ERROR_CLASS}>
+                {displayError}
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={saveDisplayName}
+              disabled={savingDisplay || display === displayName}
+              className="h-10 rounded-xl font-semibold"
+            >
+              {savingDisplay ? "Saving…" : "Save display name"}
+            </Button>
+          </div>
+        </Section>
+
+        <Section
+          icon={<Share2 className="size-5" />}
+          eyebrow="Shown to customers"
+          title="Social & website"
+          description="Shown on the order-status page after a customer orders. Applies to every booth unless overridden on that booth's own page."
+        >
+          <SocialLinksFields
+            value={links}
+            onChange={setLinks}
+            idPrefix="profile"
           />
-          <p className="text-xs text-muted-foreground">
-            Your sign-in email. It can&apos;t be changed here.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="new-password" className={FORM_LABEL_CLASS}>
-            New password
-          </Label>
-          <Input
-            id="new-password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            placeholder="••••••••"
-            onChange={(e) => setPassword(e.target.value)}
-            className="h-11 rounded-xl"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="confirm-password" className={FORM_LABEL_CLASS}>
-            Confirm new password
-          </Label>
-          <Input
-            id="confirm-password"
-            type="password"
-            autoComplete="new-password"
-            value={confirm}
-            placeholder="••••••••"
-            onChange={(e) => setConfirm(e.target.value)}
-            className="h-11 rounded-xl"
-            aria-invalid={!!pwError}
-            aria-describedby={pwError ? "confirm-password-error" : undefined}
-          />
-          {pwError && (
-            <p id="confirm-password-error" className={FORM_ERROR_CLASS}>
-              {pwError}
-            </p>
-          )}
-        </div>
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={savePassword}
-            disabled={savingPw || !password || !confirm}
-            className="h-10 rounded-xl font-semibold"
-          >
-            {savingPw ? "Updating…" : "Update password"}
-          </Button>
-        </div>
-      </Section>
+          {linksError && <p className={FORM_ERROR_CLASS}>{linksError}</p>}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={saveLinks}
+              disabled={savingLinks}
+              className="h-10 rounded-xl font-semibold"
+            >
+              {savingLinks ? "Saving…" : "Save links"}
+            </Button>
+          </div>
+        </Section>
+      </div>
     </div>
   );
 }
