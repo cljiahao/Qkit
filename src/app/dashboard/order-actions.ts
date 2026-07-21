@@ -144,7 +144,10 @@ export async function revertOrderAdvance(
  * page load with no client-held prior state (the completed-orders history
  * page, not the live board's short undo window) — and only ever applies to
  * a sweep-driven completion (auto_completed=true), never a vendor's own
- * manual "Mark Picked Up" tap.
+ * manual "Mark Picked Up" tap. Restamps ready_at to now — without this, the
+ * restored order still carries its original (pre-sweep) ready_at and the
+ * very next sweepReadyOrders poll would immediately re-complete it, making
+ * the restore a no-op in practice.
  */
 export async function restoreAutoCompleted(
   orderId: string,
@@ -159,7 +162,12 @@ export async function restoreAutoCompleted(
 
   const { data: rows, error } = await supabase
     .from("orders")
-    .update({ status: "ready", completed_at: null, auto_completed: false })
+    .update({
+      status: "ready",
+      ready_at: new Date().toISOString(),
+      completed_at: null,
+      auto_completed: false,
+    })
     .eq("id", orderId)
     .eq("status", "completed")
     .select("id");

@@ -24,6 +24,7 @@ import {
   isTerminal,
   orderAgeTone,
   elapsedMinutes,
+  type AgeTone,
 } from "@/lib/orders";
 import {
   advanceOrder,
@@ -149,7 +150,15 @@ export function OrderCard({
   // at a glance how long an order has waited against a ~10-min prep target.
   const nowMs = useNow(30_000, !isTerminal(status));
   const elapsedMs = nowMs - Date.parse(order.created_at);
-  const tone = orderAgeTone(elapsedMs, agingMin, overdueMin);
+  // Pending is pre-arrival (arrival-confirmation booth, customer hasn't
+  // tapped "I'm here" yet) — nothing is cooking or waiting yet, so the
+  // ticket-aging clock's premise doesn't apply. Force "fresh" instead of
+  // running the elapsed time through orderAgeTone, so a pending order never
+  // gets the amber/red attention wash meant for food getting cold.
+  const tone: AgeTone =
+    status === "pending"
+      ? "fresh"
+      : orderAgeTone(elapsedMs, agingMin, overdueMin);
   const ageMins = elapsedMinutes(elapsedMs);
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);

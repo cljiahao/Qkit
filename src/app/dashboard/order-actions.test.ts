@@ -284,6 +284,7 @@ describe("restoreAutoCompleted", () => {
     expect(res).toEqual({ success: true, status: "ready" });
     expect(update).toHaveBeenCalledWith({
       status: "ready",
+      ready_at: expect.any(String),
       completed_at: null,
       auto_completed: false,
     });

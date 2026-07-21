@@ -378,6 +378,28 @@ describe("OrderCard payment", () => {
   });
 });
 
+describe("OrderCard — pending arrival aging", () => {
+  it("never shows the aging/overdue wash or footer colour for a pending order, however old", () => {
+    const { container } = render(
+      <OrderCard
+        order={makeOrder({
+          status: "pending",
+          created_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    // Pre-arrival: nothing is cooking/waiting yet, so the ticket-aging clock's
+    // premise doesn't apply even though created_at is an hour old.
+    expect(
+      container.querySelector(".ticket-aging,.ticket-overdue,.ticket-alert"),
+    ).toBeNull();
+    const clock = screen.getByTitle("Time since the order arrived");
+    expect(clock).toHaveAttribute("aria-label", "60 minutes since arrival");
+    expect(clock.className).not.toMatch(/text-amber-600|text-status-cancelled/);
+  });
+});
+
 describe("OrderCard — restore auto-completed", () => {
   it("shows Restore to ready only for a sweep-completed order", () => {
     render(
