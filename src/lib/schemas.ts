@@ -544,6 +544,10 @@ export const orderRowSchema = z.object({
   // Tolerant like payment_method_kind above — a payload from mid-deploy
   // (before migration 0060 landed everywhere) shouldn't drop the event.
   source: z.enum(["qr", "walkup"]).catch("qr"),
+  // Tolerant like source above — a payload from mid-deploy (before migration
+  // 0065 lands everywhere) shouldn't drop the event; degrade to false,
+  // matching the column's own DB default.
+  auto_completed: z.boolean().catch(false),
 });
 
 /** Parse a JSONB menu_items value, dropping any malformed entries. */

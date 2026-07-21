@@ -75,6 +75,9 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       daily_order_number_reset: dailyReset,
       default_prep_minutes:
         defaultPrepMin.trim() === "" ? null : Number(defaultPrepMin),
+      // No UI control yet (pending a later task) — carry the existing value
+      // through untouched so a save from this form doesn't clobber it.
+      ready_auto_clear_min: initial.ready_auto_clear_min,
     };
   }
 

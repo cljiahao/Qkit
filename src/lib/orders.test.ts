@@ -38,6 +38,7 @@ function order(over: Partial<Order>): Order {
     access_token: over.access_token ?? "tok-test",
     priority_bumped_at: over.priority_bumped_at ?? null,
     source: over.source ?? "qr",
+    auto_completed: over.auto_completed ?? false,
   };
 }
 

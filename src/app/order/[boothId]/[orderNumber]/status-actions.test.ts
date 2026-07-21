@@ -191,6 +191,7 @@ describe("getWaitEstimate", () => {
               undo_seconds: 4,
               daily_order_number_reset: false,
               default_prep_minutes: 8,
+              ready_auto_clear_min: 3,
             },
           },
           error: null,

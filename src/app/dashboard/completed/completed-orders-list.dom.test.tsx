@@ -33,6 +33,7 @@ function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
     idempotency_key: null,
     priority_bumped_at: null,
     source: "qr",
+    auto_completed: false,
     ...overrides,
   };
 }

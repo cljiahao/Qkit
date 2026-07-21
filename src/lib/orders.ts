@@ -5,7 +5,7 @@ import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
 // secret, which the board never needs (least privilege). Single source so
 // the two read sites can't drift out of sync with each other.
 export const BOARD_ORDER_COLUMNS =
-  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at, source" as const;
+  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at, source, auto_completed" as const;
 
 // A finished order — off the active board, no further transitions. Single
 // source of truth for the "is this done" check that several views need.
