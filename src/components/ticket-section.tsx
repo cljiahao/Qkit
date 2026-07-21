@@ -1,10 +1,5 @@
-import { Info } from "lucide-react";
 import { Ticket } from "@/components/ticket";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { InfoTooltip } from "@/components/info-tooltip";
 
 export function Section({
   icon,
@@ -40,18 +35,9 @@ export function Section({
               {title}
             </h2>
             {tooltip && (
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  aria-label="More about this section"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Info className="size-3.5" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-72 text-pretty">
-                  {tooltip}
-                </TooltipContent>
-              </Tooltip>
+              <InfoTooltip label="More about this section">
+                {tooltip}
+              </InfoTooltip>
             )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
