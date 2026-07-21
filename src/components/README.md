@@ -93,7 +93,11 @@ overdueMin, onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's
   dialog, disabled once already bumped) instead of a separate icon button.
   In multi-booth view, a full-width banner above the header shows the booth
   name next to a `boothColor()` dot. One "attention wash" background at a
-  time, prioritized overdue > payment-claimed > aging.
+  time, prioritized overdue > payment-claimed > aging. A closed card whose
+  `order.auto_completed` is true (the ready-order auto-clear sweep, not a
+  vendor's own "Mark Picked Up" tap, completed it) shows a "Restore to
+  ready" button calling `restoreAutoCompleted` — this is where the
+  completed-orders history list's undo for a premature auto-clear lives.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
   transitions, action-button wiring, and the `displayNumber` override.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded

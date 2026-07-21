@@ -4,9 +4,10 @@
 
 Lets a vendor tune how their live order board gets their attention and what
 customers see while they wait: the amber/red aging thresholds, how long
-staff have to undo a tap, the new-order sound, desktop notifications,
-whether order numbers reset daily, and a backup prep-time estimate.
-Settings are stored on the vendor's own row and sync across devices.
+staff have to undo a tap, how long an uncollected ready order sits before
+auto-clearing, the new-order sound, desktop notifications, whether order
+numbers reset daily, and a backup prep-time estimate. Settings are stored on
+the vendor's own row and sync across devices.
 
 ## Contents
 
@@ -24,14 +25,17 @@ Settings are stored on the vendor's own row and sync across devices.
   screen" in the right, each column just `flex flex-col gap-5` on its own
   two sections. Deliberately not a single `md:grid md:grid-cols-2` over all
   four: a CSS grid's row tracks size to the tallest cell in that row, so once
-  "Board timing" (3 inputs) outgrew "New-order sound" (1 button row), row 2
+  "Board timing" (4 inputs) outgrew "New-order sound" (1 button row), row 2
   started late in _both_ columns — a visible gap over "Customer order
   screen" that had nothing to do with its own content. Nor CSS multi-column
   `columns` (the layout before that), which packs tightly but lets a card's
   visual position drift from its actual reading order. "Board timing" holds
-  the amber/red minute inputs plus the `undo_seconds` "Time to undo a tap"
-  field (2-15s, validated live via `boardSettingsSchema`); "New-order sound"
-  is a `ToggleGroup` of `SOUND_OPTIONS` — chime/bell/ding/horn/triple/off —
+  the amber/red minute inputs, the `undo_seconds` "Time to undo a tap" field
+  (2-15s, validated live via `boardSettingsSchema`), and an "Auto-clear a
+  ready order after" `ready_auto_clear_min` minute input (1-60, blank/empty
+  = `null` = the auto-clear sweep is off for that vendor entirely — see
+  `sweepReadyOrders` in `src/app/dashboard/order-actions.ts`); "New-order
+  sound" is a `ToggleGroup` of `SOUND_OPTIONS` — chime/bell/ding/horn/triple/off —
   that previews via `playSound` on pick and saves immediately;
   "Notifications" is a `Switch` that unlocks audio + requests `Notification`
   permission via `@/lib/order-alerts` before saving `desktop_notify`,
@@ -54,8 +58,8 @@ Settings are stored on the vendor's own row and sync across devices.
 - `settings-form.dom.test.tsx` — RTL/jsdom tests (rendered inside
   `TooltipProvider`, required by the undo-field info tooltip): rejects
   `overdue_min <= aging_min` and an out-of-range `undo_seconds` client-side
-  without calling the action, saves valid thresholds and a changed undo
-  window, previews+saves a sound pick, covers both notification-permission
+  without calling the action, saves valid thresholds, a changed undo window,
+  and a changed `ready_auto_clear_min` value, previews+saves a sound pick, covers both notification-permission
   branches (granted saves and enables; denied reverts the switch and shows an
   error), and the customer-order-screen section (saves the daily-reset
   toggle, saves a configured backup prep time, saves `null` when it's
@@ -73,9 +77,12 @@ order board (`src/app/dashboard`) and the customer status page
 render — `OrderCard` reads `agingMin`/`overdueMin`/`undoMs` (the last as
 `undo_seconds * 1000`), the dashboard's realtime listener plays the chosen
 sound / fires notifications, `daily_order_number_reset` feeds
-`displayOrderNumber` on both the board and the status page, and
+`displayOrderNumber` on both the board and the status page,
 `default_prep_minutes` feeds `getWaitEstimate`'s fallback
-(`src/app/order/[boothId]/[orderNumber]/status-actions.ts`).
+(`src/app/order/[boothId]/[orderNumber]/status-actions.ts`), and
+`ready_auto_clear_min` gates the board's 30s `sweepReadyOrders` poll
+(`realtime-order-board.tsx` in `src/app/dashboard`) — `null` (the field left
+blank here) disables the sweep entirely for that vendor.
 
 ## Parent
 

@@ -8,6 +8,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Arrival confirmation ("hold prep until the customer arrives")**: a new
+  per-booth setting, meant for items made fresh per order (ice cream is the
+  motivating case), that holds a new order back instead of starting prep
+  the moment it's placed. With it on, the customer's order-status page shows
+  a big "I'm here, start my order" button; prep only starts once they tap
+  it, or a vendor starts it manually from the board. Off by default, and
+  walk-up (counter-entered) orders are never held, since there's no
+  "customer arrives later" for those.
+- **Ready orders now auto-clear after a timeout.** A ticket marked "ready"
+  that nobody collects used to sit on the live board forever until a vendor
+  manually marked it picked up. Vendors can now set an auto-clear timeout
+  (1 to 60 minutes, default 3, or turned off entirely) on the board
+  settings page; a forgotten ready order past that timeout completes on its
+  own so it stops cluttering the active queue.
+- **Restore to ready**, for when the auto-clear above fires too eagerly. On
+  the completed-orders history page, an order the auto-clear timeout closed
+  (not one a vendor closed by hand) now shows a "Restore to ready" button
+  that puts it right back on the live board.
 - **Completed-orders history**: the live board drops a ticket the moment
   it's marked picked up, which is right for the active queue but left no
   way to pull it back up. A new `/dashboard/completed` page shows a

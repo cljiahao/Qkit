@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-64 files, `0000` through `0063`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0063` tail; skimmed by filename/theme otherwise. The
+66 files, `0000` through `0065`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0065` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -176,6 +176,29 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   `qkit.next_order_number` (`0008`) has the same bug but is dead code (its
   EXECUTE grant was revoked from every role in `0041`; `place_order` has
   inlined its own numbering since `0030`), so it's left alone.
+  `0064_booth_arrival_confirmation.sql` adds "scan-to-start" arrival
+  confirmation: `booths.requires_arrival_confirm` (bool, default `false`),
+  and recreates `place_order` (verbatim from its `0063` body otherwise) so a
+  new order's initial `status` is `'pending'` instead of a hardcoded
+  `'preparing'` when the booth has the flag on — for items made fresh per
+  order (e.g. ice cream) where prep shouldn't start until the customer is
+  actually at the counter; the customer's own status page then prompts them
+  to confirm arrival (`confirmArrival`,
+  `src/app/order/[boothId]/[orderNumber]/status-actions.ts`), which flips the
+  order to `'preparing'` itself. `place_walkup_order` is deliberately left
+  untouched — a vendor keying in a counter order in person has no "customer
+  arrives later" to wait for. `0065_ready_auto_clear.sql` adds the
+  ready-order auto-clear sweep: `orders.auto_completed` (bool, default
+  `false`, set only by `sweepReadyOrders` and cleared only by
+  `restoreAutoCompleted` or a fresh manual advance — see
+  `src/app/dashboard/order-actions.ts` — so a completed-orders "Restore to
+  ready" affordance can tell a sweep-driven completion apart from a vendor's
+  own "Mark Picked Up" tap) plus a `ready_auto_clear_min` key added to
+  `board_settings`'s `DEFAULT` and backfilled onto every existing vendor row
+  (same JSONB-blob pattern as `0059`/`0062`), defaulting to `3` minutes — a
+  deliberately conservative default (see the job board's own reasoning
+  against the originally-floated 15 seconds) that a vendor can retune (or
+  set to `null` to disable the sweep) from `/dashboard/settings`.
 
 ## Connectivity
 
