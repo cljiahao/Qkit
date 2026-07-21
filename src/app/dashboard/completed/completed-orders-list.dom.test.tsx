@@ -39,6 +39,11 @@ function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
 }
 
 const BOOTHS = [{ id: "b1", name: "Kopi Corner" }];
+// A cutoff so far in the past that the default "today" filter never
+// excludes anything a test set up — used by every test that isn't itself
+// exercising date-range filtering (which all use makeOrder's epoch
+// completed_at default).
+const EPOCH_ISO = new Date(0).toISOString();
 
 describe("CompletedOrdersList", () => {
   it("shows an empty state when there are no completed orders", () => {
@@ -48,6 +53,7 @@ describe("CompletedOrdersList", () => {
         orders={[]}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(screen.getByText("No completed orders yet")).toBeInTheDocument();
@@ -60,6 +66,7 @@ describe("CompletedOrdersList", () => {
         orders={[]}
         loadError={true}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(screen.getByRole("alert")).toHaveTextContent(
@@ -78,6 +85,7 @@ describe("CompletedOrdersList", () => {
         orders={orders}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(screen.getByText("#0001")).toBeInTheDocument();
@@ -92,6 +100,7 @@ describe("CompletedOrdersList", () => {
         orders={[order]}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(screen.queryByText("Kopi Corner")).not.toBeInTheDocument();
@@ -102,6 +111,7 @@ describe("CompletedOrdersList", () => {
         orders={[order]}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(screen.getByText("Kopi Corner")).toBeInTheDocument();
@@ -118,6 +128,7 @@ describe("CompletedOrdersList", () => {
         orders={orders}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     // Default pageSize is 12 — the 13th order starts on page 2.
@@ -134,6 +145,7 @@ describe("CompletedOrdersList", () => {
         orders={orders}
         loadError={false}
         historyLimit={1}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(
@@ -148,6 +160,7 @@ describe("CompletedOrdersList", () => {
         orders={[makeOrder({ id: "o1" })]}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(screen.getByText("1–1 of 1")).toBeInTheDocument();
@@ -165,6 +178,7 @@ describe("CompletedOrdersList", () => {
         orders={orders}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
     expect(screen.getByText("#0001")).toBeInTheDocument();
@@ -189,6 +203,7 @@ describe("CompletedOrdersList", () => {
         orders={orders}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
 
@@ -201,18 +216,25 @@ describe("CompletedOrdersList", () => {
     expect(screen.getByText("#0002")).toBeInTheDocument();
   });
 
-  it("filters by date range", async () => {
+  it("defaults to today's completed orders, then widens by date range", async () => {
     const user = userEvent.setup();
     const now = Date.now();
+    // Stand-in for sgtStartOfDayIso()'s result — "today" started 3h ago.
+    const todayStartIso = new Date(now - 3 * 60 * 60 * 1000).toISOString();
     const orders = [
       makeOrder({
-        id: "recent",
+        id: "today",
         order_number: "0001",
         completed_at: new Date(now - 60_000).toISOString(), // 1 min ago
       }),
       makeOrder({
-        id: "old",
+        id: "yesterday",
         order_number: "0002",
+        completed_at: new Date(now - 26 * 60 * 60 * 1000).toISOString(), // 26h ago
+      }),
+      makeOrder({
+        id: "old",
+        order_number: "0003",
         completed_at: new Date(now - 40 * 24 * 60 * 60 * 1000).toISOString(), // 40 days ago
       }),
     ];
@@ -222,15 +244,25 @@ describe("CompletedOrdersList", () => {
         orders={orders}
         loadError={false}
         historyLimit={500}
+        todayStartIso={todayStartIso}
       />,
     );
-    expect(screen.getByText("#0001")).toBeInTheDocument();
-    expect(screen.getByText("#0002")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "7 days" }));
-
+    // Defaults to "Today" — only the order from within the last 3h shows.
+    expect(screen.getByRole("button", { name: "Today" })).toHaveClass(
+      "text-primary",
+    );
     expect(screen.getByText("#0001")).toBeInTheDocument();
     expect(screen.queryByText("#0002")).not.toBeInTheDocument();
+    expect(screen.queryByText("#0003")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "7 days" }));
+    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(screen.getByText("#0002")).toBeInTheDocument();
+    expect(screen.queryByText("#0003")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "All time" }));
+    expect(screen.getByText("#0003")).toBeInTheDocument();
   });
 
   it("shows a no-match state when the search matches nothing", async () => {
@@ -241,6 +273,7 @@ describe("CompletedOrdersList", () => {
         orders={[makeOrder({ id: "o1" })]}
         loadError={false}
         historyLimit={500}
+        todayStartIso={EPOCH_ISO}
       />,
     );
 

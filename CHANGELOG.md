@@ -102,6 +102,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Profile page's two-column layout desynced under a tall card.** A raw
+  CSS grid tracks row height to its tallest cell, so once "Social &
+  website" outgrew "Stall name," every row after it started late in both
+  columns, leaving a visible gap under the shorter cards below. Switched to
+  two independent stacking columns — the same fix already applied to the
+  board-settings page.
 - **A free item in an otherwise-priced order showed "$0.00" instead of
   "Free"**, on both the customer order-status page and the vendor live
   board/completed-orders card. Two layers: the UI's price column was gated
@@ -276,6 +282,12 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
+- **Completed-orders history now defaults to "Today"** instead of "All
+  time" — a vendor lands on today's picked-up orders instead of scrolling
+  through their entire history first. The cutoff comes from a server-
+  computed SGT day-start rather than each device's own local clock, so it
+  can't drift by hours if the vendor's browser timezone differs from the
+  server's.
 - **Daily order-number reset now defaults on, for every vendor, and the
   display number is zero-padded to 3 digits.** The board and customer
   status page show a small daily-reset ticket number (e.g. #003, was a bare

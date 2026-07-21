@@ -263,9 +263,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `WEEKDAY_ORDER`/`WEEKDAY_LABELS`, display formatters `shortDay`/
   `sgtClock`/`sgtWeekdayTime`/`shortDateTime`, and `sgtStartOfDayIso` (the UTC
   instant for SGT midnight of a given moment — the query boundary for
-  "today" in SGT, e.g. the daily order-number reset baseline) — always
-  formats/computes in `Asia/Singapore`, never server UTC or the browser's tz,
-  to stay hydration-safe.
+  "today" in SGT, e.g. the daily order-number reset baseline and the
+  completed-orders page's default "Today" filter) — always formats/computes
+  in `Asia/Singapore`, never server UTC or the browser's tz, to stay
+  hydration-safe.
 - `tz.test.ts` — tests hour/weekday extraction, each display formatter
   against fixed ISO instants, and `sgtStartOfDayIso`'s day-boundary rollover.
 - `utils.ts` — `cn` (clsx + tailwind-merge), shared form style constants

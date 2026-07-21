@@ -30,19 +30,21 @@ const DATE_RANGES: { value: DateRange; label: string }[] = [
   { value: "all", label: "All time" },
 ];
 
-// Ms since the range's cutoff, or null for "all" (no filtering). A plain
-// function (not memoized against a fixed "now") — only called from the
-// filter below, itself only reached once a vendor picks a non-"all" range,
-// so the SSR/hydration-mismatch risk a fixed initial Date.now() would carry
-// doesn't apply: the default render (both server and client) is "all".
-function rangeCutoffMs(range: DateRange): number | null {
+// Ms since the range's cutoff, or null for "all" (no filtering). "today"
+// uses `todayStartIso` — computed once, server-side, via sgtStartOfDayIso —
+// rather than a client-local `new Date()`: the server likely runs UTC while
+// a vendor's browser runs SGT (or whatever their device is set to), so an
+// independently-recomputed local midnight would put the boundary up to 8
+// hours apart between server and client, changing which orders match and
+// causing a real hydration mismatch (not just a millisecond edge case) now
+// that "today" is the default render instead of an opt-in click. "7d"/"30d"
+// stay locally computed — safe, since they're never the initial state, only
+// reached after a vendor's own post-hydration click.
+function rangeCutoffMs(range: DateRange, todayStartIso: string): number | null {
   if (range === "all") return null;
-  const now = new Date();
-  if (range === "today") {
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  }
+  if (range === "today") return Date.parse(todayStartIso);
   const days = range === "7d" ? 7 : 30;
-  return now.getTime() - days * 24 * 60 * 60 * 1000;
+  return Date.now() - days * 24 * 60 * 60 * 1000;
 }
 
 export function CompletedOrdersList({
@@ -50,19 +52,21 @@ export function CompletedOrdersList({
   orders,
   loadError,
   historyLimit,
+  todayStartIso,
 }: {
   booths: Booth[];
   orders: BoardOrder[];
   loadError: boolean;
   historyLimit: number;
+  todayStartIso: string;
 }) {
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
   const multiBooth = booths.length > 1;
   const [boothFilter, setBoothFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange>("all");
+  const [dateRange, setDateRange] = useState<DateRange>("today");
 
-  const cutoffMs = rangeCutoffMs(dateRange);
+  const cutoffMs = rangeCutoffMs(dateRange, todayStartIso);
   const filtered = orders.filter((o) => {
     if (boothFilter !== "all" && o.booth_id !== boothFilter) return false;
     if (cutoffMs !== null) {
