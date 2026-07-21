@@ -68,4 +68,17 @@ describe("createVendor", () => {
     expect(result.success).toBe(false);
     expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
   });
+
+  it("returns an error when not authenticated, without inserting or seeding a profile", async () => {
+    getUser.mockResolvedValue({ data: { user: null } });
+
+    const result = await createVendor({ name: "Kopitiam Cart" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Not authenticated");
+    }
+    expect(insert).not.toHaveBeenCalled();
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
+  });
 });

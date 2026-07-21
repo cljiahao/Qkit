@@ -98,6 +98,11 @@ export const loadEntitlement = cache(
     // now, so by the time a vendor reaches the dashboard the profile already
     // exists; get_or_create_vendor_profile's own 'My Stall' fallback only
     // matters for the rare row with no profile at all.
+    // This call is deliberately NOT wrapped in try/catch (unlike the
+    // order-status page's use of the same helper) because a swallowed error
+    // here would misroute an onboarded vendor or silently show a wrong/stale
+    // name. This path's convention (see vendor read error handling above) is to
+    // fail loud rather than degrade silently.
     let vendorWithProfile: VendorWithProfile | null = null;
     if (vendor) {
       const profile = await getOrCreateVendorProfile(supabase, vendor.id, null);
