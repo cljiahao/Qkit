@@ -35,6 +35,7 @@ const DEFAULTS: BoardSettings = {
   undo_seconds: 4,
   daily_order_number_reset: false,
   default_prep_minutes: null,
+  ready_auto_clear_min: 3,
 };
 
 beforeEach(() => {
@@ -101,6 +102,23 @@ describe("SettingsForm thresholds", () => {
     await user.click(screen.getByRole("button", { name: /save timing/i }));
 
     expect(updateBoardSettings).not.toHaveBeenCalled();
+  });
+
+  it("saves a changed ready-auto-clear minutes value", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    render(
+      <TooltipProvider>
+        <SettingsForm initial={DEFAULTS} />
+      </TooltipProvider>,
+    );
+    const user = userEvent.setup();
+    const input = screen.getByLabelText(/auto-clear a ready order after/i);
+    await user.clear(input);
+    await user.type(input, "5");
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ ready_auto_clear_min: 5 }),
+    );
   });
 });
 

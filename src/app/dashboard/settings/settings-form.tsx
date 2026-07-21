@@ -42,6 +42,11 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
   const [agingMin, setAgingMin] = useState(String(initial.aging_min));
   const [overdueMin, setOverdueMin] = useState(String(initial.overdue_min));
   const [undoSeconds, setUndoSeconds] = useState(String(initial.undo_seconds));
+  const [readyAutoClearMin, setReadyAutoClearMin] = useState(
+    initial.ready_auto_clear_min != null
+      ? String(initial.ready_auto_clear_min)
+      : "",
+  );
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const { pending: savingThresholds, run: runThresholds } = useAsyncAction();
 
@@ -75,9 +80,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       daily_order_number_reset: dailyReset,
       default_prep_minutes:
         defaultPrepMin.trim() === "" ? null : Number(defaultPrepMin),
-      // No UI control yet (pending a later task) — carry the existing value
-      // through untouched so a save from this form doesn't clobber it.
-      ready_auto_clear_min: initial.ready_auto_clear_min,
+      ready_auto_clear_min:
+        readyAutoClearMin.trim() === "" ? null : Number(readyAutoClearMin),
     };
   }
 
@@ -178,7 +182,11 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
   const thresholdsUnchanged =
     agingMin === String(initial.aging_min) &&
     overdueMin === String(initial.overdue_min) &&
-    undoSeconds === String(initial.undo_seconds);
+    undoSeconds === String(initial.undo_seconds) &&
+    readyAutoClearMin ===
+      (initial.ready_auto_clear_min != null
+        ? String(initial.ready_auto_clear_min)
+        : "");
 
   const displayUnchanged =
     dailyReset === initial.daily_order_number_reset &&
@@ -199,7 +207,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         <Section
           icon={<Clock className="size-5" />}
           title="Board timing"
-          description="How fast a waiting ticket changes color, and how long staff have to undo an accidental tap."
+          description="How fast a waiting ticket changes color, how long staff have to undo an accidental tap, and whether a forgotten ready order clears itself."
         >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -288,6 +296,31 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                   }
                 />
                 <span className="text-sm text-muted-foreground">sec</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="ready-auto-clear-min"
+                className={FORM_LABEL_CLASS}
+              >
+                Auto-clear a ready order after
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="ready-auto-clear-min"
+                  type="number"
+                  min={1}
+                  max={60}
+                  placeholder="Off"
+                  value={readyAutoClearMin}
+                  onChange={(e) => setReadyAutoClearMin(e.target.value)}
+                  className="h-11 rounded-xl"
+                  aria-invalid={!!thresholdError}
+                  aria-describedby={
+                    thresholdError ? "threshold-error" : undefined
+                  }
+                />
+                <span className="text-sm text-muted-foreground">min</span>
               </div>
             </div>
           </div>
