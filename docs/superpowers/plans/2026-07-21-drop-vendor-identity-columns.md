@@ -84,11 +84,9 @@ alter table qkit.vendors
 Run: `pnpm vitest run test/db/drop-vendor-identity-columns.test.ts`
 Expected: PASS, 1 test.
 
-- [ ] **Step 5: Apply the migration to the shared dev DB**
+- [ ] **Step 5: Commit (do NOT apply the migration to any shared/live DB yet)**
 
-Run the project's `/supabase-migrate` skill (or `supabase db push` per the repo's normal migration flow).
-
-- [ ] **Step 6: Commit**
+`qkit.vendors.name` is still written by onboarding and `name`/`social_links` are still read raw by four admin pages until Task 2's code cutover lands — applying this migration to a shared/live environment before that would break vendor signup and the admin panel immediately. Applying it is deferred to the end of Task 2, once the dependent code no longer touches these columns.
 
 ```bash
 git add supabase/migrations/0069_drop_vendor_identity_columns.sql test/db/drop-vendor-identity-columns.test.ts
@@ -762,6 +760,10 @@ Expected: PASS — this is the first point since Step 2 where `pnpm check` is gr
 git add src/lib/types.ts src/lib/supabase/get-entitlement.ts src/lib/supabase/get-entitlement.test.ts src/app/onboarding/actions.ts src/app/onboarding/actions.test.ts src/lib/admin-vendor-names.ts src/lib/admin-vendor-names.test.ts src/app/admin/page.tsx src/app/admin/vendors/page.tsx "src/app/admin/vendors/[id]/page.tsx" src/app/admin/feedback/page.tsx
 git commit -m "feat: read vendor stall names from merqo.vendor_profile everywhere, drop the dead columns from types"
 ```
+
+- [ ] **Step 19: Apply migration 0069 to the shared dev DB**
+
+Only now is it safe: every remaining reader/writer of `qkit.vendors.name`/`social_links` was cut over in Steps 3-16 above, and Step 17 confirmed the whole suite is green with those columns gone from `src/lib/types.ts`. Run the project's `/supabase-migrate` skill (or `supabase db push` per the repo's normal migration flow) to apply `supabase/migrations/0069_drop_vendor_identity_columns.sql`.
 
 ---
 
