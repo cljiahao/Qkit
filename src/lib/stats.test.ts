@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   avgWaitSeconds,
   estimateWaitSeconds,
+  currentPrepEstimate,
   computeStats,
   pctChange,
   waitSeries,
@@ -533,6 +534,32 @@ describe("estimateWaitSeconds", () => {
 
   it("still returns null below the sample size when no fallback is configured", () => {
     expect(estimateWaitSeconds(readiedOrders(9, 120), 2, 10, null)).toBeNull();
+  });
+});
+
+describe("currentPrepEstimate", () => {
+  it("returns null avgMinutes and the raw count below the minimum sample size", () => {
+    expect(currentPrepEstimate(readiedOrders(9, 120))).toEqual({
+      avgMinutes: null,
+      sampleCount: 9,
+      minSample: 10,
+    });
+  });
+
+  it("returns the recent average in minutes once sample size is met", () => {
+    expect(currentPrepEstimate(readiedOrders(10, 120))).toEqual({
+      avgMinutes: 2,
+      sampleCount: 10,
+      minSample: 10,
+    });
+  });
+
+  it("respects a custom minimum sample size", () => {
+    expect(currentPrepEstimate(readiedOrders(3, 120), 3)).toEqual({
+      avgMinutes: 2,
+      sampleCount: 3,
+      minSample: 3,
+    });
   });
 });
 

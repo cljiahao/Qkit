@@ -221,11 +221,16 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   estimate, null below `minSample`; takes an optional
   `fallbackAvgSecondsPerOrder` — board_settings.default_prep_minutes × 60 —
   used only below that sample size, so a vendor's manual estimate never
-  overrides real, trusted data).
+  overrides real, trusted data), `currentPrepEstimate` (same threshold gate
+  as `estimateWaitSeconds`, but returns the recent average in minutes plus
+  the raw sample count/`minSample` instead of multiplying by orders-ahead —
+  a vendor-facing "here's what's live right now" label for the Settings
+  page, not part of any customer-facing wait calculation).
 - `stats.test.ts` — tests bucketing, margin computation, refund detection,
-  fulfilment-rate math, the trend/wait series against synthetic orders, and
+  fulfilment-rate math, the trend/wait series against synthetic orders,
   `estimateWaitSeconds`'s fallback (used below the sample size, ignored once
-  real data meets it, null when neither is available).
+  real data meets it, null when neither is available), and
+  `currentPrepEstimate`'s below/at/custom-sample-size cases.
 - `stock.ts` — `parseRemaining`/`remainingFor`: parses the
   `booth_remaining_stock` JSONB RPC result into a typed per-item remaining-
   count map (Postgres is authoritative; this just reports it to the cart UI).

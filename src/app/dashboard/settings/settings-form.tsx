@@ -37,7 +37,19 @@ const SOUND_OPTIONS: { id: SoundId; label: string }[] = [
   { id: "none", label: "Off" },
 ];
 
-export function SettingsForm({ initial }: { initial: BoardSettings }) {
+type PrepEstimate = {
+  avgMinutes: number | null;
+  sampleCount: number;
+  minSample: number;
+};
+
+export function SettingsForm({
+  initial,
+  prepEstimate,
+}: {
+  initial: BoardSettings;
+  prepEstimate: PrepEstimate;
+}) {
   const router = useRouter();
   const [agingMin, setAgingMin] = useState(String(initial.aging_min));
   const [overdueMin, setOverdueMin] = useState(String(initial.overdue_min));
@@ -503,10 +515,9 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         <Section
           icon={<Hourglass className="size-5" />}
           title="Customer order screen"
-          description="What a customer sees right after ordering."
-          tooltip="Two optional tweaks to the page a customer lands on right after ordering: a simplified order number, and a backup wait estimate."
+          description="Two optional tweaks to what a customer sees right after ordering: a simpler order number, and a backup wait estimate."
         >
-          <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <div className="flex items-center gap-3">
             <Switch
               checked={dailyReset}
               onCheckedChange={setDailyReset}
@@ -529,7 +540,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 </TooltipContent>
               </Tooltip>
             </span>
-          </label>
+          </div>
 
           <div className="space-y-2 border-t border-border pt-4">
             <div className="flex items-center gap-1.5">
@@ -568,6 +579,22 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 min per order
               </span>
             </div>
+            {prepEstimate.avgMinutes !== null ? (
+              <p className="text-xs text-muted-foreground">
+                Live right now: ~{Math.round(prepEstimate.avgMinutes)} min per
+                order from your last {prepEstimate.sampleCount} orders. This
+                backup isn&apos;t in use.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Not enough recent order history yet ({prepEstimate.sampleCount}{" "}
+                of {prepEstimate.minSample} orders). Customers currently see{" "}
+                {defaultPrepMin.trim() === ""
+                  ? "their queue position"
+                  : "this backup number"}{" "}
+                instead.
+              </p>
+            )}
           </div>
 
           {displayError && (

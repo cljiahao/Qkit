@@ -217,6 +217,26 @@ export function estimateWaitSeconds(
 }
 
 /**
+ * Vendor-facing snapshot of the same data estimateWaitSeconds draws on —
+ * average prep time per order (minutes) over the last completed orders, and
+ * how many of `minSample` that's built on. Same threshold gate, so a
+ * non-null `avgMinutes` here means the real estimate is live and the
+ * vendor's `default_prep_minutes` fallback currently isn't in use. Settings-
+ * page label only; not itself part of any customer-facing wait calculation.
+ */
+export function currentPrepEstimate(
+  recentOrders: StatsOrder[],
+  minSample = 10,
+): { avgMinutes: number | null; sampleCount: number; minSample: number } {
+  const sampleCount = recentOrders.length;
+  if (sampleCount < minSample) {
+    return { avgMinutes: null, sampleCount, minSample };
+  }
+  const avg = avgWaitSeconds(recentOrders);
+  return { avgMinutes: avg === null ? null : avg / 60, sampleCount, minSample };
+}
+
+/**
  * Per-bucket average wait + order volume across a window ending nowMs. Mirrors
  * windowSeries bucketing. A bucket with orders but none readied gets
  * avgWaitSeconds: null (rendered as a gap, not 0). Cancelled excluded.
