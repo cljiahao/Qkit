@@ -125,6 +125,10 @@ export type OptionGroup = {
 };
 export type SelectedOption = { group: string; choice: string };
 
+// One ordered menu section (`booths.menu_categories`). Stable `id` so
+// renaming a section never requires rewriting every item that references it.
+export type MenuCategory = { id: string; label: string };
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -136,6 +140,9 @@ export type MenuItem = {
   image_url?: string | null;
   available: boolean;
   option_groups?: OptionGroup[];
+  // Id of an entry in the booth's menu_categories list. Unset/unmatched
+  // falls into the "Other" bucket, always rendered last.
+  category?: string | null;
   // Optional sold-out cap (Pro). null/absent = unlimited. Remaining is computed
   // live from non-cancelled orders (see booth_remaining_stock) — not decremented.
   stock?: number | null;
@@ -477,6 +484,7 @@ export interface Database {
           vendor_id: string;
           name: string;
           menu_items: Json;
+          menu_categories: Json;
           is_active: boolean;
           image_url: string | null;
           hours: Json | null;
@@ -492,6 +500,7 @@ export interface Database {
           vendor_id: string;
           name: string;
           menu_items?: Json;
+          menu_categories?: Json;
           is_active?: boolean;
           image_url?: string | null;
           hours?: Json | null;
@@ -507,6 +516,7 @@ export interface Database {
           vendor_id?: string;
           name?: string;
           menu_items?: Json;
+          menu_categories?: Json;
           is_active?: boolean;
           image_url?: string | null;
           hours?: Json | null;

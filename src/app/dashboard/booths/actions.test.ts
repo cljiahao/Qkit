@@ -116,6 +116,7 @@ function makeBooth(over: Partial<BoothFormInput> = {}): BoothFormInput {
     is_active: false,
     hours: null,
     menu_items: [makeItem()],
+    menu_categories: [],
     payment: null,
     social_links: null,
     requires_arrival_confirm: false,

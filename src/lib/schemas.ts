@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type {
+  MenuCategory,
   MenuItem,
   OptionGroup,
   OrderItem,
@@ -142,6 +143,10 @@ export const menuItemFormSchema = z.object({
   // The menu editor builds these; sanitizeOptionGroups runs before save so a
   // half-filled group never reaches optionGroupSchema (choices.min(1)).
   option_groups: z.array(optionGroupSchema).optional(),
+  // Id of an entry in the booth's menu_categories list. Not itself
+  // validated against that list here (a stale/removed id is treated as
+  // "Other" at render time) — see MenuItem.category.
+  category: z.string().nullable().optional(),
   available: z.boolean(),
   // Optional sold-out cap (Pro). null/absent = unlimited.
   stock: z.number().int().nonnegative().max(1_000_000).nullable().optional(),
@@ -149,6 +154,16 @@ export const menuItemFormSchema = z.object({
   // optionChoiceSchema's allergens for anything that varies by choice.
   allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
 });
+
+/** One ordered menu section (`booths.menu_categories`). Stable `id` so
+ * renaming a section never requires rewriting every item that references it. */
+export const menuCategorySchema = z.object({
+  id: z.string().min(1),
+  label: z.string().trim().min(1).max(40),
+});
+
+/** Ordered menu sections (`booths.menu_categories`). */
+export const menuCategoriesSchema = z.array(menuCategorySchema).max(40);
 
 const hhmm = z.string().regex(/^\d{2}:\d{2}$/, "Use HH:MM");
 const dayWindowSchema = z.object({ open: hhmm, close: hhmm });
@@ -331,6 +346,7 @@ export const boothFormSchema = z.object({
   is_active: z.boolean(),
   hours: boothHoursSchema.default(null),
   menu_items: z.array(menuItemFormSchema),
+  menu_categories: menuCategoriesSchema.default([]),
   // Optional BYO payment method; null = queue-only. Reuses paymentConfigSchema.
   payment: paymentConfigSchema.nullable().default(null),
   // null = inherit the vendor's profile-level defaults; non-null = a
@@ -490,9 +506,16 @@ export const menuItemSchema = z.object({
   image_url: menuImageUrl,
   available: z.boolean(),
   option_groups: z.array(optionGroupSchema).optional(),
+  category: z.string().nullable().optional(),
   stock: z.number().int().nonnegative().nullable().optional(),
   allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
 });
+
+/** Parse a JSONB booths.menu_categories value; any malformed shape degrades to []. */
+export function parseMenuCategories(data: unknown): MenuCategory[] {
+  const parsed = menuCategoriesSchema.safeParse(data);
+  return parsed.success ? parsed.data : [];
+}
 
 export const orderItemSchema = z.object({
   menuItemId: z.string(),
