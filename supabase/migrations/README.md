@@ -229,11 +229,14 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   every vendor starts at the same `true` default with nothing to preserve.
   `0069_drop_vendor_identity_columns.sql` drops `qkit.vendors.name` and
   `qkit.vendors.social_links` — dead since the 2026-07-17 shared-vendor-profile
-  cutover moved both to `merqo.vendor_profile`, backfilled by `0054`. Applied
-  only once every remaining raw reader/writer of these two columns (onboarding,
-  four admin pages) was cut over to `getOrCreateVendorProfile`/
-  `vendorStallNames` — see
+  cutover moved both to `merqo.vendor_profile`, backfilled by `0054`. Every
+  remaining raw reader/writer of these two columns (onboarding, four admin
+  pages) was cut over to `getOrCreateVendorProfile`/`vendorStallNames` in the
+  same change — see
   `docs/superpowers/specs/2026-07-21-drop-vendor-identity-columns-design.md`.
+  **Not yet applied to any shared/live DB as of this writing** — the code is
+  correct either way (it never reads these columns off the raw row), but
+  apply this migration promptly to avoid carrying dead columns indefinitely.
 
 ## Connectivity
 
