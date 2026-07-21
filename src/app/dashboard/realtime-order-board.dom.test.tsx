@@ -141,7 +141,7 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("#3")).toBeInTheDocument();
+    expect(screen.getByText("#003")).toBeInTheDocument();
     expect(screen.queryByText("#0847")).not.toBeInTheDocument();
   });
 });

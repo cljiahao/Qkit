@@ -27,7 +27,8 @@ export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
 // Defaults here must match the column default in migration 0050
 // (undo_seconds added + backfilled in migration 0059; daily_order_number_reset
 // + default_prep_minutes added + backfilled in migration 0062;
-// daily_order_number_reset flipped true, vendor-wide, in migration 0067).
+// daily_order_number_reset flipped true, vendor-wide, in migration 0067;
+// show_wait_estimate added + backfilled true in migration 0068).
 export type BoardSettings = {
   // Amber threshold, minutes since order created.
   aging_min: number;
@@ -43,6 +44,11 @@ export type BoardSettings = {
   // order_number. That real number never changes — see
   // src/lib/orders.ts#displayOrderNumber.
   daily_order_number_reset: boolean;
+  // false = the status page always shows a queue-position label, never a
+  // minute guess — the "orders ahead of you" line itself is unaffected,
+  // only the numeric estimate layered on top of it. See getWaitEstimate in
+  // status-actions.ts. Default true.
+  show_wait_estimate: boolean;
   // Vendor-set fallback prep time (minutes) for the customer wait estimate,
   // used only when there isn't enough of today's order history yet to
   // compute one from real data (see estimateWaitSeconds in @/lib/stats).
@@ -64,6 +70,7 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   sound_id: "chime",
   desktop_notify: false,
   daily_order_number_reset: true,
+  show_wait_estimate: true,
   default_prep_minutes: null,
   undo_seconds: 4,
   ready_auto_clear_min: 3,

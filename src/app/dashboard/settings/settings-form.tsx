@@ -3,18 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, Clock, Hourglass, Info, Volume2 } from "lucide-react";
+import { Bell, Clock, Hourglass, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Section } from "@/components/ticket-section";
+import { InfoTooltip } from "@/components/info-tooltip";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { boardSettingsSchema } from "@/lib/schemas";
 import {
@@ -76,6 +72,9 @@ export function SettingsForm({
   const [dailyReset, setDailyReset] = useState(
     initial.daily_order_number_reset,
   );
+  const [showWaitEstimate, setShowWaitEstimate] = useState(
+    initial.show_wait_estimate,
+  );
   const [defaultPrepMin, setDefaultPrepMin] = useState(
     initial.default_prep_minutes != null
       ? String(initial.default_prep_minutes)
@@ -95,6 +94,7 @@ export function SettingsForm({
       desktop_notify: desktopNotify,
       undo_seconds: Number(undoSeconds),
       daily_order_number_reset: dailyReset,
+      show_wait_estimate: showWaitEstimate,
       default_prep_minutes:
         defaultPrepMin.trim() === "" ? null : Number(defaultPrepMin),
       ready_auto_clear_min:
@@ -221,6 +221,7 @@ export function SettingsForm({
 
   const displayUnchanged =
     dailyReset === initial.daily_order_number_reset &&
+    showWaitEstimate === initial.show_wait_estimate &&
     defaultPrepMin ===
       (initial.default_prep_minutes != null
         ? String(initial.default_prep_minutes)
@@ -249,7 +250,7 @@ export function SettingsForm({
                 unlabeled block read as an arbitrary pile of numbers. */}
             <div>
               <p className="mb-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
-                Ticket colour
+                Ticket color
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -257,19 +258,10 @@ export function SettingsForm({
                     <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
                       Turn amber after
                     </Label>
-                    <Tooltip>
-                      <TooltipTrigger
-                        type="button"
-                        aria-label="More about this setting"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Info className="size-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-72 text-pretty">
-                        Minutes after an order is placed before its ticket turns
-                        amber, flagging it as starting to wait.
-                      </TooltipContent>
-                    </Tooltip>
+                    <InfoTooltip>
+                      Minutes after an order is placed before its ticket turns
+                      amber, flagging it as starting to wait.
+                    </InfoTooltip>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -293,19 +285,10 @@ export function SettingsForm({
                     <Label htmlFor="overdue-min" className={FORM_LABEL_CLASS}>
                       Turn red after
                     </Label>
-                    <Tooltip>
-                      <TooltipTrigger
-                        type="button"
-                        aria-label="More about this setting"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Info className="size-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-72 text-pretty">
-                        Minutes before a still-waiting ticket turns red instead
-                        of amber. Must be later than the amber threshold.
-                      </TooltipContent>
-                    </Tooltip>
+                    <InfoTooltip>
+                      Minutes before a still-waiting ticket turns red instead of
+                      amber. Must be later than the amber threshold.
+                    </InfoTooltip>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -337,20 +320,11 @@ export function SettingsForm({
                     <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
                       Undo window
                     </Label>
-                    <Tooltip>
-                      <TooltipTrigger
-                        type="button"
-                        aria-label="More about this setting"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Info className="size-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-72 text-pretty">
-                        Mark Ready / Mark Picked Up applies right away. For this
-                        many seconds after, the button turns into Undo instead,
-                        in case of a wrong tap.
-                      </TooltipContent>
-                    </Tooltip>
+                    <InfoTooltip>
+                      Mark Ready / Mark Picked Up applies right away. For this
+                      many seconds after, the button turns into Undo instead, in
+                      case of a wrong tap.
+                    </InfoTooltip>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -377,20 +351,11 @@ export function SettingsForm({
                     >
                       Auto-clear after
                     </Label>
-                    <Tooltip>
-                      <TooltipTrigger
-                        type="button"
-                        aria-label="More about this setting"
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Info className="size-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-72 text-pretty">
-                        A ready order nobody marks Picked Up clears itself after
-                        this many minutes. Leave blank to turn off. Restore a
-                        wrongly-cleared order from Completed orders.
-                      </TooltipContent>
-                    </Tooltip>
+                    <InfoTooltip>
+                      A ready order nobody marks Picked Up clears itself after
+                      this many minutes. Leave blank to turn off. Restore a
+                      wrongly-cleared order from Completed orders.
+                    </InfoTooltip>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -515,7 +480,7 @@ export function SettingsForm({
         <Section
           icon={<Hourglass className="size-5" />}
           title="Customer order screen"
-          description="Two optional tweaks to what a customer sees right after ordering: a simpler order number, and a backup wait estimate."
+          description="Three optional tweaks to what a customer sees right after ordering: a simpler order number, whether a wait estimate shows at all, and a backup wait estimate."
         >
           <div className="flex items-center gap-3">
             <Switch
@@ -525,42 +490,45 @@ export function SettingsForm({
             />
             <span className="flex items-center gap-1.5 text-sm font-medium">
               Simple daily order number
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  aria-label="More about this setting"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Info className="size-3.5" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-72 text-pretty">
-                  Customers and staff see a small number like #3 instead of
-                  #847. Records, receipts, and reports still use the permanent
-                  number underneath.
-                </TooltipContent>
-              </Tooltip>
+              <InfoTooltip>
+                Customers and staff see a small ticket number like #003 instead
+                of #0847. Records, receipts, and reports still use the permanent
+                number underneath.
+              </InfoTooltip>
             </span>
           </div>
 
-          <div className="space-y-2 border-t border-border pt-4">
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={showWaitEstimate}
+              onCheckedChange={setShowWaitEstimate}
+              aria-label="Show a wait-time estimate to customers"
+            />
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              Show wait-time estimate
+              <InfoTooltip>
+                Off shows only the queue position (&quot;2 orders ahead of
+                you&quot;), never a minute guess. Doesn&apos;t affect the queue
+                position itself, only the estimate layered on top of it.
+              </InfoTooltip>
+            </span>
+          </div>
+
+          <div
+            className={cn(
+              "space-y-2 border-t border-border pt-4",
+              !showWaitEstimate && "opacity-50",
+            )}
+          >
             <div className="flex items-center gap-1.5">
               <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
                 Backup prep time
               </Label>
-              <Tooltip>
-                <TooltipTrigger
-                  type="button"
-                  aria-label="More about this setting"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Info className="size-3.5" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-72 text-pretty">
-                  Estimates a customer&apos;s wait until this booth has enough
-                  of today&apos;s own order history. Leave blank to show queue
-                  position instead.
-                </TooltipContent>
-              </Tooltip>
+              <InfoTooltip>
+                Estimates a customer&apos;s wait until this booth has enough of
+                today&apos;s own order history. Leave blank to show queue
+                position instead.
+              </InfoTooltip>
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -571,6 +539,7 @@ export function SettingsForm({
                 placeholder="Not set"
                 value={defaultPrepMin}
                 onChange={(e) => setDefaultPrepMin(e.target.value)}
+                disabled={!showWaitEstimate}
                 className="h-11 w-28 rounded-xl"
                 aria-invalid={!!displayError}
                 aria-describedby={displayError ? "display-error" : undefined}
@@ -579,7 +548,12 @@ export function SettingsForm({
                 min per order
               </span>
             </div>
-            {prepEstimate.avgMinutes !== null ? (
+            {!showWaitEstimate ? (
+              <p className="text-xs text-muted-foreground">
+                Wait-time estimate is off above, so this backup isn&apos;t shown
+                to customers either.
+              </p>
+            ) : prepEstimate.avgMinutes !== null ? (
               <p className="text-xs text-muted-foreground">
                 Live right now: ~{Math.round(prepEstimate.avgMinutes)} min per
                 order from your last {prepEstimate.sampleCount} orders. This

@@ -34,6 +34,7 @@ const DEFAULTS: BoardSettings = {
   desktop_notify: false,
   undo_seconds: 4,
   daily_order_number_reset: false,
+  show_wait_estimate: true,
   default_prep_minutes: null,
   ready_auto_clear_min: 3,
 };
@@ -230,6 +231,29 @@ describe("SettingsForm customer order screen", () => {
 
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ daily_order_number_reset: true }),
+    );
+  });
+
+  it("saves the show-wait-estimate toggle and disables the backup-prep input while it's off", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
+      wrapper: TooltipProvider,
+    });
+
+    const toggle = screen.getByRole("switch", {
+      name: /show a wait-time estimate to customers/i,
+    });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    expect(screen.getByLabelText(/backup prep time/i)).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("button", { name: /save customer screen/i }),
+    );
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ show_wait_estimate: false }),
     );
   });
 

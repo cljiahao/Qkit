@@ -190,6 +190,7 @@ describe("getWaitEstimate", () => {
               desktop_notify: false,
               undo_seconds: 4,
               daily_order_number_reset: false,
+              show_wait_estimate: true,
               default_prep_minutes: 8,
               ready_auto_clear_min: 3,
             },
@@ -200,6 +201,57 @@ describe("getWaitEstimate", () => {
 
     const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({ seconds: 480, ordersAhead: 1 }); // 1 ahead * 8min
+  });
+
+  it("returns a null seconds estimate when show_wait_estimate is off, even with plenty of real data", async () => {
+    const target = {
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    const active = [
+      target,
+      {
+        id: "a",
+        status: "preparing",
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+      },
+    ];
+    const recent = Array.from({ length: 10 }, () => ({
+      status: "completed",
+      created_at: "2026-06-12T04:00:00Z",
+      ready_at: "2026-06-12T04:02:00Z",
+      total_cents: 0,
+      items: [],
+    }));
+    fromMock
+      .mockReturnValueOnce(chain({ data: target, error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }))
+      .mockReturnValueOnce(chain({ data: recent, error: null }))
+      .mockReturnValueOnce(chain({ data: { vendor_id: "v1" }, error: null }))
+      .mockReturnValueOnce(
+        chain({
+          data: {
+            board_settings: {
+              aging_min: 5,
+              overdue_min: 10,
+              sound_id: "chime",
+              desktop_notify: false,
+              undo_seconds: 4,
+              daily_order_number_reset: false,
+              show_wait_estimate: false,
+              default_prep_minutes: null,
+              ready_auto_clear_min: 3,
+            },
+          },
+          error: null,
+        }),
+      );
+
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ seconds: null, ordersAhead: 1 });
   });
 
   it("ignores an unconfigured default_prep_minutes (no vendor row found)", async () => {

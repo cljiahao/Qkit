@@ -6,8 +6,9 @@ Lets a vendor tune how their live order board gets their attention and what
 customers see while they wait: the amber/red aging thresholds, how long
 staff have to undo a tap, how long an uncollected ready order sits before
 auto-clearing, the new-order sound, desktop notifications, whether order
-numbers reset daily, and a backup prep-time estimate. Settings are stored on
-the vendor's own row and sync across devices.
+numbers reset daily, whether a wait-time estimate shows at all, and a
+backup prep-time estimate. Settings are stored on the vendor's own row and
+sync across devices.
 
 ## Contents
 
@@ -38,10 +39,12 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
   Nor CSS multi-column `columns` (the layout before that), which packs
   tightly but lets a card's visual position drift from its actual reading
   order. Every field/switch across all four cards follows the same
-  short-label-plus-(i) shape: a one- or two-word `Label`/caption next to a
-  `Tooltip` trigger (`Info` icon, `aria-label="More about this setting"`)
-  carrying the one-sentence explanation, so no card leans on a long inline
-  paragraph to explain a single control. "Board timing" holds "Turn amber
+  short-label-plus-(i) shape: a one- or two-word `Label`/caption next to an
+  `InfoTooltip` (`@/components/info-tooltip` — the shared (i)-trigger
+  component every one-sentence-explanation spot in the app uses, also used
+  by `Section`'s own header `tooltip` prop) carrying the one-sentence
+  explanation, so no card leans on a long inline paragraph to explain a
+  single control. "Board timing" holds "Turn amber
   after"/"Turn red after" (the aging/overdue minute thresholds), "Undo
   window" (`undo_seconds`, 2-15s, validated live via `boardSettingsSchema`),
   and "Auto-clear after" (`ready_auto_clear_min`, 1-60min, blank/empty =
@@ -60,20 +63,29 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
     this browser hasn't granted it (e.g. after syncing from another device),
     clicking the switch would just turn it off, so a standalone "Enable in
     this browser" button re-requests permission without touching the account
-    setting. "Customer order screen" is a `Switch` labeled "Simple daily order
-    number" for `daily_order_number_reset` (see `displayOrderNumber` in
-    `@/lib/orders` for what it actually changes) plus a 1-60min "Backup prep
+    setting. "Customer order screen" has three controls: a `Switch` labeled
+    "Simple daily order number" for `daily_order_number_reset` (see
+    `displayOrderNumber` in `@/lib/orders` — zero-padded to 3 digits, e.g.
+    "#003"); a `Switch` labeled "Show wait-time estimate" for
+    `show_wait_estimate` (default `true` — off means the status page always
+    shows only the queue-position label, "N orders ahead of you", never a
+    minute guess, regardless of how much real order history exists — see
+    `getWaitEstimate` in `status-actions.ts`); and a 1-60min "Backup prep
     time" `default_prep_minutes` number input, blank = null = "just show queue
     position" — used by the customer status page's wait estimate only when
     there isn't enough of today's history yet (`estimateWaitSeconds` in
-    `@/lib/stats`). Directly under that input, `prepEstimate` renders either
-    the live number this vendor's own recent orders would currently produce
-    ("Live right now: ~N min per order…", meaning the backup isn't in use) or,
-    below the sample-size threshold, a disclaimer naming whichever fallback a
-    customer would actually see right now — "their queue position" if
-    `default_prep_minutes` is blank, "this backup number" once one's set — so
-    the field doesn't read as inert when there's nothing to back up yet. Each
-    section calls `updateBoardSettings` independently through `useAsyncAction`
+    `@/lib/stats`). The backup-prep-time input is `disabled` and its block
+    dimmed (`opacity-50`) whenever `show_wait_estimate` is off, since it
+    would have no effect on what the customer sees in that state. Directly
+    under that input (when the estimate is on), `prepEstimate` renders
+    either the live number this vendor's own recent orders would currently
+    produce ("Live right now: ~N min per order…", meaning the backup isn't
+    in use) or, below the sample-size threshold, a disclaimer naming
+    whichever fallback a customer would actually see right now — "their
+    queue position" if `default_prep_minutes` is blank, "this backup
+    number" once one's set — so the field doesn't read as inert when
+    there's nothing to back up yet. Each section calls `updateBoardSettings`
+    independently through `useAsyncAction`
     (via a shared `currentSettings()` helper) and `router.refresh()`s on
     success; every call sends the full `BoardSettings` shape (it's one JSONB
     blob), so each section's handler carries every other section's current
@@ -88,9 +100,11 @@ aging_min` and an out-of-range `undo_seconds` client-side without calling
   reverts the switch and shows an error) plus the already-on-but-not-granted
   "Enable in this browser" path (re-requests permission without calling
   `updateBoardSettings`), and the customer-order-screen section (saves the
-  daily-reset toggle, saves a configured backup prep time, saves `null` when
-  it's cleared, rejects an out-of-1-60-range value without calling the
-  action, and the three `prepEstimate` states: not-enough-history naming the
+  daily-reset toggle, saves the show-wait-estimate toggle and confirms the
+  backup-prep-time input disables while it's off, saves a configured backup
+  prep time, saves `null` when it's cleared, rejects an out-of-1-60-range
+  value without calling the action, and the three `prepEstimate` states:
+  not-enough-history naming the
   queue-position fallback, naming the backup number once one's set, and the
   live-estimate line once enough history exists) — all with
   `updateBoardSettings`/`sonner`/`order-alerts` mocked.
@@ -107,7 +121,8 @@ render — `OrderCard` reads `agingMin`/`overdueMin`/`undoMs` (the last as
 `undo_seconds * 1000`), the dashboard's realtime listener plays the chosen
 sound / fires notifications, `daily_order_number_reset` feeds
 `displayOrderNumber` on both the board and the status page,
-`default_prep_minutes` feeds `getWaitEstimate`'s fallback
+`default_prep_minutes` feeds `getWaitEstimate`'s fallback and
+`show_wait_estimate` gates whether it returns a number at all
 (`src/app/order/[boothId]/[orderNumber]/status-actions.ts`), and
 `ready_auto_clear_min` gates the board's 30s `sweepReadyOrders` poll
 (`realtime-order-board.tsx` in `src/app/dashboard`) — `null` (the field left

@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **"Show wait-time estimate" toggle** on `/dashboard/settings` (default on).
+  Off makes the customer status page always show only the queue-position
+  label ("2 orders ahead of you"), never a minute guess, regardless of how
+  much real order history the booth has — the backup prep-time input
+  disables itself while this is off since it would have no effect either
+  way (migration `0068`).
 - **Arrival confirmation ("hold prep until the customer arrives")**: a new
   per-booth setting, meant for items made fresh per order (ice cream is the
   motivating case), that holds a new order back instead of starting prep
@@ -270,13 +276,16 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
-- **Daily order-number reset now defaults on, for every vendor.** The board
-  and customer status page show a small daily-reset ticket number (e.g. #3)
-  instead of the permanent one (#847) by default now, matching how event/
-  pop-up food-booth counters commonly number orders — previously off by
-  default (migration `0067`, applied to existing vendors too, not just new
-  ones). Display-only: the real, permanent `order_number` is unaffected
-  either way, and a vendor can still turn it off from `/dashboard/settings`.
+- **Daily order-number reset now defaults on, for every vendor, and the
+  display number is zero-padded to 3 digits.** The board and customer
+  status page show a small daily-reset ticket number (e.g. #003, was a bare
+  "3") instead of the permanent one (#0847) by default now, matching how
+  event/pop-up food-booth counters commonly number orders — previously off
+  by default (migration `0067`, applied to existing vendors too, not just
+  new ones). Grows past 3 digits rather than truncating on a heavy day, same
+  never-shrink convention as the permanent number's own padding. Display-
+  only: the real, permanent `order_number` is unaffected either way, and a
+  vendor can still turn it off from `/dashboard/settings`.
 - **Brand name standardized to lowercase `qkit`** across prose, UI copy, aria-labels,
   and docs (was inconsistently "QKit"/"Qkit" in ~87 files) — matches the sibling
   kits (`loopkit`) and the Merqo dashboard's kit registry. The navbar/hero/footer

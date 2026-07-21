@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-68 files, `0000` through `0067`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0067` tail; skimmed by filename/theme otherwise. The
+69 files, `0000` through `0068`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0068` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -219,7 +219,14 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   key backfill: qkit's pop-up/event booths expect a small daily-reset
   ticket number by default, matching e.g. bubble-tea-chain counter
   numbering. Purely display (see `0062`); the real `order_number` is
-  untouched.
+  untouched. `0068_show_wait_estimate.sql` adds `board_settings
+  .show_wait_estimate` (bool, default `true`): an opt-OUT toggle for the
+  customer status page's numeric wait estimate — off leaves only the
+  queue-position label shown, never a minute guess, regardless of how much
+  real order history exists (`getWaitEstimate` in
+  `src/app/order/[boothId]/[orderNumber]/status-actions.ts`). Normal
+  missing-key backfill (unlike `0067`'s unconditional overwrite) since
+  every vendor starts at the same `true` default with nothing to preserve.
 
 ## Connectivity
 

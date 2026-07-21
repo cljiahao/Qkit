@@ -104,13 +104,16 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
   e.g. the vendor hit "Start now" first — reported as success) from a real
   failure (still pending, cancelled, or missing). `getWaitEstimate(boothId, orderNumber, token)`: returns
   `{ seconds, ordersAhead } | null` — `ordersAhead` (via `ordersAheadOf`) is
-  always computable once the order exists; `seconds` (via
-  `estimateWaitSeconds`, the booth's recent completed-order average ×
-  `ordersAhead`) falls back to the vendor's `board_settings.
+  always computable once the order exists and is unaffected by anything
+  below; `seconds` is forced `null` outright when the vendor's
+  `board_settings.show_wait_estimate` is off (default `true` — never a
+  minute guess in that case, however much real history exists), otherwise
+  computed via `estimateWaitSeconds` (the booth's recent completed-order
+  average × `ordersAhead`), falling back to the vendor's `board_settings.
 default_prep_minutes` (× 60 × `ordersAhead`) when there isn't enough recent
-  history to trust the real average, and is null only when neither is
-  available. `null` itself means there's nothing to say at all (order not
-  found).
+  history to trust the real average, and null only when neither is
+  available. `null` for the whole result (not just `seconds`) means there's
+  nothing to say at all (order not found).
 
 ## Connectivity
 

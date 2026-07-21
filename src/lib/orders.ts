@@ -270,7 +270,10 @@ export function queuePositionLabel(ordersAhead: number): string {
  * trigger — this is arithmetic on fixed values, not a live recount. Falls
  * back to the real, permanent order_number when the setting is off
  * (`baselineNumber` null) or the arithmetic would be non-positive (a data
- * inconsistency, not something to ever show as "#0" or negative). Pure.
+ * inconsistency, not something to ever show as "#0" or negative). Zero-padded
+ * to 3 digits like a ticket counter ("003", not "3") — grows past that
+ * rather than truncating, same never-shrink convention as the real
+ * order_number's own 4-digit pad (migration 0063). Pure.
  */
 export function displayOrderNumber(
   orderNumber: string,
@@ -278,5 +281,5 @@ export function displayOrderNumber(
 ): string {
   if (baselineNumber === null) return orderNumber;
   const rank = Number(orderNumber) - Number(baselineNumber) + 1;
-  return rank > 0 ? String(rank) : orderNumber;
+  return rank > 0 ? String(rank).padStart(3, "0") : orderNumber;
 }

@@ -561,6 +561,17 @@ describe("currentPrepEstimate", () => {
       minSample: 3,
     });
   });
+
+  it("returns null avgMinutes when the sample size is met but none of the orders have usable wait data", () => {
+    const orders = Array.from({ length: 10 }, () =>
+      waitOrder("2026-06-12T04:00:00Z", null),
+    );
+    expect(currentPrepEstimate(orders)).toEqual({
+      avgMinutes: null,
+      sampleCount: 10,
+      minSample: 10,
+    });
+  });
 });
 
 describe("waitSeries", () => {

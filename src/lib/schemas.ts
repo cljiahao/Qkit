@@ -467,6 +467,11 @@ export const boardSettingsSchema = z
     // vendor originally proposed as a reasonable outer bound.
     undo_seconds: z.number().int().min(2).max(15),
     daily_order_number_reset: z.boolean(),
+    // false = the status page always shows a queue-position label, never a
+    // minute guess — the "orders ahead of you" line itself is unaffected,
+    // this only gates the numeric estimate layered on top of it (see
+    // getWaitEstimate in status-actions.ts).
+    show_wait_estimate: z.boolean(),
     // null = no vendor-set fallback (the wait estimate falls back to a
     // queue-position label instead — see estimateWaitSeconds). 1-60min is a
     // generous bound against a fat-fingered value, same rationale as the

@@ -199,6 +199,7 @@ describe("boardSettingsSchema", () => {
     desktop_notify: false,
     undo_seconds: 4,
     daily_order_number_reset: false,
+    show_wait_estimate: true,
     default_prep_minutes: null,
     ready_auto_clear_min: 3,
   };

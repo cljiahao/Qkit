@@ -177,9 +177,12 @@ export async function getWaitEstimate(
 
   // Vendor-set fallback (board_settings.default_prep_minutes), used only
   // when `recent` is too small for estimateWaitSeconds to trust — see its
-  // own doc comment. Decorative: any failure here just means no fallback
-  // (estimateWaitSeconds already handles null cleanly), never a page error.
+  // own doc comment. Also reads show_wait_estimate here (same row, no extra
+  // query). Decorative: any failure here just means no fallback and the
+  // estimate defaulting to shown (estimateWaitSeconds already handles null
+  // cleanly), never a page error.
   let fallbackAvgSeconds: number | null = null;
+  let showWaitEstimate = true;
   const { data: booth } = await supabase
     .from("booths")
     .select("vendor_id")
@@ -192,16 +195,24 @@ export async function getWaitEstimate(
       .eq("id", booth.vendor_id)
       .maybeSingle();
     const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
-    if (settings.success && settings.data.default_prep_minutes !== null)
-      fallbackAvgSeconds = settings.data.default_prep_minutes * 60;
+    if (settings.success) {
+      if (settings.data.default_prep_minutes !== null)
+        fallbackAvgSeconds = settings.data.default_prep_minutes * 60;
+      showWaitEstimate = settings.data.show_wait_estimate;
+    }
   }
 
   const ordersAhead = ordersAheadOf(active ?? [], target);
-  const seconds = estimateWaitSeconds(
-    (recent ?? []) as StatsOrder[],
-    ordersAhead,
-    undefined,
-    fallbackAvgSeconds,
-  );
+  // show_wait_estimate off means never a minute guess, even with plenty of
+  // real data — the queue-position label (ordersAhead, always returned
+  // above) is the only thing this vendor wants shown.
+  const seconds = showWaitEstimate
+    ? estimateWaitSeconds(
+        (recent ?? []) as StatsOrder[],
+        ordersAhead,
+        undefined,
+        fallbackAvgSeconds,
+      )
+    : null;
   return { seconds, ordersAhead };
 }

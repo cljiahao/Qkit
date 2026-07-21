@@ -138,10 +138,13 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   (board_settings.daily_order_number_reset's display-only "position among
   today's orders" number — pure arithmetic on the immutable `order_number`/
   `created_at` relative to a caller-supplied baseline, never a live recount;
-  falls back to the real number when there's no baseline).
+  zero-padded to 3 digits like a ticket counter ("003"), growing past that
+  rather than truncating; falls back to the real number when there's no
+  baseline).
 - `orders.test.ts` — tests status transitions, patch-building (including the
   payment auto-confirm-on-complete rule), sorting, age/label formatting, and
-  `displayOrderNumber`'s baseline arithmetic + real-number fallbacks.
+  `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth, and
+  real-number fallbacks.
 - `payments/` — PayNow QR generation and the payment-method adapter registry
   (pointer/PayNow/Stripe-stub); see its own README.
 - `plan.test.ts` — tests entitlement resolution across plan/pass/pro
@@ -202,7 +205,8 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `feedbackSchema`, `supportMessageSchema`, `profileNameSchema`/
   `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema` (now also
   `daily_order_number_reset: boolean` and `default_prep_minutes:
-1-60|null`, migration 0062), `pricingFormSchema`/`grantPassSchema`,
+1-60|null`, migration 0062; `show_wait_estimate: boolean`, migration 0068),
+  `pricingFormSchema`/`grantPassSchema`,
   `parseMenuItems`/`parseOrderItems`, `menuCategorySchema`/
   `menuCategoriesSchema`/`parseMenuCategories` (booth's ordered
   `{id, label}` menu sections, migration 0066 — schema/types only, no UI
@@ -230,7 +234,8 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   fulfilment-rate math, the trend/wait series against synthetic orders,
   `estimateWaitSeconds`'s fallback (used below the sample size, ignored once
   real data meets it, null when neither is available), and
-  `currentPrepEstimate`'s below/at/custom-sample-size cases.
+  `currentPrepEstimate`'s below/at/custom-sample-size cases and its
+  sample-met-but-no-usable-wait-data null case.
 - `stock.ts` — `parseRemaining`/`remainingFor`: parses the
   `booth_remaining_stock` JSONB RPC result into a typed per-item remaining-
   count map (Postgres is authoritative; this just reports it to the cart UI).

@@ -204,4 +204,24 @@ describe("OrderStatusPoller — arrival confirmation", () => {
       ).toBeInTheDocument(),
     );
   });
+
+  it("stays on the arrival prompt when confirmArrival is rejected", async () => {
+    getOrderStatus.mockResolvedValue("pending");
+    confirmArrival.mockResolvedValueOnce({
+      success: false,
+      error: "Could not start your order. Try again.",
+    });
+    renderPoller("pending");
+    const user = userEvent.setup();
+    const btn = await screen.findByRole("button", { name: /i'm here/i });
+    await user.click(btn);
+
+    await waitFor(() => expect(confirmArrival).toHaveBeenCalled());
+    expect(
+      screen.getByRole("button", { name: /i'm here/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Your order is being prepared"),
+    ).not.toBeInTheDocument();
+  });
 });
