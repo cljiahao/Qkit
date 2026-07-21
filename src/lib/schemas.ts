@@ -456,6 +456,9 @@ export const boardSettingsSchema = z
     // generous bound against a fat-fingered value, same rationale as the
     // aging/overdue caps above.
     default_prep_minutes: z.number().int().min(1).max(60).nullable(),
+    // null = the auto-clear sweep is off. 1-60min mirrors default_prep_minutes'
+    // bound rationale — generous headroom against a fat-fingered value.
+    ready_auto_clear_min: z.number().int().min(1).max(60).nullable(),
   })
   .refine((d) => d.overdue_min > d.aging_min, {
     message: "Overdue must be later than amber",

@@ -47,6 +47,10 @@ export type BoardSettings = {
   // compute one from real data (see estimateWaitSeconds in @/lib/stats).
   // null = no fallback configured; the page shows queue position instead.
   default_prep_minutes: number | null;
+  // Minutes a 'ready' order can sit uncollected before it auto-flips to
+  // 'completed' (sweepReadyOrders, order-actions.ts). null disables the
+  // sweep. Default 3 — see migration 0065.
+  ready_auto_clear_min: number | null;
 };
 
 // Falls back to this until migration 0050 (board_settings column) has been
@@ -61,6 +65,7 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   daily_order_number_reset: false,
   default_prep_minutes: null,
   undo_seconds: 4,
+  ready_auto_clear_min: 3,
 };
 
 export type PaymentStatus =
@@ -541,6 +546,7 @@ export interface Database {
           access_token: string;
           priority_bumped_at: string | null;
           source: OrderSource;
+          auto_completed: boolean;
         };
         Insert: {
           id?: string;
@@ -561,6 +567,7 @@ export interface Database {
           access_token?: string;
           priority_bumped_at?: string | null;
           source?: OrderSource;
+          auto_completed?: boolean;
         };
         Update: {
           id?: string;
@@ -581,6 +588,7 @@ export interface Database {
           access_token?: string;
           priority_bumped_at?: string | null;
           source?: OrderSource;
+          auto_completed?: boolean;
         };
         Relationships: [
           {
