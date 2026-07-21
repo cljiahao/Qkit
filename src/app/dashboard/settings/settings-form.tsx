@@ -375,7 +375,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-72 text-pretty">
                         A ready order nobody marks Picked Up clears itself after
-                        this many minutes. Leave blank to turn off — restore a
+                        this many minutes. Leave blank to turn off. Restore a
                         wrongly-cleared order from Completed orders.
                       </TooltipContent>
                     </Tooltip>
@@ -425,8 +425,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
           tooltip={
             <>
               Works on Android and desktop browsers. On iPhone or iPad, add qkit
-              to your Home Screen first — a regular Safari tab can&apos;t show
-              these.
+              to your Home Screen first (a regular Safari tab can&apos;t show
+              these).
             </>
           }
         >
@@ -450,8 +450,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs text-muted-foreground">
                 {isNotifySupported()
-                  ? "Not allowed in this browser yet — this device won't show popups until you enable it."
-                  : "Not supported in this browser — see above for iPhone/iPad."}
+                  ? "Not allowed in this browser yet. This device won't show popups until you enable it."
+                  : "Not supported in this browser. See above for iPhone/iPad."}
               </p>
               {isNotifySupported() && (
                 <Button
@@ -512,28 +512,45 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
               onCheckedChange={setDailyReset}
               aria-label="Show a simple daily order number instead of the permanent one"
             />
-            <span className="text-sm">
-              <span className="font-medium">
-                Show a simple daily order number
-              </span>
-              <span className="block text-muted-foreground">
-                Handy at a busy event: customers and staff see a small number
-                like #3 instead of #847. Your real records, receipts, and
-                reports still use the permanent number underneath, unchanged.
-              </span>
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              Simple daily order number
+              <Tooltip>
+                <TooltipTrigger
+                  type="button"
+                  aria-label="More about this setting"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-72 text-pretty">
+                  Customers and staff see a small number like #3 instead of
+                  #847. Records, receipts, and reports still use the permanent
+                  number underneath.
+                </TooltipContent>
+              </Tooltip>
             </span>
           </label>
 
           <div className="space-y-2 border-t border-border pt-4">
-            <p className="text-sm text-muted-foreground">
-              qkit estimates a customer&apos;s wait from your booth&apos;s own
-              recent orders. Early in the day, or for a booth&apos;s very first
-              orders, there isn&apos;t enough data yet to do that. Set a backup
-              number to use until then.
-            </p>
-            <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
-              Backup prep time
-            </Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
+                Backup prep time
+              </Label>
+              <Tooltip>
+                <TooltipTrigger
+                  type="button"
+                  aria-label="More about this setting"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-72 text-pretty">
+                  Estimates a customer&apos;s wait until this booth has enough
+                  of today&apos;s own order history. Leave blank to show queue
+                  position instead.
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="flex items-center gap-2">
               <Input
                 id="default-prep-min"
@@ -551,10 +568,6 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 min per order
               </span>
             </div>
-            <p className="text-xs text-muted-foreground italic">
-              Used only until there&apos;s enough of today&apos;s history. Leave
-              blank to show queue position instead.
-            </p>
           </div>
 
           {displayError && (
