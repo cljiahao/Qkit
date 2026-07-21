@@ -26,7 +26,8 @@ export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
 // Vendor live-order-board preferences (qkit.vendors.board_settings jsonb).
 // Defaults here must match the column default in migration 0050
 // (undo_seconds added + backfilled in migration 0059; daily_order_number_reset
-// + default_prep_minutes added + backfilled in migration 0062).
+// + default_prep_minutes added + backfilled in migration 0062;
+// daily_order_number_reset flipped true, vendor-wide, in migration 0067).
 export type BoardSettings = {
   // Amber threshold, minutes since order created.
   aging_min: number;
@@ -62,7 +63,7 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   overdue_min: 10,
   sound_id: "chime",
   desktop_notify: false,
-  daily_order_number_reset: false,
+  daily_order_number_reset: true,
   default_prep_minutes: null,
   undo_seconds: 4,
   ready_auto_clear_min: 3,

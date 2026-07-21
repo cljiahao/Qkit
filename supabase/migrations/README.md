@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-67 files, `0000` through `0066`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0066` tail; skimmed by filename/theme otherwise. The
+68 files, `0000` through `0067`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0067` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -210,7 +210,16 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   `menu_categories`, so the customer menu page can group items by section
   in the same round trip that already fetches the menu. No UI reads or
   writes this column yet (menu-editor, booth-form, customer menu grouping)
-  — schema/RPC only.
+  — schema/RPC only. `0067_daily_order_number_reset_default_on.sql` flips
+  `daily_order_number_reset`'s column `DEFAULT` from `false` to `true` and,
+  unlike every prior JSONB-blob default bump in this history, also
+  unconditionally overwrites the key on every existing vendor row (not the
+  usual `WHERE NOT (... ? 'key')` backfill guard, since every row already
+  has the key by now) — a deliberate product default change, not a missing-
+  key backfill: qkit's pop-up/event booths expect a small daily-reset
+  ticket number by default, matching e.g. bubble-tea-chain counter
+  numbering. Purely display (see `0062`); the real `order_number` is
+  untouched.
 
 ## Connectivity
 

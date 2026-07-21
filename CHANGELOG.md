@@ -270,6 +270,13 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
+- **Daily order-number reset now defaults on, for every vendor.** The board
+  and customer status page show a small daily-reset ticket number (e.g. #3)
+  instead of the permanent one (#847) by default now, matching how event/
+  pop-up food-booth counters commonly number orders — previously off by
+  default (migration `0067`, applied to existing vendors too, not just new
+  ones). Display-only: the real, permanent `order_number` is unaffected
+  either way, and a vendor can still turn it off from `/dashboard/settings`.
 - **Brand name standardized to lowercase `qkit`** across prose, UI copy, aria-labels,
   and docs (was inconsistently "QKit"/"Qkit" in ~87 files) — matches the sibling
   kits (`loopkit`) and the Merqo dashboard's kit registry. The navbar/hero/footer

@@ -109,12 +109,19 @@ describe("RealtimeOrderBoard sort toggle", () => {
 });
 
 describe("RealtimeOrderBoard daily order-number reset", () => {
-  it("shows the real order_number when no baseline is supplied (feature off)", () => {
+  it("shows the real order_number when no baseline is supplied", () => {
+    // The component itself only reacts to dailyOrderNumberBaselines being
+    // populated — whether to fetch/pass one at all is decided server-side
+    // (page.tsx) from boardSettings.daily_order_number_reset, so this covers
+    // "no baseline" regardless of that flag's value.
     render(
       <RealtimeOrderBoard
         booths={BOOTHS}
         initialOrders={[order({ order_number: "0847" })]}
-        boardSettings={DEFAULT_BOARD_SETTINGS}
+        boardSettings={{
+          ...DEFAULT_BOARD_SETTINGS,
+          daily_order_number_reset: false,
+        }}
       />,
       { wrapper: TooltipProvider },
     );
