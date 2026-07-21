@@ -404,9 +404,16 @@ export function RealtimeOrderBoard({
                 aria-label={`Booth status, ${activeBoothCount} of ${booths.length} open`}
               >
                 <Store className="size-3.5" />
-                <span className="hidden sm:inline">Booths · </span>
-                {activeBoothCount}/{booths.length}
-                <span className="hidden sm:inline"> open</span>
+                {/* One flex child, not four: Button's `gap-2` inserts space
+                    between EVERY direct child, so "Booths · "/count/" open"
+                    as separate children each got an extra gap stacked on
+                    top of their own literal spaces. Wrapping the label in a
+                    single span makes gap-2 fire once (icon → label). */}
+                <span>
+                  <span className="hidden sm:inline">Booths · </span>
+                  {activeBoothCount}/{booths.length}
+                  <span className="hidden sm:inline"> open</span>
+                </span>
               </Button>
             )
           )}
@@ -417,7 +424,12 @@ export function RealtimeOrderBoard({
             aria-label="New order"
           >
             <Plus className="size-3.5" />
-            New<span className="hidden sm:inline"> order</span>
+            {/* Same fix as the booth-status button above: one label child,
+                not two, so gap-2 doesn't add space between "New" and the
+                span on top of the span's own leading space. */}
+            <span>
+              New<span className="hidden sm:inline"> order</span>
+            </span>
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>

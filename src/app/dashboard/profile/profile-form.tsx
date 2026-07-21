@@ -169,8 +169,9 @@ export function ProfileForm({
     // input), every row after it started late in BOTH columns — a gap under
     // "Profile icon"/"Display name" that had nothing to do with their own
     // content. Same fix as settings-form.tsx's board-timing layout; each
-    // column stacks its own sections instead. Grouping mirrors the original
-    // grid's column assignment (odd items were column 1, even column 2).
+    // column stacks its own sections instead. Column 1: stall name, profile
+    // picture, change password. Column 2: display name, social links — the
+    // standard order for every kit's profile page, not just qkit's.
     <div className="flex flex-col gap-5 md:flex-row md:items-start">
       <div className="flex flex-1 flex-col gap-5">
         <Section
@@ -301,30 +302,6 @@ export function ProfileForm({
 
       <div className="flex flex-1 flex-col gap-5">
         <Section
-          icon={<Share2 className="size-5" />}
-          eyebrow="Shown to customers"
-          title="Social & website"
-          description="Shown on the order-status page after a customer orders. Applies to every booth unless overridden on that booth's own page."
-        >
-          <SocialLinksFields
-            value={links}
-            onChange={setLinks}
-            idPrefix="profile"
-          />
-          {linksError && <p className={FORM_ERROR_CLASS}>{linksError}</p>}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={saveLinks}
-              disabled={savingLinks}
-              className="h-10 rounded-xl font-semibold"
-            >
-              {savingLinks ? "Saving…" : "Save links"}
-            </Button>
-          </div>
-        </Section>
-
-        <Section
           icon={<IdCard className="size-5" />}
           eyebrow="Just for you"
           title="Display name"
@@ -358,6 +335,30 @@ export function ProfileForm({
               className="h-10 rounded-xl font-semibold"
             >
               {savingDisplay ? "Saving…" : "Save display name"}
+            </Button>
+          </div>
+        </Section>
+
+        <Section
+          icon={<Share2 className="size-5" />}
+          eyebrow="Shown to customers"
+          title="Social & website"
+          description="Shown on the order-status page after a customer orders. Applies to every booth unless overridden on that booth's own page."
+        >
+          <SocialLinksFields
+            value={links}
+            onChange={setLinks}
+            idPrefix="profile"
+          />
+          {linksError && <p className={FORM_ERROR_CLASS}>{linksError}</p>}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={saveLinks}
+              disabled={savingLinks}
+              className="h-10 rounded-xl font-semibold"
+            >
+              {savingLinks ? "Saving…" : "Save links"}
             </Button>
           </div>
         </Section>

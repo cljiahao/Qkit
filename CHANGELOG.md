@@ -102,6 +102,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Double-spaced button labels ("New order", "Booths · 3/5 open").**
+  Both buttons split their label across several elements (an icon, plain
+  text, a couple of responsive-hide spans) as direct children of a flex
+  container with `gap-2` — the gap applies between every child, so it added
+  extra space between words on top of the literal spaces already in the
+  text, on the live order board's "New order" and booth-status buttons.
+  Each label is now one child instead of several, so the gap only fires
+  once, between the icon and the label.
 - **Profile page's two-column layout desynced under a tall card.** A raw
   CSS grid tracks row height to its tallest cell, so once "Social &
   website" outgrew "Stall name," every row after it started late in both
@@ -282,6 +290,10 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
+- **Profile page column order**: column 1 is stall name → profile picture →
+  change password; column 2 is display name → social links (was social
+  links above display name). Meant as the standard profile-page order
+  across every kit, not just qkit.
 - **Completed-orders history now defaults to "Today"** instead of "All
   time" — a vendor lands on today's picked-up orders instead of scrolling
   through their entire history first. The cutoff comes from a server-
