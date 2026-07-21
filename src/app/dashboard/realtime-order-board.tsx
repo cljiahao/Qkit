@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePolling } from "@/hooks/use-polling";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -43,6 +44,7 @@ import {
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
+import { sweepReadyOrders } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
@@ -282,6 +284,18 @@ export function RealtimeOrderBoard({
     boothIds,
     initialOrders,
     handleNewOrder,
+  );
+
+  // Auto-clear sweep for stale 'ready' orders (board_settings.
+  // ready_auto_clear_min) — a plain periodic tick, not tied to any local
+  // state. The board's own realtime channel (useRealtimeOrders above)
+  // already reflects whatever this flips, so no client-side merge is
+  // needed here.
+  usePolling(
+    useCallback(async () => {
+      await sweepReadyOrders();
+    }, []),
+    { intervalMs: 30_000, enabled: boardSettings.ready_auto_clear_min != null },
   );
 
   const active = sortActiveOrders(

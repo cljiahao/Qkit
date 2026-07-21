@@ -64,6 +64,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./booths/actions", () => ({ toggleBoothActive: vi.fn() }));
 vi.mock("./walkup-menu-actions", () => ({ getWalkupMenu: vi.fn() }));
 vi.mock("./walkup-actions", () => ({ placeWalkupOrder: vi.fn() }));
+vi.mock("./order-actions", () => ({ sweepReadyOrders: vi.fn() }));
 
 const BOOTHS = [{ id: "b1", name: "Kopi Corner", is_active: true, open: true }];
 
