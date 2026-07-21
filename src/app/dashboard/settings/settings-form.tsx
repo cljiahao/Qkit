@@ -209,118 +209,210 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
           title="Board timing"
           description="How fast a waiting ticket changes color, how long staff have to undo an accidental tap, and whether a forgotten ready order clears itself."
         >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
-                Turn amber after
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="aging-min"
-                  type="number"
-                  min={1}
-                  max={240}
-                  value={agingMin}
-                  onChange={(e) => setAgingMin(e.target.value)}
-                  className="h-11 rounded-xl"
-                  aria-invalid={!!thresholdError}
-                  aria-describedby={
-                    thresholdError ? "threshold-error" : undefined
-                  }
-                />
-                <span className="text-sm text-muted-foreground">min</span>
+          <div className="space-y-5">
+            {/* Two groups, not one flat grid: amber/red are slow aging
+                thresholds (minutes, how a ticket's colour drifts over
+                time), undo/auto-clear are fast recovery timers (seconds
+                and a short number of minutes, how quickly a mistake or a
+                forgotten ticket resolves itself). Mixing all four in one
+                unlabeled block read as an arbitrary pile of numbers. */}
+            <div>
+              <p className="mb-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
+                Ticket colour
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
+                      Turn amber after
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger
+                        type="button"
+                        aria-label="More about this setting"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-72 text-pretty">
+                        <p className="font-semibold">What this controls</p>
+                        <p className="mt-1 text-background/85">
+                          How many minutes after an order is placed before its
+                          ticket turns amber on the board, flagging it as
+                          starting to wait.
+                        </p>
+                        <p className="mt-1.5 text-background/70">
+                          Longer: tickets stay &quot;fresh&quot; longer before
+                          flagging.
+                          <br />
+                          Shorter: an earlier warning.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="aging-min"
+                      type="number"
+                      min={1}
+                      max={240}
+                      value={agingMin}
+                      onChange={(e) => setAgingMin(e.target.value)}
+                      className="h-11 rounded-xl"
+                      aria-invalid={!!thresholdError}
+                      aria-describedby={
+                        thresholdError ? "threshold-error" : undefined
+                      }
+                    />
+                    <span className="text-sm text-muted-foreground">min</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="overdue-min" className={FORM_LABEL_CLASS}>
+                      Turn red after
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger
+                        type="button"
+                        aria-label="More about this setting"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-72 text-pretty">
+                        <p className="font-semibold">What this controls</p>
+                        <p className="mt-1 text-background/85">
+                          How many minutes before a still-waiting ticket turns
+                          red instead of amber, flagging it as overdue.
+                        </p>
+                        <p className="mt-1.5 text-background/70">
+                          Must be later than the amber threshold.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="overdue-min"
+                      type="number"
+                      min={1}
+                      max={240}
+                      value={overdueMin}
+                      onChange={(e) => setOverdueMin(e.target.value)}
+                      className="h-11 rounded-xl"
+                      aria-invalid={!!thresholdError}
+                      aria-describedby={
+                        thresholdError ? "threshold-error" : undefined
+                      }
+                    />
+                    <span className="text-sm text-muted-foreground">min</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="overdue-min" className={FORM_LABEL_CLASS}>
-                Turn red after
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="overdue-min"
-                  type="number"
-                  min={1}
-                  max={240}
-                  value={overdueMin}
-                  onChange={(e) => setOverdueMin(e.target.value)}
-                  className="h-11 rounded-xl"
-                  aria-invalid={!!thresholdError}
-                  aria-describedby={
-                    thresholdError ? "threshold-error" : undefined
-                  }
-                />
-                <span className="text-sm text-muted-foreground">min</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
-                  Time to undo a tap
-                </Label>
-                <Tooltip>
-                  <TooltipTrigger
-                    type="button"
-                    aria-label="More about this setting"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <Info className="size-3.5" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-72 text-pretty">
-                    <p className="font-semibold">What this controls</p>
-                    <p className="mt-1 text-background/85">
-                      Tapping Mark Ready or Mark Picked Up on a ticket applies
-                      right away — no &quot;are you sure?&quot; prompt. For that
-                      many seconds after, the button turns into an Undo button
-                      instead, in case of a wrong tap.
-                    </p>
-                    <p className="mt-1.5 text-background/70">
-                      Longer: more time to catch a mistake.
-                      <br />
-                      Shorter: the ticket locks in and clears sooner.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="undo-seconds"
-                  type="number"
-                  min={2}
-                  max={15}
-                  value={undoSeconds}
-                  onChange={(e) => setUndoSeconds(e.target.value)}
-                  className="h-11 rounded-xl"
-                  aria-invalid={!!thresholdError}
-                  aria-describedby={
-                    thresholdError ? "threshold-error" : undefined
-                  }
-                />
-                <span className="text-sm text-muted-foreground">sec</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="ready-auto-clear-min"
-                className={FORM_LABEL_CLASS}
-              >
-                Auto-clear a ready order after
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="ready-auto-clear-min"
-                  type="number"
-                  min={1}
-                  max={60}
-                  placeholder="Off"
-                  value={readyAutoClearMin}
-                  onChange={(e) => setReadyAutoClearMin(e.target.value)}
-                  className="h-11 rounded-xl"
-                  aria-invalid={!!thresholdError}
-                  aria-describedby={
-                    thresholdError ? "threshold-error" : undefined
-                  }
-                />
-                <span className="text-sm text-muted-foreground">min</span>
+
+            <div>
+              <p className="mb-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
+                Quick timers
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
+                      Time to undo a tap
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger
+                        type="button"
+                        aria-label="More about this setting"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-72 text-pretty">
+                        <p className="font-semibold">What this controls</p>
+                        <p className="mt-1 text-background/85">
+                          Tapping Mark Ready or Mark Picked Up on a ticket
+                          applies right away — no &quot;are you sure?&quot;
+                          prompt. For that many seconds after, the button turns
+                          into an Undo button instead, in case of a wrong tap.
+                        </p>
+                        <p className="mt-1.5 text-background/70">
+                          Longer: more time to catch a mistake.
+                          <br />
+                          Shorter: the ticket locks in and clears sooner.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="undo-seconds"
+                      type="number"
+                      min={2}
+                      max={15}
+                      value={undoSeconds}
+                      onChange={(e) => setUndoSeconds(e.target.value)}
+                      className="h-11 rounded-xl"
+                      aria-invalid={!!thresholdError}
+                      aria-describedby={
+                        thresholdError ? "threshold-error" : undefined
+                      }
+                    />
+                    <span className="text-sm text-muted-foreground">sec</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label
+                      htmlFor="ready-auto-clear-min"
+                      className={FORM_LABEL_CLASS}
+                    >
+                      Auto-clear a ready order after
+                    </Label>
+                    <Tooltip>
+                      <TooltipTrigger
+                        type="button"
+                        aria-label="More about this setting"
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-72 text-pretty">
+                        <p className="font-semibold">What this controls</p>
+                        <p className="mt-1 text-background/85">
+                          If a customer&apos;s order is never marked Picked Up,
+                          it clears itself off the board after this many minutes
+                          instead of sitting there indefinitely.
+                        </p>
+                        <p className="mt-1.5 text-background/70">
+                          Leave blank to turn this off (orders only clear on a
+                          manual Mark Picked Up tap). You can always restore an
+                          order this clears too early from the completed orders
+                          page.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="ready-auto-clear-min"
+                      type="number"
+                      min={1}
+                      max={60}
+                      placeholder="Off"
+                      value={readyAutoClearMin}
+                      onChange={(e) => setReadyAutoClearMin(e.target.value)}
+                      className="h-11 rounded-xl"
+                      aria-invalid={!!thresholdError}
+                      aria-describedby={
+                        thresholdError ? "threshold-error" : undefined
+                      }
+                    />
+                    <span className="text-sm text-muted-foreground">min</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

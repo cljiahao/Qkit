@@ -314,15 +314,24 @@ export function OrderCard({
           name/number block below it, and the full card width means a
           booth's actual name reads at a glance instead of being guessed
           from a dot. Same boothColor() hash as the filter tabs/dropdown, so
-          the colour association still carries onto the card. Only rendered
-          in multi-booth view. */}
+          the colour association still carries onto the card. Tinted
+          background + bigger dot (not just a small quiet dot on a neutral
+          bar) — staff triaging a lot of orders at once need the booth to
+          register at a glance, not on close reading. Only rendered in
+          multi-booth view. */}
       {boothName && (
-        <div className="flex items-center gap-1.5 rounded-t-xl border-b border-border/60 bg-secondary/40 px-4 py-1.5">
+        <div
+          className="flex items-center gap-2 rounded-t-xl border-b px-4 py-2"
+          style={{
+            backgroundColor: `color-mix(in oklch, ${boothColor(order.booth_id)} 22%, var(--color-secondary))`,
+            borderColor: `color-mix(in oklch, ${boothColor(order.booth_id)} 45%, var(--color-border))`,
+          }}
+        >
           <span
-            className="size-2 shrink-0 rounded-full"
+            className="size-3 shrink-0 rounded-full ring-2 ring-background"
             style={{ backgroundColor: boothColor(order.booth_id) }}
           />
-          <span className="truncate text-xs font-semibold tracking-wide text-foreground uppercase">
+          <span className="truncate text-sm font-bold tracking-wide text-foreground uppercase">
             {boothName}
           </span>
         </div>
@@ -492,8 +501,7 @@ export function OrderCard({
           <div className="px-4 pb-3">
             <Button
               size="sm"
-              variant="outline"
-              className="h-10 w-full rounded-lg text-muted-foreground"
+              className="h-10 w-full rounded-lg bg-blue-600 font-semibold text-white hover:bg-blue-700"
               onClick={confirmPayment}
               disabled={updating}
             >
