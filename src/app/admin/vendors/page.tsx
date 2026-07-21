@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { vendorStallNames } from "@/lib/admin-vendor-names";
 import { latestActivePassByVendor, summarizeVendors } from "@/lib/admin-stats";
 import {
   buildVendorHealth,
@@ -32,7 +33,7 @@ export default async function AdminVendorsPage() {
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, name, plan, created_at")
+      .select("id, plan, created_at")
       .order("created_at", { ascending: false }),
     supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
     supabase.from("booths").select("id, vendor_id, created_at"),
@@ -41,6 +42,10 @@ export default async function AdminVendorsPage() {
   ]);
 
   const rows = vendorRows ?? [];
+  const stallNames = await vendorStallNames(
+    supabase,
+    rows.map((v) => v.id),
+  );
   const passByVendor = latestActivePassByVendor(licenseRows ?? [], now);
   const openMsgVendors = new Set((messageRows ?? []).map((m) => m.vendor_id));
 
@@ -64,7 +69,7 @@ export default async function AdminVendorsPage() {
       const expiry = passByVendor.get(v.id);
       return {
         id: v.id,
-        name: v.name,
+        name: stallNames.get(v.id) ?? "Unknown vendor",
         plan: v.plan,
         created_at: v.created_at,
         passHoursLeft: passHoursLeft(expiry, now),

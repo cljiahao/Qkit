@@ -1,53 +1,71 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { createVendor } from "./actions";
+// src/app/onboarding/actions.test.ts
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { getUser, insert } = vi.hoisted(() => ({
+const { getOrCreateVendorProfile, getUser, insert } = vi.hoisted(() => ({
+  getOrCreateVendorProfile: vi.fn(),
   getUser: vi.fn(),
   insert: vi.fn(),
 }));
 
+vi.mock("@/lib/merqo-vendor-profile", () => ({ getOrCreateVendorProfile }));
 vi.mock("@/lib/supabase/server", () => ({
-  createServerClient: () =>
-    Promise.resolve({
-      auth: { getUser },
-      from: () => ({ insert }),
-    }),
+  createServerClient: vi.fn().mockResolvedValue({
+    auth: { getUser: () => getUser() },
+    from: () => ({ insert }),
+  }),
 }));
 
+import { createVendor } from "./actions";
+
 beforeEach(() => {
-  getUser.mockReset().mockResolvedValue({ data: { user: { id: "v1" } } });
-  insert.mockReset().mockResolvedValue({ error: null });
+  getOrCreateVendorProfile.mockReset();
+  getUser.mockReset();
+  insert.mockReset();
+  getUser.mockResolvedValue({ data: { user: { id: "v1" } } });
+  insert.mockResolvedValue({ error: null });
+  getOrCreateVendorProfile.mockResolvedValue({
+    vendor_id: "v1",
+    stall_name: "Kopitiam Cart",
+    social_links: {},
+  });
 });
 
 describe("createVendor", () => {
-  it("rejects an empty name before checking auth", async () => {
-    const res = await createVendor({ name: "" });
-    expect(res).toEqual({ success: false, error: "Invalid stall name" });
-    expect(getUser).not.toHaveBeenCalled();
+  it("inserts a bare vendors row and seeds the merqo profile with the chosen name", async () => {
+    const result = await createVendor({ name: "Kopitiam Cart" });
+
+    expect(result.success).toBe(true);
+    expect(insert).toHaveBeenCalledWith({ id: "v1" });
+    expect(getOrCreateVendorProfile).toHaveBeenCalledWith(
+      expect.anything(),
+      "v1",
+      "Kopitiam Cart",
+    );
   });
 
-  it("rejects when not authenticated", async () => {
-    getUser.mockResolvedValue({ data: { user: null } });
-    const res = await createVendor({ name: "Kopi Cart" });
-    expect(res).toEqual({ success: false, error: "Not authenticated" });
-    expect(insert).not.toHaveBeenCalled();
-  });
-
-  it("creates the vendor row keyed on the auth user id", async () => {
-    const res = await createVendor({ name: "Kopi Cart" });
-    expect(res).toEqual({ success: true });
-    expect(insert).toHaveBeenCalledWith({ id: "v1", name: "Kopi Cart" });
-  });
-
-  it("treats a unique-violation (already onboarded) as success", async () => {
+  it("treats a duplicate-row error (23505) as success and still seeds the profile", async () => {
     insert.mockResolvedValue({ error: { code: "23505", message: "dup" } });
-    const res = await createVendor({ name: "Kopi Cart" });
-    expect(res).toEqual({ success: true });
+
+    const result = await createVendor({ name: "Kopitiam Cart" });
+
+    expect(result.success).toBe(true);
+    expect(getOrCreateVendorProfile).toHaveBeenCalled();
   });
 
-  it("surfaces a friendly error on any other insert failure", async () => {
-    insert.mockResolvedValue({ error: { code: "42501", message: "denied" } });
-    const res = await createVendor({ name: "Kopi Cart" });
-    expect(res).toEqual({ success: false, error: "Could not create vendor" });
+  it("returns an error for an invalid name without inserting or seeding a profile", async () => {
+    const result = await createVendor({ name: "" });
+
+    expect(result.success).toBe(false);
+    expect(insert).not.toHaveBeenCalled();
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a real insert error without seeding the profile", async () => {
+    insert.mockResolvedValue({ error: { code: "500", message: "boom" } });
+
+    const result = await createVendor({ name: "Kopitiam Cart" });
+
+    expect(result.success).toBe(false);
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
   });
 });

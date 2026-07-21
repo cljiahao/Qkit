@@ -64,9 +64,7 @@ describe.skipIf(!RUN)("next_order_number concurrency (integration)", () => {
     if (uErr || !u.user) throw uErr ?? new Error("createUser failed");
     userId = u.user.id;
 
-    const { error: vErr } = await db
-      .from("vendors")
-      .insert({ id: userId, name: "Concurrency Test" });
+    const { error: vErr } = await db.from("vendors").insert({ id: userId });
     if (vErr) throw vErr;
 
     const { data: b, error: bErr } = await db

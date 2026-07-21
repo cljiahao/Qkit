@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { vendorStallNames } from "@/lib/admin-vendor-names";
 import { cn } from "@/lib/utils";
 import { npsBreakdown } from "@/lib/nps";
 import { summarizeReviews, type ReviewRow } from "@/lib/reviews";
@@ -56,7 +57,7 @@ export default async function AdminFeedbackPage() {
         .order("created_at", { ascending: false })
         .limit(200),
       supabase.from("booths").select("id, vendor_id"),
-      supabase.from("vendors").select("id, name"),
+      supabase.from("vendors").select("id"),
     ]);
   const all = rows ?? [];
 
@@ -86,7 +87,10 @@ export default async function AdminFeedbackPage() {
   // Per-vendor CSAT — segmented health, worst-rated first, so problem vendors
   // surface. Scores only (admin never sees the raw reviews — those are the
   // vendor's). Maps each customer rating to its booth's owner.
-  const vendorName = new Map((vendorList ?? []).map((v) => [v.id, v.name]));
+  const vendorName = await vendorStallNames(
+    supabase,
+    (vendorList ?? []).map((v) => v.id),
+  );
   const boothVendor = new Map(
     (boothRows ?? []).map((b) => [b.id, b.vendor_id]),
   );

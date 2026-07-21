@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Check, Circle } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
 import { latestActivePassByVendor } from "@/lib/admin-stats";
 import { buildVendorHealth, passHoursLeft } from "@/lib/admin-vendor-health";
 import { cn, formatPrice, MS_PER_DAY } from "@/lib/utils";
@@ -59,7 +60,7 @@ export default async function AdminVendorDetailPage({
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, name, plan, created_at")
+      .select("id, plan, created_at")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -78,6 +79,9 @@ export default async function AdminVendorDetailPage({
       .order("created_at", { ascending: false }),
   ]);
   if (!vendor) notFound();
+
+  const stallName = (await getOrCreateVendorProfile(supabase, id, null))
+    .stall_name;
 
   const boothRows = booths ?? [];
   const boothIds = boothRows.map((b) => b.id);
@@ -133,7 +137,7 @@ export default async function AdminVendorDetailPage({
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-display text-4xl font-semibold leading-none">
-            {vendor.name}
+            {stallName}
           </h1>
           <StatusChip status={health.status} />
           <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
@@ -223,7 +227,7 @@ export default async function AdminVendorDetailPage({
         <VendorManage
           vendor={{
             id: vendor.id,
-            name: vendor.name,
+            name: stallName,
             plan: vendor.plan,
             created_at: vendor.created_at,
             passExpiresAt,

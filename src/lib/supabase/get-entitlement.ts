@@ -4,8 +4,24 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
 import { getEntitlement, type Entitlement } from "@/lib/plan";
 import type { User } from "@supabase/supabase-js";
-import { DEFAULT_BOARD_SETTINGS, type Vendor } from "@/lib/types";
+import {
+  DEFAULT_BOARD_SETTINGS,
+  type Vendor,
+  type SocialLinks,
+} from "@/lib/types";
 import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+
+/**
+ * Vendor row merged with its shared merqo.vendor_profile fields. qkit.vendors
+ * has no name/social_links columns at all since migration 0069 —
+ * merqo.vendor_profile is the only source, so every consumer of `vendor`
+ * (profile page, booth forms, order-status page) gets those two fields
+ * attached here instead of reading them off the DB row directly.
+ */
+export type VendorWithProfile = Vendor & {
+  name: string;
+  social_links: SocialLinks;
+};
 
 /**
  * Resolve the current vendor's effective entitlement (plan + any live license).
@@ -28,7 +44,7 @@ import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
 export const loadEntitlement = cache(
   async (): Promise<{
     user: User | null;
-    vendor: Vendor | null;
+    vendor: VendorWithProfile | null;
     entitlement: Entitlement;
     licenseExpiresAt: string | null;
   }> => {
@@ -76,43 +92,30 @@ export const loadEntitlement = cache(
       vendor.board_settings = DEFAULT_BOARD_SETTINGS;
     }
 
-    // social_links can be missing if migration 0052 hasn't reached this DB yet
-    // (deploy and migrate aren't atomic) — fall back to "nothing set" rather
-    // than crash the profile/booth-form pages.
-    if (vendor && !vendor.social_links) {
-      vendor.social_links = {};
-    }
-
-    // Stall name + social links now live in merqo.vendor_profile (shared
-    // across kits) — qkit.vendors.name/social_links are stale leftovers
-    // from before the cutover, not yet dropped (see 2026-07-16 plan Task 3
-    // note). Overwrite with the shared source of truth so every consumer of
-    // `vendor` (profile page, booth forms, order-status page) sees the
-    // current value without knowing the storage moved.
+    // Stall name + social links live only in merqo.vendor_profile — qkit.vendors
+    // has never had a row to fall back to since migration 0069. `null` default:
+    // onboarding (src/app/onboarding/actions.ts) is what seeds the initial name
+    // now, so by the time a vendor reaches the dashboard the profile already
+    // exists; get_or_create_vendor_profile's own 'My Stall' fallback only
+    // matters for the rare row with no profile at all.
+    let vendorWithProfile: VendorWithProfile | null = null;
     if (vendor) {
-      // Deliberately NOT try/caught (unlike the order-status page's use of
-      // this same call) — this call now makes the ENTIRE authenticated
-      // dashboard hard-dependent on the merqo schema being reachable, since
-      // loadEntitlement backs every dashboard page's data load. That's a
-      // conscious tradeoff, matching this function's existing fail-loud
-      // convention for the vendor read above: swallowing an error here
-      // could misroute a real vendor to /onboarding, which is worse than
-      // surfacing the error boundary.
-      const profile = await getOrCreateVendorProfile(
-        supabase,
-        vendor.id,
-        vendor.name,
-      );
-      vendor.name = profile.stall_name;
-      vendor.social_links = profile.social_links;
+      const profile = await getOrCreateVendorProfile(supabase, vendor.id, null);
+      vendorWithProfile = {
+        ...vendor,
+        name: profile.stall_name,
+        social_links: profile.social_links,
+      };
     }
 
-    const licenseExpiresAt = vendor ? (license?.expires_at ?? null) : null;
+    const licenseExpiresAt = vendorWithProfile
+      ? (license?.expires_at ?? null)
+      : null;
     return {
       user,
-      vendor: vendor ?? null,
+      vendor: vendorWithProfile,
       entitlement: getEntitlement(
-        vendor?.plan ?? "free",
+        vendorWithProfile?.plan ?? "free",
         licenseExpiresAt,
         now,
       ),
@@ -128,7 +131,7 @@ export const loadEntitlement = cache(
  */
 export async function requireEntitledVendor(): Promise<{
   user: User;
-  vendor: Vendor;
+  vendor: VendorWithProfile;
   entitlement: Entitlement;
   licenseExpiresAt: string | null;
 }> {

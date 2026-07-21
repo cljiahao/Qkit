@@ -2,6 +2,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient } from "@/lib/supabase/server";
+import { vendorStallNames } from "@/lib/admin-vendor-names";
 import {
   activationFunnel,
   latestActivePassByVendor,
@@ -77,7 +78,7 @@ export default async function AdminPage() {
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, name, plan, created_at")
+      .select("id, plan, created_at")
       .order("created_at", { ascending: false }),
     supabase.from("booths").select("id, vendor_id, is_active"),
     supabase.from("orders").select("booth_id, status, total_cents, created_at"),
@@ -114,6 +115,11 @@ export default async function AdminPage() {
   const licenses = licenseRows ?? [];
   const payments = paymentRows ?? [];
 
+  const stallNames = await vendorStallNames(
+    supabase,
+    (vendorRows ?? []).map((v) => v.id),
+  );
+
   const passByVendor = latestActivePassByVendor(licenses, now);
 
   // qkit's own revenue — what we actually collected, from the payments ledger
@@ -131,6 +137,7 @@ export default async function AdminPage() {
 
   const vendors: AdminVendorRow[] = (vendorRows ?? []).map((v) => ({
     ...v,
+    name: stallNames.get(v.id) ?? "Unknown vendor",
     passExpiresAt: passByVendor.get(v.id) ?? null,
   }));
   const pricing = pricingRow ?? DEFAULT_PRICING;
@@ -143,7 +150,7 @@ export default async function AdminPage() {
   const estat = summarizeEvents(events, now);
 
   // Pending upgrade requests (the admin inbox). Named for display.
-  const vendorName = new Map((vendorRows ?? []).map((v) => [v.id, v.name]));
+  const vendorName = stallNames;
   const requests = (requestRows ?? []).map((r) => ({
     ...r,
     vendorName: vendorName.get(r.vendor_id) ?? "Unknown vendor",

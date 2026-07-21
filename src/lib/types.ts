@@ -183,30 +183,24 @@ export interface Database {
       vendors: {
         Row: {
           id: string;
-          name: string;
           plan: Plan;
           created_at: string;
           tour_seen_at: string | null;
           board_settings: BoardSettings;
-          social_links: SocialLinks;
         };
         Insert: {
           id: string;
-          name: string;
           plan?: Plan;
           created_at?: string;
           tour_seen_at?: string | null;
           board_settings?: BoardSettings;
-          social_links?: SocialLinks;
         };
         Update: {
           id?: string;
-          name?: string;
           plan?: Plan;
           created_at?: string;
           tour_seen_at?: string | null;
           board_settings?: BoardSettings;
-          social_links?: SocialLinks;
         };
         Relationships: [];
       };
