@@ -773,6 +773,7 @@ Only now is it safe: every remaining reader/writer of `qkit.vendors.name`/`socia
 
 - Modify: `src/lib/supabase/README.md`
 - Modify: `src/app/admin/feedback/README.md`
+- Modify: `supabase/migrations/README.md`
 
 **Interfaces:** none (docs only, no code).
 
@@ -793,10 +794,24 @@ Replace the line "joins customer ratings → `booths.vendor_id` → `vendors.nam
 joins customer ratings → `booths.vendor_id` → each vendor's stall name (resolved via `vendorStallNames`, `@/lib/admin-vendor-names`) to build a per-vendor CSAT table
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Append a narrative note for migration 0069 to `supabase/migrations/README.md`**
+
+Every migration in this history gets a short blurb in the narrative section that already covers up through `0068_show_wait_estimate.sql` (see the paragraph ending "...regardless of how much real order history exists"). Add, immediately after that paragraph:
+
+```markdown
+`0069_drop_vendor_identity_columns.sql` drops `qkit.vendors.name` and
+`qkit.vendors.social_links` — dead since the 2026-07-17 shared-vendor-profile
+cutover moved both to `merqo.vendor_profile`, backfilled by `0054`. Applied
+only once every remaining raw reader/writer of these two columns (onboarding,
+four admin pages) was cut over to `getOrCreateVendorProfile`/
+`vendorStallNames` — see
+`docs/superpowers/specs/2026-07-21-drop-vendor-identity-columns-design.md`.
+```
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/lib/supabase/README.md src/app/admin/feedback/README.md
+git add src/lib/supabase/README.md src/app/admin/feedback/README.md supabase/migrations/README.md
 git commit -m "docs: update READMEs for the dropped vendors.name/social_links columns"
 ```
 
