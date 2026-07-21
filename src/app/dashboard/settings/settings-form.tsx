@@ -54,6 +54,11 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
   const { pending: savingSound, run: runSound } = useAsyncAction();
 
   const [desktopNotify, setDesktopNotify] = useState(initial.desktop_notify);
+  // Browser-level permission, separate from `desktop_notify` (the account
+  // setting, synced across devices). Notification.permission doesn't itself
+  // trigger a re-render, so this is tracked explicitly and only updated after
+  // OUR OWN request calls — never re-read from the browser mid-render.
+  const [permission, setPermission] = useState(() => notifyPermission());
   const { pending: savingNotify, run: runNotify } = useAsyncAction();
 
   const [dailyReset, setDailyReset] = useState(
@@ -124,26 +129,29 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
     });
   }
 
+  // Gesture-gated — only ever called from a click, the one reliable moment
+  // to unlock audio + ask permission (web.dev double-opt-in guidance).
+  async function grantPermission(): Promise<boolean> {
+    unlockAudio();
+    if (!isNotifySupported()) {
+      toast.error("Your browser doesn't support desktop notifications.");
+      return false;
+    }
+    const result = await requestNotifyPermission();
+    setPermission(result);
+    if (result !== "granted") {
+      toast.error(
+        "Notifications blocked. Enable them for this site in your browser settings, then try again.",
+      );
+      return false;
+    }
+    return true;
+  }
+
   function toggleDesktopNotify() {
     return runNotify(async () => {
       const next = !desktopNotify;
-      if (next) {
-        // Gesture-gated — this click is the only reliable moment to unlock
-        // audio + ask permission (web.dev double-opt-in guidance).
-        unlockAudio();
-        if (isNotifySupported()) {
-          const result = await requestNotifyPermission();
-          if (result !== "granted") {
-            toast.error(
-              "Notifications blocked. Enable them for this site in your browser settings, then try again.",
-            );
-            return;
-          }
-        } else {
-          toast.error("Your browser doesn't support desktop notifications.");
-          return;
-        }
-      }
+      if (next && !(await grantPermission())) return;
       setDesktopNotify(next);
       const res = await updateBoardSettings({
         ...currentSettings(),
@@ -156,6 +164,17 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
       }
       toast.success(next ? "Notifications on" : "Notifications off");
       router.refresh();
+    });
+  }
+
+  // Re-request browser permission without touching the (already-on) account
+  // setting — the toggle above can't reach this path once desktopNotify is
+  // already true, since clicking it there means turning OFF.
+  function enableInBrowser() {
+    return runNotify(async () => {
+      if (await grantPermission()) {
+        toast.success("Notifications enabled in this browser");
+      }
     });
   }
 
@@ -235,18 +254,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                         <Info className="size-3.5" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-72 text-pretty">
-                        <p className="font-semibold">What this controls</p>
-                        <p className="mt-1 text-background/85">
-                          How many minutes after an order is placed before its
-                          ticket turns amber on the board, flagging it as
-                          starting to wait.
-                        </p>
-                        <p className="mt-1.5 text-background/70">
-                          Longer: tickets stay &quot;fresh&quot; longer before
-                          flagging.
-                          <br />
-                          Shorter: an earlier warning.
-                        </p>
+                        Minutes after an order is placed before its ticket turns
+                        amber, flagging it as starting to wait.
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -281,14 +290,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                         <Info className="size-3.5" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-72 text-pretty">
-                        <p className="font-semibold">What this controls</p>
-                        <p className="mt-1 text-background/85">
-                          How many minutes before a still-waiting ticket turns
-                          red instead of amber, flagging it as overdue.
-                        </p>
-                        <p className="mt-1.5 text-background/70">
-                          Must be later than the amber threshold.
-                        </p>
+                        Minutes before a still-waiting ticket turns red instead
+                        of amber. Must be later than the amber threshold.
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -320,7 +323,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
                     <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
-                      Time to undo a tap
+                      Undo window
                     </Label>
                     <Tooltip>
                       <TooltipTrigger
@@ -331,18 +334,9 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                         <Info className="size-3.5" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-72 text-pretty">
-                        <p className="font-semibold">What this controls</p>
-                        <p className="mt-1 text-background/85">
-                          Tapping Mark Ready or Mark Picked Up on a ticket
-                          applies right away — no &quot;are you sure?&quot;
-                          prompt. For that many seconds after, the button turns
-                          into an Undo button instead, in case of a wrong tap.
-                        </p>
-                        <p className="mt-1.5 text-background/70">
-                          Longer: more time to catch a mistake.
-                          <br />
-                          Shorter: the ticket locks in and clears sooner.
-                        </p>
+                        Mark Ready / Mark Picked Up applies right away. For this
+                        many seconds after, the button turns into Undo instead,
+                        in case of a wrong tap.
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -369,7 +363,7 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                       htmlFor="ready-auto-clear-min"
                       className={FORM_LABEL_CLASS}
                     >
-                      Auto-clear a ready order after
+                      Auto-clear after
                     </Label>
                     <Tooltip>
                       <TooltipTrigger
@@ -380,18 +374,9 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
                         <Info className="size-3.5" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-72 text-pretty">
-                        <p className="font-semibold">What this controls</p>
-                        <p className="mt-1 text-background/85">
-                          If a customer&apos;s order is never marked Picked Up,
-                          it clears itself off the board after this many minutes
-                          instead of sitting there indefinitely.
-                        </p>
-                        <p className="mt-1.5 text-background/70">
-                          Leave blank to turn this off (orders only clear on a
-                          manual Mark Picked Up tap). You can always restore an
-                          order this clears too early from the completed orders
-                          page.
-                        </p>
+                        A ready order nobody marks Picked Up clears itself after
+                        this many minutes. Leave blank to turn off — restore a
+                        wrongly-cleared order from Completed orders.
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -436,7 +421,14 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         <Section
           icon={<Bell className="size-5" />}
           title="Notifications"
-          description="A popup for a new order when this tab is backgrounded. Works on Android and desktop browsers. On iPhone or iPad, add qkit to your Home Screen first, since a regular Safari tab can't show these."
+          description="A popup for a new order when this tab is backgrounded."
+          tooltip={
+            <>
+              Works on Android and desktop browsers. On iPhone or iPad, add qkit
+              to your Home Screen first — a regular Safari tab can&apos;t show
+              these.
+            </>
+          }
         >
           <div className="flex items-center gap-3">
             <Switch
@@ -454,11 +446,26 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
               {desktopNotify ? "On" : "Off"}
             </span>
           </div>
-          {desktopNotify && notifyPermission() !== "granted" && (
-            <p className="text-xs text-muted-foreground">
-              Permission isn&apos;t granted in this browser. This device
-              won&apos;t show popups until you re-enable it here.
-            </p>
+          {desktopNotify && permission !== "granted" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs text-muted-foreground">
+                {isNotifySupported()
+                  ? "Not allowed in this browser yet — this device won't show popups until you enable it."
+                  : "Not supported in this browser — see above for iPhone/iPad."}
+              </p>
+              {isNotifySupported() && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={enableInBrowser}
+                  disabled={savingNotify}
+                  className="h-7 rounded-lg text-xs"
+                >
+                  Enable in this browser
+                </Button>
+              )}
+            </div>
           )}
         </Section>
       </div>
@@ -496,7 +503,8 @@ export function SettingsForm({ initial }: { initial: BoardSettings }) {
         <Section
           icon={<Hourglass className="size-5" />}
           title="Customer order screen"
-          description="Two optional tweaks to what a customer sees on the page they land on right after ordering."
+          description="What a customer sees right after ordering."
+          tooltip="Two optional tweaks to the page a customer lands on right after ordering: a simplified order number, and a backup wait estimate."
         >
           <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
             <Switch

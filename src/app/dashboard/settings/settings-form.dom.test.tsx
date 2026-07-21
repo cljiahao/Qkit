@@ -82,7 +82,7 @@ describe("SettingsForm thresholds", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const undoSeconds = screen.getByLabelText(/time to undo a tap/i);
+    const undoSeconds = screen.getByLabelText(/undo window/i);
     await user.clear(undoSeconds);
     await user.type(undoSeconds, "8");
     await user.click(screen.getByRole("button", { name: /save timing/i }));
@@ -96,7 +96,7 @@ describe("SettingsForm thresholds", () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} />, { wrapper: TooltipProvider });
 
-    const undoSeconds = screen.getByLabelText(/time to undo a tap/i);
+    const undoSeconds = screen.getByLabelText(/undo window/i);
     await user.clear(undoSeconds);
     await user.type(undoSeconds, "30");
     await user.click(screen.getByRole("button", { name: /save timing/i }));
@@ -112,7 +112,7 @@ describe("SettingsForm thresholds", () => {
       </TooltipProvider>,
     );
     const user = userEvent.setup();
-    const input = screen.getByLabelText(/auto-clear a ready order after/i);
+    const input = screen.getByLabelText(/auto-clear after/i);
     await user.clear(input);
     await user.type(input, "5");
     await user.click(screen.getByRole("button", { name: /save timing/i }));
@@ -163,6 +163,29 @@ describe("SettingsForm desktop notifications", () => {
     expect(
       screen.getByRole("switch", { name: /desktop notifications/i }),
     ).not.toBeChecked();
+  });
+
+  it("offers an in-browser enable button when already on but not granted, without touching the account setting", async () => {
+    notifyPermission.mockReturnValue("default");
+    requestNotifyPermission.mockResolvedValueOnce("granted");
+    const user = userEvent.setup();
+    render(<SettingsForm initial={{ ...DEFAULTS, desktop_notify: true }} />, {
+      wrapper: TooltipProvider,
+    });
+
+    expect(
+      screen.getByText(/not allowed in this browser yet/i),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /enable in this browser/i }),
+    );
+
+    expect(requestNotifyPermission).toHaveBeenCalled();
+    expect(updateBoardSettings).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText(/not allowed in this browser yet/i),
+    ).not.toBeInTheDocument();
   });
 });
 

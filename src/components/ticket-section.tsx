@@ -1,16 +1,26 @@
+import { Info } from "lucide-react";
 import { Ticket } from "@/components/ticket";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function Section({
   icon,
   eyebrow,
   title,
   description,
+  tooltip,
   children,
 }: {
   icon: React.ReactNode;
   eyebrow?: string;
   title: string;
   description: string;
+  // Extra detail that doesn't need to be visible by default — rendered
+  // behind an (i) next to the title instead of bloating `description`.
+  tooltip?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -25,9 +35,25 @@ export function Section({
               {eyebrow}
             </p>
           )}
-          <h2 className="font-display text-xl font-semibold leading-tight">
-            {title}
-          </h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="font-display text-xl font-semibold leading-tight">
+              {title}
+            </h2>
+            {tooltip && (
+              <Tooltip>
+                <TooltipTrigger
+                  type="button"
+                  aria-label="More about this section"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-72 text-pretty">
+                  {tooltip}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
