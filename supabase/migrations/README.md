@@ -227,6 +227,13 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   `src/app/order/[boothId]/[orderNumber]/status-actions.ts`). Normal
   missing-key backfill (unlike `0067`'s unconditional overwrite) since
   every vendor starts at the same `true` default with nothing to preserve.
+  `0069_drop_vendor_identity_columns.sql` drops `qkit.vendors.name` and
+  `qkit.vendors.social_links` — dead since the 2026-07-17 shared-vendor-profile
+  cutover moved both to `merqo.vendor_profile`, backfilled by `0054`. Applied
+  only once every remaining raw reader/writer of these two columns (onboarding,
+  four admin pages) was cut over to `getOrCreateVendorProfile`/
+  `vendorStallNames` — see
+  `docs/superpowers/specs/2026-07-21-drop-vendor-identity-columns-design.md`.
 
 ## Connectivity
 

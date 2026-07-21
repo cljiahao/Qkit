@@ -27,8 +27,8 @@ answered.
   `vendor.name`/`vendor.social_links` with the values from the shared
   `merqo.vendor_profile` table (via `@/lib/merqo-vendor-profile`'s
   `getOrCreateVendorProfile`, `supabase.schema("merqo").rpc(...)`) — those
-  `qkit.vendors` columns are stale leftovers from before the cross-kit
-  vendor-profile cutover, not yet dropped. `requireEntitledVendor()` is the
+  two fields don't exist on `qkit.vendors` at all as of migration 0069 —
+  `merqo.vendor_profile` is the only source. `requireEntitledVendor()` is the
   redirect-on-failure page-guard wrapper (`/login` then `/onboarding`).
 - `get-user.ts` — `getUser()`: the current auth user via
   `supabase.auth.getUser()`, memoized per request with React `cache` so a
