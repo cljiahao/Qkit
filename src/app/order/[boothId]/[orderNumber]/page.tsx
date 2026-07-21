@@ -194,31 +194,9 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
 
         <div className="perforation" />
 
-        <OrderStatusPoller
-          boothId={boothId}
-          orderNumber={orderNumber}
-          token={token}
-          initialStatus={order.status}
-          boothName={booth?.name ?? "Your order"}
-          placedAt={order.created_at}
-        />
-
-        {/* Pulled up next to the status/ETA block rather than buried in the
-            footer below payment and items — a customer stares at this page
-            for several idle minutes while waiting, and something to do
-            (follow the booth) belongs near the thing they're already
-            looking at, not past the transactional content. */}
-        {Object.keys(socialLinks).length > 0 && (
-          <div className="flex flex-col items-center gap-2 px-6 pb-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-              Follow {booth?.name}
-            </p>
-            <SocialLinksRow links={socialLinks} />
-          </div>
-        )}
-
-        <div className="perforation" />
-
+        {/* Pay comes first, above status/progress — it's the customer's
+            actual call-to-action while an order is unpaid, not passive
+            information like "you're next in line". */}
         {showPay && (
           <>
             <PayPanel
@@ -232,6 +210,31 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             <div className="perforation" />
           </>
         )}
+
+        <OrderStatusPoller
+          boothId={boothId}
+          orderNumber={orderNumber}
+          token={token}
+          initialStatus={order.status}
+          boothName={booth?.name ?? "Your order"}
+          placedAt={order.created_at}
+        />
+
+        {/* Pulled up next to the status/ETA block rather than buried in the
+            footer below items — a customer stares at this page for several
+            idle minutes while waiting, and something to do (follow the
+            booth) belongs near the thing they're already looking at, not
+            past the transactional content. */}
+        {Object.keys(socialLinks).length > 0 && (
+          <div className="flex flex-col items-center gap-2 px-6 pb-6">
+            <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+              Follow {booth?.name}
+            </p>
+            <SocialLinksRow links={socialLinks} />
+          </div>
+        )}
+
+        <div className="perforation" />
 
         <section className="space-y-1.5 px-6 py-5">
           {items.map((item, i) => (
