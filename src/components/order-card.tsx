@@ -31,6 +31,7 @@ import {
   cancelOrder as cancelOrderAction,
   confirmOrderPayment,
   revertOrderAdvance,
+  restoreAutoCompleted,
 } from "@/app/dashboard/order-actions";
 import { sgtClock, shortDateTime } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
@@ -261,6 +262,14 @@ export function OrderCard({
       const res = await bumpOrder(order.id);
       if (!res.success) toast.error(res.error);
       else setBumpedLocally(true);
+    });
+  }
+
+  function restoreToReady() {
+    return run(async () => {
+      const res = await restoreAutoCompleted(order.id);
+      if (!res.success) toast.error(res.error);
+      else setStatus(res.status);
     });
   }
 
@@ -564,6 +573,21 @@ export function OrderCard({
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {closed && !pendingUndo && order.auto_completed && (
+          <div className="flex gap-2 px-4 pb-4">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-11 flex-1 rounded-lg font-semibold"
+              onClick={restoreToReady}
+              disabled={updating}
+            >
+              <Undo2 className="size-4" /> Restore to ready
+            </Button>
           </div>
         )}
 
