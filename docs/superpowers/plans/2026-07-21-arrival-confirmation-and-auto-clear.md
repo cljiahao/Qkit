@@ -1501,11 +1501,9 @@ beforeEach(() => {
   updateSelect
     .mockReset()
     .mockResolvedValue({ data: [{ id: ID }], error: null });
-  vendorSingle
-    .mockReset()
-    .mockResolvedValue({
-      data: { board_settings: { ready_auto_clear_min: 3 } },
-    });
+  vendorSingle.mockReset().mockResolvedValue({
+    data: { board_settings: { ready_auto_clear_min: 3 } },
+  });
   sweepLt.mockReset().mockResolvedValue({ error: null });
 });
 ```
