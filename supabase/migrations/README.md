@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-66 files, `0000` through `0065`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0065` tail; skimmed by filename/theme otherwise. The
+67 files, `0000` through `0066`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0066` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -199,6 +199,18 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   deliberately conservative default (see the job board's own reasoning
   against the originally-floated 15 seconds) that a vendor can retune (or
   set to `null` to disable the sweep) from `/dashboard/settings`.
+  `0066_menu_categories.sql` adds `booths.menu_categories` (jsonb, default
+  `[]`): an ordered list of `{id, label}` menu sections. Each `menu_items`
+  entry may reference one by `id` via its own `category` key (added
+  client-side only, not a DB column — `menu_items` stays a flat jsonb
+  array); a stable id means renaming a section never requires rewriting
+  every item that references it, and an item with no/unknown category id
+  renders in an "Other" bucket, always last. `get_booth_for_order` is
+  recreated (verbatim from its `0053` body otherwise) to also return
+  `menu_categories`, so the customer menu page can group items by section
+  in the same round trip that already fetches the menu. No UI reads or
+  writes this column yet (menu-editor, booth-form, customer menu grouping)
+  — schema/RPC only.
 
 ## Connectivity
 

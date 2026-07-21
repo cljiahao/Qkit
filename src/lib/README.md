@@ -203,7 +203,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema` (now also
   `daily_order_number_reset: boolean` and `default_prep_minutes:
 1-60|null`, migration 0062), `pricingFormSchema`/`grantPassSchema`,
-  `parseMenuItems`/`parseOrderItems`.
+  `parseMenuItems`/`parseOrderItems`, `menuCategorySchema`/
+  `menuCategoriesSchema`/`parseMenuCategories` (booth's ordered
+  `{id, label}` menu sections, migration 0066 — schema/types only, no UI
+  yet).
 - `schemas.test.ts` — the largest test file in `lib/`: validates every schema
   above, including the payment-config cross-field rules (xor of UEN/mobile,
   pointer requiring a link or QR) and the tolerant vs. strict read/write
