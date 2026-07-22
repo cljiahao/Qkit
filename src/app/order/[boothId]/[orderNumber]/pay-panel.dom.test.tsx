@@ -24,7 +24,7 @@ describe("PayPanel", () => {
         amountCents={800}
       />,
     );
-    expect(screen.getByText(/scan to pay/i)).toBeInTheDocument();
+    expect(screen.getByText(/scan with your paynow/i)).toBeInTheDocument();
     // Amount is echoed by the QR.
     expect(screen.getByText("$8.00")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /i've paid/i }));
