@@ -234,10 +234,8 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   pages) was cut over to `getOrCreateVendorProfile`/`vendorStallNames` in the
   same change — see
   `docs/superpowers/specs/2026-07-21-drop-vendor-identity-columns-design.md`.
-  **Not yet applied to any shared/live DB as of this writing** — the code is
-  correct either way (it never reads these columns off the raw row), but
-  apply this migration promptly to avoid carrying dead columns indefinitely.
-  `0069`'s own review missed one more raw reader: `qkit.get_booth_for_order`
+  Applied to the shared/live DB 2026-07-22. `0069`'s own review missed one
+  more raw reader: `qkit.get_booth_for_order`
   (0053, last redefined by `0066`) still read its vendor-level
   `social_links` fallback straight off `qkit.vendors`.
   `0070_get_booth_for_order_vendor_profile_social_links.sql` redefines it to
