@@ -175,7 +175,6 @@ export function PaymentSection({
             />
           </div>
           <div className="space-y-2">
-            <span className={FORM_LABEL_CLASS}>UEN or mobile number</span>
             <ToggleGroup
               type="single"
               value={proxyMode}
