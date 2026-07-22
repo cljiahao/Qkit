@@ -12,6 +12,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImageUploader } from "@/components/image-uploader";
+import { InfoTooltip } from "@/components/info-tooltip";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
@@ -25,23 +26,27 @@ function kindOf(v: PaymentConfig | null): Kind {
   return v.kind === "stripe" ? "none" : v.kind;
 }
 
-// Each option carries a one-line, plain-language hint so a vendor can pick at a
-// glance without reading docs.
-const OPTIONS: { k: Kind; label: string; hint: string }[] = [
+// Just the label at a glance; the full explanation lives behind an (i)
+// InfoTooltip (see @/components/info-tooltip) instead of a permanently-shown
+// paragraph — matches every other "one more sentence" spot in the app
+// (settings-form.tsx's threshold fields) instead of this being the one place
+// with a wall of always-visible helper text.
+const OPTIONS: { k: Kind; label: string; detail: string }[] = [
   {
     k: "none",
     label: "No online payment",
-    hint: "Customers just join the queue and settle up at the counter.",
+    detail: "Customers just join the queue and settle up at the counter.",
   },
   {
     k: "paynow",
     label: "PayNow QR",
-    hint: "We generate a QR with the order amount already filled in.",
+    detail: "We generate a QR with the order amount already filled in.",
   },
   {
     k: "pointer",
     label: "Payment link or QR image",
-    hint: "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, or your bank's own QR: any of them work here.",
+    detail:
+      "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, or your bank's own QR — any of them work here.",
   },
 ];
 
@@ -122,26 +127,28 @@ export function PaymentSection({
         onValueChange={(v) => pick(v as Kind)}
         className="gap-2.5"
       >
-        {OPTIONS.map(({ k, label, hint }) => {
+        {OPTIONS.map(({ k, label, detail }) => {
           const selected = kind === k;
           return (
-            <label
+            <div
               key={k}
               className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
+                "flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors",
                 selected
                   ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                   : "border-border bg-card hover:bg-secondary/50",
               )}
             >
-              <RadioGroupItem value={k} aria-label={label} className="mt-0.5" />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium">{label}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {hint}
-                </span>
-              </span>
-            </label>
+              {/* Only the radio + label are inside the <label> (native
+                  click-to-select) — the info button sits outside it, as a
+                  plain sibling, so tapping it opens the tooltip instead of
+                  also toggling the radio underneath it. */}
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                <RadioGroupItem value={k} aria-label={label} />
+                <span className="truncate text-sm font-medium">{label}</span>
+              </label>
+              <InfoTooltip label={`More about ${label}`}>{detail}</InfoTooltip>
+            </div>
           );
         })}
       </RadioGroup>

@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PaymentSection } from "./payment-section";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { PaymentConfig } from "@/lib/types";
 
 // PaymentSection is controlled, so drive it through a stateful host that feeds
-// the latest value back — mirroring how booth-form wires it.
+// the latest value back — mirroring how booth-form wires it. Wrapped in
+// TooltipProvider since each radio option's InfoTooltip needs one.
 function Host({
   initial,
   onChange,
@@ -16,14 +18,16 @@ function Host({
 }) {
   const [value, setValue] = useState<PaymentConfig | null>(initial);
   return (
-    <PaymentSection
-      vendorId="v1"
-      value={value}
-      onChange={(next) => {
-        setValue(next);
-        onChange(next);
-      }}
-    />
+    <TooltipProvider>
+      <PaymentSection
+        vendorId="v1"
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          onChange(next);
+        }}
+      />
+    </TooltipProvider>
   );
 }
 
