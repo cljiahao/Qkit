@@ -218,6 +218,12 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           initialStatus={order.status}
           boothName={booth?.name ?? "Your order"}
           placedAt={order.created_at}
+          // The kitchen status (pending→…→completed) and payment status
+          // (pending→claimed→confirmed) advance independently — a vendor can
+          // mark an order preparing/ready before the customer has paid. Don't
+          // let the status text claim progress that implies payment is
+          // settled when it isn't.
+          awaitingPayment={showPay && order.payment_status !== "confirmed"}
         />
 
         {/* Pulled up next to the status/ETA block rather than buried in the

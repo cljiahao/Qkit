@@ -30,7 +30,10 @@ vi.mock("./status-actions", () => ({
 }));
 vi.mock("@/lib/order-alerts", () => alerts);
 
-function renderPoller(initialStatus: OrderStatus = "preparing") {
+function renderPoller(
+  initialStatus: OrderStatus = "preparing",
+  awaitingPayment = false,
+) {
   return render(
     <OrderStatusPoller
       boothId="b1"
@@ -39,6 +42,7 @@ function renderPoller(initialStatus: OrderStatus = "preparing") {
       initialStatus={initialStatus}
       boothName="Kopi Cart"
       placedAt="2026-07-04T00:00:00Z"
+      awaitingPayment={awaitingPayment}
     />,
   );
 }
@@ -176,6 +180,47 @@ describe("OrderStatusPoller", () => {
     expect(alerts.requestNotifyPermission).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(screen.getByText(/keep this tab open/)).toBeInTheDocument(),
+    );
+  });
+});
+
+describe("OrderStatusPoller — awaiting payment", () => {
+  it("does not claim prep has started while payment is still outstanding", async () => {
+    getOrderStatus.mockResolvedValue("preparing");
+    renderPoller("preparing", true);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Being prepared — please complete your payment"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("Your order is being prepared"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("tells an unpaid customer to pay before collecting, even once ready", async () => {
+    getOrderStatus.mockResolvedValue("ready");
+    renderPoller("preparing", true);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Please pay before you collect your order"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("Please collect your order now"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the normal messages once payment is no longer outstanding", async () => {
+    getOrderStatus.mockResolvedValue("preparing");
+    renderPoller("preparing", false);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Your order is being prepared"),
+      ).toBeInTheDocument(),
     );
   });
 });

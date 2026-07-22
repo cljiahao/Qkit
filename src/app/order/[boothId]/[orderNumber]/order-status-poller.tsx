@@ -46,6 +46,10 @@ interface Props {
   boothName: string;
   // ISO created_at, for the "placed N min ago" stamp
   placedAt: string;
+  // True while this order still expects payment and the vendor hasn't
+  // confirmed receiving it yet — kitchen status and payment status advance
+  // independently, so "preparing"/"ready" can be true before payment is.
+  awaitingPayment: boolean;
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, string> = {
@@ -57,6 +61,17 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
   cancelled: "Your order was cancelled",
 };
 
+// Overrides for the same statuses while payment is still outstanding — the
+// kitchen may already be moving, but the text must not imply payment is
+// settled when it isn't. "completed"/"cancelled" aren't listed: a completed
+// order's payment auto-confirms, and a cancelled order never solicits
+// payment (see order-status page's showPay gate).
+const AWAITING_PAYMENT_MESSAGE: Partial<Record<OrderStatus, string>> = {
+  confirmed: "Confirmed — please pay to start your order",
+  preparing: "Being prepared — please complete your payment",
+  ready: "Ready for pickup — please pay before you collect",
+};
+
 export function OrderStatusPoller({
   boothId,
   orderNumber,
@@ -64,6 +79,7 @@ export function OrderStatusPoller({
   initialStatus,
   boothName,
   placedAt,
+  awaitingPayment,
 }: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   // null = nothing to show at all (order not found — shouldn't happen once
@@ -257,7 +273,9 @@ export function OrderStatusPoller({
           status === "ready" ? "text-status-ready" : ""
         }`}
       >
-        {STATUS_MESSAGE[status]}
+        {awaitingPayment
+          ? (AWAITING_PAYMENT_MESSAGE[status] ?? STATUS_MESSAGE[status])
+          : STATUS_MESSAGE[status]}
       </p>
 
       {!cancelled && elapsed && (
@@ -293,7 +311,9 @@ export function OrderStatusPoller({
             Ready
           </span>
           <p className="text-sm font-medium text-status-ready">
-            Please collect your order now
+            {awaitingPayment
+              ? "Please pay before you collect your order"
+              : "Please collect your order now"}
           </p>
         </div>
       )}
