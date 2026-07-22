@@ -37,7 +37,7 @@ test("customer places an order and reaches the live status page", async ({
 
   // Payment seam: the seeded booth carries a PayNow method, so a pay panel
   // renders. Claiming payment moves it to the "sent" state.
-  await expect(page.getByText(/scan to pay/i)).toBeVisible();
+  await expect(page.getByText(/scan with your paynow/i)).toBeVisible();
   await page.getByRole("button", { name: /i've paid/i }).click();
   await expect(page.getByText(/payment sent/i)).toBeVisible();
 });
