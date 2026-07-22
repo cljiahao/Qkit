@@ -232,6 +232,14 @@ html::-webkit-scrollbar {
   animation: undo-drain 4s linear forwards;
 }
 
+/* Time-left-before-auto-clear drain on "Mark Picked Up" (order-card.tsx) —
+   same left-to-right shrink as .undo-bar, reusing its undo-drain keyframe;
+   the real duration is always set inline per order (remainingAutoClearMs) —
+   this 1s is just a placeholder, the same way .undo-bar's 4s is. */
+.autoclear-bar {
+  animation: undo-drain 1s linear forwards;
+}
+
 /* Left-to-right fill on a hold-to-confirm button (close-booth-control.tsx) —
    the visible progress of a 3-second press. The actual timing is a JS
    setTimeout, independent of this; the animation is feedback only. */
@@ -251,6 +259,10 @@ html::-webkit-scrollbar {
     animation: none;
   }
   .undo-bar {
+    animation: none;
+    width: 40%;
+  }
+  .autoclear-bar {
     animation: none;
     width: 40%;
   }

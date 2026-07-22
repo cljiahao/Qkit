@@ -209,6 +209,68 @@ describe("OrderCard", () => {
     expect(advanceOrder).toHaveBeenCalledWith("o1");
   });
 
+  it("shows an auto-clear drain bar on Mark Picked Up when ready and auto-clear is on", () => {
+    const { container } = render(
+      <OrderCard
+        order={makeOrder({
+          status: "ready",
+          ready_at: new Date(Date.now() - 60_000).toISOString(), // 1 min ago
+        })}
+        readyAutoClearMs={5 * 60_000} // 5 min
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    const bar = container.querySelector(".autoclear-bar");
+    expect(bar).toBeInTheDocument();
+    // ~4 min left (5 min window minus the 1 min already elapsed).
+    const duration = parseInt((bar as HTMLElement).style.animationDuration, 10);
+    expect(duration).toBeGreaterThan(3 * 60_000);
+    expect(duration).toBeLessThanOrEqual(4 * 60_000);
+  });
+
+  it("hides the auto-clear drain bar when auto-clear is off", () => {
+    const { container } = render(
+      <OrderCard
+        order={makeOrder({
+          status: "ready",
+          ready_at: new Date().toISOString(),
+        })}
+        readyAutoClearMs={null}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(container.querySelector(".autoclear-bar")).not.toBeInTheDocument();
+  });
+
+  it("hides the auto-clear drain bar once the window has already elapsed", () => {
+    const { container } = render(
+      <OrderCard
+        order={makeOrder({
+          status: "ready",
+          ready_at: new Date(Date.now() - 10 * 60_000).toISOString(), // 10 min ago
+        })}
+        readyAutoClearMs={5 * 60_000} // 5 min window, long past due
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(container.querySelector(".autoclear-bar")).not.toBeInTheDocument();
+  });
+
+  it("hides the auto-clear drain bar for a non-ready status", () => {
+    const { container } = render(
+      <OrderCard
+        order={makeOrder({ status: "preparing" })}
+        readyAutoClearMs={5 * 60_000}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(container.querySelector(".autoclear-bar")).not.toBeInTheDocument();
+  });
+
   it("does not flash a Paid badge when completing an order that never required payment", async () => {
     const user = userEvent.setup();
     advanceOrder.mockResolvedValue({ success: true, status: "completed" });

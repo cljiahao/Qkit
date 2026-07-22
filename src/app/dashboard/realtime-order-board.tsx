@@ -597,6 +597,11 @@ export function RealtimeOrderBoard({
               agingMin={boardSettings.aging_min}
               overdueMin={boardSettings.overdue_min}
               undoMs={boardSettings.undo_seconds * 1000}
+              readyAutoClearMs={
+                boardSettings.ready_auto_clear_min != null
+                  ? boardSettings.ready_auto_clear_min * 60_000
+                  : null
+              }
               onUndoWindowChange={handleUndoWindowChange}
             />
           ))}

@@ -78,6 +78,7 @@ export function OrderCard({
   onUndoWindowChange,
   showDate = false,
   undoMs = DEFAULT_UNDO_MS,
+  readyAutoClearMs = null,
 }: {
   order: BoardOrder;
   // board_settings.daily_order_number_reset display number (see
@@ -100,6 +101,13 @@ export function OrderCard({
   // board_settings.undo_seconds * 1000, vendor-configurable. Falls back to
   // DEFAULT_UNDO_MS when omitted (e.g. before the board thread it through).
   undoMs?: number;
+  // board_settings.ready_auto_clear_min * 60_000, vendor-configurable — null
+  // (the default) when the vendor hasn't turned auto-clear on, or when this
+  // card is rendered somewhere that doesn't apply it (e.g. the completed-
+  // orders history list). Drives the drain bar on "Mark Picked Up" (see
+  // remainingAutoClearMs below); the actual sweep is server-side
+  // (sweepReadyOrders) — this is display only, never authoritative.
+  readyAutoClearMs?: number | null;
   // Footer stamp reads a bare time ("2:38 AM") by default — fine for the
   // live board, where every card is from today. A history list spans many
   // days, so it opts into a date+time stamp instead of a time an ordering
@@ -170,6 +178,29 @@ export function OrderCard({
   const number = displayNumber ?? order.order_number;
   const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
+
+  // Time left before sweepReadyOrders auto-completes this order, for the
+  // "Mark Picked Up" drain bar. Set once per ready_at (the effect only
+  // re-runs when these deps actually change, not on every poll tick) so the
+  // CSS animation drains smoothly from a fixed duration instead of
+  // restarting each time this card re-renders — the actual clearing is
+  // still entirely server-side; a stale/frozen value here only ever makes
+  // the bar a few seconds off, never wrong about whether the order clears.
+  // null hides the bar (auto-clear off, no ready_at yet, or already past
+  // due — the next sweep poll will complete it any moment).
+  const [remainingAutoClearMs, setRemainingAutoClearMs] = useState<
+    number | null
+  >(null);
+  useEffect(() => {
+    if (readyAutoClearMs == null || status !== "ready" || !order.ready_at) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRemainingAutoClearMs(null);
+      return;
+    }
+    const remaining =
+      readyAutoClearMs - (Date.now() - Date.parse(order.ready_at));
+    setRemainingAutoClearMs(remaining > 0 ? remaining : null);
+  }, [readyAutoClearMs, status, order.ready_at]);
 
   // A dismissed/expired undo window just clears local state — the DB write
   // it's undoing (or not) already happened; there's nothing left to do here.
@@ -541,11 +572,20 @@ export function OrderCard({
                 {advance && (
                   <Button
                     size="sm"
-                    className="h-11 flex-1 rounded-lg font-semibold"
+                    className="relative h-11 flex-1 overflow-hidden rounded-lg font-semibold"
                     onClick={advanceStatus}
                     disabled={updating}
                   >
-                    {advance.label}
+                    {remainingAutoClearMs != null && (
+                      <span
+                        className="autoclear-bar absolute inset-y-0 left-0 bg-black/10"
+                        style={{
+                          animationDuration: `${remainingAutoClearMs}ms`,
+                        }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="relative">{advance.label}</span>
                   </Button>
                 )}
                 {/* No cancel affordance once payment is confirmed — there's no

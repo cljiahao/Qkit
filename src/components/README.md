@@ -71,15 +71,15 @@ prompt, metric })`: compact rating widget posting to
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
 - `order-card.tsx` — `OrderCard({ order, displayNumber, boothName, agingMin,
-overdueMin, onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's
-  live order ticket — status/payment badges, an aging clock (`orderAgeTone`,
-  ticks every 30s) moved to the footer beside the arrival timestamp
-  (`sgtClock`, bare time — or `shortDateTime`, date+time, when `showDate` is
-  set, for the completed-orders history list where every card isn't from
-  today), expandable item options, and the advance/cancel/confirm-payment
-  action buttons wired to `@/app/dashboard/order-actions`. Advancing (Mark
-  Ready/Mark Picked Up) fires instantly — no confirm gate on a
-  tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
+overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs })`: the
+  vendor dashboard's live order ticket — status/payment badges, an aging
+  clock (`orderAgeTone`, ticks every 30s) moved to the footer beside the
+  arrival timestamp (`sgtClock`, bare time — or `shortDateTime`, date+time,
+  when `showDate` is set, for the completed-orders history list where every
+  card isn't from today), expandable item options, and the advance/cancel/
+  confirm-payment action buttons wired to `@/app/dashboard/order-actions`.
+  Advancing (Mark Ready/Mark Picked Up) fires instantly — no confirm gate on
+  a tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
   (default `DEFAULT_UNDO_MS`, 4s; vendor-configurable via
   `board_settings.undo_seconds * 1000`) undo window: the button becomes an
   Undo affordance with a left-to-right drain (`.undo-bar` in `globals.css`,
@@ -87,7 +87,16 @@ overdueMin, onUndoWindowChange, showDate, undoMs })`: the vendor dashboard's
   active)` tells the board to keep a just-completed (terminal) order on the
   active grid for that window, since the realtime echo of the very write
   being offered for undo would otherwise filter the card off the board
-  first. `displayNumber` (optional, board_settings.daily_order_number_reset
+  first. While `status === "ready"` and `readyAutoClearMs` is set
+  (`board_settings.ready_auto_clear_min * 60_000`, vendor-configurable,
+  `null` when the vendor hasn't turned auto-clear on), "Mark Picked Up"
+  shows the same left-to-right drain (`.autoclear-bar`, reusing `.undo-bar`'s
+  `undo-drain` keyframe) for the time left before `sweepReadyOrders`
+  auto-completes it — set once (in an effect keyed on `ready_at`/`status`/
+  `readyAutoClearMs`, not recomputed every poll tick) so it drains smoothly
+  from a fixed duration instead of restarting on every re-render; purely
+  display, the actual clearing stays server-side. `displayNumber` (optional,
+  board_settings.daily_order_number_reset
   — see `displayOrderNumber` in `@/lib/orders`) overrides what's shown/
   referenced everywhere the card names "this order" by number — the
   name/number block itself, and both its own bump/cancel confirm dialogs —
