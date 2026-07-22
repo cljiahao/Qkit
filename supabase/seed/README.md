@@ -13,10 +13,10 @@ so it's safe to re-run.
 
 - `ci-auth-bootstrap.sql` — creates the fixed-UUID `auth.users` row
   (`6df824a1-...`, email `e2e-test@qkit.local`) and its matching
-  `qkit.vendors` row (name "Test") that the other local seed scripts assume
-  already exists. Needed only in CI, where a fresh `supabase start` database
-  has no such user (a local dev DB already has the developer's real "Test"
-  vendor from normal sign-up).
+  `qkit.vendors` row that the other local seed scripts assume already
+  exists. Needed only in CI, where a fresh `supabase start` database has no
+  such user (a local dev DB already has the developer's real "Test" vendor
+  from normal sign-up).
 - `coffee-cart.sql` — seeds one active booth ("Kopitiam Cart") under the
   existing "Test" vendor with 3 customizable drinks (Kopi/Teh/Milo, each with
   style/temperature/sugar option groups) and a fixed e2e-only `short_code`

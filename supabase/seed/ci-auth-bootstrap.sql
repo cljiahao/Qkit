@@ -17,6 +17,6 @@ insert into auth.users (
 )
 on conflict (id) do nothing;
 
-insert into qkit.vendors (id, name)
-values ('6df824a1-9da2-4608-ad13-2400a9114ec0', 'Test')
+insert into qkit.vendors (id)
+values ('6df824a1-9da2-4608-ad13-2400a9114ec0')
 on conflict (id) do nothing;

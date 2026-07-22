@@ -17,10 +17,10 @@
 do $do$
 declare vid uuid := '__VENDOR_ID__';
 begin
-  -- Your vendor row → Pro (Pro lifts the 1-active-booth cap). Keeps your
-  -- existing stall name if you've already onboarded.
-  insert into qkit.vendors (id, name, plan)
-  values (vid, 'My Stalls', 'pro')
+  -- Your vendor row → Pro (Pro lifts the 1-active-booth cap). Stall name now
+  -- lives in merqo.vendor_profile, not this row.
+  insert into qkit.vendors (id, plan)
+  values (vid, 'pro')
   on conflict (id) do update set plan = 'pro';
 
   -- Clean slate for YOUR booths only (orders cascade-delete, migration 0009).

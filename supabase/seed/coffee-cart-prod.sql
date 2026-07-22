@@ -8,8 +8,8 @@
 -- Idempotent: safe to re-run; it upserts the vendor row and the booth.
 
 -- 1. Ensure the vendor row exists (no-op if that account already onboarded).
-insert into qkit.vendors (id, name)
-values ('__VENDOR_ID__', 'Kopitiam Cart')
+insert into qkit.vendors (id)
+values ('__VENDOR_ID__')
 on conflict (id) do nothing;
 
 -- 2. Seed the booth with the 3 customizable drinks.

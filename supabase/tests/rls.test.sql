@@ -26,10 +26,10 @@ values
    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'vendor-b@test.local');
 
-insert into qkit.vendors (id, name)
+insert into qkit.vendors (id)
 values
-  ('00000000-0000-0000-0000-00000000000a', 'Vendor A'),
-  ('00000000-0000-0000-0000-00000000000b', 'Vendor B');
+  ('00000000-0000-0000-0000-00000000000a'),
+  ('00000000-0000-0000-0000-00000000000b');
 
 insert into qkit.booths (id, vendor_id, name, is_active)
 values
@@ -101,8 +101,8 @@ values
    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'vendor-c@test.local');
 
-insert into qkit.vendors (id, name)
-values ('00000000-0000-0000-0000-00000000000c', 'Vendor C');
+insert into qkit.vendors (id)
+values ('00000000-0000-0000-0000-00000000000c');
 
 -- Vendor C also holds a FUTURE-dated pass (starts tomorrow) — used to prove the
 -- entitlement predicate honours valid_from (0038): it must NOT count yet.
@@ -344,11 +344,11 @@ select throws_ok(
      where id = '00000000-0000-0000-0000-00000000000a' $$,
   null,
   'authenticated vendor cannot self-escalate plan to pro');
--- A legitimate self-edit (name) still works — the revoke is column-scoped.
+-- A legitimate self-edit (tour_seen_at) still works — the revoke is column-scoped.
 select lives_ok(
-  $$ update qkit.vendors set name = 'Vendor A2'
+  $$ update qkit.vendors set tour_seen_at = now()
      where id = '00000000-0000-0000-0000-00000000000a' $$,
-  'vendor can still update its own name');
+  'vendor can still update its own tour_seen_at');
 -- WITH CHECK now blocks re-pointing an owned booth to another vendor (the USING
 -- filter passes since A owns it; the result row would belong to B).
 select throws_ok(

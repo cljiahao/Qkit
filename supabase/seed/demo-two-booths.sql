@@ -14,8 +14,8 @@ values ('6df824a1-9da2-4608-ad13-2400a9114ec0',
         'authenticated', 'authenticated', 'test@qkit.local')
 on conflict (id) do nothing;
 
-insert into qkit.vendors (id, name, plan)
-values ('6df824a1-9da2-4608-ad13-2400a9114ec0', 'Test', 'pro')
+insert into qkit.vendors (id, plan)
+values ('6df824a1-9da2-4608-ad13-2400a9114ec0', 'pro')
 on conflict (id) do update set plan = 'pro';
 
 -- ── Clean slate for this vendor (cascades orders) ────────────────────────────
