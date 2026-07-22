@@ -191,7 +191,7 @@ describe("OrderStatusPoller — awaiting payment", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText("Being prepared — please complete your payment"),
+        screen.getByText("Being prepared, please complete your payment"),
       ).toBeInTheDocument(),
     );
     expect(

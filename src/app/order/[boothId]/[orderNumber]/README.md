@@ -35,7 +35,7 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   independently (a vendor can mark an order preparing/ready before the
   customer pays), so an `awaitingPayment` prop (from `page.tsx`) overrides
   the confirmed/preparing/ready copy while payment is still outstanding —
-  e.g. "Being prepared — please complete your payment" instead of "Your
+  e.g. "Being prepared, please complete your payment" instead of "Your
   order is being prepared" — so the text never implies payment is settled
   when it isn't. Once past `pending`, renders the progress bar
   (`orderProgressIndex`/`ORDER_PROGRESS_SEGMENTS`), a prominent range-based

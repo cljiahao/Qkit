@@ -46,7 +46,7 @@ const OPTIONS: { k: Kind; label: string; detail: string }[] = [
     k: "pointer",
     label: "Payment link or QR image",
     detail:
-      "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, or your bank's own QR — any of them work here.",
+      "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, or your bank's own QR: any of them work here.",
   },
 ];
 
