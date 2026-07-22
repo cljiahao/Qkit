@@ -9,6 +9,14 @@
 -- not a cross-service call. A vendor with no merqo.vendor_profile row yet
 -- just resolves v_social to NULL, which the existing
 -- COALESCE(b.social_links, v_social, '{}'::jsonb) already handles.
+--
+-- Guarded the same way as 0054's own merqo.vendor_profile read: qkit's own
+-- CI/local `supabase start` builds a fresh Postgres from only qkit's
+-- migrations, with no merqo schema at all — an unguarded SELECT there
+-- hard-fails with "relation merqo.vendor_profile does not exist". Real
+-- environments apply the merqo migrations first, so the table exists there
+-- and this resolves the fallback as intended; this only short-circuits
+-- (leaving v_social NULL) when it's genuinely absent.
 CREATE OR REPLACE FUNCTION qkit.get_booth_for_order(p_short_code text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -26,7 +34,12 @@ BEGIN
     RETURN NULL;  -- unresolved / rotated-away code
   END IF;
 
-  SELECT social_links INTO v_social FROM merqo.vendor_profile WHERE vendor_id = b.vendor_id;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'merqo' AND table_name = 'vendor_profile'
+  ) THEN
+    SELECT social_links INTO v_social FROM merqo.vendor_profile WHERE vendor_id = b.vendor_id;
+  END IF;
 
   -- Strip cost_cents from every menu item; keep only available items.
   SELECT COALESCE(jsonb_agg(mi - 'cost_cents'), '[]'::jsonb)

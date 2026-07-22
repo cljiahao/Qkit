@@ -20,4 +20,10 @@ describe("0070_get_booth_for_order_vendor_profile_social_links migration", () =>
     );
     expect(sql).not.toMatch(/from qkit\.vendors where id = b\.vendor_id/);
   });
+
+  it("guards the merqo.vendor_profile read so a fresh qkit-only CI/local DB doesn't hard-fail", () => {
+    expect(sql).toMatch(
+      /where table_schema = 'merqo' and table_name = 'vendor_profile'/,
+    );
+  });
 });
