@@ -645,6 +645,48 @@ export function OrderCard({
             >
               <Undo2 className="size-4" /> Restore to ready
             </Button>
+            {/* The auto-clear sweep can beat a vendor's own cancel tap (the
+                order was sitting ready, past the vendor's configured auto-
+                clear window) -- without this, the only way to actually
+                cancel it is restore to ready first, then cancel from there.
+                cancelOrder accepts an auto-completed order specifically for
+                this reason (see its own comment). */}
+            {payStatus !== "confirmed" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
+                    disabled={updating}
+                  >
+                    Cancel
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel order #{number}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This order was auto-completed before you cancelled it.
+                      Cancelling now permanently removes it from the board. This
+                      can&apos;t be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={updating}>
+                      Keep order
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={cancelOrder}
+                      disabled={updating}
+                      className="bg-destructive text-white hover:bg-destructive/90"
+                    >
+                      Cancel order
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         )}
 

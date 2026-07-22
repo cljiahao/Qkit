@@ -502,4 +502,51 @@ describe("OrderCard — restore auto-completed", () => {
     expect(restoreAutoCompleted).toHaveBeenCalledWith("o1");
     await waitFor(() => expect(screen.getByText("Ready")).toBeInTheDocument());
   });
+
+  it("also offers Cancel for a sweep-completed order (the sweep can beat a vendor's own cancel tap)", () => {
+    render(
+      <TooltipProvider>
+        <OrderCard
+          order={makeOrder({ status: "completed", auto_completed: true })}
+        />
+      </TooltipProvider>,
+    );
+    expect(
+      screen.getByRole("button", { name: /^cancel$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides Cancel for a sweep-completed order once payment is confirmed", () => {
+    render(
+      <TooltipProvider>
+        <OrderCard
+          order={makeOrder({
+            status: "completed",
+            auto_completed: true,
+            payment_status: "confirmed",
+          })}
+        />
+      </TooltipProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: /^cancel$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("cancels a sweep-completed order and shows the Cancelled badge", async () => {
+    render(
+      <TooltipProvider>
+        <OrderCard
+          order={makeOrder({ status: "completed", auto_completed: true })}
+        />
+      </TooltipProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /^cancel$/i }));
+    await user.click(screen.getByRole("button", { name: /cancel order/i }));
+    expect(cancelOrder).toHaveBeenCalledWith("o1");
+    await waitFor(() =>
+      expect(screen.getByText("Cancelled")).toBeInTheDocument(),
+    );
+  });
 });

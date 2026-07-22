@@ -111,7 +111,11 @@ overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs })`: the
   `order.auto_completed` is true (the ready-order auto-clear sweep, not a
   vendor's own "Mark Picked Up" tap, completed it) shows a "Restore to
   ready" button calling `restoreAutoCompleted` — this is where the
-  completed-orders history list's undo for a premature auto-clear lives.
+  completed-orders history list's undo for a premature auto-clear lives —
+  alongside a Cancel option (hidden once payment is confirmed, same as the
+  live Cancel button) calling the same `cancelOrder`, since the sweep can
+  beat a vendor's own cancel tap to it and the only other way to actually
+  cancel that order would be restoring it to ready first.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
   transitions, action-button wiring, and the `displayNumber` override.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
