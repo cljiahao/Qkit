@@ -243,7 +243,11 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   `0070_get_booth_for_order_vendor_profile_social_links.sql` redefines it to
   read that fallback from `merqo.vendor_profile` instead — a same-database
   cross-schema `SELECT`, not a new dependency, matching `0054`'s own
-  precedent of qkit reading/writing that table directly.
+  precedent of qkit reading/writing that table directly. Guarded the same
+  way as `0054`: qkit's own CI/local `supabase start` builds a fresh
+  Postgres from only qkit's migrations, no merqo schema at all, so the read
+  is skipped (leaving the fallback `null`) when `merqo.vendor_profile`
+  doesn't exist there.
 
 ## Connectivity
 
