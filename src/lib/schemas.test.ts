@@ -705,6 +705,20 @@ describe("paymentConfigSchema", () => {
         .success,
     ).toBe(false);
   });
+
+  it("rejects a bare 8-digit local mobile number typed into the uen field", () => {
+    // Real bug: a vendor typing their mobile number without the leading "+65"
+    // (e.g. "91234567" instead of "+6591234567") gets it silently filed under
+    // uen by the dashboard form's startsWith("+") heuristic — every real UEN
+    // ends in a letter check digit, so this must not validate as one.
+    expect(
+      paymentConfigSchema.safeParse({
+        kind: "paynow",
+        payee_name: "x",
+        uen: "91234567",
+      }).success,
+    ).toBe(false);
+  });
 });
 
 describe("parsePaymentConfig", () => {

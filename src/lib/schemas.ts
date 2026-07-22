@@ -211,10 +211,17 @@ const pointerConfigSchema = z.object({
 const paynowConfigSchema = z.object({
   kind: z.literal("paynow"),
   payee_name: z.string().min(1, "Payee name is required").max(100),
-  // SG UEN: alphanumeric, ~9–10 chars. Mobile: +65 followed by 8 digits.
+  // SG UEN: 9-10 alphanumeric chars, always ending in a letter check digit
+  // (business: 8 digits + letter; local company: 4-digit year + 5 digits +
+  // letter; other 2009+ entities: letter + 2 digits + 2 letters + 4 digits +
+  // letter — every real UEN format ends in a letter, never purely numeric).
+  // A bare 8-digit local mobile number (e.g. a vendor typing "91234567"
+  // without the "+65" the mobile field requires) would otherwise pass this
+  // as a "valid" 8-char alphanumeric UEN and silently generate a broken
+  // PayNow QR — the trailing-letter requirement rejects that case outright.
   uen: z
     .string()
-    .regex(/^[0-9A-Za-z]{8,12}$/, "Invalid UEN")
+    .regex(/^[0-9A-Za-z]{8,9}[A-Za-z]$/, "Invalid UEN")
     .optional(),
   mobile: z
     .string()
