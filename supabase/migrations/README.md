@@ -237,6 +237,13 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   **Not yet applied to any shared/live DB as of this writing** — the code is
   correct either way (it never reads these columns off the raw row), but
   apply this migration promptly to avoid carrying dead columns indefinitely.
+  `0069`'s own review missed one more raw reader: `qkit.get_booth_for_order`
+  (0053, last redefined by `0066`) still read its vendor-level
+  `social_links` fallback straight off `qkit.vendors`.
+  `0070_get_booth_for_order_vendor_profile_social_links.sql` redefines it to
+  read that fallback from `merqo.vendor_profile` instead — a same-database
+  cross-schema `SELECT`, not a new dependency, matching `0054`'s own
+  precedent of qkit reading/writing that table directly.
 
 ## Connectivity
 
