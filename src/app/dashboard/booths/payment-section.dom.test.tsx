@@ -35,7 +35,7 @@ describe("PaymentSection", () => {
     fireEvent.change(screen.getByLabelText(/Payee name/i), {
       target: { value: "Cart" },
     });
-    fireEvent.change(screen.getByLabelText(/UEN/i), {
+    fireEvent.change(screen.getByLabelText("UEN"), {
       target: { value: "53312345A" },
     });
     expect(onChange).toHaveBeenLastCalledWith({
@@ -45,15 +45,16 @@ describe("PaymentSection", () => {
     });
   });
 
-  it("emits a paynow config with mobile when the value starts with +", () => {
+  it("emits a paynow config with a +65 mobile number when the Mobile number toggle is picked", () => {
     const onChange = vi.fn();
     render(<Host initial={null} onChange={onChange} />);
     fireEvent.click(screen.getByRole("radio", { name: /PayNow/i }));
     fireEvent.change(screen.getByLabelText(/Payee name/i), {
       target: { value: "Cart" },
     });
-    fireEvent.change(screen.getByLabelText(/UEN/i), {
-      target: { value: "+6591234567" },
+    fireEvent.click(screen.getByRole("radio", { name: "Mobile number" }));
+    fireEvent.change(screen.getByLabelText("Mobile number"), {
+      target: { value: "91234567" },
     });
     expect(onChange).toHaveBeenLastCalledWith({
       kind: "paynow",
@@ -62,7 +63,22 @@ describe("PaymentSection", () => {
     });
   });
 
-  it("clears uen when the same field switches to a mobile-shaped value", () => {
+  it("strips non-digits and caps the mobile field at 8 digits", () => {
+    const onChange = vi.fn();
+    render(<Host initial={null} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("radio", { name: /PayNow/i }));
+    fireEvent.click(screen.getByRole("radio", { name: "Mobile number" }));
+    fireEvent.change(screen.getByLabelText("Mobile number"), {
+      target: { value: "9123-4567extra" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      kind: "paynow",
+      payee_name: "",
+      mobile: "+6591234567",
+    });
+  });
+
+  it("clears uen when switching from UEN to Mobile number", () => {
     const onChange = vi.fn();
     render(
       <Host
@@ -70,14 +86,35 @@ describe("PaymentSection", () => {
         onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByLabelText(/UEN/i), {
-      target: { value: "+6591234567" },
+    fireEvent.click(screen.getByRole("radio", { name: "Mobile number" }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      kind: "paynow",
+      payee_name: "Cart",
+      uen: undefined,
+      mobile: undefined,
+    });
+    fireEvent.change(screen.getByLabelText("Mobile number"), {
+      target: { value: "91234567" },
     });
     expect(onChange).toHaveBeenLastCalledWith({
       kind: "paynow",
       payee_name: "Cart",
       mobile: "+6591234567",
     });
+  });
+
+  it("starts on the Mobile number toggle when the existing config has a mobile", () => {
+    render(
+      <Host
+        initial={{
+          kind: "paynow",
+          payee_name: "Cart",
+          mobile: "+6591234567",
+        }}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Mobile number")).toHaveValue("91234567");
   });
 
   it("emits null when 'No online payment' is selected", () => {

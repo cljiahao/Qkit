@@ -18,6 +18,12 @@ where noted below.
 - `dialog.tsx` — `Dialog*` family, used by `ZoomableImage` and elsewhere.
 - `dropdown-menu.tsx` — `DropdownMenu*` family (Radix wrapped).
 - `input.tsx` — standard text `Input`.
+- `input-group.tsx` — `InputGroup`/`InputGroupAddon`/`InputGroupButton`/
+  `InputGroupText`/`InputGroupInput`/`InputGroupTextarea`: a bordered wrapper
+  giving `Input`/`Textarea` a fixed leading/trailing addon (icon, text, or
+  button) inside the same field, instead of a separate element beside it.
+  Used by `payment-section.tsx`'s Mobile number field for a fixed,
+  non-editable `+65` prefix.
 - `label.tsx` — Radix `Label` wrapper.
 - `popover.tsx` — `Popover`/`PopoverTrigger`/`PopoverContent`/`PopoverAnchor`,
   used by `stat-breakdown.tsx`'s hover/tap breakdown tile.
@@ -48,6 +54,8 @@ directly (e.g. `Button`, `Select`, `ToggleGroup`, `Sheet`, `Popover` are used
 throughout the dashboard, stats, and ordering flow). `toggle.tsx` exports
 `toggleVariants`, imported by `toggle-group.tsx`; `button.tsx` exports
 `buttonVariants`, imported by `alert-dialog.tsx` for its action buttons.
+`input-group.tsx` wraps `button.tsx`/`input.tsx`/`textarea.tsx` directly
+(`InputGroupButton`/`InputGroupInput`/`InputGroupTextarea`), not Radix.
 
 ## Parent
 
