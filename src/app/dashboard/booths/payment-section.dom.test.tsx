@@ -56,7 +56,7 @@ describe("PaymentSection", () => {
     fireEvent.change(screen.getByLabelText(/Payee name/i), {
       target: { value: "Cart" },
     });
-    fireEvent.click(screen.getByRole("radio", { name: "Pay via mobile" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Mobile number" }));
     fireEvent.change(screen.getByLabelText("Mobile number"), {
       target: { value: "91234567" },
     });
@@ -71,7 +71,7 @@ describe("PaymentSection", () => {
     const onChange = vi.fn();
     render(<Host initial={null} onChange={onChange} />);
     fireEvent.click(screen.getByRole("radio", { name: /PayNow/i }));
-    fireEvent.click(screen.getByRole("radio", { name: "Pay via mobile" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Mobile number" }));
     fireEvent.change(screen.getByLabelText("Mobile number"), {
       target: { value: "9123-4567extra" },
     });
@@ -90,7 +90,7 @@ describe("PaymentSection", () => {
         onChange={onChange}
       />,
     );
-    fireEvent.click(screen.getByRole("radio", { name: "Pay via mobile" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Mobile number" }));
     expect(onChange).toHaveBeenLastCalledWith({
       kind: "paynow",
       payee_name: "Cart",

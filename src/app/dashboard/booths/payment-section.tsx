@@ -176,20 +176,28 @@ export function PaymentSection({
           </div>
           <div className="space-y-2">
             <span className={FORM_LABEL_CLASS}>UEN or mobile number</span>
-            <RadioGroup
+            <ToggleGroup
+              type="single"
               value={proxyMode}
-              onValueChange={(v) => pickProxyMode(v as PaynowProxyMode)}
+              onValueChange={(v) => v && pickProxyMode(v as PaynowProxyMode)}
               aria-label="UEN or mobile number"
-              className="flex gap-4"
+              className="inline-flex rounded-lg border border-border p-0.5 text-sm"
             >
-              <span className="flex items-center gap-2">
-                <RadioGroupItem value="uen" aria-label="Pay via UEN" /> UEN
-              </span>
-              <span className="flex items-center gap-2">
-                <RadioGroupItem value="mobile" aria-label="Pay via mobile" />{" "}
-                Mobile number
-              </span>
-            </RadioGroup>
+              {(
+                [
+                  { m: "uen", label: "UEN" },
+                  { m: "mobile", label: "Mobile number" },
+                ] as const
+              ).map(({ m, label }) => (
+                <ToggleGroupItem
+                  key={m}
+                  value={m}
+                  className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                >
+                  {label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
 
             {proxyMode === "uen" ? (
               <div className="space-y-1.5">
