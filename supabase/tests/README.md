@@ -38,10 +38,11 @@ from the Vitest/Playwright tests elsewhere in the repo.
     `next_order_number` — closing paths that were closed for `anon` but not
     yet for any authenticated attacker.
   - Plan self-escalation is blocked (`UPDATE vendors SET plan='pro'` fails)
-    while a legitimate self-edit (`name`) still works; booth re-pointing to
-    another vendor is blocked by `WITH CHECK`; feedback/upgrade-request/
-    support-message RLS scopes each vendor to its own rows and blocks filing
-    as another vendor; `set_license_label` only affects the caller's own
+    while a legitimate self-edit (`tour_seen_at`) still works; booth
+    re-pointing to another vendor is blocked by `WITH CHECK`;
+    feedback/upgrade-request/support-message RLS scopes each vendor to its
+    own rows and blocks filing as another vendor; `set_license_label` only
+    affects the caller's own
     license.
   - **As anon** (no `auth.uid()`): cannot SELECT `booths` directly (the only
     public read is `get_booth_for_order`), cannot confirm payment on any
