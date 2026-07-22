@@ -31,7 +31,13 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   local `setStatus("preparing")` on success, an error toast on failure) —
   the customer stays on this branch until either they tap it or the next
   poll observes the vendor already started it some other way (e.g. the
-  vendor's own board). Once past `pending`, renders the progress bar
+  vendor's own board). Kitchen status and payment status advance
+  independently (a vendor can mark an order preparing/ready before the
+  customer pays), so an `awaitingPayment` prop (from `page.tsx`) overrides
+  the confirmed/preparing/ready copy while payment is still outstanding —
+  e.g. "Being prepared — please complete your payment" instead of "Your
+  order is being prepared" — so the text never implies payment is settled
+  when it isn't. Once past `pending`, renders the progress bar
   (`orderProgressIndex`/`ORDER_PROGRESS_SEGMENTS`), a prominent range-based
   wait estimate (`estimateRangeLabel`, e.g. "6-10 min" — a range rather than
   a precise countdown, since waiting-line research says an unmet precise
@@ -51,7 +57,10 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   token match is what authorizes the read, not RLS), distinguishes a real
   DB error (retryable error boundary) from a genuine 404 (`maybeSingle` →
   null), computes whether to show the pay panel
-  (`renderCheckout` from `@/lib/payments/adapters`), and renders the ticket
+  (`renderCheckout` from `@/lib/payments/adapters`) and, from that same
+  `showPay` gate plus `order.payment_status !== 'confirmed'`, an
+  `awaitingPayment` flag passed to `OrderStatusPoller` so its status copy
+  never outruns the actual payment state, and renders the ticket
   header, `OrderStatusPoller`, the resolved social links (`SocialLinksRow`,
   `@/components`, booth override else the vendor's shared default from
   `merqo.vendor_profile` via `getOrCreateVendorProfile` —
@@ -76,7 +85,12 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
 initialStatus, amountCents })` client component: polls `getPaymentStatus`
   every 5s until `confirmed`/`not_required`; renders a QR
   (`react-qr-code`), an uploaded payment-QR image, or a pay link depending on
-  `checkout.type`; lets the customer self-report `claimPayment`/
+  `checkout.type` — the heading names the scan target explicitly ("Scan
+  with your PayNow banking app to pay" for `type: "qr"`, a generic "banking
+  or payment app" for a vendor-uploaded `type: "image"` since its provider
+  is unknown) so a customer doesn't reach for a plain camera/QR scanner,
+  which can't parse an EMVCo payload and would report it as invalid; lets
+  the customer self-report `claimPayment`/
   `unclaimPayment` ("I've paid" / "Undo"); shows a persistent confirmed state
   once the vendor marks it paid.
 - `pay-panel.dom.test.tsx` — RTL tests for the claim/unclaim flow, each
