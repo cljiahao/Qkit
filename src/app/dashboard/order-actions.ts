@@ -254,14 +254,23 @@ export async function bumpOrder(orderId: string): Promise<ActionResult> {
   return { success: true };
 }
 
-/** Cancel a live order. Rejects an order that's already completed/cancelled. */
+/**
+ * Cancel a live order. Rejects an order that's already completed/cancelled --
+ * except an auto-completed one (sweepReadyOrders beat the vendor to it, not a
+ * deliberate "Mark Picked Up" tap): that's still cancellable, same philosophy
+ * as restoreAutoCompleted treating the sweep's own completion as reversible.
+ * Clears auto_completed/completed_at on that path so a cancelled order never
+ * carries stale "this was completed" bookkeeping.
+ */
 export async function cancelOrder(orderId: string): Promise<ActionResult> {
   if (!idSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
   const { supabase, order } = await loadOwnOrder(orderId);
   if (!supabase || !order) return { success: false, error: "Order not found" };
-  if (isTerminal(order.status))
+  const autoCompletedRace =
+    order.status === "completed" && order.auto_completed;
+  if (isTerminal(order.status) && !autoCompletedRace)
     return { success: false, error: "Order is already closed" };
   // No refund rail: cancelling a confirmed-payment order would take money with
   // no order behind it. A "claimed" order (customer says paid, unconfirmed)
@@ -273,10 +282,15 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     };
 
   // Guard on the status we read so a cancel can't race an advance to completed
-  // (which would otherwise be undone, or leave stock/revenue inconsistent).
+  // (which would otherwise be undone, or leave stock/revenue inconsistent) --
+  // an auto-completed order is the one deliberate exception (see above).
   const { data: rows, error } = await supabase
     .from("orders")
-    .update({ status: "cancelled" })
+    .update(
+      autoCompletedRace
+        ? { status: "cancelled", auto_completed: false, completed_at: null }
+        : { status: "cancelled" },
+    )
     .eq("id", orderId)
     .eq("status", order.status)
     .select("id");

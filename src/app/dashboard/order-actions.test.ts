@@ -229,6 +229,58 @@ describe("cancelOrder", () => {
       error: "Order changed — please refresh.",
     });
   });
+
+  it("allows cancelling an order the auto-clear sweep completed before the vendor could", async () => {
+    // sweepReadyOrders beat the vendor's own cancel tap to it -- this is the
+    // one exception to "terminal orders can't be cancelled", since the sweep
+    // isn't a deliberate vendor decision the way a manual "Mark Picked Up" is.
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "completed",
+        payment_status: "pending",
+        auto_completed: true,
+      },
+    });
+    const res = await cancelOrder(ID);
+    expect(res).toEqual({ success: true });
+    expect(update).toHaveBeenCalledWith({
+      status: "cancelled",
+      auto_completed: false,
+      completed_at: null,
+    });
+  });
+
+  it("still rejects a manually-completed order (auto_completed false)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "completed",
+        payment_status: "pending",
+        auto_completed: false,
+      },
+    });
+    const res = await cancelOrder(ID);
+    expect(res).toEqual({ success: false, error: "Order is already closed" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("still rejects an auto-completed order once payment is confirmed", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "completed",
+        payment_status: "confirmed",
+        auto_completed: true,
+      },
+    });
+    const res = await cancelOrder(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Paid orders can't be cancelled. Refund the customer directly.",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
 });
 
 describe("bumpOrder", () => {
