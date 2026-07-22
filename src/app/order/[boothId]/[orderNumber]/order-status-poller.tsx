@@ -67,9 +67,9 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
 // order's payment auto-confirms, and a cancelled order never solicits
 // payment (see order-status page's showPay gate).
 const AWAITING_PAYMENT_MESSAGE: Partial<Record<OrderStatus, string>> = {
-  confirmed: "Confirmed — please pay to start your order",
-  preparing: "Being prepared — please complete your payment",
-  ready: "Ready for pickup — please pay before you collect",
+  confirmed: "Confirmed, please pay to start your order",
+  preparing: "Being prepared, please complete your payment",
+  ready: "Ready for pickup, please pay before you collect",
 };
 
 export function OrderStatusPoller({
