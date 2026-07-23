@@ -1,6 +1,7 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { Star } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { vendorStallNames } from "@/lib/admin-vendor-names";
 import { cn } from "@/lib/utils";
 import { npsBreakdown } from "@/lib/nps";
@@ -9,6 +10,35 @@ import { Paginated } from "@/components/paginated";
 import { Ticket } from "@/components/ticket";
 
 export const revalidate = 0;
+
+/**
+ * merqo owns this table's real generated types — this is a hand-written
+ * mirror of the vendor_feedback row shape, not a generated type, since
+ * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
+ */
+type MerqoVendorFeedbackSchema = {
+  merqo: {
+    Tables: {
+      vendor_feedback: {
+        Row: {
+          id: string;
+          kit_slug: string;
+          vendor_id: string;
+          nps: number;
+          message: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
 
 function when(iso: string): string {
   return iso.slice(0, 16).replace("T", " ");
@@ -62,8 +92,14 @@ export default async function AdminFeedbackPage() {
   const all = rows ?? [];
 
   // qkit's own metric: vendor → qkit loyalty (NPS) + their written notes.
-  // Bypass schema typing to query merqo.vendor_feedback via the service client.
-  const { data: vendorFeedbackRows } = await (supabase as any)
+  // merqo.vendor_feedback's only SELECT policy gates on merqo.merqo_team
+  // membership, not qkit.admins — the RLS-scoped client above would silently
+  // return zero rows for a qkit admin who isn't also a merqo_team member, so
+  // this one query needs the service client instead.
+  const serviceSupabase = await createServiceClient();
+  const merqoClient =
+    serviceSupabase as unknown as SupabaseClient<MerqoVendorFeedbackSchema>;
+  const { data: vendorFeedbackRows } = await merqoClient
     .schema("merqo")
     .from("vendor_feedback")
     .select("id, nps, message, created_at")
@@ -72,11 +108,9 @@ export default async function AdminFeedbackPage() {
     .limit(200);
   const vendorFeedback = vendorFeedbackRows ?? [];
   const nps = npsBreakdown(
-    vendorFeedback
-      .map((f: any) => f.nps)
-      .filter((n: any): n is number => n != null),
+    vendorFeedback.map((f) => f.nps).filter((n): n is number => n != null),
   );
-  const npsComments = vendorFeedback.filter((f: any) => f.message?.trim());
+  const npsComments = vendorFeedback.filter((f) => f.message?.trim());
 
   // Platform health: how customers rate ordering across ALL booths — an
   // aggregate only. Individual booth reviews live on each vendor's own stats.
@@ -182,7 +216,7 @@ export default async function AdminFeedbackPage() {
               label="notes"
               className="px-6 py-2"
             >
-              {npsComments.map((f: any) => (
+              {npsComments.map((f) => (
                 <div
                   key={f.id}
                   className="border-b border-border/60 py-3 last:border-b-0"
