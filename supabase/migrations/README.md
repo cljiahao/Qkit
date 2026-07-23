@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-73 files, `0000` through `0072`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0072` tail; skimmed by filename/theme otherwise. The
+74 files, `0000` through `0073`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0073` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -259,6 +259,13 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   Both migrations use the same `information_schema` existence guard as
   `0054`/`0070`, since qkit's own isolated CI Postgres has no `merqo`
   schema at all.
+  `0073_drop_stale_local_feedback_support.sql` finishes both cutovers: no
+  client has shipped against either yet, so unlike `0069`'s deferred
+  column drop this lands immediately rather than waiting a deploy cycle —
+  deletes the (already-backfilled) `source='vendor'` rows from
+  `qkit.feedback` and drops its now-dead `nps` column (customer rows only
+  ever used `rating`), and drops `qkit.support_messages` outright (fully
+  superseded for both writes and admin reads).
 
 ## Connectivity
 

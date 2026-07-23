@@ -13,11 +13,13 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(85)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(87)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
-    `purchase_requests`, `support_messages`, `licenses`.
+    `purchase_requests`, `licenses`. (`support_messages` was dropped in
+    migration `0073` — fully superseded by the shared `merqo.support_messages`
+    table, see `../migrations/README.md`.)
   - `qkit.order_item_quantities` pools and clamps quantities per menu item
     (negative lines clamp to 0; net-zero items are dropped) — the shared
     helper behind the stock-race fix (migration `0034`).
@@ -40,10 +42,9 @@ from the Vitest/Playwright tests elsewhere in the repo.
   - Plan self-escalation is blocked (`UPDATE vendors SET plan='pro'` fails)
     while a legitimate self-edit (`tour_seen_at`) still works; booth
     re-pointing to another vendor is blocked by `WITH CHECK`;
-    feedback/upgrade-request/support-message RLS scopes each vendor to its
-    own rows and blocks filing as another vendor; `set_license_label` only
-    affects the caller's own
-    license.
+    feedback/upgrade-request RLS scopes each vendor to its own rows and
+    blocks filing as another vendor; `set_license_label` only affects the
+    caller's own license.
   - **As anon** (no `auth.uid()`): cannot SELECT `booths` directly (the only
     public read is `get_booth_for_order`), cannot confirm payment on any
     order, but CAN insert an analytics `events` row (a positive assertion

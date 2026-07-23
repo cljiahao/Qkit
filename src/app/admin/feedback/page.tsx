@@ -83,7 +83,7 @@ export default async function AdminFeedbackPage() {
     await Promise.all([
       supabase
         .from("feedback")
-        .select("id, source, rating, nps, message, booth_id, created_at")
+        .select("id, source, rating, message, booth_id, created_at")
         .order("created_at", { ascending: false })
         .limit(200),
       supabase.from("booths").select("id, vendor_id"),
