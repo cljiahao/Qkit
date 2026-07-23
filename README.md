@@ -100,10 +100,11 @@ booths and orders. See `AGENTS.md` for full conventions.
 
 ### Contents
 
-- `.claude/` — the Claude Code agent harness: hooks, project skills, and the harness manifest recording what templateCentral seeded (own README).
+- `.claude/` — the Claude Code agent harness: hooks, project skills, harness integrity scripts, and the harness manifest recording what templateCentral seeded (own README).
 - `.github/` — GitHub-specific config: CI/CD workflows (`ci.yml`, `security.yml`) and Dependabot (own README).
-- `.husky/` — git hooks (pre-commit lint-staged + the README-freshness nudge), used instead of templateCentral's default lefthook (own README).
-- `AGENTS.md` — routing/conventions doc for AI coding agents: stack divergence note (Supabase, not templateCentral's default better-auth/Drizzle), commands, file layout, data model, RLS/service-role rules, the AI harness description, and a running log of which templateCentral 5.0→5.9 deltas were adopted vs. deliberately skipped.
+- `.gitleaks.toml` — gitleaks secret-scan config: extends the default ruleset, allowlists `.env.example`/`.env.default` and lockfiles (`pnpm-lock.yaml`, etc.) as known non-secrets.
+- `.lefthook/` — script bodies for the lefthook-installed git hooks: the Conventional Commits `commit-msg` gate and the README-coupling nudge (own README).
+- `AGENTS.md` — routing/conventions doc for AI coding agents: stack divergence note (Supabase, not templateCentral's default better-auth/Drizzle), commands, file layout, data model, RLS/service-role rules, the AI harness description, and a running log of which templateCentral deltas were adopted vs. deliberately skipped.
 - `CHANGELOG.md` — Keep-a-Changelog history; entries are added under `[Unreleased]` by the `/changelog` skill.
 - `CLAUDE.md` — a one-line pointer that routes Claude Code to `AGENTS.md` via an `@AGENTS.md` import (`Routing and conventions for this project live in AGENTS.md. Read it first.`).
 - `FUTURE.md` — inactive design seams inherited from templateCentral v4.0 (Meta-Harness CI, Trace-Driven Evolution, Environment Engineering) — integration points only, nothing here runs unless built out.
@@ -111,14 +112,15 @@ booths and orders. See `AGENTS.md` for full conventions.
 - `docs/` — deploy notes, the engineering constitution, business/GTM docs, and dated design/plan history (own README).
 - `e2e/` — Playwright specs for the auth-guard and customer-order-lifecycle smoke tests (own README).
 - `eslint.config.mjs` — flat ESLint config: extends `eslint-config-next`, ignores generated/build dirs (`node_modules`, `.next`, `supabase`, `coverage`, etc.), adds `eslint-plugin-sonarjs` with `no-inline-comments` and `sonarjs/no-commented-code` as hard `error`s repo-wide (turned back off for `*.test.{ts,tsx}`, `test/**`, `scripts/**`, `e2e/**`, where inline notes on table-driven fixtures read better), and `@typescript-eslint/no-unused-vars` (`warn`, `^_`-prefix ignore pattern) reusing the `@typescript-eslint` plugin instance `eslint-config-next` already registers.
+- `lefthook.yml` — the git-hook layer: `pre-commit` (parallel format-lint + format-docs + typecheck + lockfile-frozen-install + gitleaks secret-scan + README-coupling nudge), `commit-msg` (Conventional Commits gate via `.lefthook/`), `pre-push` (harness-integrity check + `pnpm run check && pnpm test`).
 - `next.config.ts` — Next config: `output: standalone`, `reactStrictMode`, `poweredByHeader: false`, dev indicator disabled, `images.remotePatterns` allow-listing local Supabase/`*.supabase.co`/`*.googleusercontent.com`, a `/register`→`/login` redirect, and a `headers()` function that sets a full security-header set (X-Frame-Options, HSTS, etc.) plus an environment-aware Content-Security-Policy (relaxes `script-src`/`connect-src`/`img-src` for local dev only).
-- `package.json` — scripts (`dev`/`build`/`test`/`test:mutation`/`test:e2e`/`check`/`format`/`demo:record`/`demo:compose`/`prepare`), the dependency set (Next 16, `@supabase/ssr` + `@supabase/supabase-js`, Radix/shadcn deps, `react-hook-form` + `zod`, `recharts`, `driver.js`, `react-qr-code`, `@icons-pack/react-simple-icons` (real brand-logo icons), the dev toolchain (`vitest`, `@playwright/test`, `@stryker-mutator/*`, `eslint` + `eslint-plugin-sonarjs`, `husky`, `lint-staged`, `prettier`), and the `lint-staged` config that runs `prettier --write` + `eslint --fix` on staged `.ts/.tsx/.mjs` and `prettier --write` on staged `.json/.md/.css`.
+- `package.json` — scripts (`dev`/`build`/`test`/`test:mutation`/`test:e2e`/`check`/`format`/`demo:record`/`demo:compose`/`prepare`), the dependency set (Next 16, `@supabase/ssr` + `@supabase/supabase-js`, Radix/shadcn deps, `react-hook-form` + `zod`, `recharts`, `driver.js`, `react-qr-code`, `@icons-pack/react-simple-icons` (real brand-logo icons), the dev toolchain (`vitest`, `@playwright/test`, `@stryker-mutator/*`, `eslint` + `eslint-plugin-sonarjs`, `lefthook`, `prettier`). `prepare` runs `lefthook install`.
 - `playwright.config.ts` — e2e config: `testDir: ./e2e`, fully parallel, `webServer` auto-starts `pnpm dev` against `http://localhost:3000`, a single `chromium` project, and an HTML report emitted in CI (for the failure-artifact upload in `.github/workflows/ci.yml`).
 - `pnpm-lock.yaml` — generated pnpm lockfile; not hand-edited.
-- `pnpm-workspace.yaml` — pnpm settings: `allowBuilds` for `supabase`/`esbuild`/`sharp`/`unrs-resolver`, and pinned `overrides` that force-patch transitive advisories (`postcss`, `undici`, `vite`, `qs`) to fixed-version ranges, each scoped to self-clear once the parent dep ships the patched version.
+- `pnpm-workspace.yaml` — pnpm settings: `allowBuilds` for `supabase`/`esbuild`/`sharp`/`unrs-resolver`/`lefthook`, and pinned `overrides` that force-patch transitive advisories (`postcss`, `undici`, `vite`, `qs`) to fixed-version ranges, each scoped to self-clear once the parent dep ships the patched version.
 - `postcss.config.mjs` — minimal PostCSS config wiring the `@tailwindcss/postcss` plugin (Tailwind v4's PostCSS integration).
 - `public/` — static assets served as-is by Next.
-- `scripts/` — the demo-video generator (`demo:record`/`demo:compose`) and `check-readme-freshness.mjs` (run from the `.husky/pre-commit` hook).
+- `scripts/` — the demo-video generator (`demo:record`/`demo:compose`); the former `check-readme-freshness.mjs` pre-commit nudge now lives at `.lefthook/readme-coupling.sh`.
 - `src/` — the Next.js app itself (App Router pages/actions, `src/lib`, `src/components`, `src/hooks`, `src/proxy.ts`).
 - `stryker.conf.json` — mutation-testing config: vitest runner, mutates only `src/lib/**/*.ts` (excludes `*.test.ts`, `types.ts`, `action-result.ts`, `supabase/**`), advisory only (`thresholds.break: null`, so a low score never fails CI).
 - `supabase/` — the Postgres schema: `migrations/` (SQL + RLS + realtime publication), seed data, and pgTAP RLS tests.
@@ -136,9 +138,15 @@ policies it depends on, applied via the Supabase CLI or SQL Editor (or the
 and `test/` (Vitest, for code not colocated with its source, run via
 `vitest.config.ts`); `stryker.conf.json` adds an advisory mutation-testing pass
 over `src/lib` on top of both. `docs/` is deploy notes, the constitution, GTM
-docs, and dated design history; `scripts/` holds the demo-video generator and
-the pre-commit README-freshness check; `public/` is static assets served as-is.
+docs, and dated design history; `scripts/` holds the demo-video generator;
+`public/` is static assets served as-is.
 `AGENTS.md`/`CLAUDE.md`/`FUTURE.md` and `.claude/` together form the AI-agent
-harness described in `AGENTS.md`'s own "AI Harness" section; `.github/workflows/`
-runs the same checks (`pnpm check`, `pnpm test`, `pnpm build`, e2e, RLS, security
-scans) that `package.json`'s scripts define locally.
+harness described in `AGENTS.md`'s own "AI Harness" section; `lefthook.yml` +
+`.lefthook/` are the git-hook layer that harness relies on for commit-time
+enforcement (format/lint/typecheck/lockfile/secret-scan/README-coupling on
+`pre-commit`, Conventional Commits on `commit-msg`, harness-integrity +
+`pnpm run check && pnpm test` on `pre-push`); `.gitleaks.toml` configures the
+secret-scan both lefthook and `.github/workflows/security.yml` use.
+`.github/workflows/` runs the same checks (`pnpm check`, `pnpm test`,
+`pnpm build`, e2e, RLS, security scans) that `package.json`'s scripts define
+locally.

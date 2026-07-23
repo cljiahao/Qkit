@@ -19,7 +19,7 @@
     "format": "prettier --write .",
     "demo:record": "node scripts/demo/record.mjs",
     "demo:compose": "node scripts/demo/compose.mjs",
-    "prepare": "husky"
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -59,23 +59,13 @@
     "eslint": "^9.17.0",
     "eslint-config-next": "^16.2.7",
     "eslint-plugin-sonarjs": "4.1.0",
-    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
-    "lint-staged": "^15.3.0",
+    "lefthook": "^2.1.10",
     "prettier": "^3.4.2",
     "supabase": "^2.105.0",
     "tailwindcss": "^4.0.0",
     "tw-animate-css": "^1.2.5",
     "typescript": "^5.7.3",
     "vitest": "^3.2.6"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,mjs}": [
-      "prettier --write",
-      "eslint --fix"
-    ],
-    "*.{json,md,css}": [
-      "prettier --write"
-    ]
   }
 }

@@ -1,15 +1,15 @@
 {
-  "templatecentral_version": "5.7.0",
+  "templatecentral_version": "5.11.0",
   "stack": "nextjs",
   "adapted": "Next 16 + Supabase (auth/db/realtime) — not better-auth/Drizzle",
   "seeded_at": "2026-06-05",
-  "reviewed_at": "2026-07-03",
-  "review_note": "Reviewed 5.0→5.7 delta; adopted build-artefact Read-denies. Deliberately NOT adopted (Supabase-variant divergence): pino route-logging enforcement (pino removed as unused; API logs via console.error), lefthook (uses husky/lint-staged), better-auth/Drizzle add-skills, tc CI/harness-verifier layer (has bespoke CI + no .harness-base). migrate Phase-5 re-sync N/A: no .harness-base merge base (seeded pre-5.3). 2026-07-10: cherry-picked the 5.8 hard comment gate (no-inline-comments error + sonarjs/no-commented-code) independent of a full 5.7→5.9 re-review; templatecentral_version left at 5.7.0 since the rest of that delta hasn't been audited. 2026-07-14: ran templatecentral:add (documentation) for 5.10's per-folder README governance — adoWiki defaulted false (GitHub-only repo, no Azure DevOps signal). 2026-07-16: drift-check against plugin 5.11.0 (project pinned 5.7.0) — reviewed the full 5.8-5.11 changelog; almost all of it is lefthook/CI-action-pinning/NestJS/FastAPI/OpenCode-adapter churn that doesn't apply to qkit's bespoke-CI, husky, Supabase-only setup. Two things did: (1) this project's per-folder READMEs already write real per-file content, not a filename-only manifest, matching 5.11's richReadme opt-in — recorded as richReadme:true. (2) readme-freshness here is a local pre-commit nudge only (scripts/check-readme-freshness.mjs, never blocks); 5.10 additionally seeds a CI job that hard-fails a PR with an unstaged README — deliberately not adopted, no CI-blocking doc gate exists yet. templatecentral_version left at 5.7.0 — most of the 5.8-5.11 delta is inapplicable, not yet fully re-audited.",
+  "reviewed_at": "2026-07-24",
+  "review_note": "Reviewed 5.0→5.7 delta; adopted build-artefact Read-denies. Deliberately NOT adopted (Supabase-variant divergence): pino route-logging enforcement (pino removed as unused; API logs via console.error), lefthook (uses husky/lint-staged), better-auth/Drizzle add-skills, tc CI/harness-verifier layer (has bespoke CI + no .harness-base). migrate Phase-5 re-sync N/A: no .harness-base merge base (seeded pre-5.3). 2026-07-10: cherry-picked the 5.8 hard comment gate (no-inline-comments error + sonarjs/no-commented-code) independent of a full 5.7→5.9 re-review; templatecentral_version left at 5.7.0 since the rest of that delta hasn't been audited. 2026-07-14: ran templatecentral:add (documentation) for 5.10's per-folder README governance — adoWiki defaulted false (GitHub-only repo, no Azure DevOps signal). 2026-07-16: drift-check against plugin 5.11.0 (project pinned 5.7.0) — reviewed the full 5.8-5.11 changelog; almost all of it is lefthook/CI-action-pinning/NestJS/FastAPI/OpenCode-adapter churn that doesn't apply to qkit's bespoke-CI, husky, Supabase-only setup. Two things did: (1) this project's per-folder READMEs already write real per-file content, not a filename-only manifest, matching 5.11's richReadme opt-in — recorded as richReadme:true. (2) readme-freshness here is a local pre-commit nudge only (scripts/check-readme-freshness.mjs, never blocks); 5.10 additionally seeds a CI job that hard-fails a PR with an unstaged README — deliberately not adopted, no CI-blocking doc gate exists yet. templatecentral_version left at 5.7.0 — most of the 5.8-5.11 delta is inapplicable, not yet fully re-audited. 2026-07-24: lefthook migration — the project owner overrode the 2026-06-05/07-16 husky decision to bring qkit's git-hook architecture in line with loopkit/stockkit/paykit/merqo. Replaced husky+lint-staged with lefthook (`lefthook.yml`, `.lefthook/`), replaced scripts/check-readme-freshness.mjs with .lefthook/readme-coupling.sh (same non-blocking nudge, now a lefthook pre-commit command), and split .claude/settings.json's inline `node -e` one-liner hooks into standalone .claude/hooks/*.sh|.cjs script files (loopkit's reference implementation). Net-new: .gitleaks.toml, .claude/verify-harness.sh (integrity sensor, wired into lefthook pre-push and left for CI to adopt later), .claude/regen-harness.sh (human-run-only baseline rewrite), and a SubagentStop hook (qkit had none before). templatecentral_version bumped 5.7.0 → 5.11.0: the 5.8-5.11 feature deltas (comment gate, README governance/richReadme, unused-vars gate) were already substantively reviewed in the entries above, so this bump reflects that this migration closes the one remaining architectural gap — the git-hook layer itself — rather than a fresh, unreviewed version jump. This also folds in the security hardening loopkit's hook scripts carry that qkit's old inline one-liners lacked: the LEFTHOOK=0/LEFTHOOK_EXCLUDE/core.hooksPath= bypass block, protected-branch/force-push/guard-file-checkout guards, a broadened --no-verify regex, an .env* catchall deny (previously only the specific .env.<env> variants), and OWASP LLM02 credential-leak detection in the prompt guard. seeded_files below now covers the full lefthook + hook-script-file set; `.claude/hooks/verify.sh` (the pre-existing manual build+check+test gate) is unchanged and kept.",
   "adoWiki": false,
   "richReadme": true,
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "d10ac19c1a813cc53c9d3d69d3845979703349b139609ab2011ceaac66deb74b",
+      "origin_hash": "d412950fd26b6a55d2157154a04a3f705c80d4944e71ae6cd2e0f16540f60950",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -17,12 +17,48 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "44169e650c195d406125f401324863858e0882f76f6ec964ba4537fcc74bf8ba",
+      "origin_hash": "cbbadf8430f212d3fec1b10ca0e5ee6c8af3c26304cc3f593418e154224c5d8f",
       "path": ".claude/settings.json"
     },
     ".claude/hooks/verify.sh": {
       "origin_hash": "ccf4bb6c4cec18d0210387a608c1bfff84348719d09fe2efc959561d10f86ac6",
       "path": ".claude/hooks/verify.sh"
+    },
+    ".claude/hooks/protect-files.sh": {
+      "origin_hash": "2ba25f7c278bbd4c803b283b91fcb1ef4836af2429b8ae9847a9e64a4a0e3b76",
+      "path": ".claude/hooks/protect-files.sh"
+    },
+    ".claude/hooks/block-no-verify.sh": {
+      "origin_hash": "f0f147dcf4bd5df66bd723a7b5c3bde69df758f232b1403e9eb02ab7500d35ea",
+      "path": ".claude/hooks/block-no-verify.sh"
+    },
+    ".claude/hooks/user-prompt-guard.cjs": {
+      "origin_hash": "d1c376ffcbaba440838b52da3114b4671038042958126c4a316b4ef7de4056f6",
+      "path": ".claude/hooks/user-prompt-guard.cjs"
+    },
+    ".claude/hooks/post-edit-typecheck.sh": {
+      "origin_hash": "f17a4f6cb67b023f1058acb542b43ccf294de612e5d15352776ffbb50366b509",
+      "path": ".claude/hooks/post-edit-typecheck.sh"
+    },
+    ".claude/hooks/post-tool-failure.sh": {
+      "origin_hash": "31af87da10f31b5ead1d5fa455ffeb8903956ed2dacb5ef7319b1e8a2822efcd",
+      "path": ".claude/hooks/post-tool-failure.sh"
+    },
+    ".claude/hooks/stop-checks.sh": {
+      "origin_hash": "91e87eef5d1fdb2a2b7ee2b59d907cf341816e42512cb99eb8c3de24e7fd7ab8",
+      "path": ".claude/hooks/stop-checks.sh"
+    },
+    ".claude/hooks/subagent-stop.sh": {
+      "origin_hash": "8107bdb11b7dbe71121d24e1e585284f430503f96713b5bcc646308a9c777da5",
+      "path": ".claude/hooks/subagent-stop.sh"
+    },
+    ".claude/hooks/session-context.sh": {
+      "origin_hash": "a1878b9469b3ef8903aef03baf1c2b486801b42308320c0308b5e68e917d7783",
+      "path": ".claude/hooks/session-context.sh"
+    },
+    ".claude/hooks/skill-usage-log.sh": {
+      "origin_hash": "5405cf6e00bfee4c2f0bf7f90285215825f9671376383154b2a7aff2dd6db74f",
+      "path": ".claude/hooks/skill-usage-log.sh"
     },
     ".claude/skills/next-verify/SKILL.md": {
       "origin_hash": "56f246c992455b3d4706bd1039fb18c7d90d45034ba35315ad7e421246a27b25",
@@ -31,6 +67,30 @@
     ".claude/skills/supabase-migrate/SKILL.md": {
       "origin_hash": "217c7a62bec1d2a0714e1f7029af134d2e3ea9deacf4d69b02f01e15c54730c5",
       "path": ".claude/skills/supabase-migrate/SKILL.md"
+    },
+    "lefthook.yml": {
+      "origin_hash": "abcaeba66d99eac6db8e251c9451dfb1b2b47c7dd7e7842c0ce8ee2773ca020a",
+      "path": "lefthook.yml"
+    },
+    ".lefthook/commit-msg.sh": {
+      "origin_hash": "65d9b8f755a4103b466f4ac3c0291af7a0ddd30721c1913afac0cffefc4384e3",
+      "path": ".lefthook/commit-msg.sh"
+    },
+    ".lefthook/readme-coupling.sh": {
+      "origin_hash": "a9378e14ee2e5163f6d1d43fd556ea28c3cd4127b4f9a1314ec40f3d9e73c8f6",
+      "path": ".lefthook/readme-coupling.sh"
+    },
+    ".gitleaks.toml": {
+      "origin_hash": "f9cd4aac35f474f9a48c691b4fd46642388389fa650481342fc4d5ad6216de4e",
+      "path": ".gitleaks.toml"
+    },
+    ".claude/verify-harness.sh": {
+      "origin_hash": "8c50cc319c80fb1b6e4129f149b69a7341803dc078f388fe0e3127e64d7f08bd",
+      "path": ".claude/verify-harness.sh"
+    },
+    ".claude/regen-harness.sh": {
+      "origin_hash": "a8c844610843c39550ac920d1d29323244bdecbcdeaa4519c97d8867de1b37a0",
+      "path": ".claude/regen-harness.sh"
     }
   }
 }
