@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(89);
+select plan(91);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -702,6 +702,25 @@ select is(
   (select count(*)::int from qkit.feedback
    where booth_id = '00000000-0000-0000-0000-0000000b0004' and message = 'Great!'),
   1, 'submit_feedback wrote exactly one feedback row');
+
+-- submit_feedback('vendor', ...): converged to merqo.vendor_feedback (see
+-- docs/superpowers/specs/2026-07-23-qkit-vendor-feedback-convergence-design.md).
+-- qkit's own CI has no merqo schema, so the guarded cross-schema call
+-- short-circuits — confirm the function still succeeds and, critically, no
+-- longer writes a local qkit.feedback row for the vendor path.
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '00000000-0000-0000-0000-00000000000a', 'role', 'authenticated')::text,
+  true);
+select lives_ok(
+  $$ select qkit.submit_feedback('vendor', null, null, null, 9, 'Love qkit!') $$,
+  'submit_feedback accepts a vendor NPS submission');
+reset role;
+select is(
+  (select count(*)::int from qkit.feedback where source = 'vendor'),
+  0, 'submit_feedback no longer writes a local row for the vendor path');
 
 -- Non-servable booth: flip is_active off (booth_servable gates on it) and
 -- confirm place_order refuses with ORDER_UNSERVABLE. Flipped as the superuser
