@@ -62,11 +62,21 @@ export default async function AdminFeedbackPage() {
   const all = rows ?? [];
 
   // qkit's own metric: vendor → qkit loyalty (NPS) + their written notes.
-  const vendorRows = all.filter((f) => f.source === "vendor");
+  // Bypass schema typing to query merqo.vendor_feedback via the service client.
+  const { data: vendorFeedbackRows } = await (supabase as any)
+    .schema("merqo")
+    .from("vendor_feedback")
+    .select("id, nps, message, created_at")
+    .eq("kit_slug", "qkit")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const vendorFeedback = vendorFeedbackRows ?? [];
   const nps = npsBreakdown(
-    vendorRows.map((f) => f.nps).filter((n): n is number => n != null),
+    vendorFeedback
+      .map((f: any) => f.nps)
+      .filter((n: any): n is number => n != null),
   );
-  const npsComments = vendorRows.filter((f) => f.message?.trim());
+  const npsComments = vendorFeedback.filter((f: any) => f.message?.trim());
 
   // Platform health: how customers rate ordering across ALL booths — an
   // aggregate only. Individual booth reviews live on each vendor's own stats.
@@ -172,7 +182,7 @@ export default async function AdminFeedbackPage() {
               label="notes"
               className="px-6 py-2"
             >
-              {npsComments.map((f) => (
+              {npsComments.map((f: any) => (
                 <div
                   key={f.id}
                   className="border-b border-border/60 py-3 last:border-b-0"
