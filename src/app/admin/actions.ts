@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
@@ -17,6 +18,30 @@ import type { ActionResult } from "@/lib/action-result";
 import type { Database } from "@/lib/types";
 
 type AuditInsert = Database["qkit"]["Tables"]["admin_audit"]["Insert"];
+
+/**
+ * merqo owns this table's real generated types — this is a hand-written
+ * mirror of the support_messages row shape (not a generated type), since
+ * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
+ * Mirrors the pattern in src/lib/merqo-support.ts and
+ * src/app/admin/feedback/page.tsx's MerqoVendorFeedbackSchema.
+ */
+type MerqoSupportMessagesSchema = {
+  merqo: {
+    Tables: {
+      support_messages: {
+        Row: { id: string; user_id: string };
+        Insert: never;
+        Update: { status: string };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
 
 /**
  * Append an admin-audit row. Best-effort: a hiccup here must not fail the
@@ -246,11 +271,14 @@ export async function resolveSupportMessage(
   if (!parsed.success) return { success: false, error: "Invalid input" };
 
   const supabase = await createServiceClient();
-  const { data: updated, error } = await supabase
+  const merqoClient =
+    supabase as unknown as SupabaseClient<MerqoSupportMessagesSchema>;
+  const { data: updated, error } = await merqoClient
+    .schema("merqo")
     .from("support_messages")
     .update({ status: "resolved" })
     .eq("id", parsed.data.id)
-    .select("vendor_id")
+    .select("user_id")
     .maybeSingle();
   if (error || !updated) {
     console.error(
@@ -263,7 +291,7 @@ export async function resolveSupportMessage(
   await recordAudit(supabase, {
     admin_id: user.id,
     action: "resolve_support_message",
-    target_id: updated.vendor_id,
+    target_id: updated.user_id,
     detail: { message_id: parsed.data.id },
   });
 
