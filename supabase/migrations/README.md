@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-69 files, `0000` through `0068`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0068` tail; skimmed by filename/theme otherwise. The
+73 files, `0000` through `0072`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0072` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -246,6 +246,19 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   Postgres from only qkit's migrations, no merqo schema at all, so the read
   is skipped (leaving the fallback `null`) when `merqo.vendor_profile`
   doesn't exist there.
+- **Cross-kit convergence (`0071`-`0072`)** — `0071_vendor_feedback_convergence.sql`
+  redefines `qkit.submit_feedback`'s vendor branch (`source='vendor'`) to
+  call the shared `merqo.submit_vendor_feedback` RPC instead of inserting
+  locally, and guard-backfills existing local vendor-NPS rows into
+  `merqo.vendor_feedback`; customer feedback is unchanged. See
+  `docs/superpowers/specs/2026-07-23-qkit-vendor-feedback-convergence-design.md`.
+  `0072_support_messages_convergence.sql` guard-backfills qkit's existing
+  local `support_messages` rows into the shared `merqo.support_messages`
+  table (new submissions move to the shared RPC in application code, not
+  this migration — see `docs/superpowers/specs/2026-07-23-cross-kit-support-messages-remaining-kits-design.md`).
+  Both migrations use the same `information_schema` existence guard as
+  `0054`/`0070`, since qkit's own isolated CI Postgres has no `merqo`
+  schema at all.
 
 ## Connectivity
 

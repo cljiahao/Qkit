@@ -91,6 +91,11 @@ currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
   `admin-stats.ts`'s `summarizeVendors`/`activationFunnel`.
 - `merqo-metrics.test.ts` — tests the metrics aggregation against synthetic
   vendor/booth/order/payment fixtures.
+- `merqo-support.ts` — `submitSupportMessage`: cross-schema RPC wrapper
+  calling merqo's `submit_support_message` (`supabase.schema("merqo").rpc(...)`)
+  so a vendor's Get-help message lands in the shared cross-kit
+  `merqo.support_messages` inbox instead of qkit's own local
+  `support_messages` table.
 - `merqo-upgrade-request.ts` — `resolveUpgradeOutcome(hasVendorRow,
 hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   for the admin/vendor upgrade-to-Pro request flow.
