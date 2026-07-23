@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(91);
+select plan(87);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -71,14 +71,6 @@ values
    '00000000-0000-0000-0000-00000000000a', 'event'),
   ('00000000-0000-0000-0000-0000000e0002',
    '00000000-0000-0000-0000-00000000000b', 'monthly');
-
--- Help requests, one per vendor.
-insert into qkit.support_messages (id, vendor_id, category, body)
-values
-  ('00000000-0000-0000-0000-0000000f0001',
-   '00000000-0000-0000-0000-00000000000a', 'payment', 'PayNow pending'),
-  ('00000000-0000-0000-0000-0000000f0002',
-   '00000000-0000-0000-0000-00000000000b', 'pass', 'Pass not showing');
 
 -- Licenses, one per vendor (unlabelled, currently active).
 insert into qkit.licenses (id, vendor_id, valid_from, expires_at)
@@ -142,7 +134,6 @@ select ok((select relrowsecurity from pg_class where oid = 'qkit.booths'::regcla
 select ok((select relrowsecurity from pg_class where oid = 'qkit.orders'::regclass), 'RLS on orders');
 select ok((select relrowsecurity from pg_class where oid = 'qkit.feedback'::regclass), 'RLS on feedback');
 select ok((select relrowsecurity from pg_class where oid = 'qkit.purchase_requests'::regclass), 'RLS on purchase_requests');
-select ok((select relrowsecurity from pg_class where oid = 'qkit.support_messages'::regclass), 'RLS on support_messages');
 select ok((select relrowsecurity from pg_class where oid = 'qkit.licenses'::regclass), 'RLS on licenses');
 
 -- ── Shared stock-quantity rule (0034 / T4 + R4) ──────────────────────────────
@@ -389,19 +380,6 @@ select throws_ok(
      values ('00000000-0000-0000-0000-00000000000b', 'event') $$,
   null,
   'A cannot file an upgrade request as B');
-
--- Help requests: A sees only its own, and cannot file one as B.
-select isnt_empty(
-  $$ select 1 from qkit.support_messages where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
-  'A reads its own help request');
-select is_empty(
-  $$ select 1 from qkit.support_messages where vendor_id = '00000000-0000-0000-0000-00000000000b' $$,
-  'A cannot read B help request');
-select throws_ok(
-  $$ insert into qkit.support_messages (vendor_id, category, body)
-     values ('00000000-0000-0000-0000-00000000000b', 'other', 'x') $$,
-  null,
-  'A cannot file a help request as B');
 
 -- set_license_label: only the owner's label changes.
 select qkit.set_license_label('00000000-0000-0000-0000-0000000c0001', 'Event A');

@@ -401,7 +401,6 @@ export interface Database {
           booth_id: string | null;
           order_number: string | null;
           rating: number | null;
-          nps: number | null;
           message: string | null;
           created_at: string;
         };
@@ -412,7 +411,6 @@ export interface Database {
           booth_id?: string | null;
           order_number?: string | null;
           rating?: number | null;
-          nps?: number | null;
           message?: string | null;
           created_at?: string;
         };
@@ -423,7 +421,6 @@ export interface Database {
           booth_id?: string | null;
           order_number?: string | null;
           rating?: number | null;
-          nps?: number | null;
           message?: string | null;
           created_at?: string;
         };
@@ -449,33 +446,6 @@ export interface Database {
           vendor_id?: string;
           kind?: "event" | "monthly";
           status?: "pending" | "resolved";
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      support_messages: {
-        Row: {
-          id: string;
-          vendor_id: string;
-          category: "pass" | "payment" | "pro" | "other";
-          body: string;
-          status: "open" | "resolved";
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          vendor_id: string;
-          category: "pass" | "payment" | "pro" | "other";
-          body: string;
-          status?: "open" | "resolved";
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          vendor_id?: string;
-          category?: "pass" | "payment" | "pro" | "other";
-          body?: string;
-          status?: "open" | "resolved";
           created_at?: string;
         };
         Relationships: [];

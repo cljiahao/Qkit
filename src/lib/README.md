@@ -94,8 +94,8 @@ currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
 - `merqo-support.ts` — `submitSupportMessage`: cross-schema RPC wrapper
   calling merqo's `submit_support_message` (`supabase.schema("merqo").rpc(...)`)
   so a vendor's Get-help message lands in the shared cross-kit
-  `merqo.support_messages` inbox instead of qkit's own local
-  `support_messages` table.
+  `merqo.support_messages` inbox — qkit's own local `support_messages`
+  table was dropped (migration `0073`) once every reader/writer converged.
 - `merqo-upgrade-request.ts` — `resolveUpgradeOutcome(hasVendorRow,
 hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   for the admin/vendor upgrade-to-Pro request flow.
