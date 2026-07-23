@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, Circle } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
 import { latestActivePassByVendor } from "@/lib/admin-stats";
 import { buildVendorHealth, passHoursLeft } from "@/lib/admin-vendor-health";
@@ -19,6 +20,37 @@ const CATEGORY_LABEL: Record<string, string> = {
   payment: "Payment",
   pro: "Pro / billing",
   other: "Something else",
+};
+
+/**
+ * merqo owns this table's real generated types — this is a hand-written
+ * mirror of the support_messages row shape, not a generated type, since
+ * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
+ * Mirrors the pattern in admin/actions.ts and admin/page.tsx.
+ */
+type MerqoSupportMessagesSchema = {
+  merqo: {
+    Tables: {
+      support_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          kit_slug: string;
+          category: string;
+          body: string;
+          status: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
 };
 
 /** A milestone row in the activation timeline: reached (date) or still pending. */
@@ -46,6 +78,12 @@ export default async function AdminVendorDetailPage({
   await requireAdmin();
   const { id } = await params;
   const supabase = await createServerClient();
+  // merqo.support_messages' SELECT policy gates on merqo.merqo_team
+  // membership, not qkit.admins — the RLS-scoped client would silently return
+  // zero rows for a qkit admin who isn't also a merqo_team member, so this one
+  // query needs the service client instead (mirrors admin/page.tsx).
+  const merqoClient =
+    (await createServiceClient()) as unknown as SupabaseClient<MerqoSupportMessagesSchema>;
 
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
@@ -72,10 +110,12 @@ export default async function AdminVendorDetailPage({
       .select("vendor_id, valid_from, expires_at, note")
       .eq("vendor_id", id)
       .order("valid_from", { ascending: false }),
-    supabase
+    merqoClient
+      .schema("merqo")
       .from("support_messages")
       .select("id, category, body, status, created_at")
-      .eq("vendor_id", id)
+      .eq("kit_slug", "qkit")
+      .eq("user_id", id)
       .order("created_at", { ascending: false }),
   ]);
   if (!vendor) notFound();

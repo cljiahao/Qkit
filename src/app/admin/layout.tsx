@@ -1,10 +1,34 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Bell } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin";
 import { AdminNav } from "./admin-nav";
+
+/**
+ * merqo owns this table's real generated types — this is a hand-written
+ * mirror of the support_messages row shape, not a generated type, since
+ * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
+ * Mirrors the pattern in admin/actions.ts and admin/page.tsx.
+ */
+type MerqoSupportMessagesSchema = {
+  merqo: {
+    Tables: {
+      support_messages: {
+        Row: { id: string; status: string; kit_slug: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
 
 export default async function AdminLayout({
   children,
@@ -17,12 +41,20 @@ export default async function AdminLayout({
   // Attention count for the bell: open help requests + open purchase requests,
   // the two vendor-raised inboxes an admin acts on. Count-only (head:true) on
   // the indexed status column, run in parallel — negligible per-page cost. RLS
-  // (is_admin) already scopes these to what an admin may see.
+  // (is_admin) already scopes purchase_requests to what an admin may see.
+  // merqo.support_messages' SELECT policy gates on merqo.merqo_team
+  // membership, not qkit.admins — the RLS-scoped client would silently return
+  // zero rows for a qkit admin who isn't also a merqo_team member, so this one
+  // query needs the service client instead (mirrors admin/page.tsx).
   const supabase = await createServerClient();
+  const merqoClient =
+    (await createServiceClient()) as unknown as SupabaseClient<MerqoSupportMessagesSchema>;
   const [openMessages, openRequests] = await Promise.all([
-    supabase
+    merqoClient
+      .schema("merqo")
       .from("support_messages")
       .select("id", { count: "exact", head: true })
+      .eq("kit_slug", "qkit")
       .eq("status", "open"),
     supabase
       .from("purchase_requests")

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { vendorStallNames } from "@/lib/admin-vendor-names";
 import {
   activationFunnel,
@@ -35,6 +36,37 @@ const SUPPORT_CATEGORY_LABEL: Record<string, string> = {
   other: "Something else",
 };
 
+/**
+ * merqo owns this table's real generated types — this is a hand-written
+ * mirror of the support_messages row shape, not a generated type, since
+ * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
+ * Mirrors the pattern in admin/feedback/page.tsx's MerqoVendorFeedbackSchema.
+ */
+type MerqoSupportMessagesSchema = {
+  merqo: {
+    Tables: {
+      support_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          kit_slug: string;
+          category: string;
+          body: string;
+          status: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
 export const revalidate = 0;
 
 function humanizeAction(action: string): string {
@@ -53,6 +85,13 @@ export default async function AdminPage() {
   await requireAdmin();
 
   const supabase = await createServerClient();
+  // merqo.support_messages' SELECT policy gates on merqo.merqo_team
+  // membership, not qkit.admins — the RLS-scoped client above would silently
+  // return zero rows for a qkit admin who isn't also a merqo_team member, so
+  // this one query needs the service client instead (mirrors the vendor-NPS
+  // fix in admin/feedback/page.tsx).
+  const merqoClient =
+    (await createServiceClient()) as unknown as SupabaseClient<MerqoSupportMessagesSchema>;
 
   // Reading the wall clock in an async server component is intentional here.
   // eslint-disable-next-line react-hooks/purity
@@ -105,9 +144,11 @@ export default async function AdminPage() {
       .select("id, vendor_id, kind, created_at")
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
-    supabase
+    merqoClient
+      .schema("merqo")
       .from("support_messages")
-      .select("id, vendor_id, category, body, created_at")
+      .select("id, user_id, category, body, created_at")
+      .eq("kit_slug", "qkit")
       .eq("status", "open")
       .order("created_at", { ascending: true }),
   ]);
@@ -158,7 +199,7 @@ export default async function AdminPage() {
   // Open vendor help requests — the "reach out and help" inbox.
   const messages = (messageRows ?? []).map((m) => ({
     ...m,
-    vendorName: vendorName.get(m.vendor_id) ?? "Unknown vendor",
+    vendorName: vendorName.get(m.user_id) ?? "Unknown vendor",
   }));
   const funnel = activationFunnel(
     vendors as { id: string; plan: Plan }[],
@@ -248,7 +289,7 @@ export default async function AdminPage() {
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2">
                     <Link
-                      href={`/admin/vendors/${m.vendor_id}`}
+                      href={`/admin/vendors/${m.user_id}`}
                       className="truncate font-medium hover:underline"
                     >
                       {m.vendorName}

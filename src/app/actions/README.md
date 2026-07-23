@@ -11,8 +11,8 @@ Server actions shared across routes rather than colocated with a single page —
 - `feedback.ts` — `submitFeedback(input: FeedbackInput): Promise<ActionResult>`. Validates with `feedbackSchema`, rate-limits 3 submissions/5min per client IP (via `clientIp`/`rateLimit` from `@/lib/rate-limit`), then inserts through the `submit_feedback` SECURITY DEFINER RPC (the `feedback` table has no public INSERT policy) — the RPC re-derives `vendor_id` from `auth.uid()` for vendor-sourced feedback and validates the order access token for customer-sourced feedback.
 - `feedback.test.ts` — tests customer/vendor submission paths, access-token threading, schema rejection of an empty submission, the rate-limit denial message, and RPC-failure handling.
 - `purchase.ts` — `requestUpgrade(option: "event" | "monthly"): Promise<ActionResult>`. Validates via a Zod enum, requires a signed-in vendor, and is idempotent: if a pending `purchase_requests` row of the same `kind` already exists it returns success as a no-op instead of inserting a duplicate.
-- `support.ts` — `submitSupportMessage(input: SupportMessageInput): Promise<ActionResult>`. Validates via `supportMessageSchema`, requires a signed-in vendor, and inserts into `support_messages` keyed to `vendor_id` (RLS scopes the insert to the caller's own vendor row).
-- `support.test.ts` — tests the signed-in insert path, empty-body rejection, bad-category rejection, the "please sign in" path, and DB-failure handling.
+- `support.ts` — `submitSupportMessage(input: SupportMessageInput): Promise<ActionResult>`. Validates via `supportMessageSchema`, requires a signed-in vendor, and files the message into the shared cross-kit `merqo.support_messages` table via the `merqo.submit_support_message` SECURITY DEFINER RPC (Task 5 exported as `submitSupportMessage` from `@/lib/merqo-support`) — the RPC derives `vendor_id` and `kit_slug` (="qkit") from `auth.uid()` and the kit context.
+- `support.test.ts` — tests the signed-in RPC-call path with correct kit slug and parameters, empty-body rejection, bad-category rejection, the "please sign in" path, and RPC-failure handling.
 
 ## Connectivity
 

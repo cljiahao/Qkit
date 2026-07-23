@@ -1,5 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { vendorStallNames } from "@/lib/admin-vendor-names";
 import { latestActivePassByVendor, summarizeVendors } from "@/lib/admin-stats";
 import {
@@ -13,11 +14,40 @@ import { MS_PER_DAY } from "@/lib/utils";
 import { Stat } from "../stat";
 import { VendorList, type VendorListItem } from "../vendor-list";
 
+/**
+ * merqo owns this table's real generated types — this is a hand-written
+ * mirror of the support_messages row shape, not a generated type, since
+ * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
+ * Mirrors the pattern in admin/actions.ts and admin/page.tsx.
+ */
+type MerqoSupportMessagesSchema = {
+  merqo: {
+    Tables: {
+      support_messages: {
+        Row: { user_id: string; status: string; kit_slug: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
 export const revalidate = 0;
 
 export default async function AdminVendorsPage() {
   await requireAdmin();
   const supabase = await createServerClient();
+  // merqo.support_messages' SELECT policy gates on merqo.merqo_team
+  // membership, not qkit.admins — the RLS-scoped client would silently return
+  // zero rows for a qkit admin who isn't also a merqo_team member, so this one
+  // query needs the service client instead (mirrors admin/page.tsx).
+  const merqoClient =
+    (await createServiceClient()) as unknown as SupabaseClient<MerqoSupportMessagesSchema>;
 
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
@@ -38,7 +68,12 @@ export default async function AdminVendorsPage() {
     supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
     supabase.from("booths").select("id, vendor_id, created_at"),
     supabase.from("orders").select("booth_id, status, created_at"),
-    supabase.from("support_messages").select("vendor_id").eq("status", "open"),
+    merqoClient
+      .schema("merqo")
+      .from("support_messages")
+      .select("user_id")
+      .eq("kit_slug", "qkit")
+      .eq("status", "open"),
   ]);
 
   const rows = vendorRows ?? [];
@@ -47,7 +82,7 @@ export default async function AdminVendorsPage() {
     rows.map((v) => v.id),
   );
   const passByVendor = latestActivePassByVendor(licenseRows ?? [], now);
-  const openMsgVendors = new Set((messageRows ?? []).map((m) => m.vendor_id));
+  const openMsgVendors = new Set((messageRows ?? []).map((m) => m.user_id));
 
   const vendorLites: VendorLite[] = rows.map((v) => ({
     id: v.id,

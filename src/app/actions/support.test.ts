@@ -1,68 +1,83 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// submitSupportMessage inserts into `support_messages` via the normal client
-// after resolving the signed-in vendor. Drive getUser + capture the insert.
-const insert = vi.fn(() =>
-  Promise.resolve({ error: null as null | { message: string } }),
-);
-const getUser = vi.fn();
-vi.mock("@/lib/supabase/server", () => ({
-  createServerClient: async () => ({
-    auth: { getUser },
-    from: () => ({ insert }),
+const { getUserMock, rpcMock, schemaMock, createServerClientMock } = vi.hoisted(
+  () => ({
+    getUserMock: vi.fn(),
+    rpcMock: vi.fn(),
+    schemaMock: vi.fn(),
+    createServerClientMock: vi.fn(),
   }),
+);
+
+vi.mock("@/lib/supabase/server", () => ({
+  createServerClient: createServerClientMock,
 }));
 
-import { submitSupportMessage } from "./support";
-
-const VENDOR = "00000000-0000-4000-8000-000000000001";
-
 beforeEach(() => {
-  insert.mockClear().mockResolvedValue({ error: null });
-  getUser.mockReset().mockResolvedValue({ data: { user: { id: VENDOR } } });
+  getUserMock.mockReset().mockResolvedValue({ data: { user: { id: "v1" } } });
+  rpcMock.mockReset().mockResolvedValue({ data: { id: "msg1" }, error: null });
+  schemaMock.mockReset().mockReturnValue({ rpc: rpcMock });
+  createServerClientMock.mockReset().mockResolvedValue({
+    auth: { getUser: getUserMock },
+    schema: schemaMock,
+  });
 });
 
 describe("submitSupportMessage", () => {
-  it("inserts the message keyed to the signed-in vendor", async () => {
-    const res = await submitSupportMessage({
+  it("calls the RPC with the signed-in vendor's category and body", async () => {
+    const { submitSupportMessage } = await import("./support");
+    const result = await submitSupportMessage({
       category: "payment",
       body: "PayNow didn't go through",
     });
-    expect(res).toEqual({ success: true });
-    expect(insert).toHaveBeenCalledWith({
-      vendor_id: VENDOR,
-      category: "payment",
-      body: "PayNow didn't go through",
+    expect(result).toEqual({ success: true });
+    expect(rpcMock).toHaveBeenCalledWith("submit_support_message", {
+      p_kit_slug: "qkit",
+      p_category: "payment",
+      p_body: "PayNow didn't go through",
     });
   });
 
-  it("rejects an empty body before touching the DB", async () => {
-    const res = await submitSupportMessage({ category: "pass", body: "   " });
-    expect(res.success).toBe(false);
-    expect(insert).not.toHaveBeenCalled();
+  it("rejects an empty body before calling the RPC", async () => {
+    const { submitSupportMessage } = await import("./support");
+    const result = await submitSupportMessage({
+      category: "pass",
+      body: "   ",
+    });
+    expect(result.success).toBe(false);
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("rejects a bad category", async () => {
-    const res = await submitSupportMessage({
+    const { submitSupportMessage } = await import("./support");
+    const result = await submitSupportMessage({
       // @ts-expect-error — exercising the runtime guard
       category: "refund",
       body: "hi",
     });
-    expect(res.success).toBe(false);
-    expect(insert).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("asks the user to sign in when there's no session", async () => {
-    getUser.mockResolvedValue({ data: { user: null } });
-    const res = await submitSupportMessage({ category: "other", body: "hey" });
-    expect(res).toEqual({ success: false, error: "Please sign in first" });
-    expect(insert).not.toHaveBeenCalled();
+    getUserMock.mockResolvedValue({ data: { user: null } });
+    const { submitSupportMessage } = await import("./support");
+    const result = await submitSupportMessage({
+      category: "other",
+      body: "hey",
+    });
+    expect(result).toEqual({ success: false, error: "Please sign in first" });
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("surfaces a DB failure without throwing", async () => {
-    insert.mockResolvedValue({ error: { message: "boom" } });
-    const res = await submitSupportMessage({ category: "pro", body: "help" });
-    expect(res).toEqual({
+  it("surfaces a friendly error when the RPC fails", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "boom" } });
+    const { submitSupportMessage } = await import("./support");
+    const result = await submitSupportMessage({
+      category: "pro",
+      body: "help",
+    });
+    expect(result).toEqual({
       success: false,
       error: "Could not send your message",
     });

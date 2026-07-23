@@ -77,7 +77,19 @@ vi.mock("@/lib/supabase/server", () => ({
             return { insert: auditInsert };
           case "purchase_requests":
             return { update: () => ({ eq: () => ({ eq: purchaseReqEq }) }) };
-          case "support_messages":
+          case "platform_settings":
+            return { update: () => ({ eq: platformSettingsEq }) };
+          default:
+            throw new Error(`unexpected table ${table}`);
+        }
+      },
+      schema: (name: string) => {
+        if (name !== "merqo") throw new Error(`unexpected schema ${name}`);
+        return {
+          from: (table: string) => {
+            if (table !== "support_messages") {
+              throw new Error(`unexpected merqo table ${table}`);
+            }
             return {
               update: () => ({
                 eq: () => ({
@@ -85,11 +97,8 @@ vi.mock("@/lib/supabase/server", () => ({
                 }),
               }),
             };
-          case "platform_settings":
-            return { update: () => ({ eq: platformSettingsEq }) };
-          default:
-            throw new Error(`unexpected table ${table}`);
-        }
+          },
+        };
       },
     }),
 }));
@@ -114,7 +123,7 @@ beforeEach(() => {
   purchaseReqEq.mockReset().mockResolvedValue({ error: null });
   supportMsgUpdateSingle
     .mockReset()
-    .mockResolvedValue({ data: { vendor_id: VENDOR }, error: null });
+    .mockResolvedValue({ data: { user_id: VENDOR }, error: null });
   platformSettingsEq.mockReset().mockResolvedValue({ error: null });
 });
 
