@@ -6,11 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": [
-              "-e",
-              "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{const d=JSON.parse(b||'{}');const f=((d.tool_input||{}).file_path||'');const n=f.split(/[\\\\/]/).pop()||'';const blocked=(n.startsWith('.env')&&!n.includes('example'))||['pem','key','p12','pfx','secret'].some(e=>n.endsWith('.'+e))||['credentials.json','.netrc','.secrets'].includes(n);process.exit(blocked?2:0)})"
-            ]
+            "command": "bash .claude/hooks/protect-files.sh"
           }
         ]
       },
@@ -19,11 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": [
-              "-e",
-              "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{const d=JSON.parse(b||'{}');const cmd=((d.tool_input||{}).command||'');if(cmd.includes('--no-verify')){process.stderr.write('Blocked: --no-verify bypasses safety hooks\\n');process.exit(2);}process.exit(0);})"
-            ]
+            "command": "bash .claude/hooks/block-no-verify.sh"
           }
         ]
       }
@@ -33,11 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": [
-              "-e",
-              "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{const d=JSON.parse(b||'{}');const t=(d.prompt||'').toLowerCase();const deny=['ignore previous instructions','ignore all instructions','you are now a ','disregard your instructions','forget your instructions'];if(deny.some(p=>t.includes(p))){process.stderr.write('Prompt injection pattern detected\\n');process.exit(2);}process.exit(0);})"
-            ]
+            "command": "node .claude/hooks/user-prompt-guard.cjs"
           }
         ]
       }
@@ -48,11 +36,26 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": [
-              "-e",
-              "const{execSync}=require('child_process');try{const o=execSync('pnpm exec tsc --noEmit --incremental',{encoding:'utf8',stdio:['ignore','pipe','pipe']});}catch(e){const out=((e.stdout||'')+(e.stderr||'')).split(/\\r?\\n/).slice(-6).join('\\n');process.stderr.write(out+'\\n');}process.exit(0);"
-            ]
+            "command": "bash .claude/hooks/post-edit-typecheck.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Skill__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/skill-usage-log.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-tool-failure.sh"
           }
         ]
       }
@@ -60,28 +63,27 @@
     "Stop": [
       {
         "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/stop-checks.sh" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": [
-              "-e",
-              "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{const d=JSON.parse(b||'{}');if(d.stop_hook_active){process.exit(0);}const{execSync}=require('child_process');try{execSync('pnpm test',{encoding:'utf8',stdio:['ignore','pipe','pipe']});process.exit(0);}catch(e){const out=((e.stdout||'')+(e.stderr||'')).split(/\\r?\\n/).slice(-20).join('\\n');process.stderr.write(out+'\\n');process.exit(2);}});"
-            ]
+            "command": "bash .claude/hooks/subagent-stop.sh"
           }
         ]
       }
     ],
     "SessionStart": [
       {
-        "matcher": "startup|resume|compact",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
-            "command": "node",
-            "args": [
-              "-e",
-              "const fs=require('fs');try{const t=fs.readFileSync('AGENTS.md','utf8').split(/\\r?\\n/).slice(0,30).join('\\n');process.stdout.write('=== qkit routing context (AGENTS.md) ===\\n'+t+'\\n');}catch{}process.exit(0);"
-            ]
+            "command": "bash .claude/hooks/session-context.sh"
           }
         ]
       }
@@ -127,7 +129,10 @@
       "Read(.env.production)",
       "Read(.env.staging)",
       "Read(.env.test)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
       "Read(./secrets/**)",
+      "Read(./.secrets/**)",
       "Edit(.env)",
       "Edit(.env.local)",
       "Edit(.env.development)",
@@ -136,9 +141,15 @@
       "Edit(.env.test)",
       "Edit(./secrets/**)",
       "Read(node_modules/**)",
+      "Read(./**/node_modules/**)",
       "Read(.next/**)",
+      "Read(./**/.next/**)",
+      "Read(./**/dist/**)",
       "Read(coverage/**)",
-      "Read(*.tsbuildinfo)"
+      "Read(./**/coverage/**)",
+      "Read(./**/.turbo/**)",
+      "Read(*.tsbuildinfo)",
+      "Read(./**/*.tsbuildinfo)"
     ]
   },
   "skillOverrides": {

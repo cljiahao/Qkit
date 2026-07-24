@@ -3,6 +3,7 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+  lefthook: true
 
 # Security: force-patch transitive advisories. Each entry is scoped to the
 # vulnerable range, so it self-clears once a dep ships the patched version.

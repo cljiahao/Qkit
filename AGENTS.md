@@ -119,10 +119,13 @@ a conscious choice — don't let a future drift-check "fix" them):
 - **pino route-logging enforcement** (5.7) — pino was removed as an unused dep;
   qkit's API surface (one route) logs via `console.error`, not the tc `withLogging`
   wrapper. No `scripts/check-route-logging.mjs` gate.
-- **lefthook** (5.2) — qkit uses husky + lint-staged; not migrating the git-hook system.
-- **tc CI gates + `verify-harness.sh` / `.harness-base`** (5.2–5.3) — qkit has its own
-  CI (`.github/workflows/{ci,security}.yml`); no harness re-sync base exists (seeded
-  pre-5.3), so `migrate` Phase-5 3-way merge is N/A.
+- ~~**lefthook** (5.2) — qkit uses husky + lint-staged; not migrating the git-hook system.~~
+  Superseded — see the 2026-07-24 entry below.
+- **tc CI gates + `.harness-base`** (5.2–5.3) — qkit has its own CI
+  (`.github/workflows/{ci,security}.yml`); no harness re-sync base exists (seeded
+  pre-5.3), so `migrate` Phase-5 3-way merge is N/A. (`verify-harness.sh` itself
+  _was_ adopted as part of the 2026-07-24 lefthook migration, without the
+  `.harness-base` 3-way-merge machinery.)
 - **password min-12 on the login schema** (5.5) — would lock out existing 8-char
   sign-ins; Supabase Auth config owns the real policy.
 
@@ -154,22 +157,64 @@ the permission-rule matcher covers `Write(path)` under `Edit(path)` — only
 `Edit(...)` is needed. The redundant `Write(...)` entries were removed from
 `.claude/settings.json`, back to `Edit(...)`-only.
 
+**Lefthook migration (2026-07-24):** superseded the 2026-06-05 husky decision;
+migrated the git-hook layer to lefthook and split the previously-inline
+`node -e` one-liners in `.claude/settings.json` into standalone
+`.claude/hooks/*` script files, to match the other 3 built-out kits'
+(loopkit/stockkit/paykit) and merqo's harness architecture. `husky` +
+`lint-staged` and `.husky/` are gone; `scripts/check-readme-freshness.mjs`
+was replaced by `.lefthook/readme-coupling.sh` (same non-blocking nudge,
+now run as a lefthook pre-commit command instead of a husky script).
+Net-new: `lefthook.yml`, `.lefthook/`, `.gitleaks.toml`,
+`.claude/verify-harness.sh` (harness integrity sensor, wired into
+`pre-push` and CI) and `.claude/regen-harness.sh` (human-run-only baseline
+rewrite). This also picks up the security hardening already reflected in
+the hook scripts themselves: the `LEFTHOOK=0`/`core.hooksPath=` bypass block,
+a broadened `--no-verify` regex, protected-branch/force-push/guard-file-checkout
+guards, an `.env*` catchall deny (was previously just the specific `.env.<env>`
+variants), and OWASP LLM02 credential-leak detection in the prompt guard.
+`SubagentStop` is a net-new hook (qkit previously had none). `harness.json`'s
+`templatecentral_version` marker moved 5.7.0 → 5.11.0 — the 5.8–5.11 feature
+deltas (comment gate, README governance/richReadme, unused-vars gate) were
+already reviewed in the entries above; this migration closes the one
+remaining architectural gap (the git-hook layer + hook-script-file layout).
+
 ## AI Harness
 
-PreToolUse: blocks secret files (exit 2): `.env*` (except `.env.example`),
-cert files (`.pem`/`.key`/`.p12`/`.pfx`/`.secret`), `credentials.json`/`.netrc`/`.secrets`;
-and blocks `--no-verify`. App code, skills, specs, and `.github/workflows/`
+PreToolUse: `protect-files.sh` hard-blocks (exit 2) writes to `.env*` (except
+`.env.example`/`.env.default`), CI/CD pipeline files, secrets directories, and
+cert/credential files, and asks for human approval (via a `permissionDecision`
+JSON payload) on other protected files (`AGENTS.md`/`CLAUDE.md`,
+`docs/constitution.md`, `.claude/settings.json`, `.claude/hooks/*`,
+`.claude/agents/*`, `.mcp.json`, the harness manifest/verifier/regen scripts,
+`Dockerfile`, `lefthook.yml`/`.gitleaks.toml`, `.lefthook/*`); `block-no-verify.sh`
+blocks `--no-verify`/`-n` on `git commit`, `LEFTHOOK=0`/`LEFTHOOK_EXCLUDE`/
+`core.hooksPath=` bypasses, direct commits to `main`, force-push to a protected
+branch, `git checkout/restore` on guard-layer files, and recursive-force `rm`
+on source directories. App code, skills, specs, and `.github/workflows/`
 unrestricted (CI is reviewed code; the workflow-write block was lifted 2026-06-16).
-UserPromptSubmit: pattern-checks prompts for injection phrases; exit 2 blocks.
-PostToolUse: `tsc --noEmit --incremental` after every Edit/Write. Feedback-only.
-Stop: exits 0 when `stop_hook_active` (no re-entry loop); else runs the test
-suite, exit 2 feeds failures back, exit 0 on pass.
-SessionStart (startup|resume|compact): re-injects first 30 lines of this file —
-the documented inject path (PostCompact stdout is ignored, cannot inject context).
+UserPromptSubmit: `user-prompt-guard.cjs` pattern-checks prompts for injection
+phrases (OWASP LLM01) and embedded credentials — AWS keys, GitHub PATs,
+Anthropic API keys, PEM blocks, DB/broker URLs (OWASP LLM02); exit 2 blocks.
+PostToolUse: `post-edit-typecheck.sh` runs incremental `tsc --noEmit` after
+every Edit/Write to a `.ts`/`.tsx` file (feedback-only); `skill-usage-log.sh`
+logs every skill invocation to `.claude/skill-usage.log`.
+PostToolUseFailure: `post-tool-failure.sh` surfaces the failed tool's name/error
+to stderr so the model can self-correct; always exits 0.
+Stop: `stop-checks.sh` exits 0 when `stop_hook_active` (no re-entry loop); else
+runs the test suite, exit 2 feeds failures back, exit 0 on pass.
+SubagentStop: `subagent-stop.sh` type-gates a subagent's uncommitted `.ts`/`.tsx`
+changes before it can hand back control.
+SessionStart (startup|resume|clear|compact): `session-context.sh` re-injects
+the first 30 lines of this file, all of `docs/constitution.md`, and a fixed
+list of always-on invariants — the documented inject path (PostCompact stdout
+is ignored, cannot inject context).
 `permissions`: max-privilege — bare-tool `allow` (Bash/Read/Edit/Write/web/Skill/
-Task) so common work doesn't prompt; `deny` covers secret reads/edits (`.env.local`
-and other `.env.<env>` variants, `./secrets/**` — `.env.example` is the one
-whitelisted env file) and irreversible ops (`rm -rf`, `git push --force`/`-f`,
+Task) so common work doesn't prompt; `deny` covers secret reads/edits (`.env*`
+catchall plus the specific `.env.<env>` variants, `./secrets/**`/`./.secrets/**`
+— `.env.example` is the one whitelisted env file), build-artefact reads
+(`node_modules`, `.next`, `dist`, `coverage`, `.turbo`, `*.tsbuildinfo`, root
+and `./**/` forms), and irreversible ops (`rm -rf`, `git push --force`/`-f`,
 `git reset --hard`, `git clean -fd/-fx`, `git filter-branch`, ref-delete). `ask`
 gates `Edit(...)` (covers both Edit and Write calls) on the medium-security
 governance files: `AGENTS.md`,
@@ -178,6 +223,14 @@ governance files: `AGENTS.md`,
 under bypass); it's a guardrail, not a sandbox — prefix-matched and
 wrapper-bypassable. CI security: `.github/workflows/security.yml`
 (gitleaks v3 + CodeQL + `pnpm audit`) and `.github/dependabot.yml` (security-only).
+Git hooks (lefthook): `pre-commit` runs format/lint (`prettier`+`eslint --fix`
+on staged `.ts/.tsx/.js/.mjs/.cjs`), format-docs (`prettier --write` on staged
+`.json/.md/.css`), `tsc --noEmit`, a frozen-lockfile install check, a gitleaks
+secret-scan on staged files (if gitleaks is installed), and the README-coupling
+nudge (`.lefthook/readme-coupling.sh`); `commit-msg` enforces Conventional
+Commits (`.lefthook/commit-msg.sh`); `pre-push` runs `.claude/verify-harness.sh`
+(integrity check) plus `pnpm run check && pnpm test`. Config: `lefthook.yml`
+and `.lefthook/`; secret-scan ruleset: `.gitleaks.toml`.
 RLS isolation: `supabase/tests/rls.test.sql` via `supabase test db`.
 Project skills (directory form, `<name>/SKILL.md`): `.claude/skills/` |
 Manifest: `.claude/harness.json`

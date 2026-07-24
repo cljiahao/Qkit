@@ -1,2 +1,0 @@
-npx lint-staged
-node scripts/check-readme-freshness.mjs
