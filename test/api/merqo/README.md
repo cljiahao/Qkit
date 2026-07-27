@@ -20,14 +20,28 @@ feed that exposes qkit's business metrics to the Merqo umbrella product.
   through five sequential `.from()` reads (vendors, booths, orders, payments,
   purchase_requests count); and 503 (`{"error":"Upstream unavailable"}`) when
   any of those five reads errors.
+- `vendor-provision.test.ts` — tests `POST /api/merqo/vendor-provision`
+  (`src/app/api/merqo/vendor-provision/route.ts`). Mocks
+  `@/lib/supabase/server`'s `createServiceClient` with a chainable
+  `insert()` / `select().eq().maybeSingle()` stub, and mocks
+  `@/lib/merqo-vendor-profile`'s `getOrCreateVendorProfile`. Asserts: 401
+  when the bearer is missing; 400 when `user_id` isn't a UUID or the insert
+  hits a `23503` (unknown `user_id`); 200 with
+  `{ ok: true, already_existed, plan }` on both first provisioning (seeds
+  the profile) and a repeat call (`23505` duplicate-key — no-op, profile
+  not re-seeded, and the vendor's real current plan, e.g. `pro`, is
+  reported rather than assumed `free`); and 500 when the profile seed
+  throws.
 
 ## Connectivity
 
 Tests `src/app/api/merqo/metrics/route.ts`, which itself is built on
 `@/lib/merqo-metrics.ts`'s `computeMerqoMetrics` (and transitively
-`@/lib/admin-stats.ts`). The mocked `createServiceClient` stands in for the
-real RLS-bypassing service-role client the route uses to read across all
-vendors.
+`@/lib/admin-stats.ts`), and `src/app/api/merqo/vendor-provision/route.ts`,
+which calls `@/lib/merqo-auth.ts`'s `provisionBearerOk` and
+`@/lib/merqo-vendor-profile.ts`'s `getOrCreateVendorProfile`. The mocked
+`createServiceClient` stands in for the real RLS-bypassing service-role
+client the routes use to read/write across all vendors.
 
 ## Parent
 
