@@ -67,6 +67,20 @@ describe("POST /api/merqo/vendor-provision", () => {
     expect(res.status).toBe(400);
   });
 
+  it("400 on a malformed JSON body", async () => {
+    const res = await POST(
+      new Request("http://localhost/api/merqo/vendor-provision", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer test-secret",
+        },
+        body: "{not valid json",
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it("creates a new vendor row, seeds the profile, returns plan free", async () => {
     fromMock.mockReturnValue(
       vendorsTable({ insertError: null, planRow: { plan: "free" } }),
@@ -132,6 +146,36 @@ describe("POST /api/merqo/vendor-provision", () => {
       vendorsTable({ insertError: null, planRow: { plan: "free" } }),
     );
     getOrCreateVendorProfileMock.mockRejectedValue(new Error("boom"));
+    const res = await POST(req({ user_id: USER_ID }, "Bearer test-secret"));
+    expect(res.status).toBe(500);
+  });
+
+  it("500 on a generic insert error (not a FK or unique violation)", async () => {
+    fromMock.mockReturnValue(
+      vendorsTable({
+        insertError: { code: "23514", message: "check constraint violated" },
+      }),
+    );
+    const res = await POST(req({ user_id: USER_ID }, "Bearer test-secret"));
+    expect(res.status).toBe(500);
+  });
+
+  it("500 when the post-insert read-back errors", async () => {
+    fromMock.mockReturnValue(
+      vendorsTable({
+        insertError: null,
+        planRow: null,
+        readError: { message: "read-back boom" },
+      }),
+    );
+    const res = await POST(req({ user_id: USER_ID }, "Bearer test-secret"));
+    expect(res.status).toBe(500);
+  });
+
+  it("500 when the post-insert read-back returns no row", async () => {
+    fromMock.mockReturnValue(
+      vendorsTable({ insertError: null, planRow: null }),
+    );
     const res = await POST(req({ user_id: USER_ID }, "Bearer test-secret"));
     expect(res.status).toBe(500);
   });
