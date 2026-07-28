@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { provisionBearerOk } from "@/lib/merqo-auth";
 
 function req(auth?: string) {
@@ -11,6 +11,11 @@ describe("provisionBearerOk", () => {
   beforeEach(() => {
     process.env.MERQO_PROVISION_SECRET = "provision-secret";
     process.env.MERQO_METRICS_SECRET = "metrics-secret";
+  });
+
+  afterEach(() => {
+    delete process.env.MERQO_PROVISION_SECRET;
+    delete process.env.MERQO_METRICS_SECRET;
   });
 
   it("true on the correct provision secret", () => {
