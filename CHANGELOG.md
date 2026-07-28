@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`/api/merqo/vendor-provision` endpoint** for Merqo hub push-provisioning —
+  lets a vendor one-click-activate qkit from the Merqo dashboard (creates a
+  free-tier `vendors` row and seeds the shared vendor profile), guarded by a
+  separate `MERQO_PROVISION_SECRET` bearer check (`provisionBearerOk`) since
+  it's a write capability, not the read-only metrics secret the sibling
+  routes share.
 - **"Show wait-time estimate" toggle** on `/dashboard/settings` (default on).
   Off makes the customer status page always show only the queue-position
   label ("2 orders ahead of you"), never a minute guess, regardless of how
