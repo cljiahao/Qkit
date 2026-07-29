@@ -34,10 +34,10 @@ Verified end-to-end against a real bank app: local Supabase + qkit dev
 server, Kopitiam Cart booth's PayNow config repointed to a real mobile
 number, placed a real order ($1.40) through the actual customer checkout
 flow, rendered QR scanned with a real banking app on a real phone —
-recipient name and amount both parsed correctly. Confirms `buildPayNowPayload`
-
-- `renderCheckout` + `pay-panel.tsx`'s `react-qr-code` render produce a
-  QR real banking apps accept, not just a structurally-valid EMVCo string.
+recipient name and amount both parsed correctly. Confirms
+`buildPayNowPayload`, `renderCheckout`, and `pay-panel.tsx`'s `react-qr-code`
+render together produce a QR real banking apps accept, not just a
+structurally-valid EMVCo string.
 
 One unrelated finding: the order-status page logs a caught, non-fatal
 `get_or_create_vendor_profile failed: Invalid schema: merqo` error when
