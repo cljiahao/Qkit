@@ -1,3 +1,14 @@
+> **Status update (2026-07-29):** Track A (F4 close guard, `#38`), Track B
+> (F2 walk-up entry + unified board, `#37`) and Track C (F1, shipped as
+> "Arrival confirmation" — a status-page button, not a rescan — `#40`) are
+> all done; this doc was stale for 12 days before being re-audited against
+> git log/code. F3's one-tap advance (no confirm gate + undo window) was
+> also already live; batch mark-ready (multi-select `preparing` orders → one
+> "Mark N Ready" tap) and a QR/walk-up origin badge on the order card were
+> the two real gaps found and closed same day. Track D (QA-D1, payment
+> proof) is the only item still open — see
+> `docs/meta/2026-07-29-paynow-hardening.md`.
+
 # qkit — Phase 1 Job Board: Manfred Pilot Readiness (2026-07-17)
 
 Scope: Manfred's F1-F4 (`2026-07-17-manfred-feature-backlog.md`) plus a

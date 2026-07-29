@@ -322,6 +322,66 @@ describe("OrderCard", () => {
     });
     expect(screen.getByText("Kopi Cart")).toBeInTheDocument();
   });
+
+  it("shows a Walk-up badge for a walk-up order", () => {
+    render(<OrderCard order={makeOrder({ source: "walkup" })} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.getByText("Walk-up")).toBeInTheDocument();
+  });
+
+  it("shows no origin badge for a QR order", () => {
+    render(<OrderCard order={makeOrder({ source: "qr" })} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.queryByText("Walk-up")).not.toBeInTheDocument();
+  });
+});
+
+describe("OrderCard — batch select", () => {
+  it("renders no selection checkbox when not selectable", () => {
+    render(<OrderCard order={makeOrder({ status: "preparing" })} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(
+      screen.queryByRole("checkbox", { name: /select order #0007/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders a checked/unchecked selection checkbox and calls onToggleSelect", async () => {
+    const user = userEvent.setup();
+    const onToggleSelect = vi.fn();
+    render(
+      <OrderCard
+        order={makeOrder({ status: "preparing" })}
+        selectable
+        selected={false}
+        onToggleSelect={onToggleSelect}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    const checkbox = screen.getByRole("checkbox", {
+      name: /select order #0007/i,
+    });
+    expect(checkbox).not.toBeChecked();
+    await user.click(checkbox);
+    expect(onToggleSelect).toHaveBeenCalledWith("o1");
+  });
+
+  it("reflects a selected order as checked", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "preparing" })}
+        selectable
+        selected
+        onToggleSelect={vi.fn()}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("checkbox", { name: /select order #0007/i }),
+    ).toBeChecked();
+  });
 });
 
 describe("OrderCard payment", () => {

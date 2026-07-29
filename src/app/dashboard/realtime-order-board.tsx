@@ -44,7 +44,7 @@ import {
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
-import { sweepReadyOrders } from "./order-actions";
+import { advanceOrder, sweepReadyOrders } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
@@ -240,6 +240,41 @@ export function RealtimeOrderBoard({
     },
     [],
   );
+  // Batch mark-ready mode (F3): lets a vendor check off several `preparing`
+  // orders and advance them to `ready` in one tap instead of one at a time.
+  // Reuses the same advanceOrder server action each OrderCard's own single
+  // tap calls — no new bulk RPC, per-row optimistic-concurrency guard still
+  // applies to each id individually.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const [markingReady, setMarkingReady] = useState(false);
+  async function markSelectedReady() {
+    const ids = Array.from(selectedIds);
+    setMarkingReady(true);
+    try {
+      const results = await Promise.all(ids.map((id) => advanceOrder(id)));
+      const ok = results.filter((r) => r.success).length;
+      const failed = results.length - ok;
+      if (ok > 0)
+        toast.success(`Marked ${ok} order${ok === 1 ? "" : "s"} ready`);
+      if (failed > 0)
+        toast.error(
+          `${failed} order${failed === 1 ? "" : "s"} couldn't be updated`,
+        );
+      setSelectedIds(new Set());
+      setSelectMode(false);
+    } finally {
+      setMarkingReady(false);
+    }
+  }
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [boothDialogOpen, setBoothDialogOpen] = useState(false);
   // new orders that arrived while hidden
@@ -363,6 +398,7 @@ export function RealtimeOrderBoard({
   }
 
   const idle = visible.length === 0;
+  const preparingCount = visible.filter((o) => o.status === "preparing").length;
 
   return (
     <div>
@@ -574,6 +610,39 @@ export function RealtimeOrderBoard({
             </button>
           ))}
         </div>
+        {preparingCount > 0 &&
+          (selectMode ? (
+            <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => {
+                  setSelectMode(false);
+                  setSelectedIds(new Set());
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-full"
+                disabled={selectedIds.size === 0 || markingReady}
+                onClick={markSelectedReady}
+              >
+                Mark {selectedIds.size} Ready
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto rounded-full"
+              onClick={() => setSelectMode(true)}
+            >
+              Select
+            </Button>
+          ))}
       </div>
 
       {idle ? (
@@ -603,6 +672,9 @@ export function RealtimeOrderBoard({
                   : null
               }
               onUndoWindowChange={handleUndoWindowChange}
+              selectable={selectMode && order.status === "preparing"}
+              selected={selectedIds.has(order.id)}
+              onToggleSelect={toggleSelect}
             />
           ))}
         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +80,9 @@ export function OrderCard({
   showDate = false,
   undoMs = DEFAULT_UNDO_MS,
   readyAutoClearMs = null,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: {
   order: BoardOrder;
   // board_settings.daily_order_number_reset display number (see
@@ -113,6 +117,14 @@ export function OrderCard({
   // days, so it opts into a date+time stamp instead of a time an ordering
   // vendor would have to guess the day for.
   showDate?: boolean;
+  // Board-level batch-mark-ready mode: when true, a selection checkbox
+  // renders instead of nothing (the board only sets this for `preparing`
+  // orders — the batch action's target status). Selection state/toggling
+  // lives on the board (RealtimeOrderBoard), not here, so it survives
+  // across every card's own independent re-renders.
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (orderId: string) => void;
 }) {
   const [status, setStatus] = useState<OrderStatus>(order.status);
   // Resync to the (realtime-updated) prop when it actually changes value, so a
@@ -367,74 +379,89 @@ export function OrderCard({
           </span>
         </div>
       )}
-      <div className="flex items-start justify-between gap-3 px-4 pt-5 pb-3">
-        {/* The name/number block doubles as the bump affordance: tapping it
+      <div className="flex items-start gap-3 px-4 pt-5 pb-3">
+        {selectable && (
+          <Checkbox
+            className="mt-1 shrink-0"
+            checked={selected}
+            onCheckedChange={() => onToggleSelect?.(order.id)}
+            aria-label={`Select order #${number}`}
+          />
+        )}
+        <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+          {/* The name/number block doubles as the bump affordance: tapping it
             prompts a confirmation instead of sitting as a separate icon
             button next to Mark ready, where an accidental tap advanced the
             wrong thing. Not tappable once already bumped (re-tap would just
             refresh the timestamp with no visible change) or once closed. */}
-        {!closed && !bumped ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button
-                type="button"
-                className="-mx-2 -my-1 min-w-0 rounded-lg border border-dashed border-muted-foreground/40 bg-secondary/40 px-2 py-1 text-left transition-colors hover:border-primary/50 hover:bg-secondary"
-                disabled={updating}
-              >
-                <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
-                  #{number}
+          {!closed && !bumped ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  className="-mx-2 -my-1 min-w-0 rounded-lg border border-dashed border-muted-foreground/40 bg-secondary/40 px-2 py-1 text-left transition-colors hover:border-primary/50 hover:bg-secondary"
+                  disabled={updating}
+                >
+                  <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
+                    #{number}
+                    <Zap
+                      className="size-4 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  </p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {order.customer_name}
+                  </p>
+                  <p className="mt-1.5 text-[0.55rem] font-medium uppercase tracking-wider text-muted-foreground/50">
+                    Tap to bump
+                  </p>
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Bump order #{number} to front?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Moves this order ahead of the others still waiting in the
+                    queue.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={updating}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={bump} disabled={updating}>
+                    Bump to front
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
+                #{number}
+                {!closed && bumped && (
                   <Zap
-                    className="size-4 shrink-0 text-muted-foreground"
-                    aria-hidden="true"
+                    className="size-4 shrink-0 text-primary"
+                    aria-label="Manually bumped to the front of the queue"
                   />
-                </p>
-                <p className="truncate text-sm text-muted-foreground">
-                  {order.customer_name}
-                </p>
-                <p className="mt-1.5 text-[0.55rem] font-medium uppercase tracking-wider text-muted-foreground/50">
-                  Tap to bump
-                </p>
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Bump order #{number} to front?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Moves this order ahead of the others still waiting in the
-                  queue.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={updating}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={bump} disabled={updating}>
-                  Bump to front
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : (
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
-              #{number}
-              {!closed && bumped && (
-                <Zap
-                  className="size-4 shrink-0 text-primary"
-                  aria-label="Manually bumped to the front of the queue"
-                />
-              )}
-            </p>
-            <p className="truncate text-sm text-muted-foreground">
-              {order.customer_name}
-            </p>
+                )}
+              </p>
+              <p className="truncate text-sm text-muted-foreground">
+                {order.customer_name}
+              </p>
+            </div>
+          )}
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <OrderStatusBadge status={status} />
+            <PaymentBadge status={payStatus} />
+            {order.source === "walkup" && (
+              <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                Walk-up
+              </span>
+            )}
           </div>
-        )}
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <OrderStatusBadge status={status} />
-          <PaymentBadge status={payStatus} />
         </div>
       </div>
 
