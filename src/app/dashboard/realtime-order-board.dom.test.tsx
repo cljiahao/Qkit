@@ -6,6 +6,7 @@ import { RealtimeOrderBoard } from "./realtime-order-board";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toggleBoothActive } from "./booths/actions";
 import { getWalkupMenu } from "./walkup-menu-actions";
+import { advanceOrder } from "./order-actions";
 import { DEFAULT_BOARD_SETTINGS } from "@/lib/types";
 import type { BoardOrder } from "@/lib/types";
 
@@ -64,13 +65,17 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./booths/actions", () => ({ toggleBoothActive: vi.fn() }));
 vi.mock("./walkup-menu-actions", () => ({ getWalkupMenu: vi.fn() }));
 vi.mock("./walkup-actions", () => ({ placeWalkupOrder: vi.fn() }));
-vi.mock("./order-actions", () => ({ sweepReadyOrders: vi.fn() }));
+vi.mock("./order-actions", () => ({
+  sweepReadyOrders: vi.fn(),
+  advanceOrder: vi.fn(),
+}));
 
 const BOOTHS = [{ id: "b1", name: "Kopi Corner", is_active: true, open: true }];
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(toggleBoothActive).mockResolvedValue({ success: true });
+  vi.mocked(advanceOrder).mockResolvedValue({ success: true, status: "ready" });
 });
 
 describe("RealtimeOrderBoard sort toggle", () => {
@@ -364,5 +369,55 @@ describe("RealtimeOrderBoard walk-up order button", () => {
     ).toBeInTheDocument();
     // No active booth to preselect — getWalkupMenu never fires.
     expect(getWalkupMenu).not.toHaveBeenCalled();
+  });
+});
+
+describe("RealtimeOrderBoard batch mark-ready", () => {
+  it("has no Select control when no order is preparing", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[order({ id: "o1", status: "ready" })]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.queryByRole("button", { name: /select/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets a vendor select multiple preparing orders and mark them ready in one tap", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001", status: "preparing" }),
+          order({ id: "o2", order_number: "0002", status: "preparing" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /^select$/i }));
+    await user.click(
+      screen.getByRole("checkbox", { name: /select order #0001/i }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: /select order #0002/i }),
+    );
+
+    const markReadyButton = screen.getByRole("button", {
+      name: /mark 2 ready/i,
+    });
+    await user.click(markReadyButton);
+
+    await waitFor(() => {
+      expect(advanceOrder).toHaveBeenCalledWith("o1");
+      expect(advanceOrder).toHaveBeenCalledWith("o2");
+    });
+    expect(advanceOrder).toHaveBeenCalledTimes(2);
   });
 });

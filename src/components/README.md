@@ -71,8 +71,11 @@ prompt, metric })`: compact rating widget posting to
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
 - `order-card.tsx` — `OrderCard({ order, displayNumber, boothName, agingMin,
-overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs })`: the
-  vendor dashboard's live order ticket — status/payment badges, an aging
+overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs, selectable,
+selected, onToggleSelect })`: the
+  vendor dashboard's live order ticket — status/payment badges (plus a
+  "Walk-up" badge when `order.source === "walkup"`, staff-entered orders vs.
+  the default QR-placed ones), an aging
   clock (`orderAgeTone`, ticks every 30s) moved to the footer beside the
   arrival timestamp (`sgtClock`, bare time — or `shortDateTime`, date+time,
   when `showDate` is set, for the completed-orders history list where every
@@ -115,9 +118,14 @@ overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs })`: the
   alongside a Cancel option (hidden once payment is confirmed, same as the
   live Cancel button) calling the same `cancelOrder`, since the sweep can
   beat a vendor's own cancel tap to it and the only other way to actually
-  cancel that order would be restoring it to ready first.
+  cancel that order would be restoring it to ready first. `selectable` (set
+  by the board only for `preparing` orders while its own batch mark-ready
+  mode is on) renders a `Checkbox` (`selected`, `onToggleSelect(order.id)`)
+  next to the name/number block — selection state and the bulk `advanceOrder`
+  call itself live on `RealtimeOrderBoard`, not here.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
-  transitions, action-button wiring, and the `displayNumber` override.
+  transitions, action-button wiring, the `displayNumber` override, the
+  walk-up origin badge, and the batch-select checkbox.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
   pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
   cancelled), shared by the dashboard board and the customer status page.
