@@ -6,12 +6,12 @@ Route-handler API endpoints (as opposed to server actions, which live under `app
 
 ## Contents
 
-- `merqo/` — bearer-token-authenticated endpoints the sibling Merqo product calls into: usage metrics, vendor status lookup, and plan upgrade/downgrade requests.
+- `merqo/` — bearer-token-authenticated endpoints the sibling Merqo product calls into: usage metrics, vendor status lookup, plan upgrade/downgrade requests, and vendor push-provisioning.
 - `v1/` — qkit's own versioned public API (currently a `sales` export endpoint under `v1/sales/summary`; see its own README).
 
 ## Connectivity
 
-`merqo/` is a machine-to-machine integration surface, secured by a shared-secret `Authorization: Bearer` header checked with a constant-time comparison (`timingSafeEqual`) in each route — there is no session/cookie auth here, unlike the rest of the app. `v1/` is qkit's own external API, versioned separately from `merqo/`.
+`merqo/` is a machine-to-machine integration surface, secured by a shared-secret `Authorization: Bearer` header checked with a constant-time comparison (`timingSafeEqual`) via shared helpers in `@/lib/merqo-auth` — there is no session/cookie auth here, unlike the rest of the app. Four routes (`downgrade-request`, `metrics`, `upgrade-request`, `vendor-status`) check against `MERQO_METRICS_SECRET`; `vendor-provision` is a write capability and is deliberately gated by a separate `MERQO_PROVISION_SECRET` instead. `v1/` is qkit's own external API, versioned separately from `merqo/`.
 
 ## Parent
 

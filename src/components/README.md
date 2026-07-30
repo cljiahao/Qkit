@@ -46,8 +46,17 @@ prompt, metric })`: compact rating widget posting to
   this instead).
 - `item-customizer.tsx` — `ItemCustomizer({ item, onClose, onAdd })`: a
   bottom `Sheet` for picking a menu item's option groups (single-select via
-  `ToggleGroup type="single"`, multi-select via `type="multiple"`) before
-  adding it to the cart.
+  `ToggleGroup type="single"`, multi-select via `type="multiple"`, keyed by
+  item id so switching items remounts with fresh default selections) before
+  adding it to the cart. Shows a live running price delta (informational
+  only — `place_order` re-derives the authoritative total server-side from
+  the stored menu) and an always-visible allergen badge list (the item's
+  fixed allergens unioned with every currently-selected choice's allergens,
+  never behind an accordion — a safety signal, not optional complexity).
+- `item-customizer.dom.test.tsx` — RTL tests for the running-total math
+  (single-select replace vs. multi-select sum across groups) and the
+  allergen badges (fixed vs. selection-derived, added/dropped on choice
+  change).
 - `landing-board.tsx` — `LandingBoard({ board })`: renders one "live order
   board" ticket container (title + active-count pulse badge) for the hero
   carousel, laying out its `LandingTicket`s in a 2-col grid.
@@ -64,6 +73,13 @@ prompt, metric })`: compact rating widget posting to
   actions, purely decorative sample data.
 - `landing-ticket.dom.test.tsx` — RTL test for `LandingTicket` rendering
   across status/payment/age combinations.
+- `maintenance-banner.tsx` — `MaintenanceBanner({ enabled, message })`:
+  site-wide informational banner rendered from the root layout (never blocks
+  anything underneath); renders nothing when disabled or the message is
+  blank, so a stray enabled-but-empty row never shows an empty bar to every
+  visitor.
+- `maintenance-banner.dom.test.tsx` — RTL tests for the enabled, disabled,
+  and enabled-but-blank-message rendering branches.
 - `media-image.tsx` — `MediaImage(props)`: `next/image` wrapper that marks
   `.svg` sources `unoptimized` (avoids needing the global
   `dangerouslyAllowSVG` flag) while raster uploads still get full

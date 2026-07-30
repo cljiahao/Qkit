@@ -24,6 +24,13 @@ unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
   `passHoursLeft`; deliberately not a synthetic numeric score.
 - `admin-vendor-health.test.ts` — tests status classification rules and the
   health-map rollup.
+- `admin-vendor-names.ts` — `vendorStallNames(supabase, vendorIds)`: resolves
+  each vendor id's stall name from `merqo.vendor_profile` (via
+  `getOrCreateVendorProfile`), one RPC per unique id run in parallel —
+  admin-only, low-traffic call sites, no batch-read RPC exists on the merqo
+  side.
+- `admin-vendor-names.test.ts` — tests parallel resolution, dedup of repeated
+  ids into a single call each, and the empty-list no-op.
 - `admin.ts` — `isAdmin(userId)` (row-presence check against the `admins`
   table) and `requireAdmin()`, the `/admin` route/action gate that 404s (not
   403s, to avoid revealing the route) signed-out or non-admin users.
@@ -81,6 +88,13 @@ unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
 - `image-resize.ts` — `resizeToWebp(file, maxDim, quality)`: browser-only
   Canvas resize + WebP re-encode before upload (EXIF-orientation-aware),
   falling back to the original file on any decode/encode failure.
+- `merqo-auth.ts` — `bearerOk`/`provisionBearerOk`: constant-time bearer-token
+  checks against `MERQO_METRICS_SECRET`/`MERQO_PROVISION_SECRET` respectively
+  — deliberately separate secrets, since leaking the routine metrics-polling
+  one must not also grant the tenant-provisioning write. `listAllAuthUsers`
+  (page-1-only, 1000-user cap, logs if that ceiling is hit so pagination gaps
+  don't fail invisibly) and `findAuthUserByEmail` — shared auth-user lookup
+  helpers for the merqo cross-kit admin flows.
 - `merqo-downgrade-request.ts` — `resolveDowngradeOutcome(hasVendorRow,
 currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
   admin downgrade-vendor action.
@@ -158,6 +172,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `getEntitlement` (resolves a vendor's effective entitlement from
   `plan`+license expiry), `normalizePlan`, `canAddBooth`, `canAddMenuItem`,
   `canHaveOptionGroups`.
+- `platform-settings.ts` — `PlatformSettingsConfig` type and
+  `DEFAULT_PLATFORM_SETTINGS` (banner off): the fail-safe fallback when the
+  `platform_settings` row can't be read, so a read failure never shows a
+  stale/wrong banner to every visitor.
 - `pricing.ts` — `PricingConfig` type and `DEFAULT_PRICING` (zeroed fallback
   when the `pricing` row is unreadable, e.g. pre-migration).
 - `rate-limit.ts` — `clientIp(headers)` (best-effort, spoofable fairness key —
