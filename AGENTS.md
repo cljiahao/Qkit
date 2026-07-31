@@ -188,8 +188,11 @@ unsigned upstream binary). husky v9 has no native binary in its execution
 path. Same enforcement rigor (every lefthook check ported into `.husky/*`
 shell scripts); the Windows-path-with-space workarounds
 (`.lefthook/commit-msg/commit-msg.sh`'s argv-rejoin wrapper) are deleted, not
-ported — husky has no equivalent templating bug to work around. See
-`docs/superpowers/specs/2026-08-01-lefthook-to-husky-migration-design.md`.
+ported — husky has no equivalent templating bug to work around. This was a
+cross-repo decision (qkit/loopkit/stockkit/paykit/merqo all made the same
+lefthook→husky call, not a qkit-local one) — see the workspace-level design
+doc at `../docs/superpowers/specs/2026-08-01-lefthook-to-husky-migration-design.md`,
+outside this repo's own git tree, alongside the other cross-kit specs.
 
 ## AI Harness
 
@@ -244,8 +247,10 @@ Commits (`.husky/lib/commit-msg-check.sh`); `pre-push` runs
 `.claude/verify-harness.sh` (integrity check) plus `pnpm run check && pnpm
 test`. Config: `.husky/` (plain shell hook files, no native binary — migrated
 2026-08-01 off lefthook, whose unsigned `lefthook.exe` Windows Smart App
-Control blocks unconditionally; see
-`docs/superpowers/specs/2026-08-01-lefthook-to-husky-migration-design.md`).
+Control blocks unconditionally; a cross-repo decision, see the
+workspace-level design doc at
+`../docs/superpowers/specs/2026-08-01-lefthook-to-husky-migration-design.md`,
+outside this repo's own git tree).
 Secret-scan ruleset: `.gitleaks.toml`.
 RLS isolation: `supabase/tests/rls.test.sql` via `supabase test db`.
 Project skills (directory form, `<name>/SKILL.md`): `.claude/skills/` |

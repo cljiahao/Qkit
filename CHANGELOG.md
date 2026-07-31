@@ -113,11 +113,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   to it — `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/*`). The
   lowercase filename was a local deviation; `protect-files.sh`'s ask-gate and
   `session-context.sh`'s re-injection now point at the correct case again.
-- **`prepare` script hard-failed a Docker build with no `.git` directory.**
-  `lefthook install` errors when there's no git repo to hook into — Docker's
-  `deps` stage runs `pnpm i --frozen-lockfile` (triggering `prepare`) against
-  a `.dockerignore`'d checkout with `.git` excluded. Now `lefthook install ||
-true` (templateCentral 5.11.1 fix).
 - **Double-spaced button labels ("New order", "Booths · 3/5 open").**
   Both buttons split their label across several elements (an icon, plain
   text, a couple of responsive-hide spans) as direct children of a flex
