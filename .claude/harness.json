@@ -9,7 +9,7 @@
   "richReadme": true,
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "ba298e6c9ceec4cb5cd09eda691a2d65332f22afb8b8102efdf19a828aac4827",
+      "origin_hash": "d99830149d6c14a1f5f87620498bc13f2449353595a38786575f550cebbff0eb",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -17,7 +17,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "cbbadf8430f212d3fec1b10ca0e5ee6c8af3c26304cc3f593418e154224c5d8f",
+      "origin_hash": "45c1c07bdd87cbdc6759a92137184eddebdb3a9346d5f58d8312b8d4cd18a9a6",
       "path": ".claude/settings.json"
     },
     ".claude/hooks/verify.sh": {
@@ -25,11 +25,11 @@
       "path": ".claude/hooks/verify.sh"
     },
     ".claude/hooks/protect-files.sh": {
-      "origin_hash": "264cbfc08e52cd8747657d6f90d142159e3b97a4bd3fdc500ad119522ab7da58",
+      "origin_hash": "cedefb778eee8a3b8c79bb1a4eb7b7680a0a5e1ef3c9b1a08d3cac6c8793d6b1",
       "path": ".claude/hooks/protect-files.sh"
     },
     ".claude/hooks/block-no-verify.sh": {
-      "origin_hash": "f0f147dcf4bd5df66bd723a7b5c3bde69df758f232b1403e9eb02ab7500d35ea",
+      "origin_hash": "d487c59fd778ec7d5bbe2a1e0da4084d34fc47088f8dd88e57e3d3b4ad256c90",
       "path": ".claude/hooks/block-no-verify.sh"
     },
     ".claude/hooks/user-prompt-guard.cjs": {
@@ -53,7 +53,7 @@
       "path": ".claude/hooks/subagent-stop.sh"
     },
     ".claude/hooks/session-context.sh": {
-      "origin_hash": "a1878b9469b3ef8903aef03baf1c2b486801b42308320c0308b5e68e917d7783",
+      "origin_hash": "4268ee737860d9ab92ac5e19fe0fb4718ab52417a11584a12cbefe322730272d",
       "path": ".claude/hooks/session-context.sh"
     },
     ".claude/hooks/skill-usage-log.sh": {
@@ -68,17 +68,32 @@
       "origin_hash": "bdc4a5851d9f391522c05c7b14087c8f1bafde07db1d0223d2e863ecf478bfb8",
       "path": ".claude/skills/supabase-migrate/SKILL.md"
     },
-    ".husky/pre-commit": { "origin_hash": "<pending>", "path": ".husky/pre-commit" },
-    ".husky/commit-msg": { "origin_hash": "<pending>", "path": ".husky/commit-msg" },
-    ".husky/pre-push": { "origin_hash": "<pending>", "path": ".husky/pre-push" },
-    ".husky/lib/readme-coupling.sh": { "origin_hash": "<pending>", "path": ".husky/lib/readme-coupling.sh" },
-    ".husky/lib/commit-msg-check.sh": { "origin_hash": "<pending>", "path": ".husky/lib/commit-msg-check.sh" },
+    ".husky/pre-commit": {
+      "origin_hash": "16e4666bbb10660b54a2d5d8ff04d7b2deeca71761b5a2a3fa4f3d5c1e8b2b52",
+      "path": ".husky/pre-commit"
+    },
+    ".husky/commit-msg": {
+      "origin_hash": "542e5d3b30c42e64b3234d23d2e385ce4b1a3671231aa406b5ba2a80560dd35b",
+      "path": ".husky/commit-msg"
+    },
+    ".husky/pre-push": {
+      "origin_hash": "41e14be97718ce02e5b39bd63cceaea29d149a7f13b88cc33aa2d75a788992b6",
+      "path": ".husky/pre-push"
+    },
+    ".husky/lib/readme-coupling.sh": {
+      "origin_hash": "368a87cf51dbc4b5bfacafd80e44b8033cb926e2e2c09daa76eaac69a15756bd",
+      "path": ".husky/lib/readme-coupling.sh"
+    },
+    ".husky/lib/commit-msg-check.sh": {
+      "origin_hash": "f5347b89ef6d530b5ae388cc4dea3bfce10898c89e5218dcfd908876ccc0659e",
+      "path": ".husky/lib/commit-msg-check.sh"
+    },
     ".gitleaks.toml": {
       "origin_hash": "f9cd4aac35f474f9a48c691b4fd46642388389fa650481342fc4d5ad6216de4e",
       "path": ".gitleaks.toml"
     },
     ".claude/verify-harness.sh": {
-      "origin_hash": "8c50cc319c80fb1b6e4129f149b69a7341803dc078f388fe0e3127e64d7f08bd",
+      "origin_hash": "54a5f6b03db4e1925a74ecc4dd69d37c265ffbdf594db1978b4599a94adfcaf0",
       "path": ".claude/verify-harness.sh"
     },
     ".claude/regen-harness.sh": {
