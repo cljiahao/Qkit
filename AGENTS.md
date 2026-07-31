@@ -200,7 +200,7 @@ JSON payload) on other protected files (`AGENTS.md`/`CLAUDE.md`,
 `docs/CONSTITUTION.md`, `.claude/settings.json`, `.claude/hooks/*`,
 `.claude/agents/*`, `.mcp.json`, the harness manifest/verifier/regen scripts,
 `Dockerfile`, `.gitleaks.toml`, `.husky/*`); `block-no-verify.sh`
-blocks `--no-verify`/`-n` on `git commit`, `LEFTHOOK=0`/`LEFTHOOK_EXCLUDE`/
+blocks `--no-verify`/`-n` on `git commit`, `HUSKY=0`/`HUSKY_SKIP_HOOKS`/
 `core.hooksPath=` bypasses, direct commits to `main`, force-push to a protected
 branch, `git checkout/restore` on guard-layer files, and recursive-force `rm`
 on source directories. App code, skills, specs, and `.github/workflows/`

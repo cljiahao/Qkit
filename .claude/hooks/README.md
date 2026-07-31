@@ -9,7 +9,7 @@ harness.
 
 ## Contents
 
-- `block-no-verify.sh` — PreToolUse(Bash): blocks `--no-verify`/`-n` on `git commit`, `core.hooksPath=` bypasses, direct commits to `main`, force-push to a protected branch, `git checkout/restore` on guard-layer files, and recursive-force `rm` on source directories; exit 2 blocks
+- `block-no-verify.sh` — PreToolUse(Bash): blocks `--no-verify`/`-n` on `git commit`, `HUSKY=0`/`HUSKY_SKIP_HOOKS`/`core.hooksPath=` bypasses, direct commits to `main`, force-push to a protected branch, `git checkout/restore` on guard-layer files, and recursive-force `rm` on source directories; exit 2 blocks
 - `post-edit-typecheck.sh` — PostToolUse(Edit\|Write), `.ts`/`.tsx` files only: runs incremental `tsc --noEmit` and surfaces the last 5 lines; feedback-only, never blocks
 - `post-tool-failure.sh` — PostToolUseFailure: writes the failed tool's name/error to stderr so the model can self-correct; always exits 0
 - `protect-files.sh` — PreToolUse(Edit\|Write): hard-blocks (exit 2) writes to `.env*` (except `.env.example`/`.env.default`), CI/CD pipeline files, secrets directories, and cert/credential files; asks for human approval on other protected files (AGENTS.md/CLAUDE.md, `docs/CONSTITUTION.md`, `.claude/settings.json`, `.claude/hooks/*`, `.claude/agents/*`, `.mcp.json`, the harness manifest/verifier/regen scripts, `.claude/.harness-base/*`, `Dockerfile`, `.husky/*`/`.gitleaks.toml`)
