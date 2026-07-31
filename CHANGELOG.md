@@ -117,7 +117,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `lefthook install` errors when there's no git repo to hook into — Docker's
   `deps` stage runs `pnpm i --frozen-lockfile` (triggering `prepare`) against
   a `.dockerignore`'d checkout with `.git` excluded. Now `lefthook install ||
-  true` (templateCentral 5.11.1 fix).
+true` (templateCentral 5.11.1 fix).
 - **Double-spaced button labels ("New order", "Booths · 3/5 open").**
   Both buttons split their label across several elements (an icon, plain
   text, a couple of responsive-hide spans) as direct children of a flex
