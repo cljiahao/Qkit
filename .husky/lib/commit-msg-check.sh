@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Conventional Commits gate. Invoked by lefthook commit-msg with the message file as $1.
+# Conventional Commits gate. Invoked by husky's commit-msg hook with the message file as $1.
 set -euo pipefail
 msg=$(head -1 "$1")
 
