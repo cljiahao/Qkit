@@ -107,7 +107,7 @@
     "ask": [
       "Edit(AGENTS.md)",
       "Edit(CLAUDE.md)",
-      "Edit(docs/constitution.md)",
+      "Edit(docs/CONSTITUTION.md)",
       "Edit(.claude/harness.json)",
       "Edit(.claude/settings.json)",
       "Edit(.claude/settings.local.json)"

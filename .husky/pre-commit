@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec bash .husky/lib/pre-commit.sh "$@"

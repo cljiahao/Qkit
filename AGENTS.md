@@ -179,16 +179,31 @@ deltas (comment gate, README governance/richReadme, unused-vars gate) were
 already reviewed in the entries above; this migration closes the one
 remaining architectural gap (the git-hook layer + hook-script-file layout).
 
+**husky migration (2026-08-01):** superseded the 2026-07-24 lefthook decision
+— lefthook's `lefthook.exe` is unsigned and Windows Smart App Control blocks
+it unconditionally on this machine (Code Integrity events, "did not meet the
+Enterprise signing level requirements"), which has no signed-binary
+workaround (winget's `evilmartians.lefthook` package ships the identical
+unsigned upstream binary). husky v9 has no native binary in its execution
+path. Same enforcement rigor (every lefthook check ported into `.husky/*`
+shell scripts); the Windows-path-with-space workarounds
+(`.lefthook/commit-msg/commit-msg.sh`'s argv-rejoin wrapper) are deleted, not
+ported — husky has no equivalent templating bug to work around. This was a
+cross-repo decision (qkit/loopkit/stockkit/paykit/merqo all made the same
+lefthook→husky call, not a qkit-local one) — see the workspace-level design
+doc at `../docs/superpowers/specs/2026-08-01-lefthook-to-husky-migration-design.md`,
+outside this repo's own git tree, alongside the other cross-kit specs.
+
 ## AI Harness
 
 PreToolUse: `protect-files.sh` hard-blocks (exit 2) writes to `.env*` (except
 `.env.example`/`.env.default`), CI/CD pipeline files, secrets directories, and
 cert/credential files, and asks for human approval (via a `permissionDecision`
 JSON payload) on other protected files (`AGENTS.md`/`CLAUDE.md`,
-`docs/constitution.md`, `.claude/settings.json`, `.claude/hooks/*`,
+`docs/CONSTITUTION.md`, `.claude/settings.json`, `.claude/hooks/*`,
 `.claude/agents/*`, `.mcp.json`, the harness manifest/verifier/regen scripts,
-`Dockerfile`, `lefthook.yml`/`.gitleaks.toml`, `.lefthook/*`); `block-no-verify.sh`
-blocks `--no-verify`/`-n` on `git commit`, `LEFTHOOK=0`/`LEFTHOOK_EXCLUDE`/
+`Dockerfile`, `.gitleaks.toml`, `.husky/*`); `block-no-verify.sh`
+blocks `--no-verify`/`-n` on `git commit`, `HUSKY=0`/`HUSKY_SKIP_HOOKS`/
 `core.hooksPath=` bypasses, direct commits to `main`, force-push to a protected
 branch, `git checkout/restore` on guard-layer files, and recursive-force `rm`
 on source directories. App code, skills, specs, and `.github/workflows/`
@@ -206,7 +221,7 @@ runs the test suite, exit 2 feeds failures back, exit 0 on pass.
 SubagentStop: `subagent-stop.sh` type-gates a subagent's uncommitted `.ts`/`.tsx`
 changes before it can hand back control.
 SessionStart (startup|resume|clear|compact): `session-context.sh` re-injects
-the first 30 lines of this file, all of `docs/constitution.md`, and a fixed
+the first 30 lines of this file, all of `docs/CONSTITUTION.md`, and a fixed
 list of always-on invariants — the documented inject path (PostCompact stdout
 is ignored, cannot inject context).
 `permissions`: max-privilege — bare-tool `allow` (Bash/Read/Edit/Write/web/Skill/
@@ -218,19 +233,25 @@ and `./**/` forms), and irreversible ops (`rm -rf`, `git push --force`/`-f`,
 `git reset --hard`, `git clean -fd/-fx`, `git filter-branch`, ref-delete). `ask`
 gates `Edit(...)` (covers both Edit and Write calls) on the medium-security
 governance files: `AGENTS.md`,
-`CLAUDE.md`, `docs/constitution.md`, `.claude/harness.json`, `.claude/settings.json`,
+`CLAUDE.md`, `docs/CONSTITUTION.md`, `.claude/harness.json`, `.claude/settings.json`,
 `.claude/settings.local.json`. Deny always wins over ask/allow (enforced even
 under bypass); it's a guardrail, not a sandbox — prefix-matched and
 wrapper-bypassable. CI security: `.github/workflows/security.yml`
 (gitleaks v3 + CodeQL + `pnpm audit`) and `.github/dependabot.yml` (security-only).
-Git hooks (lefthook): `pre-commit` runs format/lint (`prettier`+`eslint --fix`
+Git hooks (husky): `pre-commit` runs format/lint (`prettier`+`eslint --fix`
 on staged `.ts/.tsx/.js/.mjs/.cjs`), format-docs (`prettier --write` on staged
 `.json/.md/.css`), `tsc --noEmit`, a frozen-lockfile install check, a gitleaks
 secret-scan on staged files (if gitleaks is installed), and the README-coupling
-nudge (`.lefthook/readme-coupling.sh`); `commit-msg` enforces Conventional
-Commits (`.lefthook/commit-msg.sh`); `pre-push` runs `.claude/verify-harness.sh`
-(integrity check) plus `pnpm run check && pnpm test`. Config: `lefthook.yml`
-and `.lefthook/`; secret-scan ruleset: `.gitleaks.toml`.
+nudge (`.husky/lib/readme-coupling.sh`); `commit-msg` enforces Conventional
+Commits (`.husky/lib/commit-msg-check.sh`); `pre-push` runs
+`.claude/verify-harness.sh` (integrity check) plus `pnpm run check && pnpm
+test`. Config: `.husky/` (plain shell hook files, no native binary — migrated
+2026-08-01 off lefthook, whose unsigned `lefthook.exe` Windows Smart App
+Control blocks unconditionally; a cross-repo decision, see the
+workspace-level design doc at
+`../docs/superpowers/specs/2026-08-01-lefthook-to-husky-migration-design.md`,
+outside this repo's own git tree).
+Secret-scan ruleset: `.gitleaks.toml`.
 RLS isolation: `supabase/tests/rls.test.sql` via `supabase test db`.
 Project skills (directory form, `<name>/SKILL.md`): `.claude/skills/` |
 Manifest: `.claude/harness.json`
@@ -243,7 +264,7 @@ Manifest: `.claude/harness.json`
 
 ## Project-Specific Notes
 
-- **Inviolable rules:** `docs/constitution.md` (RLS-is-authz, service-role
+- **Inviolable rules:** `docs/CONSTITUTION.md` (RLS-is-authz, service-role
   server-only, Zod boundaries, no secrets in `NEXT_PUBLIC_*`, deny-rules are a
   guardrail not a sandbox). Read it before changing auth, schema, or the harness.
 - Plan of record: `docs/superpowers/plans/2026-06-05-qkit-core.md` (specs in

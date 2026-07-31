@@ -108,6 +108,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **`docs/constitution.md` renamed to `docs/CONSTITUTION.md`** to match
+  templateCentral's canonical convention (and every other harness reference
+  to it — `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/*`). The
+  lowercase filename was a local deviation; `protect-files.sh`'s ask-gate and
+  `session-context.sh`'s re-injection now point at the correct case again.
 - **Double-spaced button labels ("New order", "Booths · 3/5 open").**
   Both buttons split their label across several elements (an icon, plain
   text, a couple of responsive-hide spans) as direct children of a flex
@@ -296,6 +301,9 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 
 ### Changed
 
+- Migrated git hooks from lefthook to husky — lefthook's unsigned
+  `lefthook.exe` is unconditionally blocked by Windows Smart App Control on
+  this machine; husky has no native binary. Same checks, same rigor.
 - **Profile page column order**: column 1 is stall name → profile picture →
   change password; column 2 is display name → social links (was social
   links above display name). Meant as the standard profile-page order
