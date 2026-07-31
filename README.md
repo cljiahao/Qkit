@@ -101,9 +101,13 @@ booths and orders. See `AGENTS.md` for full conventions.
 ### Contents
 
 - `.claude/` — the Claude Code agent harness: hooks, project skills, harness integrity scripts, and the harness manifest recording what templateCentral seeded (own README).
+- `.env.example` — template env file: Supabase URL/publishable key/secret key, `NEXT_PUBLIC_BASE_URL`, the Merqo dashboard metrics-endpoint bearer secret (`MERQO_METRICS_SECRET`), the loopkit deployment URL used to build the order-status page's "Earn a stamp" link (`NEXT_PUBLIC_LOOPKIT_URL`, fails closed if unset), and Google OAuth client id/secret consumed by `supabase start` for local auth; copy to `.env.local` and fill in.
 - `.github/` — GitHub-specific config: CI/CD workflows (`ci.yml`, `security.yml`) and Dependabot (own README).
+- `.gitignore` — standard ignore list: `node_modules`, build/test output (`.next`, `coverage`, `.stryker-tmp`, `reports`, `test-results`, `playwright-report`), the local-only `.superpowers` brainstorming-mockup dir, the per-machine `.agents` harness symlink, env files (`.env`, `.env.local`), `*.tsbuildinfo`/`next-env.d.ts`, `.vercel`, and `.worktrees/`.
 - `.gitleaks.toml` — gitleaks secret-scan config: extends the default ruleset, allowlists `.env.example`/`.env.default` and lockfiles (`pnpm-lock.yaml`, etc.) as known non-secrets.
 - `.lefthook/` — script bodies for the lefthook-installed git hooks: the Conventional Commits `commit-msg` gate and the README-coupling nudge (own README).
+- `.prettierignore` — files/dirs Prettier skips: `pnpm-lock.yaml`, `.claude/.harness-base`, build/test output (`.next`, `node_modules`, `coverage`, `test-results`, `playwright-report`), and `scripts/demo/out`.
+- `.prettierrc.json` — Prettier config: `endOfLine: "auto"` (avoids CRLF/LF diff noise across contributors on different OSes).
 - `AGENTS.md` — routing/conventions doc for AI coding agents: stack divergence note (Supabase, not templateCentral's default better-auth/Drizzle), commands, file layout, data model, RLS/service-role rules, the AI harness description, and a running log of which templateCentral deltas were adopted vs. deliberately skipped.
 - `CHANGELOG.md` — Keep-a-Changelog history; entries are added under `[Unreleased]` by the `/changelog` skill.
 - `CLAUDE.md` — a one-line pointer that routes Claude Code to `AGENTS.md` via an `@AGENTS.md` import (`Routing and conventions for this project live in AGENTS.md. Read it first.`).

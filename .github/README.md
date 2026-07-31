@@ -7,7 +7,7 @@ GitHub-specific configuration: CI/CD workflows and automated dependency updates.
 ## Contents
 
 - `dependabot.yml` — configures Dependabot for two ecosystems (`npm` at `/`, `github-actions` at `/`), both on a weekly schedule with `open-pull-requests-limit: 0`. That limit deliberately disables routine version-update PRs (dropped as noise for a solo, direct-to-main project) while leaving Dependabot's security-advisory PRs (which ignore the limit) active.
-- `workflows/` — the GitHub Actions pipeline definitions (`ci.yml`, `security.yml`).
+- `workflows/` — the GitHub Actions pipeline definitions (`ci.yml`, `security.yml`, `tag-release.yml`).
 
 ## Connectivity
 

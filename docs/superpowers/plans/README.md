@@ -23,6 +23,9 @@ Step-by-step implementation plans, one per feature, each derived from the matchi
 - `2026-07-14-booth-form-ticket-cards.md` — "Booth Form Ticket Cards Implementation Plan": reworks the booth-editing form to render menu items as ticket-style cards.
 - `2026-07-14-nav-plan-to-dropdown.md` — "Nav Plan-to-Dropdown Implementation Plan": moves the "Plan" nav link into the account dropdown menu and reorders the dropdown's items.
 - `2026-07-14-tablet-two-column-layout.md` — "Tablet+ Two-Column Layout Implementation Plan": adds a two-column layout for tablet-and-larger viewports.
+- `2026-07-16-vendor-social-links.md` — "Vendor Social & Website Links Implementation Plan": lets a vendor set website/Instagram/Facebook/TikTok links once on their profile (with an optional whole-object per-booth override), shown to a customer on the order-status page footer after they've placed an order.
+- `2026-07-21-arrival-confirmation-and-auto-clear.md` — "Arrival Confirmation + Ready-Order Auto-Clear Implementation Plan": ships (1) arrival confirmation ("scan-to-start") that holds prep for perishable-item booths until the customer taps arrival, (2) an auto-clear sweep that flips a `ready` order to `completed` after a vendor-configurable timeout, and (3) a "Restore to ready" undo action for a premature auto-clear.
+- `2026-07-21-drop-vendor-identity-columns.md` — "Drop Stale Vendor Identity Columns Implementation Plan": drops the stale `qkit.vendors.name`/`social_links` columns (superseded by `merqo.vendor_profile`) and migrates onboarding's write plus four admin pages' raw reads onto the shared profile instead.
 
 ## Parent
 

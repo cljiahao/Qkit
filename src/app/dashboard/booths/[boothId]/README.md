@@ -6,7 +6,7 @@ Edit-booth page, keyed by booth id, plus its printable QR code sub-route.
 
 ## Contents
 
-- `page.tsx` — `EditBoothPage({ params })` (server, `revalidate = 0`): awaits `boothId` from `params`, loads the booth (`name, image_url, is_active, hours, menu_items, payment`) RLS-scoped so a foreign id resolves to `null` → `notFound()`, parses stored JSON via `parseMenuItems`/`parseBoothHours`/`parsePaymentConfig`, and renders `BoothForm` (from `../booth-form`) pre-filled with the booth's data.
+- `page.tsx` — `EditBoothPage({ params })` (server, `revalidate = 0`): awaits `boothId` from `params`, loads the booth (`name, image_url, is_active, hours, menu_items, payment, social_links, requires_arrival_confirm`) RLS-scoped so a foreign id resolves to `null` → `notFound()`, parses stored JSON via `parseMenuItems`/`parseBoothHours`/`parsePaymentConfig`/`parseSocialLinks`, and renders `BoothForm` (from `../booth-form`) pre-filled with the booth's data, passing the vendor's own `social_links` as `vendorSocialLinks` (so the "Social links" section can seed a new override from the vendor's defaults).
 - `qr/` — the printable QR-code poster sub-route for this specific booth.
 
 ## Connectivity

@@ -12,6 +12,9 @@ where noted below.
   used by `OrderCard`'s cancel-order confirmation.
 - `avatar.tsx` — `Avatar`/`AvatarImage`/`AvatarFallback`. Customized: adds a
   `size` prop (`"sm" | "default" | "lg"`, stock shadcn has no size variant).
+  Also exports `AvatarBadge`/`AvatarGroup`/`AvatarGroupCount` (corner-badge
+  and grouped-avatar-stack primitives) — currently unused elsewhere in the
+  app.
 - `button.tsx` — `Button`. Customized: extra `size` variants beyond stock
   shadcn (`"xs"`, `"icon-xs"`) alongside default/sm/lg/icon/icon-sm/icon-lg.
 - `checkbox.tsx` — Radix `Checkbox` wrapper with a `CheckIcon` indicator.
