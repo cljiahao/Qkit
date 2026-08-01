@@ -20,6 +20,7 @@ const eslintConfig = [
       "test-results/**",
       "playwright-report/**",
       "scripts/demo/out/**",
+      ".worktrees/**",
     ],
   },
   {
