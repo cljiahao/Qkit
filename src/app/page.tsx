@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bell, Check, ListChecks, QrCode, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Nav } from "@/components/landing/nav";
 import { LandingCta } from "@/components/landing-cta";
 import { HeroPreviewCarousel } from "@/components/hero-preview-carousel";
 import { FeaturedBooths } from "@/components/featured-booths";
@@ -304,45 +305,7 @@ export default async function LandingPage() {
 
   return (
     <div id="top" className="min-h-screen">
-      {/* Header */}
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        {/* Plain <a>, not next/link's Link: this is a same-page hash jump
-            (already on "/"), and Link doesn't reliably update the URL bar's
-            hash when only the fragment changes — it scrolls but leaves the
-            old hash showing. A native anchor always gets this right. */}
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a
-          href="/#top"
-          aria-label="qkit home, back to top"
-          className="font-display inline-flex items-baseline gap-0.5 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
-        >
-          <span className="text-primary">Q</span>Kit
-        </a>
-        <div className="flex items-center gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="hidden rounded-lg sm:inline-flex"
-          >
-            <a href="#faq">FAQ</a>
-          </Button>
-          {user ? (
-            <Button asChild variant="ghost" size="sm" className="rounded-lg">
-              <Link href="/dashboard">Dashboard</Link>
-            </Button>
-          ) : (
-            <>
-              <Button asChild variant="ghost" size="sm" className="rounded-lg">
-                <Link href="/login">Sign in</Link>
-              </Button>
-              <Button asChild size="sm" className="rounded-lg">
-                <Link href="/login?mode=signup">Get started</Link>
-              </Button>
-            </>
-          )}
-        </div>
-      </header>
+      <Nav authed={Boolean(user)} />
 
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-5 pb-10 pt-10 sm:pt-16">
@@ -365,7 +328,6 @@ export default async function LandingPage() {
               <LandingCta
                 href={primaryHref}
                 event={user ? undefined : "landing_cta"}
-                className="h-12 rounded-xl px-7 text-base font-semibold"
               >
                 {primaryLabel}
               </LandingCta>
