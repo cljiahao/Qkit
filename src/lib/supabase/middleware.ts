@@ -17,6 +17,10 @@ function isProtectedPath(path: string): boolean {
 
 const MIGRATION_MARKER = "sb-auth-cookie-domain-migrated";
 
+function isLegacyAuthCookieName(name: string): boolean {
+  return name.startsWith("sb-") && name.includes("-auth-token");
+}
+
 // One-time cleanup after enabling the shared .merqo.io cookie domain: a
 // vendor already signed in has a HOST-ONLY Supabase auth cookie from before
 // this change. Once this kit starts writing a Domain=.merqo.io cookie of the
@@ -25,28 +29,45 @@ const MIGRATION_MARKER = "sb-auth-cookie-domain-migrated";
 // ordering ambiguity) — which can replay an already-used refresh token and
 // trip Supabase's reuse detection. Clearing the host-only cookie once (no
 // Domain attribute, so it can't touch the new domain-scoped one) forces a
-// one-time re-login instead. Guarded by a host-only marker cookie so it
-// fires once per browser per kit; no-op once AUTH_COOKIE_DOMAIN is unset.
-// Read at call-time (not a module-level const) to match how client.ts and
-// server.ts read NEXT_PUBLIC_AUTH_COOKIE_DOMAIN elsewhere in this kit.
+// one-time re-login instead.
+//
+// `writtenThisPass` is the set of cookie names @supabase/ssr's own setAll
+// just wrote to `response` THIS request (e.g. a token refresh). Next's
+// ResponseCookies keys Set-Cookie by name only, so clearing a name that was
+// just (re)written in the same response would silently overwrite — and
+// discard — that fresh write instead of coexisting with it. Any legacy name
+// caught mid-refresh is skipped this pass (the host-only duplicate survives
+// one more request) rather than risking a dropped session; the migration
+// marker is only set once a pass clears every legacy name with none
+// skipped, so an incomplete pass retries on the vendor's next request.
 function clearLegacyHostOnlyCookie(
   request: NextRequest,
   response: NextResponse,
+  writtenThisPass: ReadonlySet<string>,
 ) {
   const authCookieDomain = process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN;
   if (!authCookieDomain || request.cookies.get(MIGRATION_MARKER)) return;
-  request.cookies
+
+  const legacyNames = request.cookies
     .getAll()
-    .filter((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"))
-    .forEach((c) => response.cookies.set(c.name, "", { path: "/", maxAge: 0 }));
-  response.cookies.set(MIGRATION_MARKER, "1", {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+    .map((c) => c.name)
+    .filter(isLegacyAuthCookieName);
+  const toClear = legacyNames.filter((name) => !writtenThisPass.has(name));
+  toClear.forEach((name) =>
+    response.cookies.set(name, "", { path: "/", maxAge: 0 }),
+  );
+
+  if (toClear.length === legacyNames.length) {
+    response.cookies.set(MIGRATION_MARKER, "1", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
 }
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  const cookiesWrittenBySupabase = new Set<string>();
 
   const supabase = createServerClient<Database, "qkit">(
     publicEnv.supabaseUrl,
@@ -57,9 +78,10 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+            cookiesWrittenBySupabase.add(name);
+          });
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
@@ -76,7 +98,11 @@ export async function updateSession(request: NextRequest) {
   // The customer funnel is anonymous and hot — don't spend an auth round-trip
   // (or risk an auth-outage 500) on it. Only protected routes resolve the user.
   if (!isProtectedPath(request.nextUrl.pathname)) {
-    clearLegacyHostOnlyCookie(request, supabaseResponse);
+    clearLegacyHostOnlyCookie(
+      request,
+      supabaseResponse,
+      cookiesWrittenBySupabase,
+    );
     return supabaseResponse;
   }
 
@@ -94,10 +120,18 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const redirectResponse = NextResponse.redirect(url);
-    clearLegacyHostOnlyCookie(request, redirectResponse);
+    clearLegacyHostOnlyCookie(
+      request,
+      redirectResponse,
+      cookiesWrittenBySupabase,
+    );
     return redirectResponse;
   }
 
-  clearLegacyHostOnlyCookie(request, supabaseResponse);
+  clearLegacyHostOnlyCookie(
+    request,
+    supabaseResponse,
+    cookiesWrittenBySupabase,
+  );
   return supabaseResponse;
 }
