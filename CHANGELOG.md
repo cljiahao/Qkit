@@ -108,6 +108,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Browser-tab title now uses the cross-kit "Name | Tagline" Title Case
+  format: "Qkit | Live Queueing" (was "qkit: live queueing"). PWA-chrome
+  title updated to match.
+- `.husky/lib/pre-commit.sh` used `xargs -d '\n'`, a GNU-only flag not
+  supported by BSD xargs (macOS default) — broke every local commit
+  touching staged .ts/.tsx/.js/.mjs/.cjs or .json/.md/.css files. Swapped
+  for portable `tr '\n' '\0' | xargs -0`.
 - **`docs/constitution.md` renamed to `docs/CONSTITUTION.md`** to match
   templateCentral's canonical convention (and every other harness reference
   to it — `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/*`). The
