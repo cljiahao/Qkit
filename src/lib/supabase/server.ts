@@ -36,6 +36,9 @@ export async function createServerClient() {
     {
       cookies: cookieMethods(cookieStore),
       db: { schema: "qkit" },
+      cookieOptions: process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN
+        ? { domain: process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN }
+        : undefined,
     },
   );
 }

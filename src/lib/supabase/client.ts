@@ -6,6 +6,11 @@ export function createClient() {
   return createBrowserClient<Database, "qkit">(
     publicEnv.supabaseUrl,
     publicEnv.supabasePublishableKey,
-    { db: { schema: "qkit" } },
+    {
+      db: { schema: "qkit" },
+      cookieOptions: process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN
+        ? { domain: process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN }
+        : undefined,
+    },
   );
 }
