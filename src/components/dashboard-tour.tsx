@@ -50,9 +50,6 @@ export function DashboardTour({ seen }: { seen: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const driverRef = useRef<Driver | null>(null);
-  // Mark-seen guard: flip once so a finished/skipped tour only stamps the DB
-  // a single time, and a replay by an already-seen vendor never re-stamps.
-  const seenRef = useRef(seen);
   // Set when replay is tapped from another page; the tour then runs once we
   // land back on the order board (step 1's anchor).
   const pendingReplay = useRef(false);
@@ -61,18 +58,19 @@ export function DashboardTour({ seen }: { seen: boolean }) {
     driverRef.current?.destroy();
     const d = await buildDriver(() => {
       driverRef.current = null;
-      if (!seenRef.current) {
-        seenRef.current = true;
-        void markTourSeen();
-      }
     });
     driverRef.current = d;
     d.drive();
   }
 
   // Auto-run once on first visit, only on the order board (step 1's anchor).
+  // Stamps tour-seen as soon as the tour starts, not when it ends: a hard
+  // refresh mid-tour tears the page down before an onDestroyed-driven stamp
+  // could complete, so waiting until the end let the tour re-run on every
+  // refresh until a vendor finished it in one sitting.
   useEffect(() => {
     if (seen || pathname !== "/dashboard") return;
+    void markTourSeen();
     const id = requestAnimationFrame(start);
     return () => cancelAnimationFrame(id);
     // Intentionally mount-only; replay is manual after this.

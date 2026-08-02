@@ -93,14 +93,14 @@ describe("DashboardTour", () => {
     await waitFor(() => expect(mocks.drive).toHaveBeenCalledTimes(1));
   });
 
-  it("stamps tour-seen once when the auto-run tour ends, not on a later replay", async () => {
+  it("stamps tour-seen as soon as the auto-run tour starts, so a mid-tour refresh does not re-trigger it", async () => {
     render(<DashboardTour seen={false} />);
-    await waitFor(() => expect(mocks.drive).toHaveBeenCalled());
-
-    config().onDestroyed?.(); // finish/skip the first run
+    await waitFor(() => expect(mocks.drive).toHaveBeenCalledTimes(1));
     expect(mocks.markTourSeen).toHaveBeenCalledTimes(1);
 
-    // A subsequent replay must not re-stamp (already seen this session).
+    // Finishing later, or a subsequent replay, must not re-stamp.
+    config().onDestroyed?.();
+    expect(mocks.markTourSeen).toHaveBeenCalledTimes(1);
     await userEvent.click(
       screen.getByRole("button", { name: /replay onboarding tour/i }),
     );
