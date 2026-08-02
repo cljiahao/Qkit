@@ -44,7 +44,10 @@ function LoginForm() {
     return run(async () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: { hl: "en" },
+        },
       });
       if (error) toast.error(error.message);
       // On success the browser navigates to Google; no further action here.
