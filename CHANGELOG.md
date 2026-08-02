@@ -105,6 +105,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   doesn't match a real order — the same unguessable token the status page
   already requires. Vendor feedback (stamped from the signed-in id) is
   unchanged. (Migration `0048`.)
+- **Closed 7 open high-severity Dependabot alerts**, all transitive
+  dev/build-tool dependencies (via eslint/vitest/stryker/next's own postcss
+  pipeline), none reachable from runtime app code: `postcss` (path traversal
+  in source-map auto-loading), `fast-uri` (host confusion via IDN/backslash,
+  2 advisories), `js-yaml` (quadratic-CPU DoS via YAML merge-key chains),
+  and `brace-expansion` (exponential-time DoS, 3 separate vulnerable major
+  lines). Force-patched via `pnpm-workspace.yaml` overrides, same pattern
+  already used for postcss/undici/vite/qs/sharp.
 
 ### Fixed
 
