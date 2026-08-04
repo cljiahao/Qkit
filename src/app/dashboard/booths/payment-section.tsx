@@ -12,7 +12,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImageUploader } from "@/components/image-uploader";
-import { InfoTooltip } from "@/components/info-tooltip";
+import { InfoTooltip } from "@merqo/ui";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
@@ -27,7 +27,7 @@ function kindOf(v: PaymentConfig | null): Kind {
 }
 
 // Just the label at a glance; the full explanation lives behind an (i)
-// InfoTooltip (see @/components/info-tooltip) instead of a permanently-shown
+// InfoTooltip (from @merqo/ui) instead of a permanently-shown
 // paragraph — matches every other "one more sentence" spot in the app
 // (settings-form.tsx's threshold fields) instead of this being the one place
 // with a wall of always-visible helper text.
@@ -147,7 +147,7 @@ export function PaymentSection({
                 <RadioGroupItem value={k} aria-label={label} />
                 <span className="truncate text-sm font-medium">{label}</span>
               </label>
-              <InfoTooltip label={`More about ${label}`}>{detail}</InfoTooltip>
+              <InfoTooltip content={detail} ariaLabel={`More about ${label}`} />
             </div>
           );
         })}

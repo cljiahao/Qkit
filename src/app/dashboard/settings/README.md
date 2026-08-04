@@ -40,11 +40,10 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
   tightly but lets a card's visual position drift from its actual reading
   order. Every field/switch across all four cards follows the same
   short-label-plus-(i) shape: a one- or two-word `Label`/caption next to an
-  `InfoTooltip` (`@/components/info-tooltip` — the shared (i)-trigger
-  component every one-sentence-explanation spot in the app uses, also used
-  by `Section`'s own header `tooltip` prop) carrying the one-sentence
-  explanation, so no card leans on a long inline paragraph to explain a
-  single control. "Board timing" holds "Turn amber
+  `InfoTooltip` (`@merqo/ui` — the shared (i)-trigger component every
+  one-sentence-explanation spot in the app uses, also used by `Section`'s
+  own header `tooltip` prop) carrying the one-sentence explanation, so no
+  card leans on a long inline paragraph to explain a single control. "Board timing" holds "Turn amber
   after"/"Turn red after" (the aging/overdue minute thresholds), "Undo
   window" (`undo_seconds`, 2-15s, validated live via `boardSettingsSchema`),
   and "Auto-clear after" (`ready_auto_clear_min`, 1-60min, blank/empty =

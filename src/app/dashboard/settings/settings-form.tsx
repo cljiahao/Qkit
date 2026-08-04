@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Section } from "@/components/ticket-section";
-import { InfoTooltip } from "@/components/info-tooltip";
+import { InfoTooltip } from "@merqo/ui";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { boardSettingsSchema } from "@/lib/schemas";
 import {
@@ -258,10 +258,10 @@ export function SettingsForm({
                     <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
                       Turn amber after
                     </Label>
-                    <InfoTooltip>
-                      Minutes after an order is placed before its ticket turns
-                      amber, flagging it as starting to wait.
-                    </InfoTooltip>
+                    <InfoTooltip
+                      content="Minutes after an order is placed before its ticket turns amber, flagging it as starting to wait."
+                      ariaLabel="More about this setting"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -285,10 +285,10 @@ export function SettingsForm({
                     <Label htmlFor="overdue-min" className={FORM_LABEL_CLASS}>
                       Turn red after
                     </Label>
-                    <InfoTooltip>
-                      Minutes before a still-waiting ticket turns red instead of
-                      amber. Must be later than the amber threshold.
-                    </InfoTooltip>
+                    <InfoTooltip
+                      content="Minutes before a still-waiting ticket turns red instead of amber. Must be later than the amber threshold."
+                      ariaLabel="More about this setting"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -320,11 +320,10 @@ export function SettingsForm({
                     <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
                       Undo window
                     </Label>
-                    <InfoTooltip>
-                      Mark Ready / Mark Picked Up applies right away. For this
-                      many seconds after, the button turns into Undo instead, in
-                      case of a wrong tap.
-                    </InfoTooltip>
+                    <InfoTooltip
+                      content="Mark Ready / Mark Picked Up applies right away. For this many seconds after, the button turns into Undo instead, in case of a wrong tap."
+                      ariaLabel="More about this setting"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -351,11 +350,10 @@ export function SettingsForm({
                     >
                       Auto-clear after
                     </Label>
-                    <InfoTooltip>
-                      A ready order nobody marks Picked Up clears itself after
-                      this many minutes. Leave blank to turn off. Restore a
-                      wrongly-cleared order from Completed orders.
-                    </InfoTooltip>
+                    <InfoTooltip
+                      content="A ready order nobody marks Picked Up clears itself after this many minutes. Leave blank to turn off. Restore a wrongly-cleared order from Completed orders."
+                      ariaLabel="More about this setting"
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -490,11 +488,10 @@ export function SettingsForm({
             />
             <span className="flex items-center gap-1.5 text-sm font-medium">
               Simple daily order number
-              <InfoTooltip>
-                Customers and staff see a small ticket number like #003 instead
-                of #0847. Records, receipts, and reports still use the permanent
-                number underneath.
-              </InfoTooltip>
+              <InfoTooltip
+                content="Customers and staff see a small ticket number like #003 instead of #0847. Records, receipts, and reports still use the permanent number underneath."
+                ariaLabel="More about this setting"
+              />
             </span>
           </div>
 
@@ -506,11 +503,10 @@ export function SettingsForm({
             />
             <span className="flex items-center gap-1.5 text-sm font-medium">
               Show wait-time estimate
-              <InfoTooltip>
-                Off shows only the queue position (&quot;2 orders ahead of
-                you&quot;), never a minute guess. Doesn&apos;t affect the queue
-                position itself, only the estimate layered on top of it.
-              </InfoTooltip>
+              <InfoTooltip
+                content={`Off shows only the queue position ("2 orders ahead of you"), never a minute guess. Doesn't affect the queue position itself, only the estimate layered on top of it.`}
+                ariaLabel="More about this setting"
+              />
             </span>
           </div>
 
@@ -524,11 +520,10 @@ export function SettingsForm({
               <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
                 Backup prep time
               </Label>
-              <InfoTooltip>
-                Estimates a customer&apos;s wait until this booth has enough of
-                today&apos;s own order history. Leave blank to show queue
-                position instead.
-              </InfoTooltip>
+              <InfoTooltip
+                content="Estimates a customer's wait until this booth has enough of today's own order history. Leave blank to show queue position instead."
+                ariaLabel="More about this setting"
+              />
             </div>
             <div className="flex items-center gap-2">
               <Input

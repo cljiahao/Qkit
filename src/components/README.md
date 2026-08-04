@@ -39,11 +39,6 @@ prompt, metric })`: compact rating widget posting to
 })`: client-side resize-to-WebP (`resizeToWebp`, capped 1600px banner /
   1000px thumb) then upload to the `booth-images` Supabase Storage bucket;
   validates type (jpeg/png/webp) and a 15MB source cap.
-- `info-tooltip.tsx` — `InfoTooltip({ children, label })`: the shared (i)
-  trigger + `Tooltip`/`TooltipContent` shape for a one-sentence explanation
-  next to a label/switch/section title — extracted from `ticket-section.tsx`
-  and the settings form's six near-identical inline copies (both now use
-  this instead).
 - `item-customizer.tsx` — `ItemCustomizer({ item, onClose, onAdd })`: a
   bottom `Sheet` for picking a menu item's option groups (single-select via
   `ToggleGroup type="single"`, multi-select via `type="multiple"`, keyed by
