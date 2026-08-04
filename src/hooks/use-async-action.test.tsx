@@ -44,4 +44,41 @@ describe("useAsyncAction", () => {
     });
     expect(result.current.pending).toBe(false);
   });
+
+  it("error is null initially and stays null after a successful run", async () => {
+    const { result } = renderHook(() => useAsyncAction());
+    expect(result.current.error).toBeNull();
+    await act(async () => {
+      await result.current.run(async () => {});
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it("error is set after a run rejects, and run still re-throws", async () => {
+    const { result } = renderHook(() => useAsyncAction());
+    await act(async () => {
+      await expect(
+        result.current.run(async () => {
+          throw new Error("boom");
+        }),
+      ).rejects.toThrow("boom");
+    });
+    expect(result.current.error).toBeInstanceOf(Error);
+  });
+
+  it("reset() clears a stale error", async () => {
+    const { result } = renderHook(() => useAsyncAction());
+    await act(async () => {
+      await expect(
+        result.current.run(async () => {
+          throw new Error("boom");
+        }),
+      ).rejects.toThrow();
+    });
+    expect(result.current.error).not.toBeNull();
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.error).toBeNull();
+  });
 });
