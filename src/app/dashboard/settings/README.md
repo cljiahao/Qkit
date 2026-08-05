@@ -28,10 +28,11 @@ sync across devices.
   `prepEstimate`. `revalidate = 0` (always fresh).
 - `settings-form.tsx` — `SettingsForm({ initial, prepEstimate })` client
   component, the actual UI: four `Section` cards (from `ticket-section.tsx`)
-  split across two independent flex-column stacks side by side on `md`+ —
-  "Board timing" + "Notifications" in the left stack, "New-order sound" +
-  "Customer order screen" in the right, each column just `flex flex-col
-gap-5` on its own two sections. Deliberately not a single `md:grid
+  split across `@merqo/ui`'s `TwoColumnSections` (`columnOne`/`columnTwo`
+  props, each an independent `flex flex-col gap-5` stack side by side on
+  `md`+ — the same shared component `../profile/profile-form.tsx` uses) —
+  "Board timing" + "Notifications" in `columnOne`, "New-order sound" +
+  "Customer order screen" in `columnTwo`. Deliberately not a single `md:grid
 md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
   cell in that row, so once "Board timing" (4 inputs) outgrew "New-order
   sound" (1 button row), row 2 started late in _both_ columns — a visible gap
