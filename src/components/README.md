@@ -178,9 +178,6 @@ idPrefix })`: the vendor profile/booth-edit form inputs for the four social
   order-status page footer and on a closed booth's menu-page banner.
 - `social-links-row.dom.test.tsx` — RTL tests for `SocialLinksRow`'s
   empty/partial-link rendering.
-- `support-form.tsx` — `SupportForm()`: vendor→admin help-request widget —
-  pick a category (pass/payment/pro/other) + free-text body, posts via
-  `submitSupportMessage`.
 - `ticket-section.tsx` — `Section({ icon, eyebrow, title, description,
 tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
   passed the local `Ticket` shell via `wrapper` so the header/icon/eyebrow/
@@ -219,8 +216,8 @@ and is consumed by `src/app/o/[code]/page.tsx`. The `landing-*` family
 `hero-preview-carousel.tsx` and `back-to-top.tsx`. `order-card.tsx` and
 `dashboard-tour.tsx` are consumed by the vendor dashboard
 (`src/app/dashboard`); `ticket.tsx`/`ticket-section.tsx` are the shared card
-shell used by both the dashboard and the ordering flow. `feedback-form.tsx`
-and `support-form.tsx` post to server actions under `src/app/actions/`.
+shell used by both the dashboard and the ordering flow. `feedback-form.tsx` posts
+to a server action under `src/app/actions/`.
 
 ## Parent
 

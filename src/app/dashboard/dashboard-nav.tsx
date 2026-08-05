@@ -58,9 +58,7 @@ function TierBadge({ tier }: { tier: Tier }) {
   );
 }
 
-// Mirrors support-form.tsx's own category list/labels so a vendor sees the
-// same wording whether they file a help request from the nav's Get-help
-// sheet or (in principle) any other entry point onto the same categories.
+// Category list/labels for the nav's Get-help sheet.
 const HELP_CATEGORIES: {
   value: SupportMessageInput["category"];
   label: string;
