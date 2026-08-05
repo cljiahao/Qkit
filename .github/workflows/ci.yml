@@ -17,6 +17,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: cat node_modules/@merqo/ui/dist/index.d.ts
       - run: pnpm check
       - run: pnpm test
 
