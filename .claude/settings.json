@@ -37,6 +37,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/post-edit-typecheck.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-edit-comment-check.sh"
           }
         ]
       },
@@ -130,7 +134,12 @@
       "Read(.env.staging)",
       "Read(.env.test)",
       "Read(**/.env)",
-      "Read(**/.env.*)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.development)",
+      "Read(**/.env.production)",
+      "Read(**/.env.staging)",
+      "Read(**/.env.test)",
       "Read(./secrets/**)",
       "Read(./.secrets/**)",
       "Edit(.env)",
