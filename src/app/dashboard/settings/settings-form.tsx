@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Section } from "@/components/ticket-section";
-import { InfoTooltip } from "@merqo/ui";
+import { InfoTooltip, TwoColumnSections } from "@merqo/ui";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { boardSettingsSchema } from "@/lib/schemas";
 import {
@@ -227,362 +227,369 @@ export function SettingsForm({
         ? String(initial.default_prep_minutes)
         : "");
 
+  // Two independent stacks, not a CSS grid: a grid's row tracks size to
+  // the tallest cell in that row, so once "Board timing" (col 1, three
+  // inputs) outgrew "New-order sound" (col 2, one row of buttons), row 2
+  // started late in BOTH columns — a gap over "Customer order screen"
+  // that had nothing to do with its own content. Each column stacking
+  // its own two sections avoids that row-sync entirely.
   return (
-    <div className="flex flex-col gap-5 md:flex-row md:items-start">
-      {/* Two independent stacks, not a CSS grid: a grid's row tracks size to
-          the tallest cell in that row, so once "Board timing" (col 1, three
-          inputs) outgrew "New-order sound" (col 2, one row of buttons), row 2
-          started late in BOTH columns — a gap over "Customer order screen"
-          that had nothing to do with its own content. Each column stacking
-          its own two sections avoids that row-sync entirely. */}
-      <div className="flex flex-1 flex-col gap-5">
-        <Section
-          icon={<Clock className="size-5" />}
-          title="Board timing"
-          description="How fast a waiting ticket changes color, how long staff have to undo an accidental tap, and whether a forgotten ready order clears itself."
-        >
-          <div className="space-y-5">
-            {/* Two groups, not one flat grid: amber/red are slow aging
+    <TwoColumnSections
+      columnOne={
+        <>
+          <Section
+            icon={<Clock className="size-5" />}
+            title="Board timing"
+            description="How fast a waiting ticket changes color, how long staff have to undo an accidental tap, and whether a forgotten ready order clears itself."
+          >
+            <div className="space-y-5">
+              {/* Two groups, not one flat grid: amber/red are slow aging
                 thresholds (minutes, how a ticket's colour drifts over
                 time), undo/auto-clear are fast recovery timers (seconds
                 and a short number of minutes, how quickly a mistake or a
                 forgotten ticket resolves itself). Mixing all four in one
                 unlabeled block read as an arbitrary pile of numbers. */}
-            <div>
-              <p className="mb-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
-                Ticket color
-              </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
-                      Turn amber after
-                    </Label>
-                    <InfoTooltip
-                      content="Minutes after an order is placed before its ticket turns amber, flagging it as starting to wait."
-                      ariaLabel="More about this setting"
-                    />
+              <div>
+                <p className="mb-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
+                  Ticket color
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="aging-min" className={FORM_LABEL_CLASS}>
+                        Turn amber after
+                      </Label>
+                      <InfoTooltip
+                        content="Minutes after an order is placed before its ticket turns amber, flagging it as starting to wait."
+                        ariaLabel="More about this setting"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="aging-min"
+                        type="number"
+                        min={1}
+                        max={240}
+                        value={agingMin}
+                        onChange={(e) => setAgingMin(e.target.value)}
+                        className="h-11 rounded-xl"
+                        aria-invalid={!!thresholdError}
+                        aria-describedby={
+                          thresholdError ? "threshold-error" : undefined
+                        }
+                      />
+                      <span className="text-sm text-muted-foreground">min</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="aging-min"
-                      type="number"
-                      min={1}
-                      max={240}
-                      value={agingMin}
-                      onChange={(e) => setAgingMin(e.target.value)}
-                      className="h-11 rounded-xl"
-                      aria-invalid={!!thresholdError}
-                      aria-describedby={
-                        thresholdError ? "threshold-error" : undefined
-                      }
-                    />
-                    <span className="text-sm text-muted-foreground">min</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="overdue-min" className={FORM_LABEL_CLASS}>
+                        Turn red after
+                      </Label>
+                      <InfoTooltip
+                        content="Minutes before a still-waiting ticket turns red instead of amber. Must be later than the amber threshold."
+                        ariaLabel="More about this setting"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="overdue-min"
+                        type="number"
+                        min={1}
+                        max={240}
+                        value={overdueMin}
+                        onChange={(e) => setOverdueMin(e.target.value)}
+                        className="h-11 rounded-xl"
+                        aria-invalid={!!thresholdError}
+                        aria-describedby={
+                          thresholdError ? "threshold-error" : undefined
+                        }
+                      />
+                      <span className="text-sm text-muted-foreground">min</span>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="overdue-min" className={FORM_LABEL_CLASS}>
-                      Turn red after
-                    </Label>
-                    <InfoTooltip
-                      content="Minutes before a still-waiting ticket turns red instead of amber. Must be later than the amber threshold."
-                      ariaLabel="More about this setting"
-                    />
+              </div>
+
+              <div>
+                <p className="mb-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
+                  Quick timers
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label
+                        htmlFor="undo-seconds"
+                        className={FORM_LABEL_CLASS}
+                      >
+                        Undo window
+                      </Label>
+                      <InfoTooltip
+                        content="Mark Ready / Mark Picked Up applies right away. For this many seconds after, the button turns into Undo instead, in case of a wrong tap."
+                        ariaLabel="More about this setting"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="undo-seconds"
+                        type="number"
+                        min={2}
+                        max={15}
+                        value={undoSeconds}
+                        onChange={(e) => setUndoSeconds(e.target.value)}
+                        className="h-11 rounded-xl"
+                        aria-invalid={!!thresholdError}
+                        aria-describedby={
+                          thresholdError ? "threshold-error" : undefined
+                        }
+                      />
+                      <span className="text-sm text-muted-foreground">sec</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="overdue-min"
-                      type="number"
-                      min={1}
-                      max={240}
-                      value={overdueMin}
-                      onChange={(e) => setOverdueMin(e.target.value)}
-                      className="h-11 rounded-xl"
-                      aria-invalid={!!thresholdError}
-                      aria-describedby={
-                        thresholdError ? "threshold-error" : undefined
-                      }
-                    />
-                    <span className="text-sm text-muted-foreground">min</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label
+                        htmlFor="ready-auto-clear-min"
+                        className={FORM_LABEL_CLASS}
+                      >
+                        Auto-clear after
+                      </Label>
+                      <InfoTooltip
+                        content="A ready order nobody marks Picked Up clears itself after this many minutes. Leave blank to turn off. Restore a wrongly-cleared order from Completed orders."
+                        ariaLabel="More about this setting"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="ready-auto-clear-min"
+                        type="number"
+                        min={1}
+                        max={60}
+                        placeholder="Off"
+                        value={readyAutoClearMin}
+                        onChange={(e) => setReadyAutoClearMin(e.target.value)}
+                        className="h-11 rounded-xl"
+                        aria-invalid={!!thresholdError}
+                        aria-describedby={
+                          thresholdError ? "threshold-error" : undefined
+                        }
+                      />
+                      <span className="text-sm text-muted-foreground">min</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-
-            <div>
-              <p className="mb-2 text-[0.65rem] font-semibold tracking-wider text-muted-foreground uppercase">
-                Quick timers
+            {thresholdError && (
+              <p id="threshold-error" className={FORM_ERROR_CLASS}>
+                {thresholdError}
               </p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="undo-seconds" className={FORM_LABEL_CLASS}>
-                      Undo window
-                    </Label>
-                    <InfoTooltip
-                      content="Mark Ready / Mark Picked Up applies right away. For this many seconds after, the button turns into Undo instead, in case of a wrong tap."
-                      ariaLabel="More about this setting"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="undo-seconds"
-                      type="number"
-                      min={2}
-                      max={15}
-                      value={undoSeconds}
-                      onChange={(e) => setUndoSeconds(e.target.value)}
-                      className="h-11 rounded-xl"
-                      aria-invalid={!!thresholdError}
-                      aria-describedby={
-                        thresholdError ? "threshold-error" : undefined
-                      }
-                    />
-                    <span className="text-sm text-muted-foreground">sec</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label
-                      htmlFor="ready-auto-clear-min"
-                      className={FORM_LABEL_CLASS}
-                    >
-                      Auto-clear after
-                    </Label>
-                    <InfoTooltip
-                      content="A ready order nobody marks Picked Up clears itself after this many minutes. Leave blank to turn off. Restore a wrongly-cleared order from Completed orders."
-                      ariaLabel="More about this setting"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="ready-auto-clear-min"
-                      type="number"
-                      min={1}
-                      max={60}
-                      placeholder="Off"
-                      value={readyAutoClearMin}
-                      onChange={(e) => setReadyAutoClearMin(e.target.value)}
-                      className="h-11 rounded-xl"
-                      aria-invalid={!!thresholdError}
-                      aria-describedby={
-                        thresholdError ? "threshold-error" : undefined
-                      }
-                    />
-                    <span className="text-sm text-muted-foreground">min</span>
-                  </div>
-                </div>
-              </div>
+            )}
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={saveThresholds}
+                disabled={savingThresholds || thresholdsUnchanged}
+                className="h-10 rounded-xl font-semibold"
+              >
+                {savingThresholds ? "Saving…" : "Save timing"}
+              </Button>
             </div>
-          </div>
-          {thresholdError && (
-            <p id="threshold-error" className={FORM_ERROR_CLASS}>
-              {thresholdError}
-            </p>
-          )}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={saveThresholds}
-              disabled={savingThresholds || thresholdsUnchanged}
-              className="h-10 rounded-xl font-semibold"
-            >
-              {savingThresholds ? "Saving…" : "Save timing"}
-            </Button>
-          </div>
-        </Section>
+          </Section>
 
-        <Section
-          icon={<Bell className="size-5" />}
-          title="Notifications"
-          description="A popup for a new order when this tab is backgrounded."
-          tooltip={
-            <>
-              Works on Android and desktop browsers. On iPhone or iPad, add qkit
-              to your Home Screen first (a regular Safari tab can&apos;t show
-              these).
-            </>
-          }
-        >
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={desktopNotify}
-              onCheckedChange={toggleDesktopNotify}
-              disabled={savingNotify}
-              aria-label="Desktop notifications"
-            />
-            <span
-              className={cn(
-                "text-sm font-semibold",
-                desktopNotify ? "text-emerald-600" : "text-muted-foreground",
-              )}
-            >
-              {desktopNotify ? "On" : "Off"}
-            </span>
-          </div>
-          {desktopNotify && permission !== "granted" && (
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs text-muted-foreground">
-                {isNotifySupported()
-                  ? "Not allowed in this browser yet. This device won't show popups until you enable it."
-                  : "Not supported in this browser. See above for iPhone/iPad."}
-              </p>
-              {isNotifySupported() && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={enableInBrowser}
-                  disabled={savingNotify}
-                  className="h-7 rounded-lg text-xs"
-                >
-                  Enable in this browser
-                </Button>
-              )}
-            </div>
-          )}
-        </Section>
-      </div>
-
-      <div className="flex flex-1 flex-col gap-5">
-        <Section
-          icon={<Volume2 className="size-5" />}
-          title="New-order sound"
-          description="Plays when an order lands while this tab is open."
-        >
-          <ToggleGroup
-            type="single"
-            value={soundId}
-            onValueChange={(v) => v && chooseSound(v as SoundId)}
-            disabled={savingSound}
-            spacing={2}
-            aria-label="New-order sound"
-            className="grid grid-cols-3"
+          <Section
+            icon={<Bell className="size-5" />}
+            title="Notifications"
+            description="A popup for a new order when this tab is backgrounded."
+            tooltip={
+              <>
+                Works on Android and desktop browsers. On iPhone or iPad, add
+                qkit to your Home Screen first (a regular Safari tab can&apos;t
+                show these).
+              </>
+            }
           >
-            {SOUND_OPTIONS.map((opt) => (
-              <ToggleGroupItem
-                key={opt.id}
-                value={opt.id}
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={desktopNotify}
+                onCheckedChange={toggleDesktopNotify}
+                disabled={savingNotify}
+                aria-label="Desktop notifications"
+              />
+              <span
                 className={cn(
-                  "rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5",
-                  "data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary",
+                  "text-sm font-semibold",
+                  desktopNotify ? "text-emerald-600" : "text-muted-foreground",
                 )}
               >
-                {opt.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </Section>
-
-        <Section
-          icon={<Hourglass className="size-5" />}
-          title="Customer order screen"
-          description="Three optional tweaks to what a customer sees right after ordering: a simpler order number, whether a wait estimate shows at all, and a backup wait estimate."
-        >
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={dailyReset}
-              onCheckedChange={setDailyReset}
-              aria-label="Show a simple daily order number instead of the permanent one"
-            />
-            <span className="flex items-center gap-1.5 text-sm font-medium">
-              Simple daily order number
-              <InfoTooltip
-                content="Customers and staff see a small ticket number like #003 instead of #0847. Records, receipts, and reports still use the permanent number underneath."
-                ariaLabel="More about this setting"
-              />
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={showWaitEstimate}
-              onCheckedChange={setShowWaitEstimate}
-              aria-label="Show a wait-time estimate to customers"
-            />
-            <span className="flex items-center gap-1.5 text-sm font-medium">
-              Show wait-time estimate
-              <InfoTooltip
-                content={`Off shows only the queue position ("2 orders ahead of you"), never a minute guess. Doesn't affect the queue position itself, only the estimate layered on top of it.`}
-                ariaLabel="More about this setting"
-              />
-            </span>
-          </div>
-
-          <div
-            className={cn(
-              "space-y-2 border-t border-border pt-4",
-              !showWaitEstimate && "opacity-50",
-            )}
-          >
-            <div className="flex items-center gap-1.5">
-              <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
-                Backup prep time
-              </Label>
-              <InfoTooltip
-                content="Estimates a customer's wait until this booth has enough of today's own order history. Leave blank to show queue position instead."
-                ariaLabel="More about this setting"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                id="default-prep-min"
-                type="number"
-                min={1}
-                max={60}
-                placeholder="Not set"
-                value={defaultPrepMin}
-                onChange={(e) => setDefaultPrepMin(e.target.value)}
-                disabled={!showWaitEstimate}
-                className="h-11 w-28 rounded-xl"
-                aria-invalid={!!displayError}
-                aria-describedby={displayError ? "display-error" : undefined}
-              />
-              <span className="text-sm text-muted-foreground">
-                min per order
+                {desktopNotify ? "On" : "Off"}
               </span>
             </div>
-            {!showWaitEstimate ? (
-              <p className="text-xs text-muted-foreground">
-                Wait-time estimate is off above, so this backup isn&apos;t shown
-                to customers either.
-              </p>
-            ) : prepEstimate.avgMinutes !== null ? (
-              <p className="text-xs text-muted-foreground">
-                Live right now: ~{Math.round(prepEstimate.avgMinutes)} min per
-                order from your last {prepEstimate.sampleCount} orders. This
-                backup isn&apos;t in use.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Not enough recent order history yet ({prepEstimate.sampleCount}{" "}
-                of {prepEstimate.minSample} orders). Customers currently see{" "}
-                {defaultPrepMin.trim() === ""
-                  ? "their queue position"
-                  : "this backup number"}{" "}
-                instead.
+            {desktopNotify && permission !== "granted" && (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {isNotifySupported()
+                    ? "Not allowed in this browser yet. This device won't show popups until you enable it."
+                    : "Not supported in this browser. See above for iPhone/iPad."}
+                </p>
+                {isNotifySupported() && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={enableInBrowser}
+                    disabled={savingNotify}
+                    className="h-7 rounded-lg text-xs"
+                  >
+                    Enable in this browser
+                  </Button>
+                )}
+              </div>
+            )}
+          </Section>
+        </>
+      }
+      columnTwo={
+        <>
+          <Section
+            icon={<Volume2 className="size-5" />}
+            title="New-order sound"
+            description="Plays when an order lands while this tab is open."
+          >
+            <ToggleGroup
+              type="single"
+              value={soundId}
+              onValueChange={(v) => v && chooseSound(v as SoundId)}
+              disabled={savingSound}
+              spacing={2}
+              aria-label="New-order sound"
+              className="grid grid-cols-3"
+            >
+              {SOUND_OPTIONS.map((opt) => (
+                <ToggleGroupItem
+                  key={opt.id}
+                  value={opt.id}
+                  className={cn(
+                    "rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5",
+                    "data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary",
+                  )}
+                >
+                  {opt.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </Section>
+
+          <Section
+            icon={<Hourglass className="size-5" />}
+            title="Customer order screen"
+            description="Three optional tweaks to what a customer sees right after ordering: a simpler order number, whether a wait estimate shows at all, and a backup wait estimate."
+          >
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={dailyReset}
+                onCheckedChange={setDailyReset}
+                aria-label="Show a simple daily order number instead of the permanent one"
+              />
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                Simple daily order number
+                <InfoTooltip
+                  content="Customers and staff see a small ticket number like #003 instead of #0847. Records, receipts, and reports still use the permanent number underneath."
+                  ariaLabel="More about this setting"
+                />
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={showWaitEstimate}
+                onCheckedChange={setShowWaitEstimate}
+                aria-label="Show a wait-time estimate to customers"
+              />
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                Show wait-time estimate
+                <InfoTooltip
+                  content={`Off shows only the queue position ("2 orders ahead of you"), never a minute guess. Doesn't affect the queue position itself, only the estimate layered on top of it.`}
+                  ariaLabel="More about this setting"
+                />
+              </span>
+            </div>
+
+            <div
+              className={cn(
+                "space-y-2 border-t border-border pt-4",
+                !showWaitEstimate && "opacity-50",
+              )}
+            >
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="default-prep-min" className={FORM_LABEL_CLASS}>
+                  Backup prep time
+                </Label>
+                <InfoTooltip
+                  content="Estimates a customer's wait until this booth has enough of today's own order history. Leave blank to show queue position instead."
+                  ariaLabel="More about this setting"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="default-prep-min"
+                  type="number"
+                  min={1}
+                  max={60}
+                  placeholder="Not set"
+                  value={defaultPrepMin}
+                  onChange={(e) => setDefaultPrepMin(e.target.value)}
+                  disabled={!showWaitEstimate}
+                  className="h-11 w-28 rounded-xl"
+                  aria-invalid={!!displayError}
+                  aria-describedby={displayError ? "display-error" : undefined}
+                />
+                <span className="text-sm text-muted-foreground">
+                  min per order
+                </span>
+              </div>
+              {!showWaitEstimate ? (
+                <p className="text-xs text-muted-foreground">
+                  Wait-time estimate is off above, so this backup isn&apos;t
+                  shown to customers either.
+                </p>
+              ) : prepEstimate.avgMinutes !== null ? (
+                <p className="text-xs text-muted-foreground">
+                  Live right now: ~{Math.round(prepEstimate.avgMinutes)} min per
+                  order from your last {prepEstimate.sampleCount} orders. This
+                  backup isn&apos;t in use.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Not enough recent order history yet (
+                  {prepEstimate.sampleCount} of {prepEstimate.minSample}{" "}
+                  orders). Customers currently see{" "}
+                  {defaultPrepMin.trim() === ""
+                    ? "their queue position"
+                    : "this backup number"}{" "}
+                  instead.
+                </p>
+              )}
+            </div>
+
+            {displayError && (
+              <p id="display-error" className={FORM_ERROR_CLASS}>
+                {displayError}
               </p>
             )}
-          </div>
-
-          {displayError && (
-            <p id="display-error" className={FORM_ERROR_CLASS}>
-              {displayError}
-            </p>
-          )}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={saveDisplay}
-              disabled={savingDisplay || displayUnchanged}
-              className="h-10 rounded-xl font-semibold"
-            >
-              {savingDisplay ? "Saving…" : "Save customer screen"}
-            </Button>
-          </div>
-        </Section>
-      </div>
-    </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={saveDisplay}
+                disabled={savingDisplay || displayUnchanged}
+                className="h-10 rounded-xl font-semibold"
+              >
+                {savingDisplay ? "Saving…" : "Save customer screen"}
+              </Button>
+            </div>
+          </Section>
+        </>
+      }
+    />
   );
 }
