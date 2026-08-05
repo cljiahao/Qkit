@@ -1,40 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ChevronDown,
-  LifeBuoy,
-  LogOut,
-  Menu,
-  MessageSquarePlus,
-  Settings,
-  User,
-  Wallet,
-  X,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { FeedbackForm } from "@/components/feedback-form";
-import { SupportForm } from "@/components/support-form";
+import { DashboardNav as SharedDashboardNav } from "@merqo/ui";
 import { cn } from "@/lib/utils";
 import type { Tier } from "@/lib/plan";
+import type { SupportMessageInput } from "@/lib/schemas";
+import { submitFeedback } from "@/app/actions/feedback";
+import { submitSupportMessage } from "@/app/actions/support";
 
 const LINKS = [
   { href: "/dashboard", label: "Orders" },
@@ -50,14 +23,6 @@ function isActive(path: string, href: string): boolean {
 /** Stable anchor id for the onboarding tour, e.g. "/dashboard/booths" → "nav-booths". */
 function tourAnchor(href: string): string {
   return `nav-${href === "/dashboard" ? "orders" : href.split("/").pop()}`;
-}
-
-/** Up to two initials from a stall name; falls back to a bullet when blank. */
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "•";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 // A small mono "ticket stamp" for the account's plan. Free reads as a quiet
@@ -93,14 +58,28 @@ function TierBadge({ tier }: { tier: Tier }) {
   );
 }
 
+// Mirrors support-form.tsx's own category list/labels so a vendor sees the
+// same wording whether they file a help request from the nav's Get-help
+// sheet or (in principle) any other entry point onto the same categories.
+const HELP_CATEGORIES: {
+  value: SupportMessageInput["category"];
+  label: string;
+}[] = [
+  { value: "pass", label: "Event pass" },
+  { value: "payment", label: "Payment" },
+  { value: "pro", label: "Pro / billing" },
+  { value: "other", label: "Something else" },
+];
+
 /**
- * Dashboard nav — the full sticky-header row. Navigation sits on the LEFT
- * (burger below sm, inline links from sm up); the account menu sits on the far
- * RIGHT at every width. Keeping the two on opposite ends follows the standard
- * mobile pattern (hamburger-left / account-right) so they never read as a
- * cramped pair of look-alike icon buttons. The account avatar stays visible on
- * mobile on purpose — it's a high-frequency action, not something to bury in
- * the burger.
+ * Dashboard nav — composes `@merqo/ui`'s `DashboardNav`/`AccountMenu` for the
+ * sticky header row (burger + inline links + account dropdown) instead of
+ * hand-rolling it. This file now owns only qkit-specific bits: the wordmark,
+ * the link list, active-route/tour-anchor logic, the tier badge, and thin
+ * throw-adapting wrappers around `submitFeedback`/`submitSupportMessage` (both
+ * return a `{success, error}` result rather than throwing, but the shared
+ * component's `onSubmit` contract requires a promise that rejects on
+ * failure so its own inline error UI can surface it).
  */
 export function DashboardNav({
   signOut,
@@ -113,210 +92,49 @@ export function DashboardNav({
   avatarUrl?: string | null;
   tier?: Tier;
 }) {
-  const [open, setOpen] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const path = usePathname();
 
   return (
-    <>
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-        {/* LEFT: burger (mobile) + brand + inline links (desktop) */}
-        <div className="flex min-w-0 items-center gap-1 sm:gap-3">
-          {/* Burger — below sm, far left, opposite the account avatar */}
-          <Button
-            variant="ghost"
-            size="icon"
-            data-tour="nav-menu"
-            className="-ml-1.5 rounded-lg sm:hidden"
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X className="size-5" /> : <Menu className="size-5" />}
-          </Button>
-
-          <Link
-            href="/dashboard"
-            aria-label="qkit dashboard home"
-            className="font-display shrink-0 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
-          >
-            <span className="text-primary">Q</span>Kit
-          </Link>
-
-          {/* Inline page links — sm and up */}
-          <nav className="hidden items-center gap-1 sm:flex">
-            {LINKS.map((l) => (
-              <Button
-                key={l.href}
-                asChild
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "rounded-lg",
-                  isActive(path, l.href) && "bg-primary/10 text-primary",
-                )}
-              >
-                <Link href={l.href} data-tour={tourAnchor(l.href)}>
-                  {l.label}
-                </Link>
-              </Button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Account menu — every width, far right */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              data-tour="nav-account"
-              aria-label="Account menu"
-              className="flex items-center gap-2 rounded-lg py-1 pr-2 pl-1 text-left transition-colors outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            >
-              <Avatar
-                aria-hidden
-                className="rounded-md ring-1 ring-inset ring-primary/25"
-              >
-                {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
-                <AvatarFallback className="rounded-md bg-primary/12 font-mono text-xs font-semibold tracking-tight text-primary">
-                  {initials(vendorName)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="hidden max-w-[9rem] truncate text-sm font-semibold md:inline">
-                {vendorName || "Account"}
-              </span>
-              <ChevronDown className="hidden size-4 text-muted-foreground md:inline" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 rounded-xl">
-            <DropdownMenuLabel className="px-2 py-2">
-              <div className="flex items-center gap-2">
-                <p className="truncate text-sm font-semibold">
-                  {vendorName || "Your stall"}
-                </p>
-                <TierBadge tier={tier} />
-              </div>
-              <p className="text-xs font-normal text-muted-foreground">
-                Vendor account
-              </p>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/profile" className="cursor-pointer">
-                <User className="size-4" />
-                Profile
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/settings" className="cursor-pointer">
-                <Settings className="size-4" />
-                Board settings
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/plan" className="cursor-pointer">
-                <Wallet className="size-4" />
-                Plan
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onSelect={() => setHelpOpen(true)}
-            >
-              <LifeBuoy className="size-4" />
-              Get help
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onSelect={() => setFeedbackOpen(true)}
-            >
-              <MessageSquarePlus className="size-4" />
-              Feedback
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <form action={signOut}>
-              <DropdownMenuItem asChild variant="destructive">
-                <button type="submit" className="w-full cursor-pointer">
-                  <LogOut className="size-4" />
-                  Sign out
-                </button>
-              </DropdownMenuItem>
-            </form>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Mobile page-links panel */}
-      {open && (
-        <>
-          {/* Tap-away scrim */}
-          <button
-            type="button"
-            aria-hidden
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-30 cursor-default sm:hidden"
-          />
-          <div className="absolute inset-x-0 top-full z-40 border-b border-border bg-background/95 px-5 py-3 shadow-sm backdrop-blur-md sm:hidden">
-            <div className="mx-auto flex max-w-7xl flex-col gap-1">
-              {LINKS.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "rounded-lg px-3 py-2.5 text-sm font-semibold",
-                    isActive(path, l.href)
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground hover:bg-secondary",
-                  )}
-                >
-                  {l.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Help drawer — opened from the account menu */}
-      <Sheet open={helpOpen} onOpenChange={setHelpOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="font-display text-2xl">Get help</SheetTitle>
-            <SheetDescription>
-              Trouble with a pass, payment, or your Pro plan? Tell us and
-              we&apos;ll sort it out.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-6">
-            <SupportForm />
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Feedback drawer — opened from the account menu */}
-      <Sheet open={feedbackOpen} onOpenChange={setFeedbackOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="font-display text-2xl">
-              Share feedback
-            </SheetTitle>
-            <SheetDescription>
-              What&apos;s working, what&apos;s missing, what&apos;s broken? We
-              read every note.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-6">
-            <FeedbackForm
-              source="vendor"
-              metric="nps"
-              prompt="How likely are you to recommend qkit to another vendor?"
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+    <SharedDashboardNav
+      wordmark={
+        <Link
+          href="/dashboard"
+          aria-label="qkit dashboard home"
+          className="font-display shrink-0 text-3xl font-semibold tracking-tight transition-opacity hover:opacity-80"
+        >
+          <span className="text-primary">Q</span>Kit
+        </Link>
+      }
+      navLinks={LINKS}
+      isActiveHref={(href) => isActive(path, href)}
+      tourAnchor={tourAnchor}
+      vendor={{
+        name: vendorName || "Account",
+        avatarUrl: avatarUrl ?? undefined,
+        tier,
+        subtitle: "Vendor account",
+      }}
+      signOutAction={signOut}
+      kitLocalSettingsHref="/dashboard/settings"
+      tierBadge={<TierBadge tier={tier} />}
+      getHelp={{
+        type: "form",
+        onSubmit: async ({ message, category }) => {
+          const res = await submitSupportMessage({
+            category: (category ?? "other") as SupportMessageInput["category"],
+            body: message,
+          });
+          if (!res.success) throw new Error(res.error);
+        },
+        categories: HELP_CATEGORIES,
+      }}
+      onFeedbackSubmit={async ({ message, nps }) => {
+        const res = await submitFeedback({ source: "vendor", nps, message });
+        if (!res.success) throw new Error(res.error);
+      }}
+      feedbackSource="vendor"
+      feedbackMetric="nps"
+      showNps
+    />
   );
 }
