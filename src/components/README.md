@@ -13,12 +13,13 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
 - `back-to-top.tsx` — `BackToTop()`: fixed bottom-right scroll-to-top button
   for the landing page, appears past `scrollY > 600`, respects
   `prefers-reduced-motion` for the scroll behavior.
-- `dashboard-tour.tsx` — `DashboardTour({ seen })`: owns the dashboard
-  onboarding tour — a floating "?" replay button plus a lazily-imported
-  `driver.js` overlay (loaded only when the tour actually runs). Auto-runs
-  once for a vendor who hasn't seen it (server-tracked, stamped via
-  `markTourSeen`), can be replayed from any page (navigates back to
-  `/dashboard` first if needed).
+- `dashboard-tour.tsx` — `DashboardTour({ seen })`: thin wiring around
+  `@merqo/ui`'s `DashboardTour` — supplies qkit's own step content
+  (`tour-steps.ts`, resolved lazily via `matchMedia` at tour-start time),
+  `markTourSeen` as `onFirstSeen`, `/dashboard`-route detection, and
+  `scopeClassName="qkit-tour"` for the popover theme. The tour mechanism
+  itself (driver.js lifecycle, auto-run/replay timing, floating "?" replay
+  button, popover styling) lives in the shared package.
 - `dashboard-tour.dom.test.tsx` — RTL tests for the tour's auto-run,
   mark-seen, and cross-page replay behavior.
 - `featured-booths.tsx` — `FeaturedBooths({ featured })`: renders a 3-up grid
@@ -202,8 +203,6 @@ tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
   `driver.js` import so it's unit-testable; desktop spotlights each nav
   landmark, mobile spotlights the collapsed hamburger menu instead.
 - `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists.
-- `tour.css` — scoped styles for the `driver.js` popover (`.qkit-tour`
-  class) so the tour overlay matches the app's visual language.
 - `ui/` — the shadcn/ui primitive library everything else in this tree is
   built from. See its own README.
 - `zoomable-image.tsx` — `ZoomableImage({ src, alt, sizes })`: a menu photo
