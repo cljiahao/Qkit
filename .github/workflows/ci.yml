@@ -6,6 +6,42 @@ on:
   pull_request:
 
 jobs:
+  comment-hygiene:
+    name: comment hygiene (added lines)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with: { fetch-depth: 0 }
+      - name: Require no change-narration comments (apply 'skip-comment-check' label to bypass)
+        env: { LABELS: "${{ join(github.event.pull_request.labels.*.name, ' ') }}" }
+        run: |
+          patterns=".claude/comment-hygiene-patterns.txt"
+          base="origin/${{ github.base_ref }}"
+          [ -f "$patterns" ] || { echo "::error::comment-hygiene pattern list missing (.claude/comment-hygiene-patterns.txt)"; exit 1; }
+          strict_patterns=$(mktemp)
+          head -n 10 "$patterns" > "$strict_patterns"
+          nl=$(printf '\nx'); nl=${nl%x}
+          flagged=""
+          for f in $(git diff --name-only "$base"...HEAD); do
+            case "$f" in *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs) ;; *) continue ;; esac
+            [ -f "$f" ] || continue
+            while IFS= read -r content; do
+              stripped=$(printf '%s' "$content" | sed -E 's@^[[:space:]]*(#|//|\*|/\*\*?)[[:space:]]?@@')
+              if [ -n "$stripped" ] && printf '%s' "$stripped" | grep -qEf "$strict_patterns"; then
+                flagged="$flagged$nl  - $f: $stripped"
+              fi
+            done < <(git diff -U0 "$base"...HEAD -- "$f" | grep '^+' | grep -vE '^\+\+\+' | sed 's/^+//' | grep -E '^[[:space:]]*(#|//|\*|/\*\*?)')
+          done
+          rm -f "$strict_patterns"
+          if [ -n "$flagged" ]; then
+            echo " $LABELS " | grep -q ' skip-comment-check ' && { echo "skip-comment-check label present — OK"; exit 0; }
+            echo "::error::Change-narration comments found (see list below)"
+            printf '%s\n' "$flagged"
+            echo "State WHAT the code does now, not what changed, or apply the 'skip-comment-check' label to bypass."
+            exit 1
+          fi
+
   test:
     name: check + unit
     runs-on: ubuntu-latest
