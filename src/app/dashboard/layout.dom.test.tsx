@@ -51,4 +51,20 @@ describe("DashboardLayout", () => {
 
     expect(container.querySelectorAll("header")).toHaveLength(1);
   });
+
+  // jsdom doesn't compute layout/positioning, so it can't directly prove the
+  // header actually sticks on scroll. What it CAN prove is the structural
+  // precondition that makes sticky positioning work: the header's immediate
+  // wrapper must be `display: contents` so the wrapper's own box doesn't
+  // become the header's `position: sticky` containing block (a plain div
+  // wrapper — no `contents` — would be exactly the header's height, leaving
+  // the sticky header no room to move and silently breaking it; see the
+  // comment in layout.tsx above this wrapper for the full explanation).
+  it("wraps the header in a display:contents div, not a plain div, so sticky positioning has room to work", async () => {
+    const jsx = await DashboardLayout({ children: <div>page content</div> });
+    const { container } = render(jsx);
+
+    const header = container.querySelector("header");
+    expect(header?.parentElement).toHaveClass("contents", "print:hidden");
+  });
 });

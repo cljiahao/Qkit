@@ -47,9 +47,16 @@ describe("Section", () => {
     // Radix's TooltipContent (@radix-ui/react-tooltip 1.2.8, as currently
     // pinned in qkit's lockfile) renders the tooltip text twice: once
     // visibly, and once in a visually-hidden role="tooltip" span used for
-    // the accessible name. Both resolve to the same on-screen tooltip, so
-    // assert at least one match rather than a single exact node.
+    // the accessible name. Both resolve to the same on-screen tooltip.
+    // Pinned to exactly 2 (not `toBeGreaterThan(0)`) so this test actually
+    // proves the visible tooltip renders on hover, not just that some
+    // matching text exists somewhere (a greater-than-0 check would also
+    // pass if only the visually-hidden duplicate rendered and the visible
+    // content silently failed to show). If @radix-ui/react-tooltip is ever
+    // bumped past 1.2.8 and this duplicate-node behavior goes away, this
+    // will need to become `.toBe(1)` — do not bump the dependency to "fix"
+    // this test without confirming the duplicate node is actually gone.
     const matches = await screen.findAllByText("extra detail");
-    expect(matches.length).toBeGreaterThan(0);
+    expect(matches.length).toBe(2);
   });
 });

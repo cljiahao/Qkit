@@ -93,6 +93,22 @@ describe("DashboardNav", () => {
     );
   });
 
+  it("shows the vendor's real stall name as the account subtitle, not a generic label", async () => {
+    const user = userEvent.setup();
+    render(<DashboardNav {...baseProps} />);
+
+    expect(screen.getAllByText("Kopi Corner").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Vendor account")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    expect(screen.getAllByText("Kopi Corner").length).toBeGreaterThan(1);
+  });
+
+  it("falls back to a generic subtitle when the vendor has no name set", () => {
+    render(<DashboardNav {...baseProps} vendorName="" />);
+    expect(screen.getAllByText("Your stall").length).toBeGreaterThan(0);
+  });
+
   it("stamps data-tour=nav-account on the account trigger", () => {
     render(<DashboardNav {...baseProps} />);
     expect(

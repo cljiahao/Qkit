@@ -46,8 +46,20 @@ export default async function DashboardLayout({
         padding and are invalid semantics. A plain <div> keeps the one thing
         that <header> wasn't already covering (print:hidden) without adding
         a second landmark.
+
+        `contents` is load-bearing, not decorative: the inner <header> is
+        `position: sticky`, which is constrained to its containing block. A
+        plain wrapper div's box IS that containing block, and it's exactly
+        the header's own height, so the header would never have room to
+        stick — it'd scroll away like a static element. `display: contents`
+        removes the wrapper's own box from layout, so <header> becomes a
+        direct flex item of this component's `min-h-screen flex flex-col`
+        container instead — the same containing block it had pre-migration,
+        when qkit's own <header> was that flex item directly. `print:hidden`
+        still wins under `@media print` since `display: none` on an
+        ancestor hides descendants regardless of their own `display` value.
       */}
-      <div className="print:hidden">
+      <div className="contents print:hidden">
         <DashboardNav
           signOut={signOut}
           vendorName={vendor.name}

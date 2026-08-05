@@ -69,6 +69,19 @@ const HELP_CATEGORIES: {
   { value: "other", label: "Something else" },
 ];
 
+// @merqo/ui's getHelp.onSubmit types `category` as a bare `string | undefined`
+// (it has no knowledge of qkit's own category literals), so narrow it back
+// to SupportMessageInput["category"] by checking membership in the values
+// qkit itself offered via HELP_CATEGORIES, instead of asserting the type.
+const HELP_CATEGORY_VALUES: readonly string[] = HELP_CATEGORIES.map(
+  (c) => c.value,
+);
+function isHelpCategory(
+  value: string | undefined,
+): value is SupportMessageInput["category"] {
+  return value !== undefined && HELP_CATEGORY_VALUES.includes(value);
+}
+
 /**
  * Dashboard nav — composes `@merqo/ui`'s `DashboardNav`/`AccountMenu` for the
  * sticky header row (burger + inline links + account dropdown) instead of
@@ -110,7 +123,12 @@ export function DashboardNav({
         name: vendorName || "Account",
         avatarUrl: avatarUrl ?? undefined,
         tier,
-        subtitle: "Vendor account",
+        // `subtitle` is the only line @merqo/ui's AccountMenu renders next
+        // to the trigger and in the dropdown header, so it can't carry both
+        // a generic descriptor and the vendor's real name — the actual
+        // stall name is far more useful here than a static "Vendor
+        // account" label.
+        subtitle: vendorName || "Your stall",
       }}
       signOutAction={signOut}
       kitLocalSettingsHref="/dashboard/settings"
@@ -119,7 +137,7 @@ export function DashboardNav({
         type: "form",
         onSubmit: async ({ message, category }) => {
           const res = await submitSupportMessage({
-            category: (category ?? "other") as SupportMessageInput["category"],
+            category: isHelpCategory(category) ? category : "other",
             body: message,
           });
           if (!res.success) throw new Error(res.error);
