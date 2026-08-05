@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
-import { makeQkitImageUpload } from "@/lib/image-upload-adapter";
+import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
@@ -161,7 +161,7 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                 pathPrefix={vendorId}
                 value={item.image_url ?? null}
                 onChange={(url) => update(i, { image_url: url })}
-                onUpload={makeQkitImageUpload(vendorId)}
+                onUpload={uploadQkitImage}
                 resizeImage={resizeToWebp}
                 imageComponent={MediaImage}
                 variant="thumb"

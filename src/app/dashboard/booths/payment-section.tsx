@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImageUploader, InfoTooltip } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
-import { makeQkitImageUpload } from "@/lib/image-upload-adapter";
+import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
@@ -342,7 +342,7 @@ export function PaymentSection({
                     qr_image_url: url ?? undefined,
                   })
                 }
-                onUpload={makeQkitImageUpload(vendorId)}
+                onUpload={uploadQkitImage}
                 resizeImage={resizeToWebp}
                 imageComponent={MediaImage}
               />

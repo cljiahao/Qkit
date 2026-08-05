@@ -29,7 +29,7 @@ import {
 import { ImageUploader } from "@merqo/ui";
 import { Section } from "@/components/ticket-section";
 import { MediaImage } from "@/components/media-image";
-import { makeQkitImageUpload } from "@/lib/image-upload-adapter";
+import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
@@ -201,7 +201,7 @@ export function BoothForm({
                 pathPrefix={vendorId}
                 value={imageUrl}
                 onChange={setImageUrl}
-                onUpload={makeQkitImageUpload(vendorId)}
+                onUpload={uploadQkitImage}
                 resizeImage={resizeToWebp}
                 imageComponent={MediaImage}
                 variant="banner"

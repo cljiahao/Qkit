@@ -11,7 +11,7 @@ import { ImageUploader } from "@merqo/ui";
 import { Section } from "@/components/ticket-section";
 import { SocialLinksFields } from "@/components/social-links-fields";
 import { MediaImage } from "@/components/media-image";
-import { makeQkitImageUpload } from "@/lib/image-upload-adapter";
+import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction } from "@/hooks/use-async-action";
@@ -226,7 +226,7 @@ export function ProfileForm({
               pathPrefix={vendorId}
               value={avatar}
               onChange={saveAvatar}
-              onUpload={makeQkitImageUpload(vendorId)}
+              onUpload={uploadQkitImage}
               resizeImage={resizeToWebp}
               imageComponent={MediaImage}
               variant="thumb"

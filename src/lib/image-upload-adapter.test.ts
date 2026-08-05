@@ -20,14 +20,14 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-import { makeQkitImageUpload } from "./image-upload-adapter";
+import { uploadQkitImage } from "./image-upload-adapter";
 
 beforeEach(() => {
   h.uploadMock.mockReset();
   h.getPublicUrlMock.mockReset();
 });
 
-describe("makeQkitImageUpload", () => {
+describe("uploadQkitImage", () => {
   it("uploads to the booth-images bucket at vendorId/<uuid>.<ext> and returns the public URL", async () => {
     h.uploadMock.mockResolvedValue({ error: null });
     h.getPublicUrlMock.mockReturnValue({
@@ -37,8 +37,7 @@ describe("makeQkitImageUpload", () => {
       },
     });
 
-    const upload = makeQkitImageUpload("vendor-123");
-    const url = await upload({
+    const url = await uploadQkitImage({
       bucket: "booth-images",
       path: "vendor-123/some-uuid.webp",
       blob: new Blob(["x"], { type: "image/webp" }),
@@ -57,9 +56,8 @@ describe("makeQkitImageUpload", () => {
   it("propagates a storage upload failure", async () => {
     h.uploadMock.mockResolvedValue({ error: new Error("upload failed") });
 
-    const upload = makeQkitImageUpload("vendor-123");
     await expect(
-      upload({
+      uploadQkitImage({
         bucket: "booth-images",
         path: "vendor-123/x.webp",
         blob: new Blob(["x"]),
