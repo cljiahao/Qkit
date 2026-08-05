@@ -14,7 +14,10 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with: { fetch-depth: 0 }
       - name: Require no change-narration comments (apply 'skip-comment-check' label to bypass)
-        env: { LABELS: "${{ join(github.event.pull_request.labels.*.name, ' ') }}" }
+        env:
+          {
+            LABELS: "${{ join(github.event.pull_request.labels.*.name, ' ') }}",
+          }
         run: |
           patterns=".claude/comment-hygiene-patterns.txt"
           base="origin/${{ github.base_ref }}"
