@@ -35,10 +35,6 @@ prompt, metric })`: compact rating widget posting to
   interaction, skipped under reduced motion), decorative (`aria-hidden`).
 - `hero-preview-carousel.dom.test.tsx` — RTL test for carousel dot
   navigation/active state.
-- `image-uploader.tsx` — `ImageUploader({ vendorId, value, onChange, variant
-})`: client-side resize-to-WebP (`resizeToWebp`, capped 1600px banner /
-  1000px thumb) then upload to the `booth-images` Supabase Storage bucket;
-  validates type (jpeg/png/webp) and a 15MB source cap.
 - `item-customizer.tsx` — `ItemCustomizer({ item, onClose, onAdd })`: a
   bottom `Sheet` for picking a menu item's option groups (single-select via
   `ToggleGroup type="single"`, multi-select via `type="multiple"`, keyed by
