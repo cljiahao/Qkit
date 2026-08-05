@@ -1,8 +1,10 @@
 pnpm-lock.yaml
 .claude/.harness-base
+.claude/worktrees
 .next
 node_modules
 coverage
 test-results
 playwright-report
 scripts/demo/out
+PRODUCT.md

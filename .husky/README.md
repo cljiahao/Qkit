@@ -19,14 +19,22 @@ the real hook file below).
     `.ts/.tsx/.js/.mjs/.cjs`), format-docs (`prettier --write` on staged
     `.json/.md/.css`), `tsc --noEmit`, a frozen-lockfile install check when
     `package.json` is staged, a gitleaks secret-scan on staged files (if
-    gitleaks is installed), then the README-coupling nudge. Every
-    `xargs` call uses `-d '\n'` so a staged filename with a space, quote, or
-    apostrophe doesn't get word-split into multiple (wrong) arguments.
+    gitleaks is installed), then the README-coupling nudge and the comment-
+    hygiene nudge. Every `xargs` call uses `-d '\n'` so a staged filename
+    with a space, quote, or apostrophe doesn't get word-split into multiple
+    (wrong) arguments.
   - `pre-push.sh` — runs `.claude/verify-harness.sh` (integrity check) plus
     `pnpm run check && pnpm test`.
   - `readme-coupling.sh` — pre-commit nudge (non-blocking): warns to stderr
     when staged files touch a folder whose `README.md` wasn't also staged;
     the commit still proceeds.
+  - `comment-hygiene.sh` — pre-commit nudge (non-blocking): scans staged
+    `.ts/.tsx/.js/.jsx/.mjs/.cjs` files for change-narration comments and
+    oversized (`>5`-line) comment blocks against
+    `../../.claude/comment-hygiene-patterns.txt`; warns to stderr, the
+    commit still proceeds. Same pattern source as
+    `.claude/hooks/post-edit-comment-check.sh` and the `comment-hygiene` CI
+    job, which hard-fails on added lines instead of warning.
   - `commit-msg-check.sh` — Conventional Commits gate: validates the commit
     message's first line against
     `^(feat|fix|chore|docs|style|refactor|test|ci|perf|build|revert)(\(scope\))?: description`,

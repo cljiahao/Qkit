@@ -6,7 +6,7 @@ set -euo pipefail
 manifest=".claude/harness.json"
 [ -f "$manifest" ] || { echo "verify-harness: $manifest missing" >&2; exit 2; }
 
-guard='^(\.claude/hooks/|\.claude/settings\.json$|\.claude/(verify|regen)-harness\.sh$|\.husky/|\.gitleaks\.toml$|\.github/workflows/)'
+guard='^(\.claude/hooks/|\.claude/settings\.json$|\.claude/(verify|regen)-harness\.sh$|\.claude/comment-hygiene-patterns\.txt$|\.husky/|\.gitleaks\.toml$|\.github/workflows/)'
 
 # Hashes the blob git actually has stored at HEAD for this path, not the working-tree
 # file — a raw disk read is not portable: Windows checkouts with core.autocrlf=true

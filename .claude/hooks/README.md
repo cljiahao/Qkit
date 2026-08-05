@@ -11,6 +11,7 @@ harness.
 
 - `block-no-verify.sh` — PreToolUse(Bash): blocks `--no-verify`/`-n` on `git commit`, `HUSKY=0`/`HUSKY_SKIP_HOOKS`/`core.hooksPath=` bypasses, direct commits to `main`, force-push to a protected branch, `git checkout/restore` on guard-layer files, and recursive-force `rm` on source directories; exit 2 blocks
 - `post-edit-typecheck.sh` — PostToolUse(Edit\|Write), `.ts`/`.tsx` files only: runs incremental `tsc --noEmit` and surfaces the last 5 lines; feedback-only, never blocks
+- `post-edit-comment-check.sh` — PostToolUse(Edit\|Write), `.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs` files only: scans the edited file for change-narration comments (`// was X, now Y`) and oversized (`>5`-line) comment blocks against the patterns in `../comment-hygiene-patterns.txt`, surfacing hits via `hookSpecificOutput.additionalContext`; feedback-only, never blocks
 - `post-tool-failure.sh` — PostToolUseFailure: writes the failed tool's name/error to stderr so the model can self-correct; always exits 0
 - `protect-files.sh` — PreToolUse(Edit\|Write): hard-blocks (exit 2) writes to `.env*` (except `.env.example`/`.env.default`), CI/CD pipeline files, secrets directories, and cert/credential files; asks for human approval on other protected files (AGENTS.md/CLAUDE.md, `docs/CONSTITUTION.md`, `.claude/settings.json`, `.claude/hooks/*`, `.claude/agents/*`, `.mcp.json`, the harness manifest/verifier/regen scripts, `.claude/.harness-base/*`, `Dockerfile`, `.husky/*`/`.gitleaks.toml`)
 - `session-context.sh` — SessionStart(startup\|resume\|clear\|compact): re-injects the first 30 lines of `AGENTS.md`, all of `docs/CONSTITUTION.md` if present, and a fixed list of always-on invariants (secrets guard, quality gate, feature-branch rule, protected files, architecture boundaries)
@@ -29,7 +30,15 @@ read the tool-call JSON from stdin (via an inline Node one-liner) to pull
 `tool_input.file_path`/`command`/`prompt`; exit code conventions are
 consistent across the set — `exit 2` blocks/forces a fix (stderr surfaces
 to the model), a `permissionDecision: "ask"` JSON payload on stdout with
-`exit 0` requires human approval, plain `exit 0` allows. `verify-harness.sh`
+`exit 0` requires human approval, a `hookSpecificOutput.additionalContext`
+JSON payload on stdout with `exit 0` surfaces feedback without blocking
+(the only way a `PostToolUse` hook's output reaches the model — a plain
+`echo` there goes to the debug log only), plain `exit 0` allows.
+`post-edit-comment-check.sh` shares its pattern list with the warn-only
+`.husky/lib/comment-hygiene.sh` pre-commit check and the hard
+`comment-hygiene` CI gate in `.github/workflows/ci.yml` — one canonical
+source, three enforcement surfaces of increasing strictness.
+`verify-harness.sh`
 (one level up, in `.claude/`) treats every script in this folder as part of
 the integrity-checked enforcement layer.
 
