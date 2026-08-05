@@ -3,12 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PaymentSection } from "./payment-section";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import type { PaymentConfig } from "@/lib/types";
 
 // PaymentSection is controlled, so drive it through a stateful host that feeds
-// the latest value back — mirroring how booth-form wires it. Wrapped in
-// TooltipProvider since each radio option's InfoTooltip needs one.
+// the latest value back — mirroring how booth-form wires it. No local
+// TooltipProvider needed: each radio option's InfoTooltip comes from
+// @merqo/ui, which wraps itself in its own internal TooltipProvider (a
+// separate module instance from qkit's local radix-ui umbrella entirely).
 function Host({
   initial,
   onChange,
@@ -18,16 +19,14 @@ function Host({
 }) {
   const [value, setValue] = useState<PaymentConfig | null>(initial);
   return (
-    <TooltipProvider>
-      <PaymentSection
-        vendorId="v1"
-        value={value}
-        onChange={(next) => {
-          setValue(next);
-          onChange(next);
-        }}
-      />
-    </TooltipProvider>
+    <PaymentSection
+      vendorId="v1"
+      value={value}
+      onChange={(next) => {
+        setValue(next);
+        onChange(next);
+      }}
+    />
   );
 }
 

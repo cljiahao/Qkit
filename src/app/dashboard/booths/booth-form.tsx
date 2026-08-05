@@ -26,8 +26,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ImageUploader } from "@/components/image-uploader";
+import { ImageUploader } from "@merqo/ui";
 import { Section } from "@/components/ticket-section";
+import { MediaImage } from "@/components/media-image";
+import { uploadQkitImage } from "@/lib/image-upload-adapter";
+import { resizeToWebp } from "@/lib/image-resize";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
@@ -194,9 +197,14 @@ export function BoothForm({
                 Banner
               </Label>
               <ImageUploader
-                vendorId={vendorId}
+                bucket="booth-images"
+                pathPrefix={vendorId}
                 value={imageUrl}
                 onChange={setImageUrl}
+                onUpload={uploadQkitImage}
+                resizeImage={resizeToWebp}
+                imageComponent={MediaImage}
+                variant="banner"
               />
             </div>
           </Section>

@@ -28,10 +28,11 @@ sync across devices.
   `prepEstimate`. `revalidate = 0` (always fresh).
 - `settings-form.tsx` — `SettingsForm({ initial, prepEstimate })` client
   component, the actual UI: four `Section` cards (from `ticket-section.tsx`)
-  split across two independent flex-column stacks side by side on `md`+ —
-  "Board timing" + "Notifications" in the left stack, "New-order sound" +
-  "Customer order screen" in the right, each column just `flex flex-col
-gap-5` on its own two sections. Deliberately not a single `md:grid
+  split across `@merqo/ui`'s `TwoColumnSections` (`columnOne`/`columnTwo`
+  props, each an independent `flex flex-col gap-5` stack side by side on
+  `md`+ — the same shared component `../profile/profile-form.tsx` uses) —
+  "Board timing" + "Notifications" in `columnOne`, "New-order sound" +
+  "Customer order screen" in `columnTwo`. Deliberately not a single `md:grid
 md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
   cell in that row, so once "Board timing" (4 inputs) outgrew "New-order
   sound" (1 button row), row 2 started late in _both_ columns — a visible gap
@@ -40,11 +41,10 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
   tightly but lets a card's visual position drift from its actual reading
   order. Every field/switch across all four cards follows the same
   short-label-plus-(i) shape: a one- or two-word `Label`/caption next to an
-  `InfoTooltip` (`@/components/info-tooltip` — the shared (i)-trigger
-  component every one-sentence-explanation spot in the app uses, also used
-  by `Section`'s own header `tooltip` prop) carrying the one-sentence
-  explanation, so no card leans on a long inline paragraph to explain a
-  single control. "Board timing" holds "Turn amber
+  `InfoTooltip` (`@merqo/ui` — the shared (i)-trigger component every
+  one-sentence-explanation spot in the app uses, also used by `Section`'s
+  own header `tooltip` prop) carrying the one-sentence explanation, so no
+  card leans on a long inline paragraph to explain a single control. "Board timing" holds "Turn amber
   after"/"Turn red after" (the aging/overdue minute thresholds), "Undo
   window" (`undo_seconds`, 2-15s, validated live via `boardSettingsSchema`),
   and "Auto-clear after" (`ready_auto_clear_min`, 1-60min, blank/empty =
@@ -90,9 +90,10 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
     success; every call sends the full `BoardSettings` shape (it's one JSONB
     blob), so each section's handler carries every other section's current
     values along to avoid clobbering them.
-- `settings-form.dom.test.tsx` — RTL/jsdom tests (rendered inside
-  `TooltipProvider`, required by the per-field info tooltips, with a
-  `prepEstimate` prop supplied on every render): rejects `overdue_min <=
+- `settings-form.dom.test.tsx` — RTL/jsdom tests (no local `TooltipProvider`
+  needed — the per-field info tooltips come from `@merqo/ui`'s
+  `InfoTooltip`, which wraps itself internally — with a `prepEstimate` prop
+  supplied on every render): rejects `overdue_min <=
 aging_min` and an out-of-range `undo_seconds` client-side without calling
   the action, saves valid thresholds, a changed undo window, and a changed
   `ready_auto_clear_min` value, previews+saves a sound pick, covers both

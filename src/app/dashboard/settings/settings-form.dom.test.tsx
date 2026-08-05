@@ -24,7 +24,6 @@ vi.mock("@/lib/order-alerts", () => ({
 }));
 
 import { SettingsForm } from "./settings-form";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import type { BoardSettings } from "@/lib/types";
 
 const DEFAULTS: BoardSettings = {
@@ -52,9 +51,7 @@ beforeEach(() => {
 describe("SettingsForm thresholds", () => {
   it("rejects overdue <= aging without calling the action", async () => {
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     const overdue = screen.getByLabelText(/turn red after/i);
     await user.clear(overdue);
@@ -70,9 +67,7 @@ describe("SettingsForm thresholds", () => {
   it("saves valid thresholds", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     const aging = screen.getByLabelText(/turn amber after/i);
     await user.clear(aging);
@@ -87,9 +82,7 @@ describe("SettingsForm thresholds", () => {
   it("saves a changed undo window", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     const undoSeconds = screen.getByLabelText(/undo window/i);
     await user.clear(undoSeconds);
@@ -103,9 +96,7 @@ describe("SettingsForm thresholds", () => {
 
   it("rejects an undo window outside 2-15s without calling the action", async () => {
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     const undoSeconds = screen.getByLabelText(/undo window/i);
     await user.clear(undoSeconds);
@@ -117,11 +108,7 @@ describe("SettingsForm thresholds", () => {
 
   it("saves a changed ready-auto-clear minutes value", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
-    render(
-      <TooltipProvider>
-        <SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />
-      </TooltipProvider>,
-    );
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
     const user = userEvent.setup();
     const input = screen.getByLabelText(/auto-clear after/i);
     await user.clear(input);
@@ -137,9 +124,7 @@ describe("SettingsForm sound", () => {
   it("selecting a preset previews it and saves immediately", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     await user.click(screen.getByRole("radio", { name: "Bell" }));
     expect(playSound).toHaveBeenCalledWith("bell");
@@ -153,9 +138,7 @@ describe("SettingsForm desktop notifications", () => {
   it("turning on requests permission then saves", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     await user.click(
       screen.getByRole("switch", { name: /desktop notifications/i }),
@@ -169,9 +152,7 @@ describe("SettingsForm desktop notifications", () => {
   it("reverts and shows an error when permission is denied", async () => {
     requestNotifyPermission.mockResolvedValueOnce("denied");
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     await user.click(
       screen.getByRole("switch", { name: /desktop notifications/i }),
@@ -191,9 +172,6 @@ describe("SettingsForm desktop notifications", () => {
         initial={{ ...DEFAULTS, desktop_notify: true }}
         prepEstimate={PREP_ESTIMATE}
       />,
-      {
-        wrapper: TooltipProvider,
-      },
     );
 
     expect(
@@ -216,9 +194,7 @@ describe("SettingsForm customer order screen", () => {
   it("saves the daily order-number reset toggle", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     await user.click(
       screen.getByRole("switch", {
@@ -237,9 +213,7 @@ describe("SettingsForm customer order screen", () => {
   it("saves the show-wait-estimate toggle and disables the backup-prep input while it's off", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     const toggle = screen.getByRole("switch", {
       name: /show a wait-time estimate to customers/i,
@@ -260,9 +234,7 @@ describe("SettingsForm customer order screen", () => {
   it("saves a configured backup prep time", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     const prepMin = screen.getByLabelText(/backup prep time/i);
     await user.type(prepMin, "8");
@@ -283,7 +255,6 @@ describe("SettingsForm customer order screen", () => {
         initial={{ ...DEFAULTS, default_prep_minutes: 8 }}
         prepEstimate={PREP_ESTIMATE}
       />,
-      { wrapper: TooltipProvider },
     );
 
     const prepMin = screen.getByLabelText(/backup prep time/i);
@@ -299,9 +270,7 @@ describe("SettingsForm customer order screen", () => {
 
   it("rejects a backup prep time outside 1-60min without calling the action", async () => {
     const user = userEvent.setup();
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     const prepMin = screen.getByLabelText(/backup prep time/i);
     await user.type(prepMin, "90");
@@ -313,9 +282,7 @@ describe("SettingsForm customer order screen", () => {
   });
 
   it("shows a not-enough-history disclaimer naming the queue-position fallback when no backup is set", () => {
-    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />, {
-      wrapper: TooltipProvider,
-    });
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
 
     expect(
       screen.getByText(/not enough recent order history yet/i),
@@ -329,7 +296,6 @@ describe("SettingsForm customer order screen", () => {
         initial={{ ...DEFAULTS, default_prep_minutes: 8 }}
         prepEstimate={PREP_ESTIMATE}
       />,
-      { wrapper: TooltipProvider },
     );
 
     expect(screen.getByText(/this backup number/i)).toBeInTheDocument();
@@ -341,7 +307,6 @@ describe("SettingsForm customer order screen", () => {
         initial={DEFAULTS}
         prepEstimate={{ avgMinutes: 4, sampleCount: 20, minSample: 10 }}
       />,
-      { wrapper: TooltipProvider },
     );
 
     expect(screen.getByText(/live right now/i)).toBeInTheDocument();

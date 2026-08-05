@@ -13,12 +13,13 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
 - `back-to-top.tsx` — `BackToTop()`: fixed bottom-right scroll-to-top button
   for the landing page, appears past `scrollY > 600`, respects
   `prefers-reduced-motion` for the scroll behavior.
-- `dashboard-tour.tsx` — `DashboardTour({ seen })`: owns the dashboard
-  onboarding tour — a floating "?" replay button plus a lazily-imported
-  `driver.js` overlay (loaded only when the tour actually runs). Auto-runs
-  once for a vendor who hasn't seen it (server-tracked, stamped via
-  `markTourSeen`), can be replayed from any page (navigates back to
-  `/dashboard` first if needed).
+- `dashboard-tour.tsx` — `DashboardTour({ seen })`: thin wiring around
+  `@merqo/ui`'s `DashboardTour` — supplies qkit's own step content
+  (`tour-steps.ts`, resolved lazily via `matchMedia` at tour-start time),
+  `markTourSeen` as `onFirstSeen`, `/dashboard`-route detection, and
+  `scopeClassName="qkit-tour"` for the popover theme. The tour mechanism
+  itself (driver.js lifecycle, auto-run/replay timing, floating "?" replay
+  button, popover styling) lives in the shared package.
 - `dashboard-tour.dom.test.tsx` — RTL tests for the tour's auto-run,
   mark-seen, and cross-page replay behavior.
 - `featured-booths.tsx` — `FeaturedBooths({ featured })`: renders a 3-up grid
@@ -35,15 +36,6 @@ prompt, metric })`: compact rating widget posting to
   interaction, skipped under reduced motion), decorative (`aria-hidden`).
 - `hero-preview-carousel.dom.test.tsx` — RTL test for carousel dot
   navigation/active state.
-- `image-uploader.tsx` — `ImageUploader({ vendorId, value, onChange, variant
-})`: client-side resize-to-WebP (`resizeToWebp`, capped 1600px banner /
-  1000px thumb) then upload to the `booth-images` Supabase Storage bucket;
-  validates type (jpeg/png/webp) and a 15MB source cap.
-- `info-tooltip.tsx` — `InfoTooltip({ children, label })`: the shared (i)
-  trigger + `Tooltip`/`TooltipContent` shape for a one-sentence explanation
-  next to a label/switch/section title — extracted from `ticket-section.tsx`
-  and the settings form's six near-identical inline copies (both now use
-  this instead).
 - `item-customizer.tsx` — `ItemCustomizer({ item, onClose, onAdd })`: a
   bottom `Sheet` for picking a menu item's option groups (single-select via
   `ToggleGroup type="single"`, multi-select via `type="multiple"`, keyed by
@@ -186,15 +178,18 @@ idPrefix })`: the vendor profile/booth-edit form inputs for the four social
   order-status page footer and on a closed booth's menu-page banner.
 - `social-links-row.dom.test.tsx` — RTL tests for `SocialLinksRow`'s
   empty/partial-link rendering.
-- `support-form.tsx` — `SupportForm()`: vendor→admin help-request widget —
-  pick a category (pass/payment/pro/other) + free-text body, posts via
-  `submitSupportMessage`.
 - `ticket-section.tsx` — `Section({ icon, eyebrow, title, description,
-tooltip, children })`: the bordered "ticket card" section shell (icon chip +
-  title + description + content) used by settings/profile/booth-form pages.
-  `tooltip` (optional) renders an `InfoTooltip` next to the title for detail
-  that doesn't need to be visible by default — used by the settings page's
-  Notifications card for its iOS/Android caveat.
+tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
+  passed the local `Ticket` shell via `wrapper` so the header/icon/eyebrow/
+  title/tooltip rendering is shared while the "ticket card" paper visual
+  (scalloped edge, icon chip, spacing) stays qkit-specific. Used by
+  settings/profile/booth-form pages. `tooltip` (optional) renders an
+  `InfoTooltip` next to the title for detail that doesn't need to be visible
+  by default — used by the settings page's Notifications card for its
+  iOS/Android caveat.
+- `ticket-section.dom.test.tsx` — RTL tests confirming `Section` renders
+  inside the local `Ticket` shell, forwards icon/title/description to the
+  shared header, and shows the tooltip on hover.
 - `ticket.tsx` — `Ticket({ as, shadow, radius, dashed, clip, borderColor,
 ...props })`: the shared "kitchen ticket" card look (scalloped/perforated
   edge via the `.ticket` CSS class) — centralizes border/radius/shadow so
@@ -205,8 +200,6 @@ tooltip, children })`: the bordered "ticket card" section shell (icon chip +
   `driver.js` import so it's unit-testable; desktop spotlights each nav
   landmark, mobile spotlights the collapsed hamburger menu instead.
 - `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists.
-- `tour.css` — scoped styles for the `driver.js` popover (`.qkit-tour`
-  class) so the tour overlay matches the app's visual language.
 - `ui/` — the shadcn/ui primitive library everything else in this tree is
   built from. See its own README.
 - `zoomable-image.tsx` — `ZoomableImage({ src, alt, sizes })`: a menu photo
@@ -223,8 +216,8 @@ and is consumed by `src/app/o/[code]/page.tsx`. The `landing-*` family
 `hero-preview-carousel.tsx` and `back-to-top.tsx`. `order-card.tsx` and
 `dashboard-tour.tsx` are consumed by the vendor dashboard
 (`src/app/dashboard`); `ticket.tsx`/`ticket-section.tsx` are the shared card
-shell used by both the dashboard and the ordering flow. `feedback-form.tsx`
-and `support-form.tsx` post to server actions under `src/app/actions/`.
+shell used by both the dashboard and the ordering flow. `feedback-form.tsx` posts
+to a server action under `src/app/actions/`.
 
 ## Parent
 

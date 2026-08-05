@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ImageUploader } from "@/components/image-uploader";
+import { ImageUploader } from "@merqo/ui";
+import { MediaImage } from "@/components/media-image";
+import { uploadQkitImage } from "@/lib/image-upload-adapter";
+import { resizeToWebp } from "@/lib/image-resize";
 import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
@@ -154,9 +157,13 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
           >
             <div className="flex gap-2">
               <ImageUploader
-                vendorId={vendorId}
+                bucket="booth-images"
+                pathPrefix={vendorId}
                 value={item.image_url ?? null}
                 onChange={(url) => update(i, { image_url: url })}
+                onUpload={uploadQkitImage}
+                resizeImage={resizeToWebp}
+                imageComponent={MediaImage}
                 variant="thumb"
               />
               <div className="flex flex-1 flex-col gap-2">

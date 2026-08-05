@@ -9,15 +9,21 @@ order-status page.
 
 ## Contents
 
-- `use-async-action.ts` — `useAsyncAction()` returns `{ pending, run }`; `run` wraps
-  an async handler in `try/finally` so `pending` always resets even if the handler
-  throws (replaces hand-rolled `setBusy(true)…await…setBusy(false)` that left
-  buttons stuck-disabled on a rejection). Also exports `navigatingAway()`, a
-  promise that never resolves, used to keep `pending` true through a
-  `router.push`/`router.replace` transition so a button doesn't flash re-enabled
-  while the old page is still showing.
+- `use-async-action.ts` — `useAsyncAction()` returns `{ pending, error, run, reset }`;
+  a thin adapter over `@merqo/ui`'s `useAsyncAction`, which binds one action at
+  hook-creation time. The adapter binds that fixed action to "call whatever
+  closure you're given" (`(fn) => fn()`), so qkit's call sites keep their original
+  per-call-dynamic-closure shape — `run(async () => { … })` per call, not one
+  action bound up front — with zero changes needed. `run` still wraps the handler
+  in `try/finally` so `pending` always resets even if the handler throws; `error`
+  now surfaces the last rejection and `reset()` clears it. Also re-exports
+  `navigatingAway()` from `@merqo/ui`, a promise that never resolves, used to
+  keep `pending` true through a `router.push`/`router.replace` transition so a
+  button doesn't flash re-enabled while the old page is still showing.
 - `use-async-action.test.tsx` — RTL tests: pending resets on success, resets on a
-  thrown/rejected handler, and stays `true` while the handler is in flight.
+  thrown/rejected handler, stays `true` while the handler is in flight, `error`
+  stays `null` on success and is set (with `run` still re-throwing) on a
+  rejection, and `reset()` clears a stale `error`.
 - `use-now.ts` — `useNow(intervalMs, enabled=true)`: client-only hook that
   re-renders every `intervalMs` with `Date.now()`, driving "time ago"/countdown
   UI; `enabled=false` stops the ticking (e.g. once an order reaches a terminal
@@ -63,10 +69,10 @@ order-status page.
 - `use-polling.ts` and `use-now.ts` have no app-specific dependencies; they are
   consumed by the customer-facing order-status and payment-tracking pages to
   drive periodic status checks and live countdown/elapsed-time display.
-- `use-async-action.ts` has no dependencies beyond React; it is consumed by
-  dashboard and order-flow components that submit server actions from a button
-  (menu editing, order status transitions, checkout) to derive their
-  disabled/loading state.
+- `use-async-action.ts` re-exports (via a thin adapter) `useAsyncAction`/
+  `navigatingAway` from `@merqo/ui`; it is consumed by dashboard and order-flow
+  components that submit server actions from a button (menu editing, order
+  status transitions, checkout) to derive their disabled/loading state.
 
 ## Parent
 

@@ -1,7 +1,8 @@
 // Helpers for reclaiming orphaned booth-image storage objects. Uploads land at
-// a fresh random path each time (image-uploader), so replacing or removing an
-// image, or deleting a booth, leaves the old object behind. saveBooth/deleteBooth
-// use these to remove the objects a booth no longer references.
+// a fresh random path each time (via image-upload-adapter.ts, consumed by
+// @merqo/ui's ImageUploader), so replacing or removing an image, or deleting
+// a booth, leaves the old object behind. saveBooth/deleteBooth use these to
+// remove the objects a booth no longer references.
 
 const PUBLIC_MARKER = "/storage/v1/object/public/booth-images/";
 

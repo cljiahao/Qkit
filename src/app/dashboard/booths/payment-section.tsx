@@ -11,8 +11,10 @@ import {
 } from "@/components/ui/input-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ImageUploader } from "@/components/image-uploader";
-import { InfoTooltip } from "@/components/info-tooltip";
+import { ImageUploader, InfoTooltip } from "@merqo/ui";
+import { MediaImage } from "@/components/media-image";
+import { uploadQkitImage } from "@/lib/image-upload-adapter";
+import { resizeToWebp } from "@/lib/image-resize";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
@@ -27,7 +29,7 @@ function kindOf(v: PaymentConfig | null): Kind {
 }
 
 // Just the label at a glance; the full explanation lives behind an (i)
-// InfoTooltip (see @/components/info-tooltip) instead of a permanently-shown
+// InfoTooltip (from @merqo/ui) instead of a permanently-shown
 // paragraph — matches every other "one more sentence" spot in the app
 // (settings-form.tsx's threshold fields) instead of this being the one place
 // with a wall of always-visible helper text.
@@ -147,7 +149,7 @@ export function PaymentSection({
                 <RadioGroupItem value={k} aria-label={label} />
                 <span className="truncate text-sm font-medium">{label}</span>
               </label>
-              <InfoTooltip label={`More about ${label}`}>{detail}</InfoTooltip>
+              <InfoTooltip content={detail} ariaLabel={`More about ${label}`} />
             </div>
           );
         })}
@@ -329,7 +331,8 @@ export function PaymentSection({
             <div className="space-y-2">
               <Label className={FORM_LABEL_CLASS}>QR image</Label>
               <ImageUploader
-                vendorId={vendorId}
+                bucket="booth-images"
+                pathPrefix={vendorId}
                 variant="thumb"
                 value={pointer?.qr_image_url ?? null}
                 onChange={(url) =>
@@ -339,6 +342,9 @@ export function PaymentSection({
                     qr_image_url: url ?? undefined,
                   })
                 }
+                onUpload={uploadQkitImage}
+                resizeImage={resizeToWebp}
+                imageComponent={MediaImage}
               />
               <p className="text-xs text-muted-foreground">
                 A static QR you already have: your GrabPay, PayLah, or bank QR
