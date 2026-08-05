@@ -185,11 +185,17 @@ idPrefix })`: the vendor profile/booth-edit form inputs for the four social
   pick a category (pass/payment/pro/other) + free-text body, posts via
   `submitSupportMessage`.
 - `ticket-section.tsx` — `Section({ icon, eyebrow, title, description,
-tooltip, children })`: the bordered "ticket card" section shell (icon chip +
-  title + description + content) used by settings/profile/booth-form pages.
-  `tooltip` (optional) renders an `InfoTooltip` next to the title for detail
-  that doesn't need to be visible by default — used by the settings page's
-  Notifications card for its iOS/Android caveat.
+tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
+  passed the local `Ticket` shell via `wrapper` so the header/icon/eyebrow/
+  title/tooltip rendering is shared while the "ticket card" paper visual
+  (scalloped edge, icon chip, spacing) stays qkit-specific. Used by
+  settings/profile/booth-form pages. `tooltip` (optional) renders an
+  `InfoTooltip` next to the title for detail that doesn't need to be visible
+  by default — used by the settings page's Notifications card for its
+  iOS/Android caveat.
+- `ticket-section.dom.test.tsx` — RTL tests confirming `Section` renders
+  inside the local `Ticket` shell, forwards icon/title/description to the
+  shared header, and shows the tooltip on hover.
 - `ticket.tsx` — `Ticket({ as, shadow, radius, dashed, clip, borderColor,
 ...props })`: the shared "kitchen ticket" card look (scalloped/perforated
   edge via the `.ticket` CSS class) — centralizes border/radius/shadow so
