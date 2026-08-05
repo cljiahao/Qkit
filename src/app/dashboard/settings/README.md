@@ -90,9 +90,10 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
     success; every call sends the full `BoardSettings` shape (it's one JSONB
     blob), so each section's handler carries every other section's current
     values along to avoid clobbering them.
-- `settings-form.dom.test.tsx` — RTL/jsdom tests (rendered inside
-  `TooltipProvider`, required by the per-field info tooltips, with a
-  `prepEstimate` prop supplied on every render): rejects `overdue_min <=
+- `settings-form.dom.test.tsx` — RTL/jsdom tests (no local `TooltipProvider`
+  needed — the per-field info tooltips come from `@merqo/ui`'s
+  `InfoTooltip`, which wraps itself internally — with a `prepEstimate` prop
+  supplied on every render): rejects `overdue_min <=
 aging_min` and an out-of-range `undo_seconds` client-side without calling
   the action, saves valid thresholds, a changed undo window, and a changed
   `ready_auto_clear_min` value, previews+saves a sound pick, covers both
