@@ -7,9 +7,12 @@ import { Store, IdCard, KeyRound, UserRound, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ImageUploader } from "@/components/image-uploader";
+import { ImageUploader } from "@merqo/ui";
 import { Section } from "@/components/ticket-section";
 import { SocialLinksFields } from "@/components/social-links-fields";
+import { MediaImage } from "@/components/media-image";
+import { makeQkitImageUpload } from "@/lib/image-upload-adapter";
+import { resizeToWebp } from "@/lib/image-resize";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import {
@@ -219,9 +222,13 @@ export function ProfileForm({
         >
           <div className="flex items-center gap-4">
             <ImageUploader
-              vendorId={vendorId}
+              bucket="booth-images"
+              pathPrefix={vendorId}
               value={avatar}
               onChange={saveAvatar}
+              onUpload={makeQkitImageUpload(vendorId)}
+              resizeImage={resizeToWebp}
+              imageComponent={MediaImage}
               variant="thumb"
             />
             <p className="text-xs text-muted-foreground">

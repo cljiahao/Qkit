@@ -11,8 +11,10 @@ import {
 } from "@/components/ui/input-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ImageUploader } from "@/components/image-uploader";
-import { InfoTooltip } from "@merqo/ui";
+import { ImageUploader, InfoTooltip } from "@merqo/ui";
+import { MediaImage } from "@/components/media-image";
+import { makeQkitImageUpload } from "@/lib/image-upload-adapter";
+import { resizeToWebp } from "@/lib/image-resize";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 
@@ -329,7 +331,8 @@ export function PaymentSection({
             <div className="space-y-2">
               <Label className={FORM_LABEL_CLASS}>QR image</Label>
               <ImageUploader
-                vendorId={vendorId}
+                bucket="booth-images"
+                pathPrefix={vendorId}
                 variant="thumb"
                 value={pointer?.qr_image_url ?? null}
                 onChange={(url) =>
@@ -339,6 +342,9 @@ export function PaymentSection({
                     qr_image_url: url ?? undefined,
                   })
                 }
+                onUpload={makeQkitImageUpload(vendorId)}
+                resizeImage={resizeToWebp}
+                imageComponent={MediaImage}
               />
               <p className="text-xs text-muted-foreground">
                 A static QR you already have: your GrabPay, PayLah, or bank QR

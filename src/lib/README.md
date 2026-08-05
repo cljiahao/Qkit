@@ -88,6 +88,14 @@ unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
 - `image-resize.ts` — `resizeToWebp(file, maxDim, quality)`: browser-only
   Canvas resize + WebP re-encode before upload (EXIF-orientation-aware),
   falling back to the original file on any decode/encode failure.
+- `image-upload-adapter.ts` — `makeQkitImageUpload(vendorId)`: factory
+  returning `@merqo/ui`'s `ImageUploader` `onUpload` backend — writes the
+  already-resized blob to the `booth-images` Supabase Storage bucket at the
+  path the component built (`${pathPrefix}/${uuid}.${ext}`, `pathPrefix` set
+  to the vendor id at each call site) and resolves the public URL; throws on
+  a storage error so `ImageUploader` surfaces it via its own `onError`.
+- `image-upload-adapter.test.ts` — tests a successful upload/public-URL
+  round trip and that a storage error propagates as a rejection.
 - `merqo-auth.ts` — `bearerOk`/`provisionBearerOk`: constant-time bearer-token
   checks against `MERQO_METRICS_SECRET`/`MERQO_PROVISION_SECRET` respectively
   — deliberately separate secrets, since leaking the routine metrics-polling
