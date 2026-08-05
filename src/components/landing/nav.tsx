@@ -1,15 +1,16 @@
 import Link from "next/link";
+import { LandingNav } from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 
 export function Nav({ authed }: { authed: boolean }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/85 px-5 py-4 backdrop-blur-md">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between">
-        {/* Plain <a>, not next/link's Link: this is a same-page hash jump
-            (already on "/"), and Link doesn't reliably update the URL bar's
-            hash when only the fragment changes — it scrolls but leaves the
-            old hash showing. A native anchor always gets this right. */}
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+    <LandingNav
+      wordmark={
+        // Plain <a>, not next/link's Link: this is a same-page hash jump
+        // (already on "/"), and Link doesn't reliably update the URL bar's
+        // hash when only the fragment changes — it scrolls but leaves the
+        // old hash showing. A native anchor always gets this right.
+        // eslint-disable-next-line @next/next/no-html-link-for-pages
         <a
           href="/#top"
           aria-label="qkit home, back to top"
@@ -17,7 +18,9 @@ export function Nav({ authed }: { authed: boolean }) {
         >
           <span className="text-primary">Q</span>Kit
         </a>
-        <div className="flex items-center gap-2">
+      }
+      end={
+        <>
           <Button
             asChild
             variant="ghost"
@@ -40,8 +43,8 @@ export function Nav({ authed }: { authed: boolean }) {
               </Button>
             </>
           )}
-        </div>
-      </nav>
-    </header>
+        </>
+      }
+    />
   );
 }

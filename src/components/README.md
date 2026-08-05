@@ -59,6 +59,9 @@ prompt, metric })`: compact rating widget posting to
 - `landing-cta.tsx` — `LandingCta({ href, children, variant, event })`: a
   landing-page call-to-action `Button`+`Link` that fires an optional
   analytics event (`logEvent`) on click before navigating.
+- `landing/` — the sticky landing-page nav (`Nav`, composing `@merqo/ui`'s
+  `LandingNav` shell) and the standalone wordmark used on the login page
+  (`Wordmark`). See its own README.
 - `landing-ticket.tsx` — `LandingTicket({ t })`: presentational "order chit"
   mirroring the real `OrderCard`'s visual language (status badge, payment
   badge, aging wash, perforated sections) for the landing hero — no server
@@ -213,7 +216,9 @@ built from; `order/` holds components specific to the customer ordering flow
 and is consumed by `src/app/o/[code]/page.tsx`. The `landing-*` family
 (`landing-board`, `landing-boards`, `landing-ticket`, `landing-cta`,
 `featured-booths`) renders the marketing landing page alongside
-`hero-preview-carousel.tsx` and `back-to-top.tsx`. `order-card.tsx` and
+`hero-preview-carousel.tsx`, `back-to-top.tsx`, and `landing/`'s `Nav`. Its
+sibling `landing/`-`Wordmark` is consumed only by the login page, outside the
+landing route. `order-card.tsx` and
 `dashboard-tour.tsx` are consumed by the vendor dashboard
 (`src/app/dashboard`); `ticket.tsx`/`ticket-section.tsx` are the shared card
 shell used by both the dashboard and the ordering flow. `feedback-form.tsx` posts
