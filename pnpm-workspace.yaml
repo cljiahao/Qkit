@@ -1,7 +1,7 @@
 allowBuilds:
-  supabase: true
   esbuild: true
   sharp: true
+  supabase: true
   unrs-resolver: true
   "@merqo/ui": true
 
