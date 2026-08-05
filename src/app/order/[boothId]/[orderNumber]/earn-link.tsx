@@ -7,7 +7,7 @@ type EarnConfig = { enabled: boolean; program_name?: string };
 async function fetchEarnConfig(vendorId: string): Promise<EarnConfig> {
   try {
     const res = await fetch(
-      `${LOOPKIT_URL}/api/merqo/qkit-earn-config?vendor_id=${vendorId}`,
+      `${LOOPKIT_URL}/api/merqo/qkit-earn-config?vendor_id=${encodeURIComponent(vendorId)}`,
       {
         headers: { Authorization: `Bearer ${MERQO_METRICS_SECRET}` },
         cache: "no-store",
@@ -36,7 +36,7 @@ export async function EarnLink({
 
   return (
     <a
-      href={`${loopkitBaseUrl}/earn?order=${orderId}`}
+      href={`${loopkitBaseUrl}/earn?order=${encodeURIComponent(orderId)}`}
       className="text-sm font-medium text-primary underline-offset-4 hover:underline"
     >
       Earn a stamp{config.program_name ? ` — ${config.program_name}` : ""} →
