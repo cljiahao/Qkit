@@ -59,6 +59,15 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("@/lib/supabase/get-user", () => ({ getUser: getUserMock }));
 
+const { createCheckoutMock, confirmCheckoutMock } = vi.hoisted(() => ({
+  createCheckoutMock: vi.fn(),
+  confirmCheckoutMock: vi.fn(),
+}));
+vi.mock("@/lib/paykit/client", () => ({
+  createCheckout: createCheckoutMock,
+  confirmCheckout: confirmCheckoutMock,
+}));
+
 const ID = "00000000-0000-4000-8000-000000000001";
 
 beforeEach(() => {
@@ -88,6 +97,21 @@ beforeEach(() => {
     },
   });
   sweepLt.mockReset().mockResolvedValue({ error: null });
+  createCheckoutMock.mockReset().mockResolvedValue({
+    ok: true,
+    data: { type: "qr", transactionId: "tx1", payload: "0002" },
+  });
+  confirmCheckoutMock.mockReset().mockResolvedValue({
+    ok: true,
+    data: {
+      transactionId: "tx1",
+      status: "confirmed",
+      amountCents: 800,
+      orderRef: ID,
+      claimedAt: null,
+      confirmedAt: "2026-08-11T00:00:00Z",
+    },
+  });
 });
 
 describe("advanceOrder", () => {
@@ -154,33 +178,95 @@ describe("advanceOrder", () => {
 });
 
 describe("confirmOrderPayment", () => {
-  it("confirms a claimed order and stamps paid_at", async () => {
+  it("confirms a claimed order via paykit and mirrors paid_at locally", async () => {
     maybeSingle.mockResolvedValue({
-      data: { id: ID, status: "ready", payment_status: "claimed" },
+      data: {
+        id: ID,
+        status: "ready",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
     });
     const res = await confirmOrderPayment(ID);
     expect(res).toEqual({ success: true });
+    expect(createCheckoutMock).toHaveBeenCalledWith({
+      vendorId: "v1",
+      amountCents: 800,
+      orderRef: ID,
+    });
+    expect(confirmCheckoutMock).toHaveBeenCalledWith("tx1");
     expect(update).toHaveBeenCalledWith({
       payment_status: "confirmed",
       paid_at: expect.any(String),
     });
   });
 
-  it("is idempotent when already confirmed (no write)", async () => {
+  it("is idempotent when already confirmed (no paykit call, no write)", async () => {
     maybeSingle.mockResolvedValue({
-      data: { id: ID, status: "ready", payment_status: "confirmed" },
+      data: {
+        id: ID,
+        status: "ready",
+        payment_status: "confirmed",
+        total_cents: 800,
+      },
     });
     const res = await confirmOrderPayment(ID);
     expect(res).toEqual({ success: true });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
 
   it("rejects an order that doesn't take payment", async () => {
     maybeSingle.mockResolvedValue({
-      data: { id: ID, status: "ready", payment_status: "not_required" },
+      data: {
+        id: ID,
+        status: "ready",
+        payment_status: "not_required",
+        total_cents: 800,
+      },
     });
     const res = await confirmOrderPayment(ID);
     expect(res.success).toBe(false);
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure when paykit's checkout call fails", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "ready",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    createCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await confirmOrderPayment(ID);
+    expect(res).toEqual({ success: false, error: "Failed to confirm payment" });
+    expect(confirmCheckoutMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure when paykit's confirm call fails", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "ready",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    confirmCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await confirmOrderPayment(ID);
+    expect(res).toEqual({ success: false, error: "Failed to confirm payment" });
     expect(update).not.toHaveBeenCalled();
   });
 });

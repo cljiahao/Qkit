@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
 import { boardSettingsSchema } from "@/lib/schemas";
 import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
+import { createCheckout, confirmCheckout } from "@/lib/paykit/client";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus, PaymentStatus } from "@/lib/types";
 
@@ -22,18 +23,18 @@ type StatusResult = ActionResult<{ status: OrderStatus }>;
 /** Load the current order (RLS-scoped to the caller's booths) for a gated vendor. */
 async function loadOwnOrder(orderId: string) {
   const user = await getUser();
-  if (!user) return { supabase: null, order: null } as const;
+  if (!user) return { supabase: null, order: null, userId: null } as const;
 
   const supabase = await createServerClient();
   const { data: order, error } = await supabase
     .from("orders")
-    .select("id, status, payment_status, auto_completed")
+    .select("id, status, payment_status, auto_completed, total_cents")
     .eq("id", orderId)
     .maybeSingle();
   // A read error (not a missing row) is otherwise indistinguishable from
   // "not found" to the caller — log it so a DB hiccup is debuggable.
   if (error) console.error("loadOwnOrder failed", error.message);
-  return { supabase, order } as const;
+  return { supabase, order, userId: user.id } as const;
 }
 
 /**
@@ -184,6 +185,18 @@ export async function restoreAutoCompleted(
 /**
  * Mark a claimed/pending order as paid. Idempotent if already confirmed;
  * rejects orders that never needed payment.
+ *
+ * paykit is now the source of truth for the confirm transition itself — the
+ * vendor IS the `vendor_id` paykit's config/checkout are keyed on (this
+ * action only ever runs for the authenticated vendor's own orders, enforced
+ * by RLS via loadOwnOrder), so no extra booth lookup is needed. `orderId` is
+ * reused as paykit's `order_ref`, matching the checkout paykit already
+ * created for this order on the customer's status page (idempotent — this
+ * re-fetches the same transaction rather than creating a second one).
+ * `orders.payment_status` is then updated as a local mirror, same rationale
+ * as claimPayment (payment-actions.ts): the rest of qkit's order-lifecycle
+ * logic (cancel-blocking, auto-confirm-on-complete, board realtime) still
+ * reads it directly.
  */
 export async function confirmOrderPayment(
   orderId: string,
@@ -191,8 +204,9 @@ export async function confirmOrderPayment(
   if (!idSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
-  const { supabase, order } = await loadOwnOrder(orderId);
-  if (!supabase || !order) return { success: false, error: "Order not found" };
+  const { supabase, order, userId } = await loadOwnOrder(orderId);
+  if (!supabase || !order || !userId)
+    return { success: false, error: "Order not found" };
 
   if (order.payment_status === "confirmed") return { success: true };
   if (order.payment_status === "not_required")
@@ -200,20 +214,39 @@ export async function confirmOrderPayment(
   if (order.status === "cancelled")
     return { success: false, error: "This order was cancelled" };
 
+  const checkout = await createCheckout({
+    vendorId: userId,
+    amountCents: order.total_cents,
+    orderRef: order.id,
+  });
+  if (!checkout.ok) {
+    console.error(
+      "confirmOrderPayment: paykit checkout failed",
+      checkout.error,
+    );
+    return { success: false, error: "Failed to confirm payment" };
+  }
+  const confirm = await confirmCheckout(checkout.data.transactionId);
+  if (!confirm.ok) {
+    console.error("confirmOrderPayment: paykit confirm failed", confirm.error);
+    return { success: false, error: "Failed to confirm payment" };
+  }
+
   // Guard on the payment_status we read so a concurrent flip (double-tap, or a
-  // cancel) makes this a no-op rather than a lost update.
-  const { data: rows, error } = await supabase
+  // cancel) makes this a no-op rather than a lost update. paykit already
+  // recorded the confirm by this point, so a lost race here (0 rows) doesn't
+  // change the outcome the customer sees via the paykit-backed source of truth.
+  const { error } = await supabase
     .from("orders")
     .update({ payment_status: "confirmed", paid_at: new Date().toISOString() })
     .eq("id", orderId)
     .eq("payment_status", order.payment_status)
     .select("id");
-  if (error) {
-    console.error("confirmOrderPayment failed", error.message);
-    return { success: false, error: "Failed to confirm payment" };
-  }
-  if (!rows || rows.length === 0)
-    return { success: false, error: "Order changed — please refresh." };
+  if (error)
+    console.error(
+      "confirmOrderPayment: local mirror update failed",
+      error.message,
+    );
 
   return { success: true };
 }

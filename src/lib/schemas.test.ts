@@ -12,7 +12,6 @@ import {
   parseMenuItems,
   parseOrderItems,
   paymentConfigSchema,
-  parsePaymentConfig,
   profileNameSchema,
   displayNameSchema,
   passwordChangeSchema,
@@ -718,20 +717,6 @@ describe("paymentConfigSchema", () => {
         uen: "91234567",
       }).success,
     ).toBe(false);
-  });
-});
-
-describe("parsePaymentConfig", () => {
-  it("returns the config for a valid pointer", () => {
-    expect(
-      parsePaymentConfig({ kind: "pointer", label: "L", url: "https://a.b" }),
-    ).toEqual({ kind: "pointer", label: "L", url: "https://a.b" });
-  });
-
-  it("returns null for null, malformed, or unknown kind", () => {
-    expect(parsePaymentConfig(null)).toBeNull();
-    expect(parsePaymentConfig({ kind: "paypal" })).toBeNull();
-    expect(parsePaymentConfig({ kind: "paynow" })).toBeNull();
   });
 });
 

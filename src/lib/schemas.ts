@@ -4,7 +4,6 @@ import type {
   MenuItem,
   OptionGroup,
   OrderItem,
-  PaymentConfig,
   SocialLinks,
 } from "@/lib/types";
 import type { BoothHours } from "@/lib/hours";
@@ -299,13 +298,6 @@ export function parseOrderRef(
   if (!orderTokenSchema.safeParse(token).success)
     return { ok: false, field: "token" };
   return { ok: true, ref: { boothId, orderNumber, token } };
-}
-
-/** Parse a JSONB booths.payment value; any malformed shape degrades to null. */
-export function parsePaymentConfig(data: unknown): PaymentConfig | null {
-  if (data == null) return null;
-  const parsed = paymentConfigSchema.safeParse(data);
-  return parsed.success ? parsed.data : null;
 }
 
 // ── Social/website links ─────────────────────────────────────────────────────

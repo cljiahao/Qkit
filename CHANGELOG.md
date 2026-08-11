@@ -6,6 +6,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Payments now route through paykit**, the Merqo family's shared payment
+  kit, instead of qkit's own local PayNow/QR code. Vendors' "quick add
+  PayNow" section now saves to paykit's vendor-scoped config instead of
+  writing the full config to `booths.payment`; the customer checkout panel,
+  "I've paid" claim, and the vendor's "Confirm payment" tap now all call
+  paykit's checkout/claim/confirm API (new `src/lib/paykit/client.ts`) —
+  same rendered QR/link/image experience as before. New env vars
+  `PAYKIT_KIT_SECRET`/`NEXT_PUBLIC_PAYKIT_URL`. This is a local-only cutover
+  for now: paykit hasn't minted a production bearer key for qkit yet, so
+  `PAYKIT_KIT_SECRET` ships unset and every payment call degrades to a clear
+  error until that key exists. One deliberate feature drop: the customer's
+  "Tapped by mistake? Undo" (unclaim) button is gone — paykit has no
+  endpoint to reverse a claim.
+
+### Removed
+
+- **`src/lib/payments/`** (the local EMVCo PayNow QR builder and
+  pointer/PayNow/Stripe render-adapter) — dead code once the paykit cutover
+  above moved checkout rendering to paykit's API.
+
 ### Added
 
 - **`/api/merqo/vendor-provision` endpoint** for Merqo hub push-provisioning —

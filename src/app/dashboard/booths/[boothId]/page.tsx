@@ -4,10 +4,27 @@ import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import {
   parseMenuItems,
   parseBoothHours,
-  parsePaymentConfig,
   parseSocialLinks,
 } from "@/lib/schemas";
 import { BoothForm } from "../booth-form";
+import type { PaymentConfig } from "@/lib/types";
+
+/**
+ * booths.payment now stores only a minimal `{kind}` marker (see
+ * saveBooth/paymentMarker in ../actions.ts) — the full config lives in
+ * paykit, which has no route for a calling kit to read it back (its
+ * `/api/v1/vendors/{id}/config` GET returns only `has_config`/`display_name`,
+ * not the editable fields). So editing an existing config re-selects the
+ * right radio option but starts every text field blank — a known, flagged
+ * limitation of the cutover, not a bug: the vendor re-enters full details
+ * each time they revisit Payment settings.
+ */
+function initialPaymentFromMarker(data: unknown): PaymentConfig | null {
+  const kind = (data as { kind?: string } | null)?.kind;
+  if (kind === "paynow") return { kind: "paynow", payee_name: "" };
+  if (kind === "pointer") return { kind: "pointer", label: "" };
+  return null;
+}
 
 export const revalidate = 0;
 
@@ -57,7 +74,7 @@ export default async function EditBoothPage({ params }: Props) {
           is_active: booth.is_active,
           hours: parseBoothHours(booth.hours),
           menu_items: menuItems,
-          payment: parsePaymentConfig(booth.payment),
+          payment: initialPaymentFromMarker(booth.payment),
           social_links: booth.social_links
             ? parseSocialLinks(booth.social_links)
             : null,

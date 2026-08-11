@@ -66,9 +66,9 @@ export function PaymentSection({
   const pointer = value?.kind === "pointer" ? value : null;
 
   // Which pointer field is live. A vendor can only ever use one at a time
-  // (renderCheckout picks url over qr_image_url when both happen to be set),
-  // so the editor shows exactly one instead of both plus a footnote about
-  // which one wins.
+  // (paykit's renderCheckout adapter picks url over qr_image_url when both
+  // happen to be set), so the editor shows exactly one instead of both plus
+  // a footnote about which one wins.
   const [pointerMode, setPointerMode] = useState<PointerMode>(() =>
     pointer?.qr_image_url && !pointer?.url ? "qr" : "link",
   );

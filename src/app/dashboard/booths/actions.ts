@@ -6,7 +6,9 @@ import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { boothFormSchema, type BoothFormInput } from "@/lib/schemas";
 import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
+import { upsertVendorConfig } from "@/lib/paykit/client";
 import type { ActionResult } from "@/lib/action-result";
+import type { PaymentKind } from "@/lib/types";
 
 // Best-effort removal of orphaned booth-image objects. Never fails the caller —
 // a leaked object is cost creep, not a correctness problem, whereas failing the
@@ -23,6 +25,20 @@ async function removeBoothImages(
 
 type SaveBoothResult = ActionResult<{ boothId: string }>;
 type DeleteBoothResult = ActionResult;
+
+// booths.payment now stores only a minimal `{kind}` marker, not the full
+// config (payee_name/uen/mobile/label/url/qr_image_url live in paykit's
+// vendor_payment_config instead — see saveBooth below). The marker exists
+// solely because `qkit.place_order` (supabase/migrations/0056, unmodified in
+// this cutover) reads `booths.payment->>'kind'` to decide a new order's
+// initial payment_status (pending vs not_required) and there is no SQL-side
+// way to ask paykit instead. `stripe` is reserved-but-dark and unreachable
+// from the form's UI — treat it the same as "no payment" here.
+function paymentMarker(
+  kind: PaymentKind | undefined,
+): { kind: PaymentKind } | null {
+  return kind === "paynow" || kind === "pointer" ? { kind } : null;
+}
 
 /**
  * Hard-delete a booth and (via ON DELETE CASCADE, migration 0009) all of its
@@ -151,13 +167,28 @@ export async function saveBooth(
       };
   }
 
+  // Full payment config now lives in paykit (vendor-scoped, reused across
+  // every booth this vendor runs), not booths.payment — the "quick add
+  // PayNow" section just redirects its write here instead of redesigning the
+  // form. A paykit failure fails the whole save (surfaced via the existing
+  // toast.error(result.error) path) rather than silently losing the vendor's
+  // payment settings.
+  if (data.payment && data.payment.kind !== "stripe") {
+    const result = await upsertVendorConfig(user.id, data.payment);
+    if (!result.ok)
+      return {
+        success: false,
+        error: `Could not save payment settings: ${result.error}`,
+      };
+  }
+
   const row = {
     name: data.name,
     image_url: data.image_url,
     is_active: data.is_active,
     hours,
     menu_items,
-    payment: data.payment,
+    payment: paymentMarker(data.payment?.kind),
     social_links: data.social_links,
     requires_arrival_confirm: data.requires_arrival_confirm,
   };
