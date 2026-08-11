@@ -73,6 +73,14 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   and `orders` whose `booth_id` belongs to them. Active booths are publicly
   readable (customer ordering). Anyone may INSERT an order. The customer status
   page reads via the **service-role client** (bypasses RLS) — server-only.
+- **Payments route through paykit** (a sibling kit; see
+  `../paykit/AGENTS.md`) as of the 2026-08-11 cutover — see "paykit checkout
+  cutover" in Project-Specific Notes below. `booths.payment` (JSONB) and
+  `orders.payment_status` (enum) are unchanged schema-wise and still written,
+  but `booths.payment` now holds only a minimal `{kind}` marker (the full
+  PayNow/pointer config lives in paykit's `vendor_payment_config`, vendor-
+  scoped) and `orders.payment_status` is a local mirror of paykit's
+  transaction state, not the primary record.
 
 ## Rules (always)
 
@@ -270,4 +278,47 @@ Manifest: `.claude/harness.json`
 - Plan of record: `docs/superpowers/plans/2026-06-05-qkit-core.md` (specs in
   `docs/superpowers/specs/`; roadmap/audit/task-registry meta docs in `docs/meta/`).
 - Migrated 15→16 on 2026-06-05 (`middleware.ts`→`proxy.ts`, `next lint`→eslint CLI).
+
+**paykit checkout cutover (2026-08-11):** qkit's local PayNow QR builder and
+payment-config UI were previously self-contained (`src/lib/payments/`,
+`booths.payment`, `orders.payment_status`); this cutover (explicitly
+authorized — see the design precedent in paykit/AGENTS.md's "later, separate
+cutover spec" note, now acted on) replaces the actual checkout mechanics with
+calls to paykit's `/api/v1/*` HTTP API (`src/lib/paykit/client.ts`):
+vendor PayNow/pointer config now saves to paykit's vendor-scoped
+`vendor_payment_config` (`dashboard/booths/actions.ts`'s `saveBooth`, still
+surfaced through the unchanged `PaymentSection` UI), and the customer
+checkout render + claim + vendor confirm (`order/[boothId]/[orderNumber]/
+page.tsx`+`payment-actions.ts`, `dashboard/order-actions.ts`'s
+`confirmOrderPayment`) call paykit's `createCheckout`/`claimCheckout`/
+`confirmCheckout`. `src/lib/payments/` (the local EMVCo QR builder +
+render-adapter) is deleted — nothing reads/writes the full `booths.payment`
+config shape anymore. Two things deliberately were **not** changed, per this
+cutover's own scope:
+
+- `booths.payment` still gets a minimal `{kind}` write (see
+  `paymentMarker` in `booths/actions.ts`) — `qkit.place_order` and
+  `qkit.place_walkup_order` (SQL, migrations 0056/0060-61, out of scope for
+  this cutover) still read `booths.payment->>'kind'` to decide a new order's
+  initial `payment_status`, and there's no SQL-side way to ask paykit
+  instead without a further migration.
+- `orders.payment_status` stays qkit's local mirror, written after a
+  successful paykit call, not replaced — the rest of the order-lifecycle
+  logic that depends on it (cancel-blocking, auto-confirm-on-complete in
+  `buildAdvancePatch`, the realtime board) is unaffected by this cutover.
+
+Known gaps, flagged for follow-up, not fixed here: (1) paykit has no
+"unclaim" endpoint, so the customer's "Tapped by mistake? Undo" affordance
+was removed from `pay-panel.tsx` — a real UX regression from the old local
+behavior, not just a code simplification. (2) paykit's
+`GET /api/v1/vendors/{id}/config` returns only `has_config`/`display_name`,
+not the editable fields, so re-opening the booth-edit Payment section starts
+the right radio option but every text field blank — a vendor must re-enter
+their full PayNow/pointer details each time. (3) `PAYKIT_KIT_SECRET`
+(bearer secret, `.env.example`) has **no real value yet** — paykit hasn't
+minted a production key for `qkit` in this environment — so payments do not
+actually work end-to-end until that key exists on both sides; every
+`paykit/client.ts` call degrades to a clear per-request error rather than
+breaking the build or throwing.
+
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration -->

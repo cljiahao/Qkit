@@ -5,6 +5,13 @@ import { saveBooth, toggleBoothActive } from "./actions";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
+const { upsertVendorConfigMock } = vi.hoisted(() => ({
+  upsertVendorConfigMock: vi.fn(),
+}));
+vi.mock("@/lib/paykit/client", () => ({
+  upsertVendorConfig: upsertVendorConfigMock,
+}));
+
 // Mock the entitlement loader and the supabase server client. saveBooth's entry
 // order is: parse → loadEntitlement → count-cap checks (no DB) → strip
 // hours/stock → createServerClient → active-booth gate → insert|update.
@@ -136,6 +143,10 @@ beforeEach(() => {
   h.state.insertResult = { data: { id: "b-new" }, error: null };
   h.state.updateResult = { data: { id: "b-edit" }, error: null };
   h.state.prevResult = { data: null };
+  upsertVendorConfigMock.mockReset().mockResolvedValue({
+    ok: true,
+    data: { hasConfig: true, displayName: "Cart" },
+  });
 });
 
 describe("saveBooth entitlement enforcement", () => {
@@ -228,6 +239,52 @@ describe("saveBooth entitlement enforcement", () => {
     expect(res).toEqual({ success: true, boothId: "b-new" });
     const row = h.insertSpy.mock.calls[0][0] as { social_links: unknown };
     expect(row.social_links).toEqual(socialLinks);
+  });
+});
+
+describe("saveBooth — payment (paykit cutover)", () => {
+  it("writes the full config to paykit and only a {kind} marker to booths.payment", async () => {
+    const payment = {
+      kind: "paynow" as const,
+      payee_name: "Cart",
+      uen: "53312345A",
+    };
+    const res = await saveBooth(makeBooth({ payment }));
+
+    expect(res).toEqual({ success: true, boothId: "b-new" });
+    expect(upsertVendorConfigMock).toHaveBeenCalledWith("v1", payment);
+    const row = h.insertSpy.mock.calls[0][0] as { payment: unknown };
+    expect(row.payment).toEqual({ kind: "paynow" });
+  });
+
+  it("clears the local marker and never calls paykit when payment is null", async () => {
+    const res = await saveBooth(makeBooth({ payment: null }));
+
+    expect(res).toEqual({ success: true, boothId: "b-new" });
+    expect(upsertVendorConfigMock).not.toHaveBeenCalled();
+    const row = h.insertSpy.mock.calls[0][0] as { payment: unknown };
+    expect(row.payment).toBeNull();
+  });
+
+  it("fails the whole save when paykit rejects the config, without writing the booth", async () => {
+    upsertVendorConfigMock.mockResolvedValue({
+      ok: false,
+      status: 400,
+      error: "Provide either a UEN or a mobile number, not both",
+    });
+    const res = await saveBooth(
+      makeBooth({
+        payment: { kind: "paynow", payee_name: "Cart", uen: "53312345A" },
+      }),
+    );
+
+    expect(res).toEqual({
+      success: false,
+      error:
+        "Could not save payment settings: Provide either a UEN or a mobile number, not both",
+    });
+    expect(h.insertSpy).not.toHaveBeenCalled();
+    expect(h.updateSpy).not.toHaveBeenCalled();
   });
 });
 

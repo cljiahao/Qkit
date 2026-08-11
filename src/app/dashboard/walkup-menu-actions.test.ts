@@ -101,6 +101,22 @@ describe("getWalkupMenu", () => {
     expect(res?.paymentKind).toBe("paynow");
   });
 
+  it("reports expectsPayment=true for the minimal {kind} marker the paykit cutover now stores", async () => {
+    fromMock.mockReturnValue(
+      chain({
+        data: {
+          id: BOOTH_ID,
+          menu_items: [],
+          payment: { kind: "pointer" },
+        },
+        error: null,
+      }),
+    );
+    const res = await getWalkupMenu(BOOTH_ID);
+    expect(res?.expectsPayment).toBe(true);
+    expect(res?.paymentKind).toBe("pointer");
+  });
+
   it("treats a stripe config as not expecting payment (reserved, dark)", async () => {
     fromMock.mockReturnValue(
       chain({

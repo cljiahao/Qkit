@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { PAYKIT_MOCK_SECRET, PAYKIT_MOCK_URL } from "./e2e/paykit-mock";
 
 // E2E smoke layer. Deliberately small — a few critical-path flows against a
 // REAL local Supabase, covering what the mocked unit/component tests cannot:
@@ -21,10 +22,21 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Starts the paykit HTTP mock (e2e/paykit-mock.ts) before the dev server
+  // is confirmed ready; its return value is used as the matching teardown.
+  // No real paykit deployment is reachable in CI, and the checkout-cutover
+  // (src/lib/paykit/client.ts) calls it from the order-status page and the
+  // pay panel's claim action, so customer-order.spec.ts and order-code.spec.ts
+  // need this to reach the "payment sent" / rendered-booth states.
+  globalSetup: "./e2e/global-setup.ts",
   webServer: {
     command: "pnpm dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      NEXT_PUBLIC_PAYKIT_URL: PAYKIT_MOCK_URL,
+      PAYKIT_KIT_SECRET: PAYKIT_MOCK_SECRET,
+    },
   },
 });

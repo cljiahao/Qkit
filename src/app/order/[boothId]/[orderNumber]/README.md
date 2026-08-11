@@ -56,9 +56,15 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   parallel via the **service client** (customers are unauthenticated; the
   token match is what authorizes the read, not RLS), distinguishes a real
   DB error (retryable error boundary) from a genuine 404 (`maybeSingle` →
-  null), computes whether to show the pay panel
-  (`renderCheckout` from `@/lib/payments/adapters`) and, from that same
-  `showPay` gate plus `order.payment_status !== 'confirmed'`, an
+  null), gates the pay panel purely on the local `order.payment_status`
+  mirror (`!== 'not_required'` and not cancelled — set by `qkit.place_order`
+  at order-creation time from `booths.payment`'s `{kind}` marker), and when
+  shown calls paykit's `createCheckout` (`@/lib/paykit/client`, idempotent on
+  `order.id` as `order_ref`) to get the actual QR/link/image to render,
+  degrading to no pay panel (logged, not thrown) on any paykit failure — same
+  "never strand a customer holding a valid order link" philosophy as the
+  vendor-profile/daily-display-number reads below. From that same `showPay`
+  gate plus `order.payment_status !== 'confirmed'`, an
   `awaitingPayment` flag passed to `OrderStatusPoller` so its status copy
   never outruns the actual payment state, and renders the ticket
   header, `OrderStatusPoller`, the resolved social links (`SocialLinksRow`,
@@ -85,25 +91,31 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
 initialStatus, amountCents })` client component: polls `getPaymentStatus`
   every 5s until `confirmed`/`not_required`; renders a QR
   (`react-qr-code`), an uploaded payment-QR image, or a pay link depending on
-  `checkout.type` — the heading names the scan target explicitly ("Scan
-  with your PayNow banking app to pay" for `type: "qr"`, a generic "banking
-  or payment app" for a vendor-uploaded `type: "image"` since its provider
-  is unknown) so a customer doesn't reach for a plain camera/QR scanner,
-  which can't parse an EMVCo payload and would report it as invalid; lets
-  the customer self-report `claimPayment`/
-  `unclaimPayment` ("I've paid" / "Undo"); shows a persistent confirmed state
-  once the vendor marks it paid.
-- `pay-panel.dom.test.tsx` — RTL tests for the claim/unclaim flow, each
-  checkout type's rendering, and the confirmed/not-required terminal states.
-- `payment-actions.ts` — service-client server actions:
-  `getPaymentStatus` (read-only poll target), `claimPayment` (customer
-  self-report, rate-limited 10/60s per IP+booth, narrowly guarded to flip
-  only `pending → claimed`, no-ops on a cancelled order or a repeat claim),
-  `unclaimPayment` (mirror undo, `claimed → pending`, cannot undo a
-  vendor-`confirmed` payment).
-- `payment-actions.test.ts` — unit tests for the claim/unclaim guards,
-  rate-limiting, idempotency, and the re-read fallback that distinguishes a
-  harmless double-tap from a genuine failure.
+  `checkout.type` (now paykit's `CheckoutView`, `@/lib/paykit/client`) — the
+  heading names the scan target explicitly ("Scan with your PayNow banking
+  app to pay" for `type: "qr"`, a generic "banking or payment app" for a
+  vendor-uploaded `type: "image"` since its provider is unknown) so a
+  customer doesn't reach for a plain camera/QR scanner, which can't parse an
+  EMVCo payload and would report it as invalid; lets the customer self-report
+  via `claimPayment` ("I've paid" — no "Undo": paykit has no unclaim
+  endpoint, a deliberate paykit design choice, so that affordance was
+  dropped in the cutover); shows a persistent confirmed state once the
+  vendor marks it paid.
+- `pay-panel.dom.test.tsx` — RTL tests for the claim flow, each checkout
+  type's rendering, and the confirmed/not-required terminal states.
+- `payment-actions.ts` — service-client server actions: `getPaymentStatus`
+  (read-only poll of the local `orders.payment_status` mirror — cheaper than
+  round-tripping paykit every 5s), `claimPayment` (customer self-report,
+  rate-limited 10/60s per IP+booth; calls paykit's `createCheckout`
+  — idempotent, re-fetching the transaction `page.tsx` already created for
+  this order — then `claimCheckout`, and mirrors the result into
+  `orders.payment_status` afterward; no-ops on a cancelled order or a repeat
+  claim without calling paykit again). paykit is authoritative for whether
+  the claim itself succeeded; a failed local mirror write still reports
+  success to the customer.
+- `payment-actions.test.ts` — unit tests for the claim guards, rate-limiting,
+  paykit-call mocking, and idempotency (including "already claimed/confirmed
+  skips paykit entirely").
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal
@@ -137,7 +149,10 @@ link `RecentOrders`/`ReorderButton` construct for a past order. `page.tsx`
 composes `OrderStatusPoller` (polls `status-actions.ts`) and `PayPanel`
 (polls/mutates via `payment-actions.ts`) — both bypass RLS via the service
 client since the customer is anonymous and the per-order `access_token` is
-the sole authorization. `EarnLink` calls out to the separate LoopKit service.
+the sole authorization. `page.tsx` and `payment-actions.ts` both call out to
+paykit's checkout API (`@/lib/paykit/client`) for the actual QR/link/image
+and the claim transition; `EarnLink` calls out to the separate LoopKit
+service.
 
 ## Parent
 

@@ -5,7 +5,6 @@ import { PayPanel } from "./pay-panel";
 
 vi.mock("./payment-actions", () => ({
   claimPayment: vi.fn().mockResolvedValue({ success: true }),
-  unclaimPayment: vi.fn().mockResolvedValue({ success: true }),
   // Poll returns the same status so the effect is a no-op in tests.
   getPaymentStatus: vi.fn().mockResolvedValue("pending"),
 }));
@@ -19,7 +18,7 @@ describe("PayPanel", () => {
         boothId="b"
         orderNumber="12"
         token="tok"
-        checkout={{ type: "qr", payload: "00020101" }}
+        checkout={{ type: "qr", transactionId: "tx1", payload: "00020101" }}
         initialStatus="pending"
         amountCents={800}
       />,
@@ -33,23 +32,21 @@ describe("PayPanel", () => {
     );
   });
 
-  it("lets the customer undo an accidental claim", async () => {
+  it("shows the claimed state with no undo affordance (paykit has no unclaim endpoint)", () => {
     render(
       <PayPanel
         boothId="b"
         orderNumber="12"
         token="tok"
-        checkout={{ type: "qr", payload: "00020101" }}
+        checkout={{ type: "qr", transactionId: "tx1", payload: "00020101" }}
         initialStatus="claimed"
         amountCents={800}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /undo/i }));
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /i've paid/i }),
-      ).toBeInTheDocument(),
-    );
+    expect(screen.getByText(/payment sent/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /undo/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders a pay link for a link checkout", () => {
@@ -58,7 +55,12 @@ describe("PayPanel", () => {
         boothId="b"
         orderNumber="12"
         token="tok"
-        checkout={{ type: "link", url: "https://a.b", label: "PayLah" }}
+        checkout={{
+          type: "link",
+          transactionId: "tx1",
+          url: "https://a.b",
+          label: "PayLah",
+        }}
         initialStatus="pending"
         amountCents={500}
       />,
@@ -75,7 +77,7 @@ describe("PayPanel", () => {
         boothId="b"
         orderNumber="12"
         token="tok"
-        checkout={{ type: "qr", payload: "x" }}
+        checkout={{ type: "qr", transactionId: "tx1", payload: "x" }}
         initialStatus="confirmed"
         amountCents={800}
       />,

@@ -6,8 +6,8 @@ Framework-agnostic business logic for qkit: order/booth/entitlement rules, stats
 and margin aggregation, the Zod schemas that validate every server-action/form
 boundary, and the DB type mirror. Kept free of React and Next.js so it is
 unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
-`payments/` and `supabase/` are the two subfolders that do carry I/O concerns
-(payment-adapter logic and the Supabase client factories, respectively).
+`paykit/` and `supabase/` are the two subfolders that do carry I/O concerns
+(the paykit HTTP client and the Supabase client factories, respectively).
 
 ## Contents
 
@@ -174,8 +174,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   payment auto-confirm-on-complete rule), sorting, age/label formatting, and
   `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth, and
   real-number fallbacks.
-- `payments/` — PayNow QR generation and the payment-method adapter registry
-  (pointer/PayNow/Stripe-stub); see its own README.
+- `paykit/` — server-only HTTP client for paykit's `/api/v1/*` checkout API
+  (vendor config upsert, checkout create/claim/confirm/status); see its own
+  README. Replaced the local PayNow QR builder and payment-method adapter
+  registry that used to live at `payments/` (deleted in the paykit cutover).
 - `plan.test.ts` — tests entitlement resolution across plan/pass/pro
   combinations and the `canAdd*`/`canHaveOptionGroups` gates.
 - `plan.ts` — `Entitlement`/`Tier` model (`FREE`/`PASS`/`PRO` presets),
@@ -231,8 +233,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `loginSchema`, `vendorSchema`, `menuItemFormSchema`/`menuItemSchema`,
   `optionGroupSchema`/`sanitizeOptionGroups`, `boothHoursSchema`/
   `parseBoothHours`, `paymentConfigSchema` (discriminated union over
-  pointer/paynow/stripe with cross-field `.superRefine` rules) and
-  `parsePaymentConfig`, `placeOrderSchema`, `orderRowSchema`/
+  pointer/paynow/stripe with cross-field `.superRefine` rules — validates the
+  vendor-submitted config before `dashboard/booths/actions.ts` forwards it to
+  paykit; `booths.payment` itself now stores only a `{kind}` marker, so
+  there's no longer a `parsePaymentConfig` DB-read counterpart), `placeOrderSchema`, `orderRowSchema`/
   `parseRealtimeOrderEvent`'s dependency, `parseOrderRef` (validates the
   boothId/orderNumber/token triple every customer order action receives),
   `feedbackSchema`, `supportMessageSchema`, `profileNameSchema`/
@@ -314,9 +318,11 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
 
 `supabase/` provides the client factories (`createClient`/`createServerClient`/
 `createServiceClient`) that every Server Action, Route Handler, and Server
-Component in `src/app/` depends on for data access; `payments/` provides the
-adapter registry consumed by booth payment-config rendering and the PayNow QR
-render path. Nearly every other module here is pure (no DB, no React, no
+Component in `src/app/` depends on for data access; `paykit/` provides the
+HTTP client the customer checkout flow (order-status `page.tsx`,
+`payment-actions.ts`) and the vendor "quick add PayNow" form
+(`dashboard/booths/actions.ts`) both call through. Nearly every other module
+here is pure (no DB, no React, no
 `Date.now()` — clocks/`now` are passed as arguments) so it is directly
 unit-tested and covered by `pnpm test:mutation` (Stryker, scoped to `src/lib`).
 `types.ts` is the DB type mirror imported almost everywhere for row shapes;

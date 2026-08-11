@@ -14,13 +14,12 @@ import {
   orderNumberSchema,
   orderTokenSchema,
   parseOrderItems,
-  parsePaymentConfig,
   parseSocialLinks,
   resolveSocialLinks,
 } from "@/lib/schemas";
 import { displayOrderNumber } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
-import { renderCheckout } from "@/lib/payments/adapters";
+import { createCheckout, type CheckoutView } from "@/lib/paykit/client";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
@@ -73,7 +72,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
         .maybeSingle(),
       supabase
         .from("booths")
-        .select("name, payment, vendor_id, social_links")
+        .select("name, vendor_id, social_links")
         .eq("id", boothId)
         .single(),
     ]);
@@ -157,22 +156,38 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
 
-  const paymentConfig = parsePaymentConfig(booth?.payment);
   // Show the pay panel for any payment-expected order (PayPanel renders the QR
   // while pending/claimed and a confirmation once paid, and polls for the flip).
   // A cancelled order must never solicit payment — gate precisely on
   // status==='cancelled' (NOT isTerminal: a *completed* order auto-confirms its
   // payment, and PayPanel then shows the intended "Payment confirmed" panel).
+  // `order.payment_status` (set by qkit.place_order at order-creation time,
+  // from booths.payment's still-locally-written `{kind}` marker — see
+  // dashboard/booths/actions.ts) is the gate; the actual checkout render (QR/
+  // link/image) now comes from paykit, not booths.payment's full content.
   const showPay =
-    paymentConfig != null &&
-    order.payment_status !== "not_required" &&
-    order.status !== "cancelled";
-  const checkout = showPay
-    ? renderCheckout(paymentConfig, {
-        amountCents: order.total_cents,
-        orderRef: order.order_number,
-      })
-    : null;
+    order.payment_status !== "not_required" && order.status !== "cancelled";
+  let checkout: CheckoutView | null = null;
+  if (showPay && booth?.vendor_id) {
+    const result = await createCheckout({
+      vendorId: booth.vendor_id,
+      amountCents: order.total_cents,
+      orderRef: order.id,
+    });
+    // A 422 (no/incomplete paykit config) degrades the same way an
+    // unconfigured local adapter used to: no pay panel content, not a page
+    // error. Any other failure (paykit down, network) degrades the same way
+    // — a customer holding a valid, paid order link must not get a hard
+    // error just because paykit is unreachable (same philosophy as the
+    // vendorProfile/daily-display-number reads below).
+    if (result.ok) checkout = result.data;
+    else
+      console.error(
+        "order-status: paykit checkout failed",
+        result.status,
+        result.error,
+      );
+  }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
