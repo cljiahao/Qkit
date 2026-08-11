@@ -8,6 +8,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Bumped `@merqo/ui` to v0.10.0** and wired its new optional
+  `LinkComponent` prop (`next/link`'s `Link`) into `dashboard-nav.tsx`'s
+  `<DashboardNav>` call site. Previously `DashboardNav`/`AccountMenu` hardcoded
+  a plain `<a>` for internal nav, forcing a full page reload on every click —
+  root-caused elsewhere in the family as the reason an onboarding tour's
+  nav-link spotlight step could abort an unawaited "mark tour seen" write
+  mid-flight, so the tour kept re-triggering. `DashboardNav` forwards
+  `LinkComponent` down to its composed `AccountMenu` internally, and qkit has
+  no standalone `AccountMenu` usage, so this one wiring point covers both.
+
 - **Payments now route through paykit**, the Merqo family's shared payment
   kit, instead of qkit's own local PayNow/QR code. Vendors' "quick add
   PayNow" section now saves to paykit's vendor-scoped config instead of
