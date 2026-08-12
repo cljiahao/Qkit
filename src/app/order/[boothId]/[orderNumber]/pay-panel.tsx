@@ -142,7 +142,7 @@ export function PayPanel({
           <p
             role="status"
             aria-live="polite"
-            className="text-sm font-semibold text-amber-600"
+            className="text-sm font-semibold text-amber-600 dark:text-amber-400"
           >
             Payment sent, waiting for the stall to confirm.
           </p>

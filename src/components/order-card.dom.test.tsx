@@ -518,7 +518,9 @@ describe("OrderCard — pending arrival aging", () => {
     ).toBeNull();
     const clock = screen.getByTitle("Time since the order arrived");
     expect(clock).toHaveAttribute("aria-label", "60 minutes since arrival");
-    expect(clock.className).not.toMatch(/text-amber-600|text-status-cancelled/);
+    expect(clock.className).not.toMatch(
+      /text-status-aging|text-status-cancelled/,
+    );
   });
 });
 
