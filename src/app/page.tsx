@@ -345,14 +345,21 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Trust strip: centered below the hero, above the three steps. Emphasized
-          in the ember so the three reasons to try it stand out. */}
+      {/* Trust strip: centered below the hero, above the three steps. Extends
+          the Ticket/perforation motif here too, as a single scalloped stub
+          strip instead of three generic pill badges, so the hero's left
+          (copy) column picks up a bit of the same distinctive treatment its
+          right (carousel) column already has. Emphasized in the ember so
+          the three reasons to try it stand out. */}
       <section className="mx-auto max-w-5xl px-5 pb-12 text-center">
-        <ul className="flex flex-wrap justify-center gap-3">
+        <Ticket
+          shadow="none"
+          className="mx-auto inline-flex max-w-full flex-wrap items-stretch divide-x divide-dashed divide-primary/30 bg-primary/[0.06]"
+        >
           {TRUST.map((t) => (
-            <li
+            <span
               key={t}
-              className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 text-sm font-semibold text-primary ring-1 ring-inset ring-primary/30 sm:px-5 sm:text-base"
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-primary sm:px-6 sm:text-base"
             >
               <Check
                 className="size-4 sm:size-[1.05rem]"
@@ -360,9 +367,9 @@ export default async function LandingPage() {
                 aria-hidden
               />
               {t}
-            </li>
+            </span>
           ))}
-        </ul>
+        </Ticket>
         <p className="mt-5 text-sm text-muted-foreground">
           Built in Singapore for hawker stalls, night-market &amp; event booths.
         </p>
@@ -408,15 +415,16 @@ export default async function LandingPage() {
         </h2>
         <div className="grid gap-5 sm:grid-cols-3">
           {MOAT.map((m) => (
-            <div
+            <Ticket
               key={m.title}
-              className="rounded-2xl border border-border p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
+              shadow="none"
+              className="p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
             >
               <h3 className="font-display text-xl font-semibold">{m.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {m.body}
               </p>
-            </div>
+            </Ticket>
           ))}
         </div>
       </section>
@@ -432,7 +440,10 @@ export default async function LandingPage() {
         </p>
         <div className="grid gap-5 sm:grid-cols-3">
           {/* Free */}
-          <div className="rounded-2xl border border-border p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]">
+          <Ticket
+            shadow="none"
+            className="p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
+          >
             <p className="font-display text-2xl font-semibold">Free</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Try it with one booth.
@@ -444,10 +455,13 @@ export default async function LandingPage() {
               <li>Today&apos;s stats</li>
               <li>Unlimited orders</li>
             </ul>
-          </div>
+          </Ticket>
 
           {/* Event pass */}
-          <div className="rounded-2xl border border-border p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]">
+          <Ticket
+            shadow="none"
+            className="p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_-24px_oklch(0.4_0.06_45/0.5)]"
+          >
             <div className="flex items-baseline justify-between gap-2">
               <p className="font-display text-2xl font-semibold">Event pass</p>
               <span
@@ -485,7 +499,7 @@ export default async function LandingPage() {
               <li>Sold-out stock caps</li>
               <li>That event&apos;s stats</li>
             </ul>
-          </div>
+          </Ticket>
 
           {/* Monthly Pro */}
           <Ticket
