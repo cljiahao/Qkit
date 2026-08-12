@@ -307,17 +307,21 @@ cutover's own scope:
   logic that depends on it (cancel-blocking, auto-confirm-on-complete in
   `buildAdvancePatch`, the realtime board) is unaffected by this cutover.
 
-Known gaps, flagged for follow-up, not fixed here: (1) paykit has no
-"unclaim" endpoint, so the customer's "Tapped by mistake? Undo" affordance
-was removed from `pay-panel.tsx` — a real UX regression from the old local
-behavior, not just a code simplification. (2) paykit's
-`GET /api/v1/vendors/{id}/config` returns only `has_config`/`display_name`,
-not the editable fields, so re-opening the booth-edit Payment section starts
-the right radio option but every text field blank — a vendor must re-enter
-their full PayNow/pointer details each time. (3) `PAYKIT_KIT_SECRET`
-(bearer secret, `.env.example`) has **no real value yet** — paykit hasn't
-minted a production key for `qkit` in this environment — so payments do not
-actually work end-to-end until that key exists on both sides; every
+**Follow-up gaps closed (2026-08-12):** paykit added an unclaim endpoint and
+started returning full config fields on its vendor-config GET; qkit's side
+of both fixes landed together — the customer's "Tapped by mistake? Undo"
+affordance is back on `pay-panel.tsx` (`unclaimPayment`/`unclaimCheckout`,
+same paykit-is-source-of-truth pattern as `claimPayment`), and re-opening the
+booth-edit Payment section now prefills from paykit's
+`GET /api/v1/vendors/{id}/config` (`getVendorConfig` in `paykit/client.ts`)
+instead of starting every text field blank — the `{kind}`-only marker is now
+only a degrade-path fallback (`initialPaymentFromMarker` in
+`dashboard/booths/[boothId]/page.tsx`) for when that call fails.
+
+Known gap, still not fixed here: `PAYKIT_KIT_SECRET` (bearer secret,
+`.env.example`) has **no real value yet** — paykit hasn't minted a
+production key for `qkit` in this environment — so payments do not actually
+work end-to-end until that key exists on both sides; every
 `paykit/client.ts` call degrades to a clear per-request error rather than
 breaking the build or throwing.
 

@@ -5,6 +5,7 @@ import { PayPanel } from "./pay-panel";
 
 vi.mock("./payment-actions", () => ({
   claimPayment: vi.fn().mockResolvedValue({ success: true }),
+  unclaimPayment: vi.fn().mockResolvedValue({ success: true }),
   // Poll returns the same status so the effect is a no-op in tests.
   getPaymentStatus: vi.fn().mockResolvedValue("pending"),
 }));
@@ -32,7 +33,7 @@ describe("PayPanel", () => {
     );
   });
 
-  it("shows the claimed state with no undo affordance (paykit has no unclaim endpoint)", () => {
+  it("lets the customer undo an accidental claim", async () => {
     render(
       <PayPanel
         boothId="b"
@@ -44,9 +45,12 @@ describe("PayPanel", () => {
       />,
     );
     expect(screen.getByText(/payment sent/i)).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /undo/i }),
-    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /undo/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /i've paid/i }),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("renders a pay link for a link checkout", () => {

@@ -175,9 +175,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth, and
   real-number fallbacks.
 - `paykit/` — server-only HTTP client for paykit's `/api/v1/*` checkout API
-  (vendor config upsert, checkout create/claim/confirm/status); see its own
-  README. Replaced the local PayNow QR builder and payment-method adapter
-  registry that used to live at `payments/` (deleted in the paykit cutover).
+  (vendor config upsert + full read-back, checkout create/claim/unclaim/
+  confirm/status); see its own README. Replaced the local PayNow QR builder
+  and payment-method adapter registry that used to live at `payments/`
+  (deleted in the paykit cutover).
 - `plan.test.ts` — tests entitlement resolution across plan/pass/pro
   combinations and the `canAdd*`/`canHaveOptionGroups` gates.
 - `plan.ts` — `Entitlement`/`Tier` model (`FREE`/`PASS`/`PRO` presets),
