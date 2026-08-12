@@ -100,7 +100,7 @@ export function LandingTicket({ t }: { t: LandingTicketData }) {
                 t.age.tone === "overdue"
                   ? "text-status-cancelled"
                   : t.age.tone === "aging"
-                    ? "text-amber-600"
+                    ? "text-status-aging"
                     : "text-muted-foreground",
               )}
             >

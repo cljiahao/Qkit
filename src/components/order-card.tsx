@@ -725,7 +725,7 @@ export function OrderCard({
                 tone === "overdue"
                   ? "text-status-cancelled"
                   : tone === "aging"
-                    ? "text-amber-600"
+                    ? "text-status-aging"
                     : "text-muted-foreground",
               )}
               title="Time since the order arrived"

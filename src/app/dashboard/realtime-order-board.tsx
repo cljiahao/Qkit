@@ -76,7 +76,7 @@ function LoadErrorBanner() {
   return (
     <div
       role="alert"
-      className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
+      className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
     >
       Couldn&apos;t load your current orders. Some in-flight orders may be
       missing. Refresh to try again.
@@ -406,7 +406,7 @@ export function RealtimeOrderBoard({
       {liveStatus === "disconnected" && (
         <div
           role="status"
-          className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700"
+          className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
         >
           Live updates interrupted, reconnecting. New orders may be delayed; the
           board re-syncs automatically once it&apos;s back.

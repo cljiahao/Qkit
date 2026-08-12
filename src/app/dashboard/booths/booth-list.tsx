@@ -55,7 +55,7 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
               <span
                 className={`mt-1 inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold ${
                   booth.paused
-                    ? "text-amber-600"
+                    ? "text-status-aging"
                     : booth.is_active
                       ? "text-status-ready"
                       : "text-muted-foreground"
