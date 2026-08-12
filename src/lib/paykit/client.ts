@@ -30,6 +30,30 @@ const vendorConfigResponseSchema = z.object({
   display_name: z.string().nullable(),
 });
 
+export type VendorConfigFull = {
+  hasConfig: boolean;
+  displayName: string | null;
+  kind: "paynow" | "pointer" | null;
+  payeeName: string | null;
+  uen: string | null;
+  mobile: string | null;
+  label: string | null;
+  url: string | null;
+  qrImageUrl: string | null;
+};
+
+const vendorConfigFullResponseSchema = z.object({
+  has_config: z.boolean(),
+  display_name: z.string().nullable(),
+  kind: z.enum(["paynow", "pointer"]).nullable(),
+  payee_name: z.string().nullable(),
+  uen: z.string().nullable(),
+  mobile: z.string().nullable(),
+  label: z.string().nullable(),
+  url: z.string().nullable(),
+  qr_image_url: z.string().nullable(),
+});
+
 export type CheckoutView =
   | { type: "qr"; transactionId: string; payload: string }
   | { type: "link"; transactionId: string; url: string; label: string }
@@ -183,6 +207,35 @@ export async function upsertVendorConfig(
   };
 }
 
+/** Read back a vendor's full PayNow/pointer config — the prefill source for
+ *  re-opening a booth's Payment settings (see `EditBoothPage`). Falls back to
+ *  the booth's own `{kind}` marker when this degrades (`ok:false`, e.g. no
+ *  `PAYKIT_KIT_SECRET` in this environment) or reports `hasConfig:false`. */
+export async function getVendorConfig(
+  vendorId: string,
+): Promise<PaykitResult<VendorConfigFull>> {
+  const result = await paykitRequest(
+    `/api/v1/vendors/${vendorId}/config`,
+    vendorConfigFullResponseSchema,
+    { method: "GET" },
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: {
+      hasConfig: result.data.has_config,
+      displayName: result.data.display_name,
+      kind: result.data.kind,
+      payeeName: result.data.payee_name,
+      uen: result.data.uen,
+      mobile: result.data.mobile,
+      label: result.data.label,
+      url: result.data.url,
+      qrImageUrl: result.data.qr_image_url,
+    },
+  };
+}
+
 /** Create (or, idempotently, re-fetch) a checkout for one order. Safe to call
  *  repeatedly for the same `orderRef` — paykit dedupes on (kit_slug,
  *  order_ref) and returns the transaction it already created. 422 (no vendor
@@ -242,14 +295,30 @@ function toTransactionStatus(
 }
 
 /** Customer "I've paid" tap. Idempotent on paykit's side — already
- *  claimed/confirmed is a no-op success, never reverts a confirmed payment.
- *  paykit has no "unclaim" endpoint (deliberate — see AGENTS.md), so there is
- *  no companion undo function here. */
+ *  claimed/confirmed is a no-op success, never reverts a confirmed payment. */
 export async function claimCheckout(
   transactionId: string,
 ): Promise<PaykitResult<TransactionStatus>> {
   const result = await paykitRequest(
     `/api/v1/checkout/${transactionId}/claim`,
+    transactionStatusResponseSchema,
+    { method: "POST" },
+  );
+  return result.ok
+    ? { ok: true, data: toTransactionStatus(result.data) }
+    : result;
+}
+
+/** Customer "Tapped by mistake? Undo" tap — reverts a `claimed` transaction
+ *  back to `pending`. Idempotent on paykit's side (already `pending` is a
+ *  no-op success) and never reverts a `confirmed` transaction — the response
+ *  just echoes `status:"confirmed"` unchanged so the caller can detect
+ *  "too late" and surface that to the customer. */
+export async function unclaimCheckout(
+  transactionId: string,
+): Promise<PaykitResult<TransactionStatus>> {
+  const result = await paykitRequest(
+    `/api/v1/checkout/${transactionId}/unclaim`,
     transactionStatusResponseSchema,
     { method: "POST" },
   );

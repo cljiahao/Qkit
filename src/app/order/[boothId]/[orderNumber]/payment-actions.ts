@@ -4,7 +4,11 @@ import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { parseOrderRef } from "@/lib/schemas";
-import { createCheckout, claimCheckout } from "@/lib/paykit/client";
+import {
+  createCheckout,
+  claimCheckout,
+  unclaimCheckout,
+} from "@/lib/paykit/client";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
 
@@ -91,11 +95,6 @@ async function loadCheckoutContext(
 // logic (board realtime, cancel-blocking, auto-confirm-on-complete) — a
 // failure writing that mirror does not undo an already-successful paykit
 // claim, so it still reports success to the customer.
-//
-// paykit has no "unclaim" endpoint (a deliberate paykit design choice, not an
-// oversight — see paykit/AGENTS.md's transaction model), so there is no
-// longer an undo path here; the "Tapped by mistake? Undo" affordance was
-// dropped from pay-panel.tsx along with unclaimPayment.
 export async function claimPayment(
   boothId: string,
   orderNumber: string,
@@ -160,5 +159,86 @@ export async function claimPayment(
   // paykit already recorded the claim by this point — a mirror-write failure
   // (or losing a race to a concurrent claim from another tab) doesn't change
   // that outcome.
+  return { success: true };
+}
+
+// Undo an accidental "I've paid" tap: revert a still-unverified 'claimed'
+// order back to 'pending'. Mirror of claimPayment, same idempotency shape.
+//
+// There's no stored paykit transaction id for an order — `createCheckout` is
+// idempotent on (kit_slug, order_ref=order.id), so re-calling it here just
+// re-fetches the transaction claimPayment already created earlier, the same
+// lookup mechanism confirmOrderPayment (dashboard/order-actions.ts) uses to
+// reach the same transaction from the vendor side. `unclaimCheckout` is
+// paykit's own authority on whether a revert is still allowed — it refuses
+// to revert a 'confirmed' transaction and just echoes that status back, so
+// the pre-check below (against the local mirror) is a fast path, not the
+// only guard against un-confirming real money.
+export async function unclaimPayment(
+  boothId: string,
+  orderNumber: string,
+  token: string,
+): Promise<ActionResult> {
+  const parsed = parseOrderRef(boothId, orderNumber, token);
+  if (!parsed.ok)
+    return {
+      success: false,
+      error: parsed.field === "booth" ? "Invalid booth" : "Invalid order",
+    };
+
+  const supabase = await createServiceClient();
+
+  const ip = clientIp(await headers());
+  const allowed = await rateLimit(supabase, `unclaim:${boothId}:${ip}`, 10, 60);
+  if (!allowed)
+    return { success: false, error: "Too many attempts — wait a moment." };
+
+  const ctx = await loadCheckoutContext(supabase, boothId, orderNumber, token);
+  if (!ctx) return { success: false, error: "Invalid order" };
+  if (ctx.paymentStatus === "pending") return { success: true };
+  if (ctx.paymentStatus === "confirmed")
+    return {
+      success: false,
+      error: "The stall already confirmed your payment.",
+    };
+  if (ctx.paymentStatus === "not_required")
+    return { success: false, error: "This order doesn't take payment." };
+
+  const checkout = await createCheckout({
+    vendorId: ctx.vendorId,
+    amountCents: ctx.totalCents,
+    orderRef: ctx.orderId,
+  });
+  if (!checkout.ok) {
+    console.error(
+      "unclaimPayment: paykit checkout lookup failed",
+      checkout.error,
+    );
+    return { success: false, error: "Could not undo. Try again." };
+  }
+
+  const unclaim = await unclaimCheckout(checkout.data.transactionId);
+  if (!unclaim.ok) {
+    console.error("unclaimPayment: paykit unclaim failed", unclaim.error);
+    return { success: false, error: "Could not undo. Try again." };
+  }
+  if (unclaim.data.status === "confirmed")
+    return {
+      success: false,
+      error: "The stall already confirmed your payment.",
+    };
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ payment_status: "pending" })
+    .eq("booth_id", boothId)
+    .eq("order_number", orderNumber)
+    .eq("access_token", token)
+    .eq("payment_status", "claimed")
+    .neq("status", "cancelled")
+    .select("id");
+  if (error)
+    console.error("unclaimPayment: local mirror update failed", error.message);
+
   return { success: true };
 }

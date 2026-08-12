@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { claimPayment, getPaymentStatus } from "./payment-actions";
+import {
+  claimPayment,
+  unclaimPayment,
+  getPaymentStatus,
+} from "./payment-actions";
 
 // Mock the service client. Two tables are queried:
 //   orders:  select().eq().eq().eq().maybeSingle() (loadCheckoutContext read,
@@ -60,13 +64,16 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 vi.mock("next/headers", () => ({ headers: () => Promise.resolve({}) }));
 
-const { createCheckoutMock, claimCheckoutMock } = vi.hoisted(() => ({
-  createCheckoutMock: vi.fn(),
-  claimCheckoutMock: vi.fn(),
-}));
+const { createCheckoutMock, claimCheckoutMock, unclaimCheckoutMock } =
+  vi.hoisted(() => ({
+    createCheckoutMock: vi.fn(),
+    claimCheckoutMock: vi.fn(),
+    unclaimCheckoutMock: vi.fn(),
+  }));
 vi.mock("@/lib/paykit/client", () => ({
   createCheckout: createCheckoutMock,
   claimCheckout: claimCheckoutMock,
+  unclaimCheckout: unclaimCheckoutMock,
 }));
 
 const BOOTH = "00000000-0000-4000-8000-000000000001";
@@ -105,6 +112,17 @@ beforeEach(() => {
       amountCents: 800,
       orderRef: "o1",
       claimedAt: "2026-08-11T00:00:00Z",
+      confirmedAt: null,
+    },
+  });
+  unclaimCheckoutMock.mockReset().mockResolvedValue({
+    ok: true,
+    data: {
+      transactionId: "tx1",
+      status: "pending",
+      amountCents: 800,
+      orderRef: "o1",
+      claimedAt: null,
       confirmedAt: null,
     },
   });
@@ -252,6 +270,156 @@ describe("claimPayment", () => {
   it("still reports success when the local mirror write fails (paykit already recorded the claim)", async () => {
     writeSelect.mockResolvedValue({ data: null, error: { message: "boom" } });
     const res = await claimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ success: true });
+  });
+});
+
+describe("unclaimPayment", () => {
+  beforeEach(() => {
+    ordersMaybeSingle.mockReset().mockResolvedValue({
+      data: {
+        id: "o1",
+        total_cents: 800,
+        payment_status: "claimed",
+        status: "preparing",
+      },
+    });
+  });
+
+  it("reverts a claimed order via paykit and mirrors the status locally", async () => {
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ success: true });
+    expect(createCheckoutMock).toHaveBeenCalledWith({
+      vendorId: "v1",
+      amountCents: 800,
+      orderRef: "o1",
+    });
+    expect(unclaimCheckoutMock).toHaveBeenCalledWith("tx1");
+    expect(update).toHaveBeenCalledWith({ payment_status: "pending" });
+  });
+
+  it("blocks when rate-limited and never calls paykit", async () => {
+    rateLimitMock.mockResolvedValue(false);
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "Too many attempts — wait a moment.",
+    });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid booth id before creating the client", async () => {
+    const res = await unclaimPayment("not-a-uuid", ORDER, TOKEN);
+    expect(res).toEqual({ success: false, error: "Invalid booth" });
+    expect(createServiceClientMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 'Invalid order' when the order/booth lookup finds nothing", async () => {
+    ordersMaybeSingle.mockResolvedValue({ data: null });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ success: false, error: "Invalid order" });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("stays idempotent when already back to pending, without calling paykit", async () => {
+    ordersMaybeSingle.mockResolvedValue({
+      data: {
+        id: "o1",
+        total_cents: 800,
+        payment_status: "pending",
+        status: "preparing",
+      },
+    });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({ success: true });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to undo a payment the stall already confirmed (local mirror check)", async () => {
+    ordersMaybeSingle.mockResolvedValue({
+      data: {
+        id: "o1",
+        total_cents: 800,
+        payment_status: "confirmed",
+        status: "preparing",
+      },
+    });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "The stall already confirmed your payment.",
+    });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to undo when paykit reports the transaction was confirmed in the meantime", async () => {
+    unclaimCheckoutMock.mockResolvedValue({
+      ok: true,
+      data: {
+        transactionId: "tx1",
+        status: "confirmed",
+        amountCents: 800,
+        orderRef: "o1",
+        claimedAt: "2026-08-11T00:00:00Z",
+        confirmedAt: "2026-08-11T00:05:00Z",
+      },
+    });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "The stall already confirmed your payment.",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an order that never required payment", async () => {
+    ordersMaybeSingle.mockResolvedValue({
+      data: {
+        id: "o1",
+        total_cents: 800,
+        payment_status: "not_required",
+        status: "preparing",
+      },
+    });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "This order doesn't take payment.",
+    });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure when paykit checkout lookup fails", async () => {
+    createCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "Could not undo. Try again.",
+    });
+    expect(unclaimCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure when paykit's unclaim call fails", async () => {
+    unclaimCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "Could not undo. Try again.",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("still reports success when the local mirror write fails (paykit already recorded the revert)", async () => {
+    writeSelect.mockResolvedValue({ data: null, error: { message: "boom" } });
+    const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({ success: true });
   });
 });

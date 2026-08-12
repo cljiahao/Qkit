@@ -6,24 +6,53 @@ import {
   parseBoothHours,
   parseSocialLinks,
 } from "@/lib/schemas";
+import { getVendorConfig } from "@/lib/paykit/client";
 import { BoothForm } from "../booth-form";
 import type { PaymentConfig } from "@/lib/types";
 
 /**
- * booths.payment now stores only a minimal `{kind}` marker (see
- * saveBooth/paymentMarker in ../actions.ts) — the full config lives in
- * paykit, which has no route for a calling kit to read it back (its
- * `/api/v1/vendors/{id}/config` GET returns only `has_config`/`display_name`,
- * not the editable fields). So editing an existing config re-selects the
- * right radio option but starts every text field blank — a known, flagged
- * limitation of the cutover, not a bug: the vendor re-enters full details
- * each time they revisit Payment settings.
+ * Degrade-path fallback for `initialPayment` below, used when paykit's
+ * `getVendorConfig` call fails (e.g. `PAYKIT_KIT_SECRET` unset in this
+ * environment) — `booths.payment` only ever stores a minimal `{kind}`
+ * marker (see saveBooth/paymentMarker in ../actions.ts), so this can only
+ * re-select the right radio option; every text field starts blank.
  */
 function initialPaymentFromMarker(data: unknown): PaymentConfig | null {
   const kind = (data as { kind?: string } | null)?.kind;
   if (kind === "paynow") return { kind: "paynow", payee_name: "" };
   if (kind === "pointer") return { kind: "pointer", label: "" };
   return null;
+}
+
+/**
+ * Prefer paykit's own vendor config (the real editable fields) so re-opening
+ * an existing booth's Payment settings starts pre-filled; fall back to the
+ * `{kind}`-only marker when paykit's call degrades or reports no config.
+ */
+async function initialPayment(
+  vendorId: string,
+  boothPayment: unknown,
+): Promise<PaymentConfig | null> {
+  const result = await getVendorConfig(vendorId);
+  if (!result.ok || !result.data.hasConfig)
+    return initialPaymentFromMarker(boothPayment);
+
+  const d = result.data;
+  if (d.kind === "paynow")
+    return {
+      kind: "paynow",
+      payee_name: d.payeeName ?? "",
+      ...(d.uen ? { uen: d.uen } : {}),
+      ...(d.mobile ? { mobile: d.mobile } : {}),
+    };
+  if (d.kind === "pointer")
+    return {
+      kind: "pointer",
+      label: d.label ?? "",
+      ...(d.url ? { url: d.url } : {}),
+      ...(d.qrImageUrl ? { qr_image_url: d.qrImageUrl } : {}),
+    };
+  return initialPaymentFromMarker(boothPayment);
 }
 
 export const revalidate = 0;
@@ -60,6 +89,8 @@ export default async function EditBoothPage({ params }: Props) {
     stock: m.stock,
   }));
 
+  const payment = await initialPayment(vendor.id, booth.payment);
+
   return (
     <div className="mx-auto max-w-lg md:max-w-4xl">
       <h1 className="font-display mb-6 text-3xl font-semibold">Edit booth</h1>
@@ -74,7 +105,7 @@ export default async function EditBoothPage({ params }: Props) {
           is_active: booth.is_active,
           hours: parseBoothHours(booth.hours),
           menu_items: menuItems,
-          payment: initialPaymentFromMarker(booth.payment),
+          payment,
           social_links: booth.social_links
             ? parseSocialLinks(booth.social_links)
             : null,

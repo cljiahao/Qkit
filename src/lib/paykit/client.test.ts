@@ -1,8 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   upsertVendorConfig,
+  getVendorConfig,
   createCheckout,
   claimCheckout,
+  unclaimCheckout,
   confirmCheckout,
   getCheckoutStatus,
 } from "./client";
@@ -108,6 +110,87 @@ describe("upsertVendorConfig", () => {
   });
 });
 
+describe("getVendorConfig", () => {
+  it("GETs the config route and maps a full paynow config to camelCase", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        has_config: true,
+        display_name: "Kopitiam Cart",
+        kind: "paynow",
+        payee_name: "Kopitiam Cart",
+        uen: "53312345A",
+        mobile: null,
+        label: null,
+        url: null,
+        qr_image_url: null,
+      }),
+    );
+    const res = await getVendorConfig(VENDOR);
+    expect(res).toEqual({
+      ok: true,
+      data: {
+        hasConfig: true,
+        displayName: "Kopitiam Cart",
+        kind: "paynow",
+        payeeName: "Kopitiam Cart",
+        uen: "53312345A",
+        mobile: null,
+        label: null,
+        url: null,
+        qrImageUrl: null,
+      },
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe(
+      `https://paykit.example/api/v1/vendors/${VENDOR}/config`,
+    );
+    expect(init.method).toBe("GET");
+  });
+
+  it("maps a no-config response with every field null", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        has_config: false,
+        display_name: null,
+        kind: null,
+        payee_name: null,
+        uen: null,
+        mobile: null,
+        label: null,
+        url: null,
+        qr_image_url: null,
+      }),
+    );
+    const res = await getVendorConfig(VENDOR);
+    expect(res).toEqual({
+      ok: true,
+      data: {
+        hasConfig: false,
+        displayName: null,
+        kind: null,
+        payeeName: null,
+        uen: null,
+        mobile: null,
+        label: null,
+        url: null,
+        qrImageUrl: null,
+      },
+    });
+  });
+
+  it("rejects a malformed success body instead of returning garbage", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { has_config: true }));
+    const res = await getVendorConfig(VENDOR);
+    expect(res.ok).toBe(false);
+  });
+
+  it("reports a network failure without throwing", async () => {
+    fetchMock.mockRejectedValue(new Error("fetch failed"));
+    const res = await getVendorConfig(VENDOR);
+    expect(res).toEqual({ ok: false, status: null, error: "fetch failed" });
+  });
+});
+
 describe("createCheckout", () => {
   it("maps a qr response", async () => {
     fetchMock.mockResolvedValue(
@@ -176,7 +259,7 @@ describe("createCheckout", () => {
   });
 });
 
-describe("claimCheckout / confirmCheckout / getCheckoutStatus", () => {
+describe("claimCheckout / unclaimCheckout / confirmCheckout / getCheckoutStatus", () => {
   const statusBody = {
     transaction_id: TX,
     status: "claimed",
@@ -205,6 +288,40 @@ describe("claimCheckout / confirmCheckout / getCheckoutStatus", () => {
       `https://paykit.example/api/v1/checkout/${TX}/claim`,
     );
     expect(init.method).toBe("POST");
+  });
+
+  it("unclaimCheckout posts to the unclaim route and maps the reverted status", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, { ...statusBody, status: "pending", claimed_at: null }),
+    );
+    const res = await unclaimCheckout(TX);
+    expect(res).toEqual({
+      ok: true,
+      data: {
+        transactionId: TX,
+        status: "pending",
+        amountCents: 800,
+        orderRef: "order-1",
+        claimedAt: null,
+        confirmedAt: null,
+      },
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe(
+      `https://paykit.example/api/v1/checkout/${TX}/unclaim`,
+    );
+    expect(init.method).toBe("POST");
+  });
+
+  it("unclaimCheckout echoes an already-confirmed status unchanged", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, { ...statusBody, status: "confirmed" }),
+    );
+    const res = await unclaimCheckout(TX);
+    expect(res).toEqual({
+      ok: true,
+      data: expect.objectContaining({ status: "confirmed" }),
+    });
   });
 
   it("confirmCheckout posts to the confirm route", async () => {

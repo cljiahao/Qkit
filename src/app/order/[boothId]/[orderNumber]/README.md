@@ -97,10 +97,9 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
   vendor-uploaded `type: "image"` since its provider is unknown) so a
   customer doesn't reach for a plain camera/QR scanner, which can't parse an
   EMVCo payload and would report it as invalid; lets the customer self-report
-  via `claimPayment` ("I've paid" — no "Undo": paykit has no unclaim
-  endpoint, a deliberate paykit design choice, so that affordance was
-  dropped in the cutover); shows a persistent confirmed state once the
-  vendor marks it paid.
+  via `claimPayment` ("I've paid"), with a "Tapped by mistake? Undo" text
+  button (calling `unclaimPayment`) while `claimed` and unconfirmed; shows a
+  persistent confirmed state once the vendor marks it paid.
 - `pay-panel.dom.test.tsx` — RTL tests for the claim flow, each checkout
   type's rendering, and the confirmed/not-required terminal states.
 - `payment-actions.ts` — service-client server actions: `getPaymentStatus`
@@ -110,12 +109,18 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
   — idempotent, re-fetching the transaction `page.tsx` already created for
   this order — then `claimCheckout`, and mirrors the result into
   `orders.payment_status` afterward; no-ops on a cancelled order or a repeat
-  claim without calling paykit again). paykit is authoritative for whether
-  the claim itself succeeded; a failed local mirror write still reports
-  success to the customer.
-- `payment-actions.test.ts` — unit tests for the claim guards, rate-limiting,
-  paykit-call mocking, and idempotency (including "already claimed/confirmed
-  skips paykit entirely").
+  claim without calling paykit again), and `unclaimPayment` (the "Tapped by
+  mistake? Undo" companion, same rate-limit/lookup shape; re-fetches the same
+  paykit transaction via `createCheckout` — there's no stored transaction id
+  — then calls `unclaimCheckout`, idempotent on already-`pending` and
+  refusing to revert a `confirmed` transaction, which paykit enforces itself
+  and this mirrors with a fast local pre-check). paykit is authoritative for
+  whether the claim/unclaim itself succeeded; a failed local mirror write
+  still reports success to the customer.
+- `payment-actions.test.ts` — unit tests for the claim/unclaim guards,
+  rate-limiting, paykit-call mocking, and idempotency (including "already
+  claimed/confirmed skips paykit entirely" and "already pending/confirmed
+  skips paykit entirely" for unclaim).
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal
