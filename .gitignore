@@ -59,5 +59,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# impeccable skill local scratch
+PRODUCT.md
+.impeccable/
+
 # git worktrees (local scratch)
 .worktrees/
+.claude/worktrees/
