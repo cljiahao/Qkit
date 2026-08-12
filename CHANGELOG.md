@@ -8,6 +8,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Design pass from a completed frontend-design/impeccable critique: the
+  dashboard toolbar's "New order" button is now the visually primary action,
+  matching its usage frequency in queue-heavy event mode; removed the
+  confusing "The pass" eyebrow above the order board heading (read as a
+  plan-tier label, not load-bearing copy); MOAT and pricing cards now use
+  the Ticket motif consistently with How-it-works instead of drifting to
+  plain bordered divs; the order card's number/name (the most-scanned
+  element) is no longer wrapped in a dashed "empty state" border, with the
+  bump affordance moved to its own icon chip so reading and acting are
+  visually distinct; and the landing trust strip now uses a perforated
+  ticket-stub treatment instead of generic pill badges.
 - **Bumped `@merqo/ui` to v0.10.0** and wired its new optional
   `LinkComponent` prop (`next/link`'s `Link`) into `dashboard-nav.tsx`'s
   `<DashboardNav>` call site. Previously `DashboardNav`/`AccountMenu` hardcoded
