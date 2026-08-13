@@ -189,4 +189,15 @@ describe("PaymentSection", () => {
       qr_image_url: undefined,
     });
   });
+
+  it("links out to paykit's vendor dashboard", () => {
+    render(<Host initial={null} onChange={vi.fn()} />);
+    const link = screen.getByRole("link", { name: /manage payments.*paykit/i });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://paykit-sg.vercel.app/dashboard",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
 });

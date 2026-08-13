@@ -22,6 +22,11 @@ type Kind = "none" | "pointer" | "paynow";
 type PointerMode = "link" | "qr";
 type PaynowProxyMode = "uen" | "mobile";
 
+// Mirrors src/lib/paykit/client.ts's fallback — duplicated since this is a
+// client component reading NEXT_PUBLIC_* directly.
+const PAYKIT_URL =
+  process.env.NEXT_PUBLIC_PAYKIT_URL ?? "https://paykit-sg.vercel.app";
+
 function kindOf(v: PaymentConfig | null): Kind {
   if (!v) return "none";
   // 'stripe' is reserved-but-dark — surface it as "none" in the editor.
@@ -354,6 +359,15 @@ export function PaymentSection({
           )}
         </div>
       )}
+
+      <a
+        href={`${PAYKIT_URL}/dashboard`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        Manage payments, transactions &amp; refunds in paykit ↗
+      </a>
     </div>
   );
 }
