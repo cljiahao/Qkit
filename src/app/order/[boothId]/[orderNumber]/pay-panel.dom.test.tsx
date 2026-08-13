@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PayPanel } from "./pay-panel";
 
@@ -18,7 +18,19 @@ vi.mock("./qr-image", () => ({
     .mockResolvedValue(new Blob(["x"], { type: "image/png" })),
 }));
 
+// navigator.share/canShare don't exist in jsdom by default — tests that add
+// them via Object.assign must remove them again so later tests see the same
+// unset starting point regardless of execution order.
+const hadShare = "share" in navigator;
+const hadCanShare = "canShare" in navigator;
+
 describe("PayPanel", () => {
+  afterEach(() => {
+    if (!hadShare) delete (navigator as { share?: unknown }).share;
+    if (!hadCanShare) delete (navigator as { canShare?: unknown }).canShare;
+    vi.clearAllMocks();
+  });
+
   it("shows a QR and, after I've paid, a claimed state", async () => {
     render(
       <PayPanel
