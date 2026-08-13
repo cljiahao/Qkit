@@ -28,7 +28,7 @@ export function Section({
       wrapper={(content) => (
         <Ticket
           as="section"
-          className="mb-5 break-inside-avoid-column px-6 py-6"
+          className="mb-5 flex flex-col gap-4 break-inside-avoid-column px-6 py-6"
         >
           {content}
         </Ticket>

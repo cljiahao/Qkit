@@ -14,6 +14,19 @@ describe("Section", () => {
     expect(container.querySelector(".ticket")).toBeInTheDocument();
   });
 
+  it("stacks the header and body with a gap (the shared Section's own gap-4 doesn't apply once wrapped in a non-flex Ticket)", () => {
+    const { container } = render(
+      <Section icon={<span />} title="Stall name" description="desc">
+        <p>content</p>
+      </Section>,
+    );
+    expect(container.querySelector(".ticket")).toHaveClass(
+      "flex",
+      "flex-col",
+      "gap-4",
+    );
+  });
+
   it("renders the icon, title, and description via the shared Section header", () => {
     render(
       <Section
