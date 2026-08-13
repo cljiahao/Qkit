@@ -71,6 +71,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **"Save QR image" on the customer order page's payment panel**, plus
+  clearer same-device PayNow instructions. A QR checkout previously had no
+  reliable way for the customer to hand the code to a banking app on the
+  _same_ phone it's displayed on — this renders the on-screen QR to a PNG
+  (`qr-image.ts`'s `renderSvgToPngBlob`) with a real quiet-zone border baked
+  in (not just the on-screen wrapper padding, which isn't part of what gets
+  rasterized) and shares it via the Web Share API where available, falling
+  back to a direct download, with copy pointing the customer at "scan it
+  from your photos" in their banking app.
 - **`/api/merqo/vendor-provision` endpoint** for Merqo hub push-provisioning —
   lets a vendor one-click-activate qkit from the Merqo dashboard (creates a
   free-tier `vendors` row and seeds the shared vendor profile), guarded by a
