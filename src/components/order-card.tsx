@@ -54,8 +54,14 @@ function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   const map = {
     pending: { label: "Unpaid", cls: "bg-secondary text-foreground" },
     // Filled, high-contrast — the actionable state.
-    claimed: { label: "Says paid", cls: "bg-blue-600 text-white" },
-    confirmed: { label: "Paid", cls: "bg-emerald-600 text-white" },
+    claimed: {
+      label: "Says paid",
+      cls: "bg-status-payment-claimed text-white",
+    },
+    confirmed: {
+      label: "Paid",
+      cls: "bg-status-payment-confirmed text-white",
+    },
   } as const;
   const v = map[status];
   return (
@@ -540,7 +546,7 @@ export function OrderCard({
         {!closed && payStatus === "claimed" && (
           <div className="px-4 pb-3">
             <Button
-              className="h-12 w-full rounded-lg bg-blue-600 text-base font-bold text-white hover:bg-blue-700"
+              className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
               onClick={confirmPayment}
               disabled={updating}
             >
@@ -552,7 +558,7 @@ export function OrderCard({
           <div className="px-4 pb-3">
             <Button
               size="sm"
-              className="h-10 w-full rounded-lg bg-blue-600 font-semibold text-white hover:bg-blue-700"
+              className="h-10 w-full rounded-lg bg-status-payment-claimed font-semibold text-white hover:bg-status-payment-claimed/90"
               onClick={confirmPayment}
               disabled={updating}
             >

@@ -8,6 +8,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Second-pass frontend-design/impeccable critique, hunting for what the
+  first pass missed: the app's dark theme (a full `.dark` palette in
+  `globals.css`, contrast-audited as recently as the previous entry) was
+  completely unreachable — no theme toggle and no OS-preference detection
+  ever applied the `.dark` class, so every `dark:`-variant style in the
+  codebase was dead code and vendors got the light theme regardless of
+  their device setting, including at night-market events. Root layout now
+  applies `.dark` from `prefers-color-scheme` via a `beforeInteractive`
+  script (no FOUC) and keeps listening for a live day→night switch. Also
+  found the payment-status badge and its "Mark as paid"/"Confirm payment
+  received" buttons (`order-card.tsx`, plus the identical duplicated map
+  in the landing hero's `landing-ticket.tsx`) using raw `bg-blue-600`/
+  `bg-emerald-600` Tailwind colors with no dark-mode pairing, instead of
+  this project's own `--status-*` design-token convention — replaced with
+  new `--status-payment-claimed`/`--status-payment-confirmed` tokens
+  (light + dark). And the global 404 page's copy ("Scan the booth's QR
+  code again to start a fresh order") was shown even when a vendor or
+  admin hit a stale link inside `/dashboard` or `/admin` (e.g. a deleted
+  booth's edit page) — added segment-scoped `not-found.tsx` pages with
+  vendor/admin-appropriate copy for those two trees.
 - Design pass from a completed frontend-design/impeccable critique: the
   dashboard toolbar's "New order" button is now the visually primary action,
   matching its usage frequency in queue-heavy event mode; removed the

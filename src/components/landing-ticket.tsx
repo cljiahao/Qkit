@@ -40,8 +40,11 @@ const STATUS_LABEL = {
 
 const PAYMENT_BADGE = {
   unpaid: { label: "Unpaid", cls: "bg-secondary text-muted-foreground" },
-  claimed: { label: "Says paid", cls: "bg-blue-600 text-white" },
-  paid: { label: "Paid", cls: "bg-emerald-600 text-white" },
+  claimed: {
+    label: "Says paid",
+    cls: "bg-status-payment-claimed text-white",
+  },
+  paid: { label: "Paid", cls: "bg-status-payment-confirmed text-white" },
 } as const;
 
 export function LandingTicket({ t }: { t: LandingTicketData }) {
