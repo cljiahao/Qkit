@@ -189,7 +189,11 @@ tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
   settings/profile/booth-form pages. `tooltip` (optional) renders an
   `InfoTooltip` next to the title for detail that doesn't need to be visible
   by default — used by the settings page's Notifications card for its
-  iOS/Android caveat.
+  iOS/Android caveat. The `Ticket` wrapper carries its own `flex flex-col
+  gap-4` — the shared `Section`'s default shell provides that gap itself,
+  but opting into `wrapper` bypasses it, so it has to be re-applied here or
+  the header (icon/eyebrow/title/description) sits flush against the first
+  child with no gap.
 - `ticket-section.dom.test.tsx` — RTL tests confirming `Section` renders
   inside the local `Ticket` shell, forwards icon/title/description to the
   shared header, and shows the tooltip on hover.
