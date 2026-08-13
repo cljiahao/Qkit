@@ -417,9 +417,6 @@ export function RealtimeOrderBoard({
         className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            The pass
-          </p>
           <h1 className="font-display text-3xl font-semibold leading-none sm:text-4xl">
             Live orders
           </h1>
@@ -454,7 +451,7 @@ export function RealtimeOrderBoard({
             )
           )}
           <Button
-            variant="outline"
+            variant="default"
             className="rounded-full"
             onClick={() => setWalkupOpen(true)}
             aria-label="New order"

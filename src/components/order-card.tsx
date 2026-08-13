@@ -54,8 +54,14 @@ function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   const map = {
     pending: { label: "Unpaid", cls: "bg-secondary text-foreground" },
     // Filled, high-contrast — the actionable state.
-    claimed: { label: "Says paid", cls: "bg-blue-600 text-white" },
-    confirmed: { label: "Paid", cls: "bg-emerald-600 text-white" },
+    claimed: {
+      label: "Says paid",
+      cls: "bg-status-payment-claimed text-white",
+    },
+    confirmed: {
+      label: "Paid",
+      cls: "bg-status-payment-confirmed text-white",
+    },
   } as const;
   const v = map[status];
   return (
@@ -389,70 +395,63 @@ export function OrderCard({
           />
         )}
         <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
-          {/* The name/number block doubles as the bump affordance: tapping it
-            prompts a confirmation instead of sitting as a separate icon
-            button next to Mark ready, where an accidental tap advanced the
-            wrong thing. Not tappable once already bumped (re-tap would just
-            refresh the timestamp with no visible change) or once closed. */}
-          {!closed && !bumped ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  className="-mx-2 -my-1 min-w-0 rounded-lg border border-dashed border-muted-foreground/40 bg-secondary/40 px-2 py-1 text-left transition-colors hover:border-primary/50 hover:bg-secondary"
-                  disabled={updating}
-                >
-                  <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
-                    #{number}
-                    <Zap
-                      className="size-4 shrink-0 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                  </p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {order.customer_name}
-                  </p>
-                  <p className="mt-1.5 text-[0.55rem] font-medium uppercase tracking-wider text-muted-foreground/50">
-                    Tap to bump
-                  </p>
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Bump order #{number} to front?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Moves this order ahead of the others still waiting in the
-                    queue.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={updating}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction onClick={bump} disabled={updating}>
-                    Bump to front
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 font-mono text-xl font-bold tracking-tight">
+          {/* The number/name block is plain, high-contrast primary data —
+            the single most-scanned element on the board, read one-handed
+            and often with greasy/wet hands. The bump affordance is a
+            separate icon chip so "read the number" and "this is tappable"
+            stay visually distinct signals instead of one dashed, low-
+            emphasis button that used to read as "empty/add here". Not
+            tappable once already bumped (re-tap would just refresh the
+            timestamp with no visible change) or once closed. */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-mono text-xl font-bold tracking-tight">
                 #{number}
-                {!closed && bumped && (
-                  <Zap
-                    className="size-4 shrink-0 text-primary"
-                    aria-label="Manually bumped to the front of the queue"
-                  />
-                )}
               </p>
-              <p className="truncate text-sm text-muted-foreground">
-                {order.customer_name}
-              </p>
+              {!closed && !bumped && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`Bump order #${number} to front`}
+                      className="inline-flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 bg-secondary/40 p-1 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-secondary hover:text-primary"
+                      disabled={updating}
+                    >
+                      <Zap className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Bump order #{number} to front?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Moves this order ahead of the others still waiting in
+                        the queue.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={updating}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction onClick={bump} disabled={updating}>
+                        Bump to front
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              {!closed && bumped && (
+                <Zap
+                  className="size-4 shrink-0 text-primary"
+                  aria-label="Manually bumped to the front of the queue"
+                />
+              )}
             </div>
-          )}
+            <p className="truncate text-sm text-muted-foreground">
+              {order.customer_name}
+            </p>
+          </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <OrderStatusBadge status={status} />
             <PaymentBadge status={payStatus} />
@@ -547,7 +546,7 @@ export function OrderCard({
         {!closed && payStatus === "claimed" && (
           <div className="px-4 pb-3">
             <Button
-              className="h-12 w-full rounded-lg bg-blue-600 text-base font-bold text-white hover:bg-blue-700"
+              className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
               onClick={confirmPayment}
               disabled={updating}
             >
@@ -559,7 +558,7 @@ export function OrderCard({
           <div className="px-4 pb-3">
             <Button
               size="sm"
-              className="h-10 w-full rounded-lg bg-blue-600 font-semibold text-white hover:bg-blue-700"
+              className="h-10 w-full rounded-lg bg-status-payment-claimed font-semibold text-white hover:bg-status-payment-claimed/90"
               onClick={confirmPayment}
               disabled={updating}
             >

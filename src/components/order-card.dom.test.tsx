@@ -446,11 +446,15 @@ describe("OrderCard payment", () => {
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
-  it("makes the name/number block a bump-confirmation trigger for a live, non-bumped order", () => {
+  it("shows a small icon-chip bump-confirmation trigger, separate from the plain name/number block, for a live, non-bumped order", () => {
     render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.getByRole("button", { name: /Ada/ })).toBeInTheDocument();
+    // The number/name block is plain text now (not itself a button) — the
+    // bump affordance lives only in the dedicated icon chip.
+    expect(
+      screen.getByRole("button", { name: /Bump order #0007 to front/i }),
+    ).toBeInTheDocument();
   });
 
   it("calls bumpOrder after confirmation and swaps the trigger for a bumped icon", async () => {
@@ -458,12 +462,14 @@ describe("OrderCard payment", () => {
     render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
       wrapper: TooltipProvider,
     });
-    await user.click(screen.getByRole("button", { name: /Ada/ }));
+    await user.click(
+      screen.getByRole("button", { name: /Bump order #0007 to front/i }),
+    );
     await user.click(screen.getByRole("button", { name: "Bump to front" }));
     expect(bumpOrder).toHaveBeenCalledWith("o1");
     await waitFor(() => {
       expect(
-        screen.queryByRole("button", { name: /Ada/ }),
+        screen.queryByRole("button", { name: /Bump order #0007 to front/i }),
       ).not.toBeInTheDocument();
     });
     expect(
@@ -478,7 +484,7 @@ describe("OrderCard payment", () => {
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /Ada/ }),
+      screen.queryByRole("button", { name: /Bump order #0007 to front/i }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByLabelText(/manually bumped to the front/i),
@@ -492,7 +498,7 @@ describe("OrderCard payment", () => {
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /Ada/ }),
+      screen.queryByRole("button", { name: /Bump order #0007 to front/i }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText(/manually bumped to the front/i),

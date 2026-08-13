@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Fraunces, Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
@@ -63,6 +64,17 @@ export default async function RootLayout({
       className={`${fraunces.variable} ${hanken.variable} ${spaceMono.variable}`}
     >
       <body>
+        {/* Applies the already-built `.dark` palette (see globals.css) from the
+            OS/browser color-scheme preference, since this app has no manual
+            theme toggle. `beforeInteractive` runs before hydration to avoid a
+            flash of the wrong theme, and keeps listening so a mid-shift
+            day→night switch (a real night-market scenario) updates the board
+            live. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {"try{var m=window.matchMedia('(prefers-color-scheme: dark)');" +
+            "var apply=function(e){document.documentElement.classList.toggle('dark',e.matches)};" +
+            "apply(m);m.addEventListener('change',apply);}catch(e){}"}
+        </Script>
         <ServiceWorkerRegistrar />
         <MaintenanceBanner
           enabled={banner.banner_enabled}
