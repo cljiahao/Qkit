@@ -63,8 +63,14 @@ export function PayPanel({
       const a = document.createElement("a");
       a.href = url;
       a.download = "payment-qr.png";
+      // Some browsers (historically Firefox) require the anchor to be in
+      // the DOM for .click() to reliably trigger a download.
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      // Defer the revoke so it doesn't race with/cancel a download that's
+      // still starting in some browsers.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch {
       toast.error("Couldn't prepare the QR to save. Screenshot it instead.");
     } finally {

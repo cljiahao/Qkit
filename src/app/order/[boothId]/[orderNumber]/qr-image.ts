@@ -12,8 +12,24 @@ export async function renderSvgToPngBlob(
   try {
     const img = new Image();
     await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Could not render QR image"));
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(new Error("Timed out loading the QR image"));
+      }, 5000);
+      img.onload = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      img.onerror = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(new Error("Could not render QR image"));
+      };
       img.src = svgUrl;
     });
 
@@ -25,7 +41,13 @@ export async function renderSvgToPngBlob(
     // White background — the QR SVG itself has no fill behind its modules.
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, size, size);
-    ctx.drawImage(img, 0, 0, size, size);
+    // Inset the QR so a real quiet zone (white border) survives in the
+    // rasterized PNG — react-qr-code's serialized SVG has zero margin, and
+    // strict decoders (bank apps scanning from a saved photo) can fail to
+    // read a QR with modules running edge-to-edge. ~8% per side is roughly
+    // the standard 4-module quiet zone for typical PayNow payload sizes.
+    const pad = Math.round(size * 0.08);
+    ctx.drawImage(img, pad, pad, size - pad * 2, size - pad * 2);
 
     const pngBlob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/png"),
