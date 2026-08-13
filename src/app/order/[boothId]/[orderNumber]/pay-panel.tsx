@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import QRCode from "react-qr-code";
-import { Check } from "lucide-react";
+import { Check, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
@@ -15,6 +15,7 @@ import {
   unclaimPayment,
   getPaymentStatus,
 } from "./payment-actions";
+import { renderSvgToPngBlob } from "./qr-image";
 
 const POLL_MS = 5000;
 
@@ -36,6 +37,40 @@ export function PayPanel({
   const [status, setStatus] = useState<PaymentStatus>(initialStatus);
   const { pending: busy, run } = useAsyncAction();
   const [imgError, setImgError] = useState(false);
+  const qrWrapperRef = useRef<HTMLDivElement>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function saveQrImage() {
+    const svg = qrWrapperRef.current?.querySelector("svg");
+    if (!svg) {
+      toast.error("Couldn't prepare the QR to save.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const blob = await renderSvgToPngBlob(svg as SVGSVGElement);
+      const file = new File([blob], "payment-qr.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          return;
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") return;
+          // Share sheet failed for a non-cancel reason — fall through to download.
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "payment-qr.png";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Couldn't prepare the QR to save. Screenshot it instead.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   // Poll until the vendor confirms (terminal for payment), so a "Confirm
   // payment" tap on the board reflects on the customer's page — same poll-only
@@ -110,9 +145,27 @@ export function PayPanel({
       )}
 
       {checkout?.type === "qr" && (
-        <div className="mx-auto w-fit rounded-xl bg-white p-4">
-          <QRCode value={checkout.payload} size={180} />
-        </div>
+        <>
+          <div
+            ref={qrWrapperRef}
+            className="mx-auto w-fit rounded-xl bg-white p-4"
+          >
+            <QRCode value={checkout.payload} size={220} />
+          </div>
+          <Button
+            variant="outline"
+            className="mx-auto flex h-10 w-fit items-center gap-2 rounded-xl"
+            disabled={saving}
+            onClick={saveQrImage}
+          >
+            <Download className="size-4" />
+            Save QR image
+          </Button>
+          <p className="mx-auto max-w-xs text-center text-xs text-muted-foreground">
+            On this phone? Save the QR, then open your banking app and scan it
+            from your photos.
+          </p>
+        </>
       )}
       {checkout?.type === "image" &&
         (imgError ? (
