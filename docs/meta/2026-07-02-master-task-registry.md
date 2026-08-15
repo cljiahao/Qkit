@@ -1,3 +1,10 @@
+> **Superseded 2026-08-15** — kept as the historical source doc (severity/
+> effort/source-id detail lives only here). For current status of every item
+> below, see `2026-08-15-master-task-registry.md`: 46 of 68 items shipped
+> (most within days of this doc, several with the task ID in the commit
+> message itself), 11 are a real remaining backlog, 1 was a considered
+> "won't do," 1 is ambiguous in the original source material.
+
 # qkit — Master Task Registry (consolidated, 2026-07-02)
 
 Consolidates **three audit sweeps** + dependency/CVE scan + toolchain into one prioritized backlog.
