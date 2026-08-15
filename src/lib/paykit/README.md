@@ -31,10 +31,14 @@ amountCents, orderRef})` (idempotent on `orderRef` — safe to call again for
   the production key isn't minted yet — see `.env.example`) and
   bearer-authenticates as `Authorization: Bearer qkit:<secret>`, validating
   every response body against a local Zod schema mirroring paykit's own
-  `src/lib/api-schemas.ts` wire contract.
+  `src/lib/api-schemas.ts` wire contract. Every `vendorId`/`transactionId`
+  interpolated into a request path is `encodeURIComponent`'d, so a value
+  containing `/`, `?`, or `#` can't add extra path segments or query params
+  to the request paykit actually receives.
 - `client.test.ts` — tests the missing-secret degrade path (no network call),
   the bearer header/URL shape, response mapping for each endpoint, non-2xx
-  error-body surfacing, and network-failure handling (never throws).
+  error-body surfacing, network-failure handling (never throws), and that
+  every path-interpolated id is percent-encoded.
 
 ## Connectivity
 
