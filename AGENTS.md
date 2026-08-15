@@ -325,4 +325,20 @@ work end-to-end until that key exists on both sides; every
 `paykit/client.ts` call degrades to a clear per-request error rather than
 breaking the build or throwing.
 
+**Preview OAuth break, `NEXT_PUBLIC_AUTH_COOKIE_DOMAIN` env-scope gap
+(2026-08-13):** Google login on preview deploys was failing
+(`/login?error=oauth`) because Vercel had `NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=
+.merqo.io` (from the 2026-08-02 cross-kit SSO work) scoped to Preview as
+well as Production, contrary to `.env.example`'s own comment. A
+`Domain=.merqo.io` cookie is silently rejected by the browser on a
+`*.vercel.app` host, so the PKCE `code_verifier` cookie never got written
+and `exchangeCodeForSession` (`src/app/auth/callback/route.ts`) failed
+locally with no network call and no log — fixed by adding an error log on
+that branch and rescoping the Vercel env var to Production-only. Full
+writeup: `docs/DEPLOY.md`'s new "Production vs Preview environment
+variables" section. Deliberately **not** doing yet, per user decision same
+day: splitting Preview onto a separate staging Supabase project — Preview
+and Production still share one Supabase project; revisit later, not
+urgent.
+
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration -->
