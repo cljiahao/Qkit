@@ -40,6 +40,10 @@ export function Stat({
   featured?: boolean;
   delay?: number;
 }) {
+  let valueSize: string;
+  if (featured) valueSize = "text-4xl text-primary";
+  else if (big) valueSize = "text-3xl";
+  else valueSize = "text-2xl";
   return (
     <div
       className={cn(
@@ -55,12 +59,7 @@ export function Stat({
         </p>
         {delta !== undefined && <Delta pct={delta} />}
       </div>
-      <p
-        className={cn(
-          "mt-1 font-mono font-bold tabular-nums",
-          featured ? "text-4xl text-primary" : big ? "text-3xl" : "text-2xl",
-        )}
-      >
+      <p className={cn("mt-1 font-mono font-bold tabular-nums", valueSize)}>
         {value}
       </p>
     </div>

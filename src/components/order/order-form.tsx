@@ -18,6 +18,7 @@ import {
   count,
   formatOptions,
   formatPrice,
+  menuItemActionLabel,
   orderHasPricing,
 } from "@/lib/utils";
 import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
@@ -292,6 +293,14 @@ export function OrderForm({
   const hasItems = cartItems.length > 0;
   const cartPriced = orderHasPricing(cartItems);
 
+  let submitLabel: string;
+  if (closed) submitLabel = "Booth closed";
+  else if (submitting) submitLabel = "Placing order…";
+  else if (!hasItems) submitLabel = "Add items to order";
+  else if (cartPriced)
+    submitLabel = `Place order · ${count(itemCount, "item")} · ${formatPrice(total)}`;
+  else submitLabel = `Place order · ${count(itemCount, "item")}`;
+
   // A booth with no menu yet: show a friendly placeholder instead of an empty
   // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).
   if (menuItems.length === 0) {
@@ -321,16 +330,16 @@ export function OrderForm({
             const plainInCart = hasOptions ? undefined : cart.get(item.id);
             const left = remainingFor(remaining, item.id);
             const soldOut = left !== null && left <= 0;
+            let cardTone: string;
+            if (soldOut) cardTone = "border-border opacity-60";
+            else if (plainInCart)
+              cardTone = "border-primary/40 bg-primary/[0.04]";
+            else cardTone = "border-border";
+            const addLabel = menuItemActionLabel(soldOut, hasOptions);
             return (
               <div
                 key={item.id}
-                className={`flex items-center justify-between gap-4 rounded-xl border bg-card p-3.5 transition-colors ${
-                  soldOut
-                    ? "border-border opacity-60"
-                    : plainInCart
-                      ? "border-primary/40 bg-primary/[0.04]"
-                      : "border-border"
-                }`}
+                className={`flex items-center justify-between gap-4 rounded-xl border bg-card p-3.5 transition-colors ${cardTone}`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   {item.image_url && (
@@ -408,7 +417,7 @@ export function OrderForm({
                       onClick={() => onAddClick(item)}
                       disabled={closed || soldOut}
                     >
-                      {soldOut ? "Sold out" : hasOptions ? "Customize" : "Add"}
+                      {addLabel}
                     </Button>
                   )}
                 </div>
@@ -528,15 +537,7 @@ export function OrderForm({
             className="h-14 w-full rounded-xl text-base font-semibold"
             disabled={submitting || !hasItems || closed}
           >
-            {closed
-              ? "Booth closed"
-              : submitting
-                ? "Placing order…"
-                : hasItems
-                  ? cartPriced
-                    ? `Place order · ${count(itemCount, "item")} · ${formatPrice(total)}`
-                    : `Place order · ${count(itemCount, "item")}`
-                  : "Add items to order"}
+            {submitLabel}
           </Button>
         </div>
       </div>

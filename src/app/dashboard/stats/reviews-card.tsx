@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { shortDateTime } from "@/lib/tz";
@@ -144,6 +144,70 @@ interface Props {
   linkable?: boolean;
 }
 
+/** "All booths" body: the overall rollup plus a per-booth comparison list. */
+function AllBoothsRollup({
+  groups,
+  overall,
+  range,
+  linkable,
+}: Pick<Props, "groups" | "overall" | "range"> & { linkable: boolean }) {
+  return (
+    <>
+      {/* Overall rollup across every booth. */}
+      <div className="flex items-center gap-3">
+        <span className="font-display text-4xl font-semibold leading-none">
+          {overall.average?.toFixed(1) ?? "-"}
+        </span>
+        <div>
+          <Stars value={overall.average ?? 0} />
+          <p className="text-xs text-muted-foreground">
+            {overall.count} rating{overall.count === 1 ? "" : "s"} across all
+            booths
+          </p>
+        </div>
+      </div>
+
+      {/* Per-booth comparison — spot the strong and weak booths. */}
+      <ul className="divide-y divide-border/60">
+        {groups.map((g) => {
+          const inner = (
+            <span className="flex items-center justify-between gap-3 py-2">
+              <span className="truncate text-sm font-medium">
+                {g.boothName}
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5 text-sm">
+                <span className="font-semibold">
+                  {g.summary.average?.toFixed(1) ?? "-"}
+                </span>
+                <Stars value={g.summary.average ?? 0} />
+                <span className="text-muted-foreground">
+                  ({g.summary.count})
+                </span>
+              </span>
+            </span>
+          );
+          return (
+            <li key={g.boothId}>
+              {linkable ? (
+                <Link
+                  href={`/dashboard/stats?booth=${g.boothId}${
+                    range ? `&range=${range}` : ""
+                  }`}
+                  className="block rounded-lg px-1 transition-colors hover:bg-secondary/60"
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div className="px-1">{inner}</div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
 /**
  * Customer reviews driven by the page's booth selector.
  * - A specific booth → that booth's detailed reviews.
@@ -161,75 +225,36 @@ export function ReviewsCard({
   const title =
     selected === "all" ? "Customer reviews · all booths" : "Customer reviews";
 
+  let body: ReactNode;
+  if (selected !== "all") {
+    body = (
+      <BoothDetail
+        summary={groups.find((g) => g.boothId === selected)?.summary ?? empty}
+      />
+    );
+  } else if (groups.length === 0) {
+    body = (
+      <p className="text-sm text-muted-foreground">
+        No customer feedback yet. Customers get a prompt after each order.
+      </p>
+    );
+  } else {
+    body = (
+      <AllBoothsRollup
+        groups={groups}
+        overall={overall}
+        range={range}
+        linkable={linkable}
+      />
+    );
+  }
+
   return (
     <section className="space-y-4 rounded-xl border border-border bg-card p-4">
       <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {title}
       </h2>
-
-      {selected !== "all" ? (
-        <BoothDetail
-          summary={groups.find((g) => g.boothId === selected)?.summary ?? empty}
-        />
-      ) : groups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No customer feedback yet. Customers get a prompt after each order.
-        </p>
-      ) : (
-        <>
-          {/* Overall rollup across every booth. */}
-          <div className="flex items-center gap-3">
-            <span className="font-display text-4xl font-semibold leading-none">
-              {overall.average?.toFixed(1) ?? "-"}
-            </span>
-            <div>
-              <Stars value={overall.average ?? 0} />
-              <p className="text-xs text-muted-foreground">
-                {overall.count} rating{overall.count === 1 ? "" : "s"} across
-                all booths
-              </p>
-            </div>
-          </div>
-
-          {/* Per-booth comparison — spot the strong and weak booths. */}
-          <ul className="divide-y divide-border/60">
-            {groups.map((g) => {
-              const inner = (
-                <span className="flex items-center justify-between gap-3 py-2">
-                  <span className="truncate text-sm font-medium">
-                    {g.boothName}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-1.5 text-sm">
-                    <span className="font-semibold">
-                      {g.summary.average?.toFixed(1) ?? "-"}
-                    </span>
-                    <Stars value={g.summary.average ?? 0} />
-                    <span className="text-muted-foreground">
-                      ({g.summary.count})
-                    </span>
-                  </span>
-                </span>
-              );
-              return (
-                <li key={g.boothId}>
-                  {linkable ? (
-                    <Link
-                      href={`/dashboard/stats?booth=${g.boothId}${
-                        range ? `&range=${range}` : ""
-                      }`}
-                      className="block rounded-lg px-1 transition-colors hover:bg-secondary/60"
-                    >
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div className="px-1">{inner}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+      {body}
     </section>
   );
 }

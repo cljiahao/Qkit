@@ -37,7 +37,7 @@
       "path": ".claude/hooks/block-no-verify.sh"
     },
     ".claude/hooks/user-prompt-guard.cjs": {
-      "origin_hash": "d1c376ffcbaba440838b52da3114b4671038042958126c4a316b4ef7de4056f6",
+      "origin_hash": "7d1d56b9b305dd5f3c54f919a07736ad9e5e824ca5d86ee8b77ef40f1cc5cda0",
       "path": ".claude/hooks/user-prompt-guard.cjs"
     },
     ".claude/hooks/post-edit-typecheck.sh": {

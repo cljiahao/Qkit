@@ -64,3 +64,14 @@ export function formatOptions(options?: { choice: string }[] | null): string {
     ? options.map((o) => o.choice).join(" · ")
     : "";
 }
+
+/** Label for a menu item's add/customize button, shared by the customer
+ *  order form and the vendor's walk-up order dialog. */
+export function menuItemActionLabel(
+  soldOut: boolean,
+  hasOptions: boolean,
+): string {
+  if (soldOut) return "Sold out";
+  if (hasOptions) return "Customize";
+  return "Add";
+}

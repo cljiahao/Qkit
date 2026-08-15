@@ -311,7 +311,9 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   (`FORM_LABEL_CLASS`, `FORM_ERROR_CLASS`), `MS_PER_HOUR`/`MS_PER_DAY`,
   `formatPrice`, `centsToDollarString`, `parseDollarsToCents` (keystroke-level
   validation for money inputs), `orderHasPricing`, `count` (pluralized noun),
-  `formatOptions`.
+  `formatOptions`, `menuItemActionLabel` (a menu item's add/customize button
+  label — sold out / customize / add — shared by the customer order form and
+  the vendor's walk-up order dialog).
 - `utils.test.ts` — tests price formatting, dollar-string parsing edge cases,
   and pluralization.
 

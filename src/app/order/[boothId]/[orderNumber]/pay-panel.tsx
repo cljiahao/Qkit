@@ -131,15 +131,16 @@ export function PayPanel({
   }
 
   const claimed = status === "claimed";
+  let payHeading: string;
+  if (checkout?.type === "link") payHeading = "Pay to collect";
+  else if (checkout?.type === "qr")
+    payHeading = "Scan with your PayNow banking app to pay";
+  else payHeading = "Scan with your banking or payment app to pay";
 
   return (
     <section className="space-y-4 px-6 py-5">
       <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        {checkout?.type === "link"
-          ? "Pay to collect"
-          : checkout?.type === "qr"
-            ? "Scan with your PayNow banking app to pay"
-            : "Scan with your banking or payment app to pay"}
+        {payHeading}
       </p>
 
       {/* Echo the amount so the customer keys the right sum (and can sanity-check

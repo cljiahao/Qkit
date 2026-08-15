@@ -177,6 +177,129 @@ function BoothRow({
   );
 }
 
+/**
+ * Which booth tab is showing right now, and which single booth (if any) the
+ * header's own toggle should control directly instead of opening a dialog.
+ * A booth's tab shows only if it's active, still has orders in flight, or is
+ * the one the vendor has the board filtered to right now — a turned-off
+ * booth with a queue stays until it clears, then self-removes. That last
+ * clause matters: without it, pausing the booth you're currently filtered to
+ * (with nothing in flight) dropped it from this list on the very same
+ * render, which collapsed multiBooth to false and yanked both the filter
+ * Select and the header's own toggle out from under the tap that just
+ * paused it.
+ */
+function resolveBoothFilter(
+  booths: BoothView[],
+  filter: BoothFilter,
+  activeCountFor: (id: string) => number,
+): {
+  visibleBooths: BoothView[];
+  multiBooth: boolean;
+  effectiveFilter: BoothFilter;
+  selectedBooth: BoothView | undefined;
+} {
+  const visibleBooths = booths.filter(
+    (b) => b.is_active || activeCountFor(b.id) > 0 || b.id === filter,
+  );
+  const multiBooth = visibleBooths.length > 1;
+
+  // If the selected booth's tab vanished, fall back to All.
+  const effectiveFilter: BoothFilter =
+    filter !== "all" && !visibleBooths.some((b) => b.id === filter)
+      ? "all"
+      : filter;
+  // A vendor who's already filtered the board down to one booth doesn't need
+  // to open a dialog and find that same booth again just to pause it — the
+  // header control becomes that booth's own switch directly.
+  const selectedBooth =
+    multiBooth && effectiveFilter !== "all"
+      ? booths.find((b) => b.id === effectiveFilter)
+      : undefined;
+
+  return { visibleBooths, multiBooth, effectiveFilter, selectedBooth };
+}
+
+/**
+ * Batch mark-ready mode (F3): lets a vendor check off several `preparing`
+ * orders and advance them to `ready` in one tap instead of one at a time.
+ * Reuses the same advanceOrder server action each OrderCard's own single tap
+ * calls — no new bulk RPC, per-row optimistic-concurrency guard still applies
+ * to each id individually.
+ */
+function useMarkReadySelection() {
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const [markingReady, setMarkingReady] = useState(false);
+  async function markSelectedReady() {
+    const ids = Array.from(selectedIds);
+    setMarkingReady(true);
+    try {
+      const results = await Promise.all(ids.map((id) => advanceOrder(id)));
+      const ok = results.filter((r) => r.success).length;
+      const failed = results.length - ok;
+      if (ok > 0)
+        toast.success(`Marked ${ok} order${ok === 1 ? "" : "s"} ready`);
+      if (failed > 0)
+        toast.error(
+          `${failed} order${failed === 1 ? "" : "s"} couldn't be updated`,
+        );
+      setSelectedIds(new Set());
+      setSelectMode(false);
+    } finally {
+      setMarkingReady(false);
+    }
+  }
+  return {
+    selectMode,
+    setSelectMode,
+    selectedIds,
+    setSelectedIds,
+    toggleSelect,
+    markingReady,
+    markSelectedReady,
+  };
+}
+
+/**
+ * "New orders while away" tab-title badge: bumps a counter when the vendor's
+ * tab is hidden, clears it the moment they look back, and reflects the count
+ * in the tab title so a backgrounded vendor notices. Restores the original
+ * title (captured post-hydration) once cleared. Returns the bump function —
+ * the count itself is purely a tab-title side effect, never rendered.
+ */
+function useAwayBadge(): () => void {
+  const [away, setAway] = useState(0);
+  const originalTitle = useRef("");
+
+  useEffect(() => {
+    originalTitle.current = document.title;
+  }, []);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) setAway(0);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  useEffect(() => {
+    if (away > 0) document.title = `(${away}) New orders · qkit`;
+    else if (originalTitle.current) document.title = originalTitle.current;
+  }, [away]);
+
+  return useCallback(() => setAway((n) => n + 1), []);
+}
+
 export function RealtimeOrderBoard({
   booths,
   initialOrders,
@@ -240,72 +363,24 @@ export function RealtimeOrderBoard({
     },
     [],
   );
-  // Batch mark-ready mode (F3): lets a vendor check off several `preparing`
-  // orders and advance them to `ready` in one tap instead of one at a time.
-  // Reuses the same advanceOrder server action each OrderCard's own single
-  // tap calls — no new bulk RPC, per-row optimistic-concurrency guard still
-  // applies to each id individually.
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-  const [markingReady, setMarkingReady] = useState(false);
-  async function markSelectedReady() {
-    const ids = Array.from(selectedIds);
-    setMarkingReady(true);
-    try {
-      const results = await Promise.all(ids.map((id) => advanceOrder(id)));
-      const ok = results.filter((r) => r.success).length;
-      const failed = results.length - ok;
-      if (ok > 0)
-        toast.success(`Marked ${ok} order${ok === 1 ? "" : "s"} ready`);
-      if (failed > 0)
-        toast.error(
-          `${failed} order${failed === 1 ? "" : "s"} couldn't be updated`,
-        );
-      setSelectedIds(new Set());
-      setSelectMode(false);
-    } finally {
-      setMarkingReady(false);
-    }
-  }
+  const {
+    selectMode,
+    setSelectMode,
+    selectedIds,
+    setSelectedIds,
+    toggleSelect,
+    markingReady,
+    markSelectedReady,
+  } = useMarkReadySelection();
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [boothDialogOpen, setBoothDialogOpen] = useState(false);
-  // new orders that arrived while hidden
-  const [away, setAway] = useState(0);
-  const originalTitle = useRef("");
-
-  // Remember the tab title (post-hydration) so the away-badge can restore it.
-  useEffect(() => {
-    originalTitle.current = document.title;
-  }, []);
-
-  // Clear the "while away" badge the moment the vendor looks back at the tab.
-  useEffect(() => {
-    const onVisible = () => {
-      if (!document.hidden) setAway(0);
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, []);
-
-  // Reflect the away-count in the tab title so a backgrounded vendor notices.
-  useEffect(() => {
-    if (away > 0) document.title = `(${away}) New orders · qkit`;
-    else if (originalTitle.current) document.title = originalTitle.current;
-  }, [away]);
+  const bumpAway = useAwayBadge();
 
   function handleNewOrder(order: BoardOrder) {
     void playSound(boardSettings.sound_id);
     toast(`New order #${order.order_number} · ${order.customer_name}`);
     if (document.hidden) {
-      setAway((n) => n + 1);
+      bumpAway();
       if (boardSettings.desktop_notify) {
         void fireNewOrderNotification(
           boothName.get(order.booth_id) ?? "qkit",
@@ -340,31 +415,8 @@ export function RealtimeOrderBoard({
   const activeCountFor = (id: string) =>
     active.filter((o) => o.booth_id === id).length;
 
-  // A booth's tab shows only if it's active, still has orders in flight, or
-  // is the one the vendor has the board filtered to right now — a turned-off
-  // booth with a queue stays until it clears, then self-removes. That last
-  // clause matters: without it, pausing the booth you're currently filtered
-  // to (with nothing in flight) dropped it from this list on the very same
-  // render, which collapsed multiBooth to false and yanked both the filter
-  // Select and the header's own toggle out from under the tap that just
-  // paused it.
-  const visibleBooths = booths.filter(
-    (b) => b.is_active || activeCountFor(b.id) > 0 || b.id === filter,
-  );
-  const multiBooth = visibleBooths.length > 1;
-
-  // If the selected booth's tab vanished, fall back to All.
-  const effectiveFilter =
-    filter !== "all" && !visibleBooths.some((b) => b.id === filter)
-      ? "all"
-      : filter;
-  // A vendor who's already filtered the board down to one booth doesn't need
-  // to open a dialog and find that same booth again just to pause it — the
-  // header control becomes that booth's own switch directly.
-  const selectedBooth =
-    multiBooth && effectiveFilter !== "all"
-      ? booths.find((b) => b.id === effectiveFilter)
-      : undefined;
+  const { visibleBooths, multiBooth, effectiveFilter, selectedBooth } =
+    resolveBoothFilter(booths, filter, activeCountFor);
   const visible =
     effectiveFilter === "all"
       ? active
