@@ -76,6 +76,18 @@ function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   );
 }
 
+function ageToneClass(tone: AgeTone): string {
+  if (tone === "overdue") return "text-status-cancelled";
+  if (tone === "aging") return "text-status-aging";
+  return "text-muted-foreground";
+}
+
+function ageToneAriaSuffix(tone: AgeTone): string {
+  if (tone === "overdue") return ", overdue";
+  if (tone === "aging") return ", getting old";
+  return "";
+}
+
 export function OrderCard({
   order,
   displayNumber,
@@ -338,14 +350,11 @@ export function OrderCard({
   // being broken by it; plain .ticket-* classes so they beat .ticket's own
   // unlayered background. Overdue (late food) outranks an unconfirmed payment,
   // which outranks merely aging.
-  const wash =
-    !closed && tone === "overdue"
-      ? "ticket-overdue"
-      : payStatus === "claimed"
-        ? "ticket-alert"
-        : !closed && tone === "aging"
-          ? "ticket-aging"
-          : "border-border";
+  let wash: string;
+  if (!closed && tone === "overdue") wash = "ticket-overdue";
+  else if (payStatus === "claimed") wash = "ticket-alert";
+  else if (!closed && tone === "aging") wash = "ticket-aging";
+  else wash = "border-border";
 
   return (
     <Ticket
@@ -721,20 +730,10 @@ export function OrderCard({
             <span
               className={cn(
                 "inline-flex items-center gap-1 font-semibold tabular-nums",
-                tone === "overdue"
-                  ? "text-status-cancelled"
-                  : tone === "aging"
-                    ? "text-status-aging"
-                    : "text-muted-foreground",
+                ageToneClass(tone),
               )}
               title="Time since the order arrived"
-              aria-label={`${ageMins} minutes since arrival${
-                tone === "overdue"
-                  ? ", overdue"
-                  : tone === "aging"
-                    ? ", getting old"
-                    : ""
-              }`}
+              aria-label={`${ageMins} minutes since arrival${ageToneAriaSuffix(tone)}`}
             >
               <Clock className="size-3" />
               {ageMins}m

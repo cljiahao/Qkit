@@ -57,6 +57,6 @@ describe("Section", () => {
     // will need to become `.toBe(1)` — do not bump the dependency to "fix"
     // this test without confirming the duplicate node is actually gone.
     const matches = await screen.findAllByText("extra detail");
-    expect(matches.length).toBe(2);
+    expect(matches).toHaveLength(2);
   });
 });

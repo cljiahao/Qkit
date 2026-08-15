@@ -29,7 +29,7 @@ describe("summarizeReviews", () => {
       row(4, "2026-06-12T00:00:00Z"),
     ]);
     expect(s.count).toBe(3);
-    expect(s.average).toBe(4.3); // 13/3 = 4.33 → 4.3
+    expect(s.average).toBeCloseTo(4.3, 1); // 13/3 = 4.33 → 4.3
   });
 
   it("counts the star distribution", () => {

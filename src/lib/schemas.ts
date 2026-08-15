@@ -8,9 +8,18 @@ import type {
 } from "@/lib/types";
 import type { BoothHours } from "@/lib/hours";
 
+// Shared with passwordChangeSchema below — Supabase Auth config owns the
+// real policy, this is just the client-side form floor matching it.
+export const PASSWORD_MIN_LENGTH = 8;
+
 export const loginSchema = z.object({
   email: z.string().email("Invalid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z
+    .string()
+    .min(
+      PASSWORD_MIN_LENGTH,
+      `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+    ),
 });
 
 export const vendorSchema = z.object({
@@ -224,7 +233,7 @@ const paynowConfigSchema = z.object({
     .optional(),
   mobile: z
     .string()
-    .regex(/^\+65[0-9]{8}$/, "Use +65XXXXXXXX")
+    .regex(/^\+65\d{8}$/, "Use +65XXXXXXXX")
     .optional(),
 });
 
@@ -365,8 +374,8 @@ export function parseBoothHours(data: unknown): BoothHours {
 // ── Admin: pricing + license minting ─────────────────────────────────────────
 
 export const pricingFormSchema = z.object({
-  event_pass_cents: z.number().int().nonnegative().max(10_000_00),
-  monthly_cents: z.number().int().nonnegative().max(10_000_00),
+  event_pass_cents: z.number().int().nonnegative().max(MAX_MONEY_CENTS),
+  monthly_cents: z.number().int().nonnegative().max(MAX_MONEY_CENTS),
 });
 export type PricingFormInput = z.infer<typeof pricingFormSchema>;
 
@@ -385,7 +394,7 @@ export const grantPassSchema = z.object({
   validFromIso: z.string().datetime().optional(),
   note: z.string().max(200).optional(),
   // What qkit actually collected (cents). 0/omitted = free comp / design partner.
-  amountCents: z.number().int().nonnegative().max(10_000_00).optional(),
+  amountCents: z.number().int().nonnegative().max(MAX_MONEY_CENTS).optional(),
 });
 export type GrantPassInput = z.infer<typeof grantPassSchema>;
 
@@ -395,7 +404,7 @@ export const feedbackSchema = z
   .object({
     source: z.enum(["customer", "vendor"]),
     boothId: z.string().uuid().optional(),
-    orderNumber: z.string().max(40).optional(),
+    orderNumber: orderNumberSchema.optional(),
     // Per-order access token — proves a customer reviewer actually placed the
     // order (the RPC rejects customer feedback whose token doesn't match).
     token: z.string().uuid().optional(),
@@ -440,10 +449,16 @@ export const displayNameSchema = z.object({
   displayName: z.string().trim().max(60, "Display name is too long"),
 });
 
-// New password + confirm. Min length mirrors loginSchema (8); confirm must match.
+// New password + confirm. Min length shares PASSWORD_MIN_LENGTH with
+// loginSchema; confirm must match.
 export const passwordChangeSchema = z
   .object({
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: z
+      .string()
+      .min(
+        PASSWORD_MIN_LENGTH,
+        `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+      ),
     confirm: z.string(),
   })
   .refine((d) => d.password === d.confirm, {

@@ -4,11 +4,20 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
-import { boothFormSchema, type BoothFormInput } from "@/lib/schemas";
+import type { Entitlement } from "@/lib/plan";
+import {
+  boothFormSchema,
+  type BoothFormInput,
+  type MenuItemFormInput,
+} from "@/lib/schemas";
 import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
 import type { ActionResult } from "@/lib/action-result";
-import type { PaymentKind } from "@/lib/types";
+import type { Database, PaymentKind } from "@/lib/types";
+
+type BoothRow = Database["qkit"]["Tables"]["booths"]["Update"] & {
+  name: string;
+};
 
 // Best-effort removal of orphaned booth-image objects. Never fails the caller —
 // a leaked object is cost creep, not a correctness problem, whereas failing the
@@ -21,6 +30,115 @@ async function removeBoothImages(
   if (paths.length === 0) return;
   const { error } = await supabase.storage.from("booth-images").remove(paths);
   if (error) console.error(`${context} image cleanup failed`, error.message);
+}
+
+/**
+ * Menu-item and option-group count caps (saveBooth's write-path guard).
+ * Count caps reject (don't silently drop content — that would lose the
+ * vendor's work). Returns an error message, or null when within plan limits.
+ */
+function validateMenuCaps(
+  menuItems: MenuItemFormInput[],
+  entitlement: Pick<Entitlement, "maxMenuItems" | "maxOptionGroupsPerItem">,
+): string | null {
+  if (
+    entitlement.maxMenuItems !== null &&
+    menuItems.length > entitlement.maxMenuItems
+  )
+    return `Your plan allows up to ${entitlement.maxMenuItems} menu items. Remove some or upgrade.`;
+
+  const maxGroups = entitlement.maxOptionGroupsPerItem;
+  if (
+    maxGroups !== null &&
+    menuItems.some((it) => (it.option_groups?.length ?? 0) > maxGroups)
+  )
+    return `Your plan allows up to ${maxGroups} customization groups per item. Upgrade for more.`;
+
+  return null;
+}
+
+/**
+ * Persist a booth row: UPDATE (reclaiming orphaned images afterward) when
+ * `boothId` is set, INSERT otherwise. Isolated from saveBooth's validation/
+ * gating phases above it — this is purely the write.
+ */
+async function upsertBoothRow(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  row: BoothRow,
+  boothId: string | undefined,
+  vendorId: string,
+): Promise<SaveBoothResult> {
+  if (boothId) {
+    // Capture the currently-stored images before overwriting, to reclaim any
+    // the new version no longer references (a replaced banner or a removed
+    // item photo).
+    const { data: prev } = await supabase
+      .from("booths")
+      .select("image_url, menu_items")
+      .eq("id", boothId)
+      .maybeSingle();
+
+    // RLS (booths_vendor_all) scopes the update to this vendor's own booths.
+    const { data: updated, error } = await supabase
+      .from("booths")
+      .update(row)
+      .eq("id", boothId)
+      .select("id")
+      .maybeSingle();
+    if (error || !updated)
+      return { success: false, error: "Could not save booth" };
+
+    if (prev)
+      await removeBoothImages(
+        supabase,
+        orphanedImagePaths(prev, row),
+        "saveBooth",
+      );
+    return { success: true, boothId: updated.id };
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("booths")
+    .insert({ ...row, vendor_id: vendorId })
+    .select("id")
+    .single();
+  if (error || !inserted) {
+    console.error("createBooth failed", {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    });
+    return { success: false, error: "Could not create booth" };
+  }
+  return { success: true, boothId: inserted.id };
+}
+
+/**
+ * Free-plan single-active-booth cap, shared by saveBooth (activating via the
+ * full edit form) and toggleBoothActive (the quick pause/resume toggle).
+ * Fails open on a count-read error (the DB booth_servable RLS rule is the
+ * real backstop) but logs so a persistently-failing count isn't invisible.
+ * Returns an error message, or null when the save/toggle may proceed.
+ */
+async function checkActiveBoothCap(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  vendorId: string,
+  maxBooths: number,
+  excludeBoothId: string | undefined,
+  context: string,
+): Promise<string | null> {
+  let q = supabase
+    .from("booths")
+    .select("id", { count: "exact", head: true })
+    .eq("vendor_id", vendorId)
+    .eq("is_active", true);
+  if (excludeBoothId) q = q.neq("id", excludeBoothId);
+  const { count, error } = await q;
+  if (error) console.error(`${context} active-cap count failed`, error.message);
+  if ((count ?? 0) >= maxBooths)
+    return `Your plan serves ${maxBooths} active booth at a time. Deactivate another booth first, or upgrade.`;
+  return null;
 }
 
 type SaveBoothResult = ActionResult<{ boothId: string }>;
@@ -115,26 +233,9 @@ export async function saveBooth(
   const { user, entitlement } = await loadEntitlement();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  // Count caps reject (don't silently drop content — that would lose the
-  // vendor's work). Feature caps degrade quietly.
-  if (
-    entitlement.maxMenuItems !== null &&
-    data.menu_items.length > entitlement.maxMenuItems
-  )
-    return {
-      success: false,
-      error: `Your plan allows up to ${entitlement.maxMenuItems} menu items. Remove some or upgrade.`,
-    };
-
-  const maxGroups = entitlement.maxOptionGroupsPerItem;
-  if (
-    maxGroups !== null &&
-    data.menu_items.some((it) => (it.option_groups?.length ?? 0) > maxGroups)
-  )
-    return {
-      success: false,
-      error: `Your plan allows up to ${maxGroups} customization groups per item. Upgrade for more.`,
-    };
+  // Feature caps (hours/stock, below) degrade quietly instead of rejecting.
+  const menuCapError = validateMenuCaps(data.menu_items, entitlement);
+  if (menuCapError) return { success: false, error: menuCapError };
 
   // Auto-close hours and per-item stock caps are Pro/pass — strip for free so a
   // stored value can't keep enforcing after a pass expires.
@@ -149,22 +250,14 @@ export async function saveBooth(
   // activating a second (they swap by deactivating another). RLS booth_servable
   // is the real backstop; this gives a clear error instead of a silent pause.
   if (data.is_active && entitlement.maxBooths !== null) {
-    let q = supabase
-      .from("booths")
-      .select("id", { count: "exact", head: true })
-      .eq("vendor_id", user.id)
-      .eq("is_active", true);
-    if (data.boothId) q = q.neq("id", data.boothId);
-    const { count, error: countErr } = await q;
-    // Fails open (the DB booth_servable rule is the real backstop), but log so a
-    // persistently-failing count isn't invisible.
-    if (countErr)
-      console.error("saveBooth active-cap count failed", countErr.message);
-    if ((count ?? 0) >= entitlement.maxBooths)
-      return {
-        success: false,
-        error: `Your plan serves ${entitlement.maxBooths} active booth at a time. Deactivate another booth first, or upgrade.`,
-      };
+    const capError = await checkActiveBoothCap(
+      supabase,
+      user.id,
+      entitlement.maxBooths,
+      data.boothId,
+      "saveBooth",
+    );
+    if (capError) return { success: false, error: capError };
   }
 
   // Full payment config now lives in paykit (vendor-scoped, reused across
@@ -193,49 +286,7 @@ export async function saveBooth(
     requires_arrival_confirm: data.requires_arrival_confirm,
   };
 
-  if (data.boothId) {
-    // Capture the currently-stored images before overwriting, to reclaim any the
-    // new version no longer references (a replaced banner or a removed item photo).
-    const { data: prev } = await supabase
-      .from("booths")
-      .select("image_url, menu_items")
-      .eq("id", data.boothId)
-      .maybeSingle();
-
-    // RLS (booths_vendor_all) scopes the update to this vendor's own booths.
-    const { data: updated, error } = await supabase
-      .from("booths")
-      .update(row)
-      .eq("id", data.boothId)
-      .select("id")
-      .maybeSingle();
-    if (error || !updated)
-      return { success: false, error: "Could not save booth" };
-
-    if (prev)
-      await removeBoothImages(
-        supabase,
-        orphanedImagePaths(prev, row),
-        "saveBooth",
-      );
-    return { success: true, boothId: updated.id };
-  }
-
-  const { data: inserted, error } = await supabase
-    .from("booths")
-    .insert({ ...row, vendor_id: user.id })
-    .select("id")
-    .single();
-  if (error || !inserted) {
-    console.error("createBooth failed", {
-      code: error?.code,
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
-    });
-    return { success: false, error: "Could not create booth" };
-  }
-  return { success: true, boothId: inserted.id };
+  return upsertBoothRow(supabase, row, data.boothId, user.id);
 }
 
 /**
@@ -258,22 +309,14 @@ export async function toggleBoothActive(
   const supabase = await createServerClient();
 
   if (active && entitlement.maxBooths !== null) {
-    const { count, error: countErr } = await supabase
-      .from("booths")
-      .select("id", { count: "exact", head: true })
-      .eq("vendor_id", user.id)
-      .eq("is_active", true)
-      .neq("id", boothId);
-    if (countErr)
-      console.error(
-        "toggleBoothActive active-cap count failed",
-        countErr.message,
-      );
-    if ((count ?? 0) >= entitlement.maxBooths)
-      return {
-        success: false,
-        error: `Your plan serves ${entitlement.maxBooths} active booth at a time. Deactivate another booth first, or upgrade.`,
-      };
+    const capError = await checkActiveBoothCap(
+      supabase,
+      user.id,
+      entitlement.maxBooths,
+      boothId,
+      "toggleBoothActive",
+    );
+    if (capError) return { success: false, error: capError };
   }
 
   // RLS (booths_vendor_all) scopes the update to this vendor's own booths.

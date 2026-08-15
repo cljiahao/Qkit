@@ -38,59 +38,115 @@ function statusBody(tx: MockTransaction) {
   };
 }
 
+type Send = (status: number, body: unknown) => void;
+
+/** In-memory transaction store, shared by every route handler below. */
+class MockStore {
+  // Dedupe on order_ref, same as paykit's real (kit_slug, order_ref)
+  // uniqueness — a repeat createCheckout for the same order returns the same
+  // transaction.
+  private byOrderRef = new Map<string, MockTransaction>();
+  private byId = new Map<string, MockTransaction>();
+  private nextId = 1;
+
+  getById(id: string): MockTransaction | undefined {
+    return this.byId.get(id);
+  }
+
+  getOrCreate(orderRef: string, amountCents: number): MockTransaction {
+    let tx = this.byOrderRef.get(orderRef);
+    if (!tx) {
+      tx = {
+        id: `mock-tx-${this.nextId++}`,
+        orderRef,
+        amountCents,
+        status: "pending",
+        claimedAt: null,
+        confirmedAt: null,
+      };
+      this.byOrderRef.set(orderRef, tx);
+      this.byId.set(tx.id, tx);
+    }
+    return tx;
+  }
+}
+
+function handleCreateCheckout(store: MockStore, chunks: Buffer[], send: Send) {
+  let parsed: { order_ref?: string; amount_cents?: number };
+  try {
+    parsed = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+  } catch {
+    send(400, { error: "invalid JSON" });
+    return;
+  }
+  const orderRef = parsed.order_ref;
+  if (!orderRef) {
+    send(400, { error: "order_ref is required" });
+    return;
+  }
+  const tx = store.getOrCreate(orderRef, parsed.amount_cents ?? 0);
+  // PayNow QR payload — any non-empty string satisfies the client's schema;
+  // content isn't asserted on by the e2e specs.
+  send(200, {
+    type: "qr",
+    transaction_id: tx.id,
+    payload: `MOCKPAYNOW:${tx.id}`,
+  });
+}
+
+function handleClaim(store: MockStore, id: string, send: Send) {
+  const tx = store.getById(id);
+  if (!tx) {
+    send(404, { error: "Not found" });
+    return;
+  }
+  if (tx.status === "pending") {
+    tx.status = "claimed";
+    tx.claimedAt = new Date().toISOString();
+  }
+  send(200, statusBody(tx));
+}
+
+function handleConfirm(store: MockStore, id: string, send: Send) {
+  const tx = store.getById(id);
+  if (!tx) {
+    send(404, { error: "Not found" });
+    return;
+  }
+  if (tx.status !== "confirmed") {
+    tx.status = "confirmed";
+    tx.confirmedAt = new Date().toISOString();
+  }
+  send(200, statusBody(tx));
+}
+
+function handleStatus(store: MockStore, id: string, send: Send) {
+  const tx = store.getById(id);
+  if (!tx) {
+    send(404, { error: "Not found" });
+    return;
+  }
+  send(200, statusBody(tx));
+}
+
 export function startPaykitMock(): {
   server: Server;
   close: () => Promise<void>;
 } {
-  // Dedupe on order_ref, same as paykit's real (kit_slug, order_ref) uniqueness
-  // — a repeat createCheckout for the same order returns the same transaction.
-  const byOrderRef = new Map<string, MockTransaction>();
-  const byId = new Map<string, MockTransaction>();
-  let nextId = 1;
+  const store = new MockStore();
 
   const server = createServer((req, res) => {
     const chunks: Buffer[] = [];
     req.on("data", (c) => chunks.push(c));
     req.on("end", () => {
       const url = new URL(req.url ?? "/", PAYKIT_MOCK_URL);
-      const send = (status: number, body: unknown) => {
+      const send: Send = (status, body) => {
         res.writeHead(status, { "Content-Type": "application/json" });
         res.end(JSON.stringify(body));
       };
 
       if (req.method === "POST" && url.pathname === "/api/v1/checkout") {
-        let parsed: { order_ref?: string; amount_cents?: number };
-        try {
-          parsed = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
-        } catch {
-          send(400, { error: "invalid JSON" });
-          return;
-        }
-        const orderRef = parsed.order_ref;
-        if (!orderRef) {
-          send(400, { error: "order_ref is required" });
-          return;
-        }
-        let tx = byOrderRef.get(orderRef);
-        if (!tx) {
-          tx = {
-            id: `mock-tx-${nextId++}`,
-            orderRef,
-            amountCents: parsed.amount_cents ?? 0,
-            status: "pending",
-            claimedAt: null,
-            confirmedAt: null,
-          };
-          byOrderRef.set(orderRef, tx);
-          byId.set(tx.id, tx);
-        }
-        // PayNow QR payload — any non-empty string satisfies the client's
-        // schema; content isn't asserted on by the e2e specs.
-        send(200, {
-          type: "qr",
-          transaction_id: tx.id,
-          payload: `MOCKPAYNOW:${tx.id}`,
-        });
+        handleCreateCheckout(store, chunks, send);
         return;
       }
 
@@ -103,40 +159,15 @@ export function startPaykitMock(): {
       const statusMatch = /^\/api\/v1\/checkout\/([^/]+)$/.exec(url.pathname);
 
       if (req.method === "POST" && claimMatch) {
-        const tx = byId.get(claimMatch[1]);
-        if (!tx) {
-          send(404, { error: "Not found" });
-          return;
-        }
-        if (tx.status === "pending") {
-          tx.status = "claimed";
-          tx.claimedAt = new Date().toISOString();
-        }
-        send(200, statusBody(tx));
+        handleClaim(store, claimMatch[1], send);
         return;
       }
-
       if (req.method === "POST" && confirmMatch) {
-        const tx = byId.get(confirmMatch[1]);
-        if (!tx) {
-          send(404, { error: "Not found" });
-          return;
-        }
-        if (tx.status !== "confirmed") {
-          tx.status = "confirmed";
-          tx.confirmedAt = new Date().toISOString();
-        }
-        send(200, statusBody(tx));
+        handleConfirm(store, confirmMatch[1], send);
         return;
       }
-
       if (req.method === "GET" && statusMatch) {
-        const tx = byId.get(statusMatch[1]);
-        if (!tx) {
-          send(404, { error: "Not found" });
-          return;
-        }
-        send(200, statusBody(tx));
+        handleStatus(store, statusMatch[1], send);
         return;
       }
 

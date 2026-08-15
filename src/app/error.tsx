@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
  * Root error boundary — replaces the raw Next error overlay in production if an
  * RSC throws (e.g. Supabase unreachable on patchy event-site signal).
  */
-export default function Error({
+export default function ErrorPage({
   error,
   reset,
 }: {

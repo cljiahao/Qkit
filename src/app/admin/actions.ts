@@ -9,6 +9,7 @@ import {
   bannerFormSchema,
   grantPassSchema,
   pricingFormSchema,
+  MAX_MONEY_CENTS,
   type BannerFormInput,
   type GrantPassInput,
   type PricingFormInput,
@@ -59,7 +60,7 @@ const setPlanSchema = z.object({
   vendorId: z.string().uuid(),
   plan: z.enum(["free", "pro"]),
   // When flipping to pro against a real (non-comp) payment, record it.
-  amountCents: z.number().int().nonnegative().max(10_000_00).optional(),
+  amountCents: z.number().int().nonnegative().max(MAX_MONEY_CENTS).optional(),
   note: z.string().max(200).optional(),
 });
 

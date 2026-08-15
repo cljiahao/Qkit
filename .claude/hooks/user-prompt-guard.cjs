@@ -37,7 +37,7 @@ for (const p of injection) {
 const credentials = [
   [/AKIA[0-9A-Z]{16}/, "AWS access key ID"],
   [/ghp_[A-Za-z0-9]{36}/, "GitHub personal access token"],
-  [/github_pat_[A-Za-z0-9_]{82}/, "GitHub fine-grained PAT"],
+  [/github_pat_\w{82}/, "GitHub fine-grained PAT"],
   [/sk-ant-[A-Za-z0-9\-_]{90,}/, "Anthropic API key"],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "PEM private key block"],
   [

@@ -26,6 +26,7 @@ describe("cn", () => {
   });
 
   it("handles falsy values", () => {
+    // eslint-disable-next-line sonarjs/no-redundant-boolean -- the literal `false` is deliberate here: it's simulating a real falsy conditional-classname arg (e.g. `cond && "b"`), the exact case being tested
     expect(cn("a", false && "b", undefined, "c")).toBe("a c");
   });
 });

@@ -107,6 +107,10 @@ function LoginForm() {
   }
 
   const isSignin = mode === "signin";
+  let submitLabel: string;
+  if (loading) submitLabel = "Please wait…";
+  else if (isSignin) submitLabel = "Sign in";
+  else submitLabel = "Create account";
 
   if (sent) {
     const isReset = sent.kind === "reset";
@@ -278,11 +282,7 @@ function LoginForm() {
                 className="h-12 w-full rounded-xl text-base font-semibold"
                 disabled={loading}
               >
-                {loading
-                  ? "Please wait…"
-                  : isSignin
-                    ? "Sign in"
-                    : "Create account"}
+                {submitLabel}
               </Button>
             </form>
           </div>

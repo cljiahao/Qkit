@@ -49,16 +49,17 @@ export function Ticket({
   children,
   ...props
 }: TicketProps) {
+  let borderClass: string | false;
+  if (borderColor === "custom") borderClass = dashed && "border-dashed";
+  else if (dashed) borderClass = "border-dashed border-border";
+  else borderClass = "border-border";
+
   return (
     <As
       className={cn(
         "ticket border",
         radius === "2xl" ? "rounded-2xl" : "rounded-xl",
-        borderColor === "custom"
-          ? dashed && "border-dashed"
-          : dashed
-            ? "border-dashed border-border"
-            : "border-border",
+        borderClass,
         SHADOW_CLASS[shadow],
         clip && "overflow-hidden",
         className,

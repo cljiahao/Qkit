@@ -78,9 +78,11 @@ export function VendorManage({ vendor }: { vendor: AdminVendorRow }) {
         toast.error(res.error);
         return;
       }
-      toast.success(
-        `${vendor.name} → ${next}${next === "pro" && amountCents ? ` · $${centsToDollarString(amountCents)}` : ""}`,
-      );
+      const amountSuffix =
+        next === "pro" && amountCents
+          ? ` · $${centsToDollarString(amountCents)}`
+          : "";
+      toast.success(`${vendor.name} → ${next}${amountSuffix}`);
       reset();
       router.refresh();
     });
@@ -101,9 +103,10 @@ export function VendorManage({ vendor }: { vendor: AdminVendorRow }) {
         return;
       }
       const when = startDate ? ` from ${startDate}` : "";
-      toast.success(
-        `${vendor.name} → ${d}-day pass${when}${amountCents ? ` · $${centsToDollarString(amountCents)}` : " · free"}`,
-      );
+      const amountSuffix = amountCents
+        ? ` · $${centsToDollarString(amountCents)}`
+        : " · free";
+      toast.success(`${vendor.name} → ${d}-day pass${when}${amountSuffix}`);
       reset();
       router.refresh();
     });

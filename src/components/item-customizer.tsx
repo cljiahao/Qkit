@@ -64,7 +64,8 @@ function CustomizerBody({
   const [selected, setSelected] = useState<Record<string, string[]>>(() => {
     const defaults: Record<string, string[]> = {};
     for (const g of groups) {
-      defaults[g.id] = g.multiple ? [] : g.choices[0] ? [g.choices[0].id] : [];
+      if (g.multiple) defaults[g.id] = [];
+      else defaults[g.id] = g.choices[0] ? [g.choices[0].id] : [];
     }
     return defaults;
   });
