@@ -350,3 +350,68 @@ describe("claimCheckout / unclaimCheckout / confirmCheckout / getCheckoutStatus"
     expect(res).toEqual({ ok: false, status: 404, error: "Not found" });
   });
 });
+
+describe("path-segment encoding", () => {
+  // Every id interpolated into a paykit URL path must be encodeURIComponent'd —
+  // a value containing "/", "?", or "#" must not be able to add extra path
+  // segments or query params to the request paykit actually receives.
+  const evilId = "abc/../secret?x=1#frag";
+  const encoded = encodeURIComponent(evilId);
+
+  it("encodes vendorId in upsertVendorConfig/getVendorConfig", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, { has_config: false, display_name: null }),
+    );
+    await upsertVendorConfig(evilId, { kind: "paynow", payee_name: "Cart" });
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      `https://paykit.example/api/v1/vendors/${encoded}/config`,
+    );
+
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        has_config: false,
+        display_name: null,
+        kind: null,
+        payee_name: null,
+        uen: null,
+        mobile: null,
+        label: null,
+        url: null,
+        qr_image_url: null,
+      }),
+    );
+    await getVendorConfig(evilId);
+    expect(String(fetchMock.mock.calls[1][0])).toBe(
+      `https://paykit.example/api/v1/vendors/${encoded}/config`,
+    );
+  });
+
+  it("encodes transactionId in claim/unclaim/confirm/status routes", async () => {
+    const statusBody = {
+      transaction_id: TX,
+      status: "claimed",
+      amount_cents: 800,
+      order_ref: "order-1",
+      claimed_at: null,
+      confirmed_at: null,
+    };
+    fetchMock.mockResolvedValue(jsonResponse(200, statusBody));
+
+    await claimCheckout(evilId);
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      `https://paykit.example/api/v1/checkout/${encoded}/claim`,
+    );
+    await unclaimCheckout(evilId);
+    expect(String(fetchMock.mock.calls[1][0])).toBe(
+      `https://paykit.example/api/v1/checkout/${encoded}/unclaim`,
+    );
+    await confirmCheckout(evilId);
+    expect(String(fetchMock.mock.calls[2][0])).toBe(
+      `https://paykit.example/api/v1/checkout/${encoded}/confirm`,
+    );
+    await getCheckoutStatus(evilId);
+    expect(String(fetchMock.mock.calls[3][0])).toBe(
+      `https://paykit.example/api/v1/checkout/${encoded}`,
+    );
+  });
+});
