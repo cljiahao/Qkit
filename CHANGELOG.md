@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Adopted `@merqo/ui` v0.13.0's `switchKits` prop on `DashboardNav`: the
+  account menu now has a "Switch products" submenu listing the three other
+  live kits (loopkit, paykit, stockkit), letting a signed-in vendor jump
+  straight to another kit's dashboard — SSO via the shared `.merqo.io`
+  cookie already signs them in there too, so this is purely an in-product
+  navigation affordance, no new backend.
+
 ### Changed
 
 - Second-pass frontend-design/impeccable critique, hunting for what the
