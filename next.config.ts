@@ -54,11 +54,23 @@ const nextConfig: NextConfig = {
         ? "script-src 'self' 'unsafe-inline'"
         : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
+    // X-Frame-Options: DENY and CSP's frame-ancestors 'none' both apply during
+    // `next dev` too (headers() runs for every environment), and browsers
+    // enforce them even on localhost — blocking any IDE preview pane that
+    // renders the app via <iframe> (most do). Neither is needed in dev (no
+    // untrusted origin is framing a local server), so both are prod-only.
+    const frameHeaders =
+      process.env.NODE_ENV === "production"
+        ? [{ key: "X-Frame-Options", value: "DENY" }]
+        : [];
+    const frameAncestors =
+      process.env.NODE_ENV === "production" ? "frame-ancestors 'none'" : null;
+
     return [
       {
         source: "/(.*)",
         headers: [
-          { key: "X-Frame-Options", value: "DENY" },
+          ...frameHeaders,
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
@@ -91,8 +103,10 @@ const nextConfig: NextConfig = {
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
-              "frame-ancestors 'none'",
-            ].join("; "),
+              frameAncestors,
+            ]
+              .filter(Boolean)
+              .join("; "),
           },
         ],
       },
