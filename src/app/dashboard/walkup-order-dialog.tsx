@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Banknote, Minus, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
   count,
   formatOptions,
   formatPrice,
+  menuItemActionLabel,
   orderHasPricing,
 } from "@/lib/utils";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
@@ -119,6 +120,7 @@ export function WalkupOrderDialog({
     setLoadingMenu(true);
     setCart(new Map());
     setPaid(false);
+    // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
     void getWalkupMenu(boothId).then((res) => {
       setMenuItems(res?.menuItems ?? []);
       setRemaining(res?.remaining ?? {});
@@ -206,6 +208,13 @@ export function WalkupOrderDialog({
   const hasItems = cartItems.length > 0;
   const cartPriced = orderHasPricing(cartItems);
 
+  let submitLabel: string;
+  if (submitting) submitLabel = "Placing order…";
+  else if (!hasItems) submitLabel = "Add items to order";
+  else if (cartPriced)
+    submitLabel = `Add order · ${count(itemCount, "item")} · ${formatPrice(total)}`;
+  else submitLabel = `Add order · ${count(itemCount, "item")}`;
+
   async function onSubmit() {
     if (cartItems.length === 0) {
       toast.error("Add at least one item");
@@ -232,6 +241,101 @@ export function WalkupOrderDialog({
   }
 
   const multiBooth = booths.length > 1;
+
+  let menuSection: ReactNode;
+  if (booths.length === 0) {
+    menuSection = (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        No open booths to take a walk-up order for. Turn one on first.
+      </p>
+    );
+  } else if (loadingMenu) {
+    menuSection = (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Loading menu…
+      </p>
+    );
+  } else if (menuItems.length === 0) {
+    menuSection = (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        This booth has no menu items yet.
+      </p>
+    );
+  } else {
+    menuSection = (
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-2">
+        {menuItems.map((item) => {
+          const hasOptions =
+            !!item.option_groups && item.option_groups.length > 0;
+          const plainInCart = hasOptions ? undefined : cart.get(item.id);
+          const left = remainingFor(remaining, item.id);
+          const soldOut = left !== null && left <= 0;
+          let cardTone: string;
+          if (soldOut) cardTone = "border-border opacity-60";
+          else if (plainInCart)
+            cardTone = "border-primary/40 bg-primary/[0.04]";
+          else cardTone = "border-border";
+          return (
+            <div
+              key={item.id}
+              className={`flex flex-col justify-between gap-2 rounded-xl border p-3 transition-colors ${cardTone}`}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{item.name}</p>
+                {item.price_cents != null && (
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {formatPrice(item.price_cents)}
+                  </p>
+                )}
+                {left !== null && (
+                  <p className="text-xs text-muted-foreground">
+                    {soldOut ? "Sold out" : `${left} left`}
+                  </p>
+                )}
+              </div>
+              {plainInCart ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-8 rounded-lg"
+                    onClick={() => decrement(item.id)}
+                    aria-label={`Remove one ${item.name}`}
+                  >
+                    <Minus className="size-3.5" />
+                  </Button>
+                  <span className="w-5 text-center font-mono text-sm font-bold">
+                    {plainInCart.quantity}
+                  </span>
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="size-8 rounded-lg"
+                    onClick={() => increment(item.id)}
+                    aria-label={`Add one ${item.name}`}
+                  >
+                    <Plus className="size-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-full rounded-lg"
+                  onClick={() => onAddClick(item)}
+                  disabled={soldOut}
+                >
+                  {menuItemActionLabel(soldOut, hasOptions)}
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -270,100 +374,7 @@ export function WalkupOrderDialog({
               </div>
             )}
 
-            {booths.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No open booths to take a walk-up order for. Turn one on first.
-              </p>
-            ) : loadingMenu ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Loading menu…
-              </p>
-            ) : menuItems.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                This booth has no menu items yet.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-2">
-                {menuItems.map((item) => {
-                  const hasOptions =
-                    !!item.option_groups && item.option_groups.length > 0;
-                  const plainInCart = hasOptions
-                    ? undefined
-                    : cart.get(item.id);
-                  const left = remainingFor(remaining, item.id);
-                  const soldOut = left !== null && left <= 0;
-                  return (
-                    <div
-                      key={item.id}
-                      className={`flex flex-col justify-between gap-2 rounded-xl border p-3 transition-colors ${
-                        soldOut
-                          ? "border-border opacity-60"
-                          : plainInCart
-                            ? "border-primary/40 bg-primary/[0.04]"
-                            : "border-border"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {item.name}
-                        </p>
-                        {item.price_cents != null && (
-                          <p className="font-mono text-xs text-muted-foreground">
-                            {formatPrice(item.price_cents)}
-                          </p>
-                        )}
-                        {left !== null && (
-                          <p className="text-xs text-muted-foreground">
-                            {soldOut ? "Sold out" : `${left} left`}
-                          </p>
-                        )}
-                      </div>
-                      {plainInCart ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="size-8 rounded-lg"
-                            onClick={() => decrement(item.id)}
-                            aria-label={`Remove one ${item.name}`}
-                          >
-                            <Minus className="size-3.5" />
-                          </Button>
-                          <span className="w-5 text-center font-mono text-sm font-bold">
-                            {plainInCart.quantity}
-                          </span>
-                          <Button
-                            type="button"
-                            size="icon"
-                            className="size-8 rounded-lg"
-                            onClick={() => increment(item.id)}
-                            aria-label={`Add one ${item.name}`}
-                          >
-                            <Plus className="size-3.5" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-full rounded-lg"
-                          onClick={() => onAddClick(item)}
-                          disabled={soldOut}
-                        >
-                          {soldOut
-                            ? "Sold out"
-                            : hasOptions
-                              ? "Customize"
-                              : "Add"}
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {menuSection}
           </div>
 
           {/* Order summary pane — sticky within its own column on md+, so a
@@ -488,13 +499,7 @@ export function WalkupOrderDialog({
                 disabled={submitting || !hasItems}
                 onClick={onSubmit}
               >
-                {submitting
-                  ? "Placing order…"
-                  : hasItems
-                    ? cartPriced
-                      ? `Add order · ${count(itemCount, "item")} · ${formatPrice(total)}`
-                      : `Add order · ${count(itemCount, "item")}`
-                    : "Add items to order"}
+                {submitLabel}
               </Button>
             </div>
           </div>

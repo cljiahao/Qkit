@@ -295,22 +295,15 @@ export function peakThroughput(orders: StatsOrder[]): number {
 const ITEM_CAP = 50;
 
 /**
- * Aggregate order rows into KPIs, patterns, and (cost-aware) margins. Cancelled
- * orders are excluded from revenue/items but counted for the fulfilment rate.
- * `topN` bounds the option breakdown only; `topItems` returns the full (capped)
- * aggregation for consumers to re-rank by their own metric.
- * Pure: no DB, no React, no Date — unit-testable.
+ * A confirmed-paid order that was then cancelled = a refund. The money left
+ * revenue (it's cancelled), so record it as a refund for the audit trail
+ * rather than letting it vanish silently. Counts across ALL orders (not just
+ * the non-cancelled set), since a refund is by definition a cancelled one.
  */
-export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
-  const counted = orders.filter((o) => o.status !== "cancelled");
-  const cancelled = orders.length - counted.length;
-  const completed = counted.filter((o) => o.status === "completed").length;
-  const fulfilmentDenom = completed + cancelled;
-  const fulfilmentRate = fulfilmentDenom ? completed / fulfilmentDenom : 0;
-
-  // A confirmed-paid order that was then cancelled = a refund. The money left
-  // revenue (it's cancelled), so record it as a refund for the audit trail
-  // rather than letting it vanish silently.
+function computeRefunds(orders: StatsOrder[]): {
+  refunds_cents: number;
+  refundCount: number;
+} {
   let refunds_cents = 0;
   let refundCount = 0;
   for (const o of orders) {
@@ -319,11 +312,68 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
       refundCount += 1;
     }
   }
+  return { refunds_cents, refundCount };
+}
 
-  const revenue_cents = counted.reduce((sum, o) => sum + o.total_cents, 0);
-  const orderCount = counted.length;
-  const aov_cents = orderCount ? Math.round(revenue_cents / orderCount) : 0;
+/** Fold one order line's revenue/cost/quantity into its running per-label total. */
+function accumulateItem(
+  byLabel: Map<string, TopItem>,
+  label: string,
+  revenue: number,
+  cost: number,
+  quantity: number,
+) {
+  const existing = byLabel.get(label);
+  if (existing) {
+    existing.quantity += quantity;
+    existing.revenue_cents += revenue;
+    existing.cost_cents += cost;
+    existing.profit_cents += revenue - cost;
+    return;
+  }
+  byLabel.set(label, {
+    label,
+    quantity,
+    revenue_cents: revenue,
+    cost_cents: cost,
+    profit_cents: revenue - cost,
+  });
+}
 
+/** Fold one order line's selected options into their running per-choice pick counts. */
+function accumulateOptions(
+  optionMap: Map<string, OptionCount>,
+  options: { group: string; choice: string }[] | undefined,
+  quantity: number,
+) {
+  for (const opt of options ?? []) {
+    const key = `${opt.group}${opt.choice}`;
+    const existing = optionMap.get(key);
+    if (existing) existing.count += quantity;
+    else
+      optionMap.set(key, {
+        group: opt.group,
+        choice: opt.choice,
+        count: quantity,
+      });
+  }
+}
+
+/**
+ * Single pass over every (non-cancelled) order + item: hourly/day-hour order
+ * counts, per-item revenue/cost/profit aggregation (keyed by display label),
+ * and per-option pick counts — the one hot loop computeStats' other, cheaper
+ * derivations (topItems sort, busiestHour, grossMargin) are built from.
+ */
+function aggregateOrders(counted: StatsOrder[]): {
+  hourly: HourBucket[];
+  dayHour: number[][];
+  byLabel: Map<string, TopItem>;
+  optionMap: Map<string, OptionCount>;
+  anyCost: boolean;
+  itemRevenue: number;
+  itemCost: number;
+} {
   const byLabel = new Map<string, TopItem>();
   const optionMap = new Map<string, OptionCount>();
   const hourly: HourBucket[] = Array.from({ length: 24 }, (_, hour) => ({
@@ -346,42 +396,70 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     dayHour[WEEKDAY_ORDER.indexOf(sgtWeekday(order.created_at))][hour] += 1;
 
     for (const item of order.items) {
-      const label = itemLabel(item);
       const revenue = (item.price_cents ?? 0) * item.quantity;
       if (item.cost_cents != null) anyCost = true;
       const cost = (item.cost_cents ?? 0) * item.quantity;
       itemRevenue += revenue;
       itemCost += cost;
 
-      const existing = byLabel.get(label);
-      if (existing) {
-        existing.quantity += item.quantity;
-        existing.revenue_cents += revenue;
-        existing.cost_cents += cost;
-        existing.profit_cents += revenue - cost;
-      } else {
-        byLabel.set(label, {
-          label,
-          quantity: item.quantity,
-          revenue_cents: revenue,
-          cost_cents: cost,
-          profit_cents: revenue - cost,
-        });
-      }
-
-      for (const opt of item.options ?? []) {
-        const key = `${opt.group}${opt.choice}`;
-        const oc = optionMap.get(key);
-        if (oc) oc.count += item.quantity;
-        else
-          optionMap.set(key, {
-            group: opt.group,
-            choice: opt.choice,
-            count: item.quantity,
-          });
-      }
+      accumulateItem(byLabel, itemLabel(item), revenue, cost, item.quantity);
+      accumulateOptions(optionMap, item.options, item.quantity);
     }
   }
+
+  return {
+    hourly,
+    dayHour,
+    byLabel,
+    optionMap,
+    anyCost,
+    itemRevenue,
+    itemCost,
+  };
+}
+
+/** Peak by order count; earliest hour wins a tie (stable, deterministic). */
+function findBusiestHour(hourly: HourBucket[]): number | null {
+  let busiestHour: number | null = null;
+  let peak = 0;
+  for (const b of hourly) {
+    if (b.orders > peak) {
+      peak = b.orders;
+      busiestHour = b.hour;
+    }
+  }
+  return busiestHour;
+}
+
+/**
+ * Aggregate order rows into KPIs, patterns, and (cost-aware) margins. Cancelled
+ * orders are excluded from revenue/items but counted for the fulfilment rate.
+ * `topN` bounds the option breakdown only; `topItems` returns the full (capped)
+ * aggregation for consumers to re-rank by their own metric.
+ * Pure: no DB, no React, no Date — unit-testable.
+ */
+export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
+  const counted = orders.filter((o) => o.status !== "cancelled");
+  const cancelled = orders.length - counted.length;
+  const completed = counted.filter((o) => o.status === "completed").length;
+  const fulfilmentDenom = completed + cancelled;
+  const fulfilmentRate = fulfilmentDenom ? completed / fulfilmentDenom : 0;
+
+  const { refunds_cents, refundCount } = computeRefunds(orders);
+
+  const revenue_cents = counted.reduce((sum, o) => sum + o.total_cents, 0);
+  const orderCount = counted.length;
+  const aov_cents = orderCount ? Math.round(revenue_cents / orderCount) : 0;
+
+  const {
+    hourly,
+    dayHour,
+    byLabel,
+    optionMap,
+    anyCost,
+    itemRevenue,
+    itemCost,
+  } = aggregateOrders(counted);
 
   // Quantity-sorted (revenue tiebreak) so topItems[0] is the best seller by
   // volume, but the WHOLE set (capped) is returned — no single-metric slice.
@@ -395,15 +473,7 @@ export function computeStats(orders: StatsOrder[], topN = 10): StatsSummary {
     .sort((a, b) => b.count - a.count)
     .slice(0, topN);
 
-  // Peak by order count; earliest hour wins a tie (stable, deterministic).
-  let busiestHour: number | null = null;
-  let peak = 0;
-  for (const b of hourly) {
-    if (b.orders > peak) {
-      peak = b.orders;
-      busiestHour = b.hour;
-    }
-  }
+  const busiestHour = findBusiestHour(hourly);
 
   // Margin only when at least one item carried a cost — otherwise profit would
   // falsely equal revenue. Revenue here is item-level (matches the cost basis).

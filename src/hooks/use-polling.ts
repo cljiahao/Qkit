@@ -26,6 +26,7 @@ export function usePolling(
     let timer: ReturnType<typeof setInterval> | undefined;
 
     const run = () => {
+      // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
       if (!document.hidden) void tickRef.current();
     };
     const start = () => {

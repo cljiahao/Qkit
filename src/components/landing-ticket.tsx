@@ -47,18 +47,56 @@ const PAYMENT_BADGE = {
   paid: { label: "Paid", cls: "bg-status-payment-confirmed text-white" },
 } as const;
 
+function ageToneClass(tone: "normal" | "aging" | "overdue"): string {
+  if (tone === "overdue") return "text-status-cancelled";
+  if (tone === "aging") return "text-status-aging";
+  return "text-muted-foreground";
+}
+
+/** Render one order line's options: expanded rows, a collapsed summary, or the legacy single `opt` string. */
+function LineOptions({
+  line,
+  expanded,
+}: {
+  line: TicketLine;
+  expanded: boolean;
+}) {
+  if (line.options && line.options.length > 0) {
+    if (expanded) {
+      return (
+        <ul className="mt-0.5 space-y-0.5 pl-4">
+          {line.options.map((o, j) => (
+            <li key={j} className="flex justify-between gap-3 text-[0.7rem]">
+              <span className="font-medium text-foreground/70">{o.group}:</span>
+              <span className="text-right text-foreground/90">{o.choice}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    return (
+      <p className="truncate pl-4 text-[0.7rem] text-muted-foreground">
+        {line.options.map((o) => o.choice).join(" · ")}
+      </p>
+    );
+  }
+  if (!line.opt) return null;
+  return (
+    <p className="truncate pl-4 text-[0.7rem] text-muted-foreground">
+      {line.opt}
+    </p>
+  );
+}
+
 export function LandingTicket({ t }: { t: LandingTicketData }) {
   // One full-card attention wash at a time, by priority — same order as the
   // real OrderCard: overdue outranks an unconfirmed payment, which outranks
   // merely aging.
-  const wash =
-    t.age?.tone === "overdue"
-      ? "ticket-overdue"
-      : t.payment === "claimed"
-        ? "ticket-alert"
-        : t.age?.tone === "aging"
-          ? "ticket-aging"
-          : "border-border";
+  let wash: string;
+  if (t.age?.tone === "overdue") wash = "ticket-overdue";
+  else if (t.payment === "claimed") wash = "ticket-alert";
+  else if (t.age?.tone === "aging") wash = "ticket-aging";
+  else wash = "border-border";
 
   const expanded = t.optionsView === "expanded";
 
@@ -100,11 +138,7 @@ export function LandingTicket({ t }: { t: LandingTicketData }) {
             <span
               className={cn(
                 "inline-flex items-center gap-1 text-[0.7rem] font-semibold tabular-nums",
-                t.age.tone === "overdue"
-                  ? "text-status-cancelled"
-                  : t.age.tone === "aging"
-                    ? "text-status-aging"
-                    : "text-muted-foreground",
+                ageToneClass(t.age.tone),
               )}
             >
               <Clock className="size-3" />
@@ -130,35 +164,7 @@ export function LandingTicket({ t }: { t: LandingTicketData }) {
                 </span>
               )}
             </div>
-            {l.options && l.options.length > 0 ? (
-              expanded ? (
-                <ul className="mt-0.5 space-y-0.5 pl-4">
-                  {l.options.map((o, j) => (
-                    <li
-                      key={j}
-                      className="flex justify-between gap-3 text-[0.7rem]"
-                    >
-                      <span className="font-medium text-foreground/70">
-                        {o.group}:
-                      </span>
-                      <span className="text-right text-foreground/90">
-                        {o.choice}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="truncate pl-4 text-[0.7rem] text-muted-foreground">
-                  {l.options.map((o) => o.choice).join(" · ")}
-                </p>
-              )
-            ) : (
-              l.opt && (
-                <p className="truncate pl-4 text-[0.7rem] text-muted-foreground">
-                  {l.opt}
-                </p>
-              )
-            )}
+            <LineOptions line={l} expanded={expanded} />
           </div>
         ))}
       </div>

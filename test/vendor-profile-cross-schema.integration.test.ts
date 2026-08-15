@@ -19,9 +19,13 @@ function loadEnvLocal(): Record<string, string> {
     const raw = readFileSync(path.resolve(process.cwd(), ".env.local"), "utf8");
     const out: Record<string, string> = {};
     for (const line of raw.split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      if (!m || line.trimStart().startsWith("#")) continue;
-      out[m[1]] = m[2].replace(/^["']|["']$/g, "");
+      if (line.trimStart().startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq === -1) continue;
+      const key = line.slice(0, eq).trim();
+      if (!/^[A-Z0-9_]+$/.test(key)) continue;
+      const value = line.slice(eq + 1).trim();
+      out[key] = value.replace(/^["']|["']$/g, "");
     }
     return out;
   } catch {

@@ -38,26 +38,29 @@ export function RecentOrders({ boothId }: Props) {
         Your orders here
       </h2>
       <ul className="space-y-1.5">
-        {visible.map((o) => (
-          <li key={o.orderNumber}>
-            <Link
-              href={`/order/${boothId}/${o.orderNumber}${o.token ? `?t=${o.token}` : ""}`}
-              className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
-            >
-              <span className="truncate">
-                <span className="font-mono font-semibold text-primary">
-                  #{o.orderNumber}
-                </span>{" "}
-                <span className="text-muted-foreground">
-                  for {o.customerName}
+        {visible.map((o) => {
+          const tokenQuery = o.token ? `?t=${o.token}` : "";
+          return (
+            <li key={o.orderNumber}>
+              <Link
+                href={`/order/${boothId}/${o.orderNumber}${tokenQuery}`}
+                className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
+              >
+                <span className="truncate">
+                  <span className="font-mono font-semibold text-primary">
+                    #{o.orderNumber}
+                  </span>{" "}
+                  <span className="text-muted-foreground">
+                    for {o.customerName}
+                  </span>
                 </span>
-              </span>
-              <span className="shrink-0 text-xs font-medium text-muted-foreground underline-offset-4 group-hover:underline">
-                Track →
-              </span>
-            </Link>
-          </li>
-        ))}
+                <span className="shrink-0 text-xs font-medium text-muted-foreground underline-offset-4 group-hover:underline">
+                  Track →
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
       {(hidden > 0 || showAll) && orders.length > COLLAPSED && (
         <button

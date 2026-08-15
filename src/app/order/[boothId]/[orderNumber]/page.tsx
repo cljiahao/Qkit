@@ -38,6 +38,99 @@ interface Props {
 
 export const revalidate = 0;
 
+/**
+ * Vendor-level default social links, so a booth without its own override
+ * still shows the vendor's. Unlike get-entitlement's fail-loud convention, a
+ * failure here must NOT take down the page: this is a customer holding a
+ * valid, paid order link, and the vendor-level links are a decorative
+ * footer, not load-bearing — degrade to null (booth-only links, or none) on
+ * any RPC error rather than throw.
+ */
+async function loadVendorProfile(
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
+  vendorId: string,
+): Promise<VendorProfile | null> {
+  try {
+    return await getOrCreateVendorProfile(supabase, vendorId, null);
+  } catch (err) {
+    console.error(
+      "order-status: vendor profile read failed",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Daily order-number reset (board_settings.daily_order_number_reset): shows
+ * this order's position among today's orders instead of its permanent
+ * order_number — same display-only rule the vendor board applies (see
+ * displayOrderNumber in @/lib/orders). Decorative, so any failure here
+ * degrades to the real order_number rather than breaking the page — same
+ * philosophy as loadVendorProfile above.
+ */
+async function resolveHeadingNumber(
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
+  boothId: string,
+  vendorId: string,
+  orderNumber: string,
+): Promise<string> {
+  try {
+    const { data: vendorRow } = await supabase
+      .from("vendors")
+      .select("board_settings")
+      .eq("id", vendorId)
+      .maybeSingle();
+    const settings = boardSettingsSchema.safeParse(vendorRow?.board_settings);
+    if (!settings.success || !settings.data.daily_order_number_reset)
+      return orderNumber;
+
+    const { data: firstToday } = await supabase
+      .from("orders")
+      .select("order_number")
+      .eq("booth_id", boothId)
+      .gte("created_at", sgtStartOfDayIso())
+      .order("order_number", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    return firstToday
+      ? displayOrderNumber(orderNumber, firstToday.order_number)
+      : orderNumber;
+  } catch (err) {
+    console.error(
+      "order-status: daily display-number read failed",
+      err instanceof Error ? err.message : err,
+    );
+    return orderNumber;
+  }
+}
+
+/**
+ * Fetch the paykit checkout view for a payment-expected order. A 422 (no/
+ * incomplete paykit config) or any other failure (paykit down, network)
+ * degrades to null (no pay panel content, not a page error) — a customer
+ * holding a valid, paid order link must not get a hard error just because
+ * paykit is unreachable, same philosophy as the two reads above.
+ */
+async function loadCheckoutView(
+  vendorId: string,
+  amountCents: number,
+  orderId: string,
+): Promise<CheckoutView | null> {
+  const result = await createCheckout({
+    vendorId,
+    amountCents,
+    orderRef: orderId,
+  });
+  if (result.ok) return result.data;
+  console.error(
+    "order-status: paykit checkout failed",
+    result.status,
+    result.error,
+  );
+  return null;
+}
+
 export default async function OrderStatusPage({ params, searchParams }: Props) {
   const { boothId, orderNumber } = await params;
   const { t: token } = await searchParams;
@@ -88,70 +181,22 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   // Vendor-level default links, so a booth without its own override still
   // shows the vendor's. Small extra query (not embeddable via Promise.all
   // above — it depends on booth.vendor_id) but this page isn't a hot path.
-  //
-  // Unlike get-entitlement's fail-loud convention, a failure here must NOT
-  // take down the page: this is a customer holding a valid, paid order link,
-  // and the vendor-level links are a decorative footer, not load-bearing.
-  // Degrade to booth-only links (or none) on any RPC error rather than throw
-  // — same "don't strand a customer on a DB/network blip" philosophy as the
-  // orderError handling above.
-  let vendorProfile: VendorProfile | null = null;
-  if (booth?.vendor_id) {
-    try {
-      vendorProfile = await getOrCreateVendorProfile(
-        supabase,
-        booth.vendor_id,
-        null,
-      );
-    } catch (err) {
-      console.error(
-        "order-status: vendor profile read failed",
-        err instanceof Error ? err.message : err,
-      );
-    }
-  }
+  const vendorProfile = booth?.vendor_id
+    ? await loadVendorProfile(supabase, booth.vendor_id)
+    : null;
   const socialLinks = resolveSocialLinks(
     booth?.social_links ? parseSocialLinks(booth.social_links) : null,
     parseSocialLinks(vendorProfile?.social_links ?? null),
   );
 
-  // Daily order-number reset (board_settings.daily_order_number_reset):
-  // shows this order's position among today's orders instead of its
-  // permanent order_number — same display-only rule the vendor board
-  // applies (see displayOrderNumber in @/lib/orders). Decorative, so any
-  // failure here degrades to the real number rather than breaking the page
-  // — same philosophy as the vendorProfile read above.
-  let headingNumber = order.order_number;
-  if (booth?.vendor_id) {
-    try {
-      const { data: vendorRow } = await supabase
-        .from("vendors")
-        .select("board_settings")
-        .eq("id", booth.vendor_id)
-        .maybeSingle();
-      const settings = boardSettingsSchema.safeParse(vendorRow?.board_settings);
-      if (settings.success && settings.data.daily_order_number_reset) {
-        const { data: firstToday } = await supabase
-          .from("orders")
-          .select("order_number")
-          .eq("booth_id", boothId)
-          .gte("created_at", sgtStartOfDayIso())
-          .order("order_number", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (firstToday)
-          headingNumber = displayOrderNumber(
-            order.order_number,
-            firstToday.order_number,
-          );
-      }
-    } catch (err) {
-      console.error(
-        "order-status: daily display-number read failed",
-        err instanceof Error ? err.message : err,
-      );
-    }
-  }
+  const headingNumber = booth?.vendor_id
+    ? await resolveHeadingNumber(
+        supabase,
+        boothId,
+        booth.vendor_id,
+        order.order_number,
+      )
+    : order.order_number;
 
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
@@ -167,27 +212,10 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   // link/image) now comes from paykit, not booths.payment's full content.
   const showPay =
     order.payment_status !== "not_required" && order.status !== "cancelled";
-  let checkout: CheckoutView | null = null;
-  if (showPay && booth?.vendor_id) {
-    const result = await createCheckout({
-      vendorId: booth.vendor_id,
-      amountCents: order.total_cents,
-      orderRef: order.id,
-    });
-    // A 422 (no/incomplete paykit config) degrades the same way an
-    // unconfigured local adapter used to: no pay panel content, not a page
-    // error. Any other failure (paykit down, network) degrades the same way
-    // — a customer holding a valid, paid order link must not get a hard
-    // error just because paykit is unreachable (same philosophy as the
-    // vendorProfile/daily-display-number reads below).
-    if (result.ok) checkout = result.data;
-    else
-      console.error(
-        "order-status: paykit checkout failed",
-        result.status,
-        result.error,
-      );
-  }
+  const checkout =
+    showPay && booth?.vendor_id
+      ? await loadCheckoutView(booth.vendor_id, order.total_cents, order.id)
+      : null;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">

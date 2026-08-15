@@ -28,7 +28,9 @@ function slugify(value: string): string {
     value
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "booth"
+      .replace(/^-+/, "")
+      // eslint-disable-next-line sonarjs/super-linear-regex -- a single anchored quantifier ("-+$", no alternation/nested groups) has no real backtracking ambiguity to simplify further
+      .replace(/-+$/, "") || "booth"
   );
 }
 

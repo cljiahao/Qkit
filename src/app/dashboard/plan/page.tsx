@@ -68,6 +68,10 @@ export default async function PlanPage() {
   const paidMode = passPrice !== null || monthlyPrice !== null;
 
   const tier = entitlement.tier;
+  let tierLabel: string;
+  if (tier === "pro") tierLabel = "Pro";
+  else if (tier === "pass") tierLabel = "Event pass";
+  else tierLabel = "Free";
 
   return (
     <div className="mx-auto max-w-2xl space-y-7">
@@ -89,7 +93,7 @@ export default async function PlanPage() {
         >
           {tier === "pro" && <Sparkles className="size-3.5" />}
           {tier === "pass" && <Ticket className="size-3.5" />}
-          {tier === "pro" ? "Pro" : tier === "pass" ? "Event pass" : "Free"}
+          {tierLabel}
         </span>
       </div>
 

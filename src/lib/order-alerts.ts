@@ -126,6 +126,7 @@ function sharedCtx(): AudioContext | null {
 /** Create + resume the shared AudioContext. Call from a user gesture (tap). */
 export function unlockAudio(): void {
   const ctx = sharedCtx();
+  // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
   if (ctx && ctx.state === "suspended") void ctx.resume?.();
 }
 
