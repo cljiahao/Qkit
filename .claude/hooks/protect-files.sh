@@ -40,6 +40,7 @@ case "$rel" in
   .claude/.harness-base/*|*/.claude/.harness-base/*) reason="merge base snapshot — editing it can poison harness re-sync merges" ;;
   Dockerfile|*/Dockerfile) reason="container image definition" ;;
   .husky/*|*/.husky/*|.gitleaks.toml|*/.gitleaks.toml) reason="git-hook enforcement config — editing it can weaken commit-time guards" ;;
+  .claude/comment-hygiene-patterns.txt|*/.claude/comment-hygiene-patterns.txt) reason="comment-hygiene enforcement pattern list — editing it can silently weaken the CI hard gate" ;;
 esac
 if [ -n "$reason" ]; then
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"PROTECTED FILE: %s — %s. Confirm human approval and note it in the PR."}}\n' "$rel" "$reason"
