@@ -193,7 +193,7 @@ export async function upsertVendorConfig(
   config: VendorConfigWrite,
 ): Promise<PaykitResult<VendorConfigResponse>> {
   const result = await paykitRequest(
-    `/api/v1/vendors/${vendorId}/config`,
+    `/api/v1/vendors/${encodeURIComponent(vendorId)}/config`,
     vendorConfigResponseSchema,
     { method: "POST", body: JSON.stringify(config) },
   );
@@ -215,7 +215,7 @@ export async function getVendorConfig(
   vendorId: string,
 ): Promise<PaykitResult<VendorConfigFull>> {
   const result = await paykitRequest(
-    `/api/v1/vendors/${vendorId}/config`,
+    `/api/v1/vendors/${encodeURIComponent(vendorId)}/config`,
     vendorConfigFullResponseSchema,
     { method: "GET" },
   );
@@ -300,7 +300,7 @@ export async function claimCheckout(
   transactionId: string,
 ): Promise<PaykitResult<TransactionStatus>> {
   const result = await paykitRequest(
-    `/api/v1/checkout/${transactionId}/claim`,
+    `/api/v1/checkout/${encodeURIComponent(transactionId)}/claim`,
     transactionStatusResponseSchema,
     { method: "POST" },
   );
@@ -318,7 +318,7 @@ export async function unclaimCheckout(
   transactionId: string,
 ): Promise<PaykitResult<TransactionStatus>> {
   const result = await paykitRequest(
-    `/api/v1/checkout/${transactionId}/unclaim`,
+    `/api/v1/checkout/${encodeURIComponent(transactionId)}/unclaim`,
     transactionStatusResponseSchema,
     { method: "POST" },
   );
@@ -332,7 +332,7 @@ export async function confirmCheckout(
   transactionId: string,
 ): Promise<PaykitResult<TransactionStatus>> {
   const result = await paykitRequest(
-    `/api/v1/checkout/${transactionId}/confirm`,
+    `/api/v1/checkout/${encodeURIComponent(transactionId)}/confirm`,
     transactionStatusResponseSchema,
     { method: "POST" },
   );
@@ -349,7 +349,7 @@ export async function getCheckoutStatus(
   transactionId: string,
 ): Promise<PaykitResult<TransactionStatus>> {
   const result = await paykitRequest(
-    `/api/v1/checkout/${transactionId}`,
+    `/api/v1/checkout/${encodeURIComponent(transactionId)}`,
     transactionStatusResponseSchema,
     { method: "GET" },
   );
