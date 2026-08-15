@@ -230,8 +230,11 @@ SubagentStop: `subagent-stop.sh` type-gates a subagent's uncommitted `.ts`/`.tsx
 changes before it can hand back control.
 SessionStart (startup|resume|clear|compact): `session-context.sh` re-injects
 the first 30 lines of this file, all of `docs/CONSTITUTION.md`, and a fixed
-list of always-on invariants — the documented inject path (PostCompact stdout
-is ignored, cannot inject context).
+list of always-on invariants. PostCompact also fires after compaction and its
+stdout is injected as context too — both PostCompact and
+`SessionStart(source: compact)` are valid re-injection mechanisms, but
+SessionStart also covers session resume and startup, so it stays the single
+seeded path here.
 `permissions`: max-privilege — bare-tool `allow` (Bash/Read/Edit/Write/web/Skill/
 Task) so common work doesn't prompt; `deny` covers secret reads/edits (`.env*`
 catchall plus the specific `.env.<env>` variants, `./secrets/**`/`./.secrets/**`
