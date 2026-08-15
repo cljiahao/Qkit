@@ -321,12 +321,11 @@ instead of starting every text field blank — the `{kind}`-only marker is now
 only a degrade-path fallback (`initialPaymentFromMarker` in
 `dashboard/booths/[boothId]/page.tsx`) for when that call fails.
 
-Known gap, still not fixed here: `PAYKIT_KIT_SECRET` (bearer secret,
-`.env.example`) has **no real value yet** — paykit hasn't minted a
-production key for `qkit` in this environment — so payments do not actually
-work end-to-end until that key exists on both sides; every
-`paykit/client.ts` call degrades to a clear per-request error rather than
-breaking the build or throwing.
+`PAYKIT_KIT_SECRET` is set on qkit's Production and Preview environments,
+matching the key paykit's own `AGENTS.md` records minting for qkit during
+this cutover — not independently re-verified against a live checkout
+here, so treat a real checkout failure as a genuine regression to
+investigate, not evidence the key was never set.
 
 **Preview OAuth break, `NEXT_PUBLIC_AUTH_COOKIE_DOMAIN` env-scope gap
 (2026-08-13):** Google login on preview deploys was failing
