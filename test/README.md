@@ -16,6 +16,9 @@ colocated unit tests.
   migration's SQL text (no live DB required); see its own README.
 - `lib/` — a `src/lib/` unit test that isn't colocated with its source; see
   its own README.
+- `next-config-headers.test.ts` — asserts `next.config.ts`'s `headers()`
+  omits `X-Frame-Options`/CSP `frame-ancestors` in development and sends
+  both in production (regression test for the IDE-preview-pane dev bug).
 - `order-numbering.integration.test.ts` — integration test for migration
   `0008` (atomic per-booth order numbering). Hits a REAL Supabase instance,
   so it's opt-in (`describe.skipIf(!RUN_DB_TESTS)`, gated behind the
