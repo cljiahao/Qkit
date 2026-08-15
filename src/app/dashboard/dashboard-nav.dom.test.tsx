@@ -66,7 +66,7 @@ describe("DashboardNav", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("account menu has Profile, Settings, Plan, Get help, Feedback (in that order), then Sign out", async () => {
+  it("account menu has Switch products, Profile, Settings, Plan, Get help, Feedback (in that order), then Sign out", async () => {
     const user = userEvent.setup();
     render(<DashboardNav {...baseProps} />);
     const accountButton = screen.getByRole("button", {
@@ -76,6 +76,7 @@ describe("DashboardNav", () => {
 
     const menuItems = screen.getAllByRole("menuitem");
     expect(menuItems.map((item) => item.textContent)).toEqual([
+      "Switch products",
       "Profile",
       "Settings",
       "Plan · free",
@@ -168,6 +169,20 @@ describe("DashboardNav", () => {
     expect(
       await screen.findByText("Thanks — you've already sent feedback."),
     ).toBeInTheDocument();
+  });
+
+  it("passes the three sibling live kits to the account menu's Switch products submenu", async () => {
+    const user = userEvent.setup();
+    render(<DashboardNav {...baseProps} />);
+    await user.click(screen.getByRole("button", { name: /account menu/i }));
+    await user.click(await screen.findByText(/switch products/i));
+
+    const loopkit = await screen.findByRole("menuitem", { name: "loopkit" });
+    expect(loopkit).toHaveAttribute("href", "https://loopkit-sg.vercel.app");
+    const paykit = await screen.findByRole("menuitem", { name: "paykit" });
+    expect(paykit).toHaveAttribute("href", "https://paykit-sg.vercel.app");
+    const stockkit = await screen.findByRole("menuitem", { name: "stockkit" });
+    expect(stockkit).toHaveAttribute("href", "https://stockkit-sg.vercel.app");
   });
 
   it("opening Get help and submitting maps the sheet's message to submitSupportMessage's body field", async () => {
