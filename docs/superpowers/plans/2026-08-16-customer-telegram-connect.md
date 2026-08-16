@@ -98,8 +98,8 @@ page's existing test coverage
 - [ ] Failing tests first: `advanceOrder` transitioning an order to
       `ready` calls `notifyCustomer` with
       `{ vendor_id: userId, notify_ref: \`qkit:${orderId}\`, message }`;
-    a `notifyCustomer`rejection doesn't change`advanceOrder`'s own
-    success result; advancing to any status other than `ready` doesn't
+a `notifyCustomer`rejection doesn't change`advanceOrder`'s own
+success result; advancing to any status other than `ready` doesn't
       call it at all.
 - [ ] Implement: after the successful `ready`-transition branch, fire
       (wrapped in try/catch, logged, not awaited into the response)
