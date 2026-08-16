@@ -68,6 +68,13 @@ vi.mock("@/lib/paykit/client", () => ({
   confirmCheckout: confirmCheckoutMock,
 }));
 
+const { notifyCustomerMock } = vi.hoisted(() => ({
+  notifyCustomerMock: vi.fn(),
+}));
+vi.mock("@/lib/merqo-customer-notify", () => ({
+  notifyCustomer: notifyCustomerMock,
+}));
+
 const ID = "00000000-0000-4000-8000-000000000001";
 
 beforeEach(() => {
@@ -112,6 +119,7 @@ beforeEach(() => {
       confirmedAt: "2026-08-11T00:00:00Z",
     },
   });
+  notifyCustomerMock.mockReset().mockResolvedValue(undefined);
 });
 
 describe("advanceOrder", () => {
@@ -148,6 +156,44 @@ describe("advanceOrder", () => {
     const res = await advanceOrder(ID);
     expect(res.success).toBe(false);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("notifies the customer via Telegram when advancing to ready", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    await advanceOrder(ID);
+    expect(notifyCustomerMock).toHaveBeenCalledWith(
+      "v1",
+      `qkit:${ID}`,
+      "Your order is ready for pickup!",
+    );
+  });
+
+  it("still returns success when notifyCustomer rejects", async () => {
+    notifyCustomerMock.mockRejectedValue(new Error("merqo down"));
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    const res = await advanceOrder(ID);
+    expect(res).toEqual({ success: true, status: "ready" });
+  });
+
+  it("does not notify when advancing to a status other than ready", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "pending", payment_status: "not_required" },
+    });
+    const res = await advanceOrder(ID);
+    expect(res).toEqual({ success: true, status: "preparing" });
+    expect(notifyCustomerMock).not.toHaveBeenCalled();
+  });
+
+  it("does not notify a second time when advancing from ready to completed", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "ready", payment_status: "claimed" },
+    });
+    await advanceOrder(ID);
+    expect(notifyCustomerMock).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid order id before touching the DB", async () => {
