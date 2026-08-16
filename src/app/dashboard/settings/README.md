@@ -8,7 +8,10 @@ staff have to undo a tap, how long an uncollected ready order sits before
 auto-clearing, the new-order sound, desktop notifications, whether order
 numbers reset daily, whether a wait-time estimate shows at all, and a
 backup prep-time estimate. Settings are stored on the vendor's own row and
-sync across devices.
+sync across devices. Also hosts the Connect Telegram section — a one-time
+deep-link QR that links the vendor's Telegram chat, so every new order also
+fires a redundant alert there alongside the live board (see
+`docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`).
 
 ## Contents
 
@@ -25,7 +28,14 @@ sync across devices.
   across every booth rather than one — a vendor-wide approximation matching
   `default_prep_minutes`'s own vendor-wide granularity), reduces that through
   `currentPrepEstimate` (`@/lib/stats`), and passes the result as
-  `prepEstimate`. `revalidate = 0` (always fresh).
+  `prepEstimate`. Also reads the caller's own `qkit.vendor_telegram` row
+  directly on the normal session client (RLS grants `authenticated` SELECT
+  on their own row, migration 0076 — no service-role read needed here) to
+  derive `telegramConnected`; when not connected, calls
+  `generateTelegramLink()` server-side to mint a fresh 30-minute deep link
+  for `TelegramSection` to render as a QR (`null` on failure, e.g.
+  `TELEGRAM_BOT_USERNAME` unset, shown as a "try again" message instead of
+  a broken QR). `revalidate = 0` (always fresh).
 - `settings-form.tsx` — `SettingsForm({ initial, prepEstimate })` client
   component, the actual UI: four `Section` cards (from `ticket-section.tsx`)
   split across `@merqo/ui`'s `TwoColumnSections` (`columnOne`/`columnTwo`
@@ -109,6 +119,34 @@ aging_min` and an out-of-range `undo_seconds` client-side without calling
   queue-position fallback, naming the backup number once one's set, and the
   live-estimate line once enough history exists) — all with
   `updateBoardSettings`/`sonner`/`order-alerts` mocked.
+- `telegram-actions.ts` — `generateTelegramLink()`: derives the caller from
+  their own session (never a client-passed vendor id), mints a
+  `generateLinkToken()` (`@/lib/telegram`), inserts it into
+  `qkit.telegram_link_tokens` with a 30-minute expiry via the
+  service-role client (that table has zero client policies at all), and
+  returns the `t.me/<TELEGRAM_BOT_USERNAME>?start=<token>` deep link.
+  `disconnectTelegram()`: deletes the caller's own `qkit.vendor_telegram`
+  row, also via the service-role client (no client DELETE grant on that
+  table), and revalidates this page.
+- `telegram-actions.test.ts` — mocks `createServerClient`/
+  `createServiceClient`/`generateLinkToken`; covers the happy-path token
+  mint + deep-link shape, the not-signed-in / unset-`TELEGRAM_BOT_USERNAME`
+  / insert-failure error paths for `generateTelegramLink`, and the
+  happy-path delete plus its not-signed-in / delete-failure error paths for
+  `disconnectTelegram`.
+- `telegram-section.tsx` — `TelegramSection({ connected, deepLinkUrl })`
+  client component, purely presentational (all data comes from `page.tsx`):
+  connected renders a "Connected" badge + a `Disconnect` button
+  (`disconnectTelegram`, `router.refresh()` on success); disconnected
+  renders the deep-link QR (`react-qr-code`, the same library
+  `booth-qr-poster.tsx`/`pay-panel.tsx` already use — no second QR
+  dependency added) plus a plain tappable `t.me` link for mobile, or — if
+  `deepLinkUrl` is `null` (server-side generation failed) — a "refresh to
+  try again" message instead of a broken QR.
+- `telegram-section.dom.test.tsx` — RTL/jsdom tests (mocked
+  `disconnectTelegram`): renders the QR + tappable link when disconnected,
+  renders the Connected state + disconnect button when linked (and not the
+  QR), and that clicking Disconnect calls `disconnectTelegram`.
 
 ## Connectivity
 
@@ -128,6 +166,15 @@ sound / fires notifications, `daily_order_number_reset` feeds
 `ready_auto_clear_min` gates the board's 30s `sweepReadyOrders` poll
 (`realtime-order-board.tsx` in `src/app/dashboard`) — `null` (the field left
 blank here) disables the sweep entirely for that vendor.
+
+`TelegramSection` renders below `SettingsForm` on the same page, fed by
+`page.tsx`'s `vendor_telegram` read and `telegram-actions.ts#generateTelegramLink`
+call. Linking itself completes out-of-band: the vendor scans/taps the deep
+link, Telegram sends `/start <token>` to `src/app/api/telegram/webhook`,
+which resolves the token and writes `qkit.vendor_telegram` — this page only
+picks that up on its next load/`router.refresh()`, not live. Once linked,
+`src/app/o/[code]/actions.ts`'s `notifyVendorTelegram` reads that row on
+every successful `placeOrder` to send the alert.
 
 ## Parent
 

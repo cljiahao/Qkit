@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Telegram order alerts (Phase A): a vendor links Telegram once via a
+  deep-link QR in dashboard settings, then gets a message on every new
+  order as a redundant channel alongside the live order board. New
+  `qkit.vendor_telegram`/`qkit.telegram_link_tokens` tables (migration
+  0076), a signature-verified webhook route
+  (`/api/telegram/webhook`, `X-Telegram-Bot-Api-Secret-Token`), and a
+  fire-and-forget alert wired into `placeOrder` — a failed or missing
+  Telegram link never affects order placement itself.
 - Optional "Phone number (optional)" field on the customer checkout form,
   next to the name field. When a customer provides one, `place_order`/
   `place_walkup_order` link the order to the shared `merqo.customers` table

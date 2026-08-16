@@ -1,10 +1,11 @@
 "use server";
 import { z } from "zod";
 import { headers } from "next/headers";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { logEvent } from "@/app/actions/events";
+import { sendTelegramMessage } from "@/lib/telegram";
 import type { ActionResult } from "@/lib/action-result";
 
 type Result = ActionResult<{
@@ -27,6 +28,56 @@ function messageFor(raw: string): string {
   if (raw.includes("ORDER_RATE_LIMITED"))
     return "Too many orders too fast — wait a moment and try again.";
   return "Could not place order. Please try again.";
+}
+
+/**
+ * Redundant new-order channel: if the booth's vendor has linked Telegram
+ * (qkit.vendor_telegram), alert their chat alongside the live dashboard
+ * board. Entirely best-effort — every step reads via the service-role
+ * client (vendor_telegram has no client SELECT for anyone but the owning
+ * vendor's own session, and this runs with no vendor session at all) and
+ * the whole thing is wrapped so nothing here can ever affect placeOrder's
+ * own returned result. See
+ * docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md.
+ */
+async function notifyVendorTelegram(
+  boothId: string,
+  orderNumber: string,
+): Promise<void> {
+  try {
+    const service = await createServiceClient();
+
+    const { data: booth } = await service
+      .from("booths")
+      .select("vendor_id")
+      .eq("id", boothId)
+      .maybeSingle();
+    if (!booth) return;
+
+    const { data: link } = await service
+      .from("vendor_telegram")
+      .select("chat_id")
+      .eq("vendor_id", booth.vendor_id)
+      .maybeSingle();
+    if (!link) return;
+
+    const { data: order } = await service
+      .from("orders")
+      .select("total_cents")
+      .eq("booth_id", boothId)
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+    const totalLabel = order
+      ? ` — $${(order.total_cents / 100).toFixed(2)}`
+      : "";
+
+    await sendTelegramMessage(
+      link.chat_id,
+      `New order #${orderNumber}${totalLabel}`,
+    );
+  } catch (err) {
+    console.error("notifyVendorTelegram failed", err);
+  }
 }
 
 export async function placeOrder(
@@ -99,6 +150,10 @@ export async function placeOrder(
   // scan→order conversion. logEvent is best-effort and never throws, so awaiting
   // it can't fail a placed order.
   await logEvent("order_placed", { boothId: out.data.booth_id });
+
+  // Redundant vendor alert channel — same fire-and-forget contract as
+  // logEvent above, never throws, never affects the result below.
+  await notifyVendorTelegram(out.data.booth_id, out.data.order_number);
 
   return {
     success: true,

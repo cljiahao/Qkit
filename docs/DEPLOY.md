@@ -9,6 +9,19 @@ in its own `qkit` schema.
   then this repo's `0051_emit_order_completed.sql`. Set
   `NEXT_PUBLIC_LOOPKIT_URL` in Vercel env before deploying the order-status
   page change, or the earn link silently never shows (fails closed).
+- **Telegram order alerts — one-time `setWebhook` call**: after
+  `TELEGRAM_BOT_TOKEN`/`TELEGRAM_BOT_USERNAME`/`TELEGRAM_WEBHOOK_SECRET` are
+  set in Vercel and this deploy is live, register the webhook URL with
+  Telegram — a manual step, not part of the migration or app code:
+  ```bash
+  curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+    -d "url=https://<your-domain>/api/telegram/webhook" \
+    -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+  ```
+  Without this, Telegram never calls the webhook route at all — the
+  "Connect Telegram" QR in dashboard settings will render, but scanning it
+  does nothing (no `/start` ever reaches `qkit`). Re-run this whenever the
+  domain or the webhook secret changes.
 
 ## Production vs Preview environment variables
 

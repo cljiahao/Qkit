@@ -289,6 +289,15 @@ DEFAULT NULL` argument — same signature-change treatment as `0061`'s
   no `merqo` schema at all), and skipped entirely when the phone is
   null/omitted — no new required column, no backfill, zero added checkout
   friction for a customer who declines to give one.
+- `0076_vendor_telegram.sql` adds Phase A of the Telegram order-alerts
+  design (`docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`):
+  `qkit.vendor_telegram` (`vendor_id` PK → `chat_id`, RLS `SELECT` granted
+  to `authenticated` scoped to the caller's own row via
+  `vendor_telegram_own`, no client write grant at all — writes only
+  through the service-role client) and `qkit.telegram_link_tokens`
+  (short-lived deep-link tokens; RLS enabled with zero policies, same
+  "service-role only, no client read either" shape as `qkit.pricing`'s
+  writer restriction).
 
 ## Connectivity
 

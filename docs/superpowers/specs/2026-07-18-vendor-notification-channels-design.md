@@ -1,7 +1,16 @@
 # Vendor Notification Channels (Telegram/WhatsApp pickup pings) — Design
 
 **Date:** 2026-07-18
-**Status:** Draft — pending founder review (open questions below)
+**Status:** Draft — the customer-facing "order ready" notification design
+here (Decisions 1-4, Open Questions) still stands, not yet built. Superset
+context: `Merqo Business/docs/business/2026-08-16-telegram-integration-
+design.md` names this same idea "Phase B" and phases it behind a separate,
+now-approved Phase A (vendor-side new-order alerts, a different flow —
+`2026-08-16-telegram-order-alerts-design.md`, in progress). Phase A's bot/
+webhook infrastructure is designed to be reusable for this doc's
+customer-linking flow later, not a second parallel bot. WhatsApp's open
+questions below (BSP choice, template-message window, opt-in correlation)
+remain genuinely unresolved either way.
 **Depends on:** none structurally. Not a shared cross-kit service — same
 reasoning already applied to menukit/apikit this session: only qkit needs
 this today, no second kit (shopkit) exists yet to justify extracting a

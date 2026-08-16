@@ -56,8 +56,11 @@ src/app/(auth)/                 — login page: email/password sign-in + sign-up
 src/app/dashboard/              — vendor dashboard (realtime order board)
 src/app/order/[boothId]/        — customer menu + cart + placeOrder action
 src/app/order/[boothId]/[orderNumber]/ — live order status page
+src/app/o/[code]/               — short-QR customer entry point + placeOrder action
+src/app/api/telegram/webhook/   — Telegram Bot API webhook (signature-verified, no session)
 src/proxy.ts                    — Supabase session refresh + /dashboard guard (Next 16)
 src/lib/supabase/               — browser / server / service clients + mw helper
+src/lib/telegram.ts             — sendTelegramMessage + generateLinkToken (Bot API, no SDK)
 src/lib/types.ts                — DB types (mirror of supabase/migrations)
 src/lib/schemas.ts              — Zod schemas for forms + actions
 src/components/ui/              — shadcn primitives (CLI-managed, do not hand-edit)
@@ -81,6 +84,16 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   PayNow/pointer config lives in paykit's `vendor_payment_config`, vendor-
   scoped) and `orders.payment_status` is a local mirror of paykit's
   transaction state, not the primary record.
+- **Telegram order alerts** (2026-08-16, Phase A of the cross-kit Telegram
+  integration design): `vendor_telegram` (`vendor_id` → `chat_id`, one row
+  per linked vendor) and `telegram_link_tokens` (short-lived deep-link
+  tokens minted by the dashboard settings page, consumed by the webhook
+  route's `/start` handler). Both have RLS enabled; `vendor_telegram` grants
+  `authenticated` SELECT on the caller's own row only, `telegram_link_tokens`
+  has zero client policies at all. Every write to either table goes through
+  the **service-role client** — the webhook route (on link) and the
+  settings page's disconnect/link-token actions — never a direct client
+  write. See `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`.
 
 ## Rules (always)
 
@@ -342,5 +355,26 @@ variables" section. Deliberately **not** doing yet, per user decision same
 day: splitting Preview onto a separate staging Supabase project — Preview
 and Production still share one Supabase project; revisit later, not
 urgent.
+
+**Telegram order alerts, Phase A (2026-08-16):** a vendor connects Telegram
+once via a deep-link QR (`t.me/<bot>?start=<token>`) shown in dashboard
+settings (`src/app/dashboard/settings/telegram-section.tsx` +
+`telegram-actions.ts`); every new order then fires a message to their
+linked chat from `placeOrder` (`src/app/o/[code]/actions.ts`'s
+`notifyVendorTelegram`), a redundant channel alongside the live order
+board — entirely best-effort, wrapped so a failed/missing link can never
+affect order placement itself (tested explicitly, not just claimed — see
+`actions.place-order.test.ts`'s "Telegram alert" block). Webhook route
+(`src/app/api/telegram/webhook/route.ts`) verifies Telegram's
+`X-Telegram-Bot-Api-Secret-Token` header against `TELEGRAM_WEBHOOK_SECRET`
+before touching any data (401 otherwise) and always responds 200 to a
+Telegram-shaped payload regardless of internal outcome (Telegram retries
+aggressively on non-2xx). New tables `qkit.vendor_telegram` +
+`qkit.telegram_link_tokens` (migration 0076) — see the Data model section
+above. Distinct from, but sharing the same bot/webhook infrastructure
+conceptually with, the still-draft customer-facing
+`2026-07-18-vendor-notification-channels-design.md` (not built here). The
+one-time `setWebhook` registration is a manual deploy step, not automated
+by this repo — see `docs/DEPLOY.md`.
 
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration -->

@@ -280,6 +280,18 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
 - `stock.test.ts` — tests parsing of malformed/partial remaining-stock data.
 - `supabase/` — the three Supabase client factories (browser/server/service-
   role) plus entitlement/user/vendor read helpers; see its own README.
+- `telegram.ts` — `sendTelegramMessage(chatId, text)`: fire-and-forget
+  `POST` to the Telegram Bot API's `sendMessage` (no SDK) — a no-op when
+  `TELEGRAM_BOT_TOKEN` is unset, catches and logs a fetch rejection instead
+  of throwing, never surfaces a success/failure outcome to the caller.
+  `generateLinkToken()`: a hex-UUID single-use account-linking token for
+  the Telegram deep link, satisfying Telegram's own `[A-Za-z0-9_-]{1,64}`
+  deep-link payload charset. Used by the settings page's Connect Telegram
+  flow (`dashboard/settings/telegram-actions.ts`) and
+  `o/[code]/actions.ts`'s post-order vendor alert.
+- `telegram.test.ts` — tests the sendMessage request shape, the missing-
+  token no-op, the caught-fetch-rejection behavior, and the link-token
+  charset/uniqueness.
 - `types.ts` — the hand-maintained mirror of the `qkit` Postgres schema: core
   domain types (`OrderStatus`, `OrderSource` — `"qr"` | `"walkup"`, migration
   0060 — `Plan`, `PaymentConfig`, `MenuItem`, `CartItem`,
@@ -287,7 +299,8 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `daily_order_number_reset`/`default_prep_minutes`, migration 0062), and the
   full `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
   admin_audit, events, licenses, payments, pricing, feedback,
-  purchase_requests, support_messages, booths, orders, booth_item_sold; RPCs
+  purchase_requests, support_messages, booths, orders, booth_item_sold,
+  vendor_telegram, telegram_link_tokens (migration 0076); RPCs
   `next_order_number`, `booth_remaining_stock`, `booth_servable`,
   `check_rate_limit`, `place_order`, `place_walkup_order` (now with `p_paid`,
   migration 0061), `get_booth_for_order`, `regenerate_short_code`,

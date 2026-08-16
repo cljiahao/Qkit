@@ -23,7 +23,8 @@ The authenticated vendor area — a shared header/nav shell wrapping the live or
 - `realtime-order-board.dom.test.tsx` — RTL tests: the earliest/latest sort toggle, the daily order-number reset (real number when no baseline supplied, the display-rank number when one is), the per-booth `BoothToggle` (queried by its own state-carrying `aria-label`, e.g. "Kopi Corner is open. Tap to pause." — inline for a single booth, gated behind the "Booths" dialog for 2+, stays reachable for a paused/empty booth, toggles + reverts on failure, and — the `visibleBooths` regression — stays selectable and paired with a still-present filter `Select` after pausing the exact booth the board is filtered to), and the walk-up button (opens the dialog for the sole active booth and fetches its menu; shows a no-booths state instead when nothing's active).
 - `settings/` — board-preferences page: aging/overdue thresholds, the tap-undo
   window, new-order sound, desktop notifications, daily order-number reset,
-  and a backup prep-time estimate, all persisted to `vendors.board_settings`.
+  and a backup prep-time estimate, all persisted to `vendors.board_settings`;
+  plus a Connect Telegram section (deep-link QR, redundant new-order alerts).
 - `stats/` — sales analytics: revenue/orders/AOV, trends, margin, busy-hours,
   top items, service speed, and reviews, gated free/pass vs. Pro, plus a
   permanent ungated snapshot for a paid event window.

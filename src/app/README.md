@@ -9,7 +9,7 @@ Next.js App Router tree — every page, layout, route handler, and PWA manifest 
 - `(auth)/` — vendor login and password-reset pages (route group, no URL segment).
 - `actions/` — server actions shared across routes: analytics events, feedback, purchase (upgrade) requests, support messages.
 - `admin/` — internal admin dashboard (vendor management, pricing, feedback, support inbox).
-- `api/` — route-handler API endpoints: the Merqo cross-product integration and qkit's own `v1` public API.
+- `api/` — route-handler API endpoints: the Merqo cross-product integration, the Telegram Bot API webhook for vendor order alerts, and qkit's own `v1` public API.
 - `apple-icon.tsx` — `AppleIcon` route handler; renders `brandIcon(180)` (from `@/lib/brand-icon`) as a 180×180 PNG `ImageResponse` for iOS home-screen touch icons.
 - `auth/` — Supabase auth callback route (OAuth/recovery code exchange).
 - `dashboard/` — authenticated vendor area (realtime order board, booth/menu management, stats).
