@@ -18,17 +18,15 @@ afterEach(() => {
 
 describe("mintCustomerConnectToken", () => {
   it("posts the right body/headers and returns the parsed token+deep_link on 2xx", async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            token: "tok123",
-            deep_link: "https://t.me/bot?start=tok123",
-          }),
-          { status: 200 },
-        ),
-      );
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          token: "tok123",
+          deep_link: "https://t.me/bot?start=tok123",
+        }),
+        { status: 200 },
+      ),
+    );
 
     const result = await mintCustomerConnectToken("v1", "qkit", "qkit:o1");
 
