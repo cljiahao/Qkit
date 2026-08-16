@@ -257,6 +257,25 @@ describe("boardSettingsSchema", () => {
         .success,
     ).toBe(false);
   });
+
+  it("defaults customer_telegram_notify_enabled to true when absent (backward compat for every pre-existing vendor row)", () => {
+    const res = boardSettingsSchema.safeParse(valid);
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.customer_telegram_notify_enabled).toBe(true);
+    }
+  });
+
+  it("parses customer_telegram_notify_enabled: false", () => {
+    const res = boardSettingsSchema.safeParse({
+      ...valid,
+      customer_telegram_notify_enabled: false,
+    });
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.customer_telegram_notify_enabled).toBe(false);
+    }
+  });
 });
 
 describe("menuItemSchema", () => {
