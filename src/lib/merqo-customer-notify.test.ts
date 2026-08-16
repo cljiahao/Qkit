@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import {
   mintCustomerConnectToken,
   notifyCustomer,
+  notifyVendor,
 } from "./merqo-customer-notify";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -103,5 +104,42 @@ describe("notifyCustomer", () => {
     await expect(
       notifyCustomer("v1", "qkit:o1", "hi"),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("notifyVendor", () => {
+  it("posts the right body/headers on success", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true, sent: true }), { status: 200 }),
+      );
+
+    await notifyVendor("vendor-1", "New order #0007 — $7.00");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://merqo.example/api/merqo/notify-vendor");
+    expect(init?.method).toBe("POST");
+    expect(init?.headers).toMatchObject({
+      Authorization: "Bearer test-secret",
+      "content-type": "application/json",
+    });
+    expect(JSON.parse(init?.body as string)).toEqual({
+      vendor_id: "vendor-1",
+      message: "New order #0007 — $7.00",
+    });
+  });
+
+  it("never throws on a non-2xx response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "nope" }), { status: 500 }),
+    );
+    await expect(notifyVendor("vendor-1", "hi")).resolves.toBeUndefined();
+  });
+
+  it("never throws on a timeout/network error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
+    await expect(notifyVendor("vendor-1", "hi")).resolves.toBeUndefined();
   });
 });

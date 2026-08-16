@@ -17,16 +17,18 @@ the current (non-legacy) customer ordering entry point.
   `ORDER_ITEM_UNAVAILABLE`/`ORDER_RATE_LIMITED`) to customer-facing messages
   via `messageFor()`, logs only the genuinely-unexpected failures, and on
   success fires the `order_placed` analytics event, fires
-  `notifyVendorTelegram(boothId, orderNumber)` (a redundant Telegram alert
-  to the booth's vendor, if linked), and returns
+  `notifyVendorTelegram(boothId, orderNumber)` (a redundant vendor alert via
+  merqo's shared Telegram bot), and returns
   `{ orderNumber, boothId, accessToken }`. `notifyVendorTelegram` is
   entirely best-effort and wrapped in its own try/catch: it resolves the
-  booth's `vendor_id` → `qkit.vendor_telegram.chat_id` → (for the message
-  text) the order's `total_cents`, all via the service-role client (no
-  vendor session exists in this customer-facing action), and silently
-  no-ops if any step comes back empty — a failed or missing Telegram link
-  can never affect `placeOrder`'s own returned result. See
-  `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`.
+  booth's `vendor_id`, looks up the order's `total_cents` for the message
+  text (both via the service-role client — no vendor session exists in this
+  customer-facing action), then calls `@/lib/merqo-customer-notify`'s
+  `notifyVendor(vendorId, message)` — a merqo outage or a vendor who never
+  connected can never affect `placeOrder`'s own returned result. See
+  `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`
+  (Phase A2 — supersedes qkit's own retired bot, formerly
+  `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`).
 - `actions.place-order.test.ts` — unit tests (RPC mocked) covering: the
   expired-code message mapping, a successful order, the action-level flood
   guard rejecting before `place_order` is ever called, fail-open behaviour
@@ -36,11 +38,11 @@ the current (non-legacy) customer ordering entry point.
   `place_order` as `p_customer_phone`, and an omitted/blank/whitespace-only
   one instead sending `p_customer_phone: undefined` (cross-kit customer
   identity, migration `0075` — the "genuinely optional" contract at the
-  action layer), and a "Telegram alert" block proving the redundant-channel
-  contract explicitly (not just claiming it): sends the alert when the
-  booth's vendor has a linked `chat_id`, skips silently when there's no
-  link, and a `sendTelegramMessage` rejection doesn't change `placeOrder`'s
-  own returned result.
+  action layer), and a "vendor alert" block proving the redundant-channel
+  contract explicitly (not just claiming it): calls `notifyVendor` with the
+  booth's `vendor_id` and a message containing the order number/total,
+  skips silently when the booth can't be resolved, and a `notifyVendor`
+  rejection doesn't change `placeOrder`'s own returned result.
 - `page.tsx` — `OrderEntryPage` (route entry, `revalidate=0`): resolves the
   booth via `get_booth_for_order(p_short_code)` (public-safe — omits
   `cost_cents`/`short_code`), distinguishes a real RPC error (shows a
@@ -61,10 +63,10 @@ Reached at `/o/<short_code>` from a booth's QR code. `page.tsx` renders
 `OrderForm` (`@/components/order/order-form.tsx`), which imports and calls
 this folder's `actions.ts#placeOrder` directly on submit; on success it
 navigates to `/order/[boothId]/[orderNumber]?t=<accessToken>` for live status.
-`placeOrder` also calls `@/lib/telegram`'s `sendTelegramMessage` via its own
-`notifyVendorTelegram` helper, reading `qkit.vendor_telegram` (written by
-`src/app/api/telegram/webhook/route.ts` and
-`src/app/dashboard/settings/telegram-actions.ts`).
+`placeOrder` also calls `@/lib/merqo-customer-notify`'s `notifyVendor` via its
+own `notifyVendorTelegram` helper — merqo's shared bot resolves the vendor's
+linked chat itself; a vendor connects that link once via merqo's own
+`/profile` page, not through anything in this repo.
 
 ## Parent
 

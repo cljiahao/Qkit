@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(105);
+select plan(95);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -82,18 +82,6 @@ values
    '00000000-0000-0000-0000-00000000000b', now() - interval '1 day',
    now() + interval '1 day');
 
--- Telegram order alerts (migration 0076): a linked chat per vendor, plus one
--- pending link token for A. Both feed the RLS checks below.
-insert into qkit.vendor_telegram (vendor_id, chat_id)
-values
-  ('00000000-0000-0000-0000-00000000000a', 111),
-  ('00000000-0000-0000-0000-00000000000b', 222);
-
-insert into qkit.telegram_link_tokens (token, vendor_id, expires_at)
-values
-  ('rlstesttoken1', '00000000-0000-0000-0000-00000000000a',
-   now() + interval '30 minutes');
-
 -- Vendor C: its OWN single active booth with a known short_code and a
 -- stock-capped menu item — used by the order-path RPC tests below
 -- (get_booth_for_order / place_order). Being the vendor's only (hence oldest)
@@ -147,8 +135,6 @@ select ok((select relrowsecurity from pg_class where oid = 'qkit.orders'::regcla
 select ok((select relrowsecurity from pg_class where oid = 'qkit.feedback'::regclass), 'RLS on feedback');
 select ok((select relrowsecurity from pg_class where oid = 'qkit.purchase_requests'::regclass), 'RLS on purchase_requests');
 select ok((select relrowsecurity from pg_class where oid = 'qkit.licenses'::regclass), 'RLS on licenses');
-select ok((select relrowsecurity from pg_class where oid = 'qkit.vendor_telegram'::regclass), 'RLS on vendor_telegram');
-select ok((select relrowsecurity from pg_class where oid = 'qkit.telegram_link_tokens'::regclass), 'RLS on telegram_link_tokens');
 
 -- ── Shared stock-quantity rule (0034 / T4 + R4) ──────────────────────────────
 -- order_item_quantities is the single source the gate and the counter both use:
@@ -311,43 +297,6 @@ with upd as (
   where id = '00000000-0000-0000-0000-00000000d002' returning 1)
 select is((select count(*)::int from upd), 0, 'A cannot bump B order');
 
--- ── Telegram order alerts (0076) ─────────────────────────────────────────────
--- vendor_telegram: SELECT granted to authenticated, RLS scopes it to the
--- caller's own row — same "own row only" shape as booths/orders above.
-select isnt_empty(
-  $$ select 1 from qkit.vendor_telegram where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
-  'A reads its own vendor_telegram row');
-select is_empty(
-  $$ select 1 from qkit.vendor_telegram where vendor_id = '00000000-0000-0000-0000-00000000000b' $$,
-  'A cannot read B vendor_telegram row');
--- No client write grant at all — every write goes through the service-role
--- client (the webhook route on link, the settings disconnect action on
--- unlink), so INSERT/UPDATE/DELETE are denied outright (grant-level, not
--- just RLS) for even the row's own owner.
-select throws_ok(
-  $$ update qkit.vendor_telegram set chat_id = 999
-     where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
-  '42501', null,
-  'authenticated cannot UPDATE its own vendor_telegram row (no grant)');
-select throws_ok(
-  $$ delete from qkit.vendor_telegram
-     where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
-  '42501', null,
-  'authenticated cannot DELETE its own vendor_telegram row (no grant)');
-select throws_ok(
-  $$ insert into qkit.vendor_telegram (vendor_id, chat_id)
-     values ('00000000-0000-0000-0000-00000000000a', 333) $$,
-  '42501', null,
-  'authenticated cannot INSERT into vendor_telegram (no grant)');
--- telegram_link_tokens: zero policies AND no grant at all — not even the
--- token's own owner can read it, same "service-role only" shape as
--- qkit.pricing's writer restriction extended to reads too.
-select throws_ok(
-  $$ select 1 from qkit.telegram_link_tokens
-     where vendor_id = '00000000-0000-0000-0000-00000000000a' $$,
-  null,
-  'authenticated cannot SELECT telegram_link_tokens at all, even its own');
-
 -- ── Authenticated-role lockdown (0033) ──────────────────────────────────────
 -- Phase A closed these for anon only; sign-up is open, so `authenticated` is
 -- attacker-reachable. A is a logged-in vendor that does NOT own Vendor C's
@@ -460,18 +409,6 @@ select throws_ok(
   $$ select 1 from qkit.booths limit 1 $$,
   null,
   'anon cannot SELECT booths directly');
-
--- vendor_telegram/telegram_link_tokens (0076): no grant to anon at all —
--- linking only ever happens through the webhook route's service-role
--- client, never a direct anon query.
-select throws_ok(
-  $$ select 1 from qkit.vendor_telegram limit 1 $$,
-  null,
-  'anon cannot SELECT vendor_telegram directly');
-select throws_ok(
-  $$ select 1 from qkit.telegram_link_tokens limit 1 $$,
-  null,
-  'anon cannot SELECT telegram_link_tokens directly');
 
 -- But anon can never flip an order to a paid/confirmed state directly — only the
 -- owning vendor can. anon has NO grant on orders (0041; customer flows go through

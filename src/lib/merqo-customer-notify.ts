@@ -77,3 +77,33 @@ export async function notifyCustomer(
     console.error("notifyCustomer failed", err);
   }
 }
+
+/**
+ * Fire-and-forget: notifies a vendor via merqo's shared bot
+ * (`POST /api/merqo/notify-vendor`) — the Phase A2 replacement for a kit's
+ * own per-kit vendor-alert bot. Never throws — a non-2xx response or
+ * network error is caught and logged, never propagated, same rule as
+ * `notifyCustomer` above (callers must never have their own result changed
+ * by this).
+ */
+export async function notifyVendor(
+  vendorId: string,
+  message: string,
+): Promise<void> {
+  try {
+    const res = await fetch(`${merqoBaseUrl()}/api/merqo/notify-vendor`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${merqoCustomerSecret()}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ vendor_id: vendorId, message }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) {
+      console.error("notifyVendor: non-2xx response", res.status);
+    }
+  } catch (err) {
+    console.error("notifyVendor failed", err);
+  }
+}

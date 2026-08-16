@@ -57,13 +57,12 @@ src/app/dashboard/              — vendor dashboard (realtime order board)
 src/app/order/[boothId]/        — customer menu + cart + placeOrder action
 src/app/order/[boothId]/[orderNumber]/ — live order status page
 src/app/o/[code]/               — short-QR customer entry point + placeOrder action
-src/app/api/telegram/webhook/   — Telegram Bot API webhook (signature-verified, no session)
 src/proxy.ts                    — Supabase session refresh + /dashboard guard (Next 16)
 src/lib/supabase/               — browser / server / service clients + mw helper
-src/lib/telegram.ts             — sendTelegramMessage + generateLinkToken (Bot API, no SDK)
-src/lib/merqo-customer-notify.ts — mintCustomerConnectToken/notifyCustomer: HTTP client
-                                    calling merqo's customer-connect-token/notify-customer
-                                    endpoints (kit → merqo, the new direction — see below)
+src/lib/merqo-customer-notify.ts — mintCustomerConnectToken/notifyCustomer/notifyVendor:
+                                    HTTP client calling merqo's customer-connect-token/
+                                    notify-customer/notify-vendor endpoints (kit → merqo,
+                                    the new direction — see below)
 src/lib/types.ts                — DB types (mirror of supabase/migrations)
 src/lib/schemas.ts              — Zod schemas for forms + actions
 src/components/ui/              — shadcn primitives (CLI-managed, do not hand-edit)
@@ -87,16 +86,25 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   PayNow/pointer config lives in paykit's `vendor_payment_config`, vendor-
   scoped) and `orders.payment_status` is a local mirror of paykit's
   transaction state, not the primary record.
-- **Telegram order alerts** (2026-08-16, Phase A of the cross-kit Telegram
-  integration design): `vendor_telegram` (`vendor_id` → `chat_id`, one row
-  per linked vendor) and `telegram_link_tokens` (short-lived deep-link
-  tokens minted by the dashboard settings page, consumed by the webhook
-  route's `/start` handler). Both have RLS enabled; `vendor_telegram` grants
-  `authenticated` SELECT on the caller's own row only, `telegram_link_tokens`
-  has zero client policies at all. Every write to either table goes through
-  the **service-role client** — the webhook route (on link) and the
-  settings page's disconnect/link-token actions — never a direct client
-  write. See `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`.
+- **Vendor Telegram alerts, Phase A → A2** (2026-08-16): Phase A shipped
+  qkit's own per-kit Telegram bot (`vendor_telegram`/`telegram_link_tokens`
+  tables, a webhook route, a dashboard settings section) for vendor
+  new-order alerts. Phase A2, shipped the same day, **retires all of it** —
+  a vendor shouldn't hold two unrelated "talking to Merqo" bot connections
+  once merqo has its own shared bot (`POST /api/merqo/vendor-connect-token`,
+  `POST /api/merqo/notify-vendor`). Migration `0077` drops both `0076`
+  tables; `placeOrder`'s vendor alert (`notifyVendorTelegram` in
+  `src/app/o/[code]/actions.ts`) now calls `notifyVendor` in
+  `src/lib/merqo-customer-notify.ts` instead of a local lookup + Bot API
+  call — same name, same call site, same never-blocks-order-placement
+  guarantee, only the internals changed. No data carried over: a vendor's
+  qkit-bot `chat_id` is meaningless under merqo's bot (Telegram scopes
+  `chat_id` per bot×user pair), so every vendor who'd linked qkit's own bot
+  must reconnect once via merqo's own `/profile` page. The superseded Phase
+  A design lives on as history at
+  `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`; the
+  current design is
+  `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`.
 - **Customer Telegram connect** (2026-08-16, Phase B+D of the cross-kit
   Telegram integration design): a new architectural direction — this is the
   first **kit → merqo** HTTP call in this codebase (every existing cross-kit
@@ -374,25 +382,22 @@ day: splitting Preview onto a separate staging Supabase project — Preview
 and Production still share one Supabase project; revisit later, not
 urgent.
 
-**Telegram order alerts, Phase A (2026-08-16):** a vendor connects Telegram
-once via a deep-link QR (`t.me/<bot>?start=<token>`) shown in dashboard
-settings (`src/app/dashboard/settings/telegram-section.tsx` +
-`telegram-actions.ts`); every new order then fires a message to their
-linked chat from `placeOrder` (`src/app/o/[code]/actions.ts`'s
-`notifyVendorTelegram`), a redundant channel alongside the live order
-board — entirely best-effort, wrapped so a failed/missing link can never
-affect order placement itself (tested explicitly, not just claimed — see
-`actions.place-order.test.ts`'s "Telegram alert" block). Webhook route
-(`src/app/api/telegram/webhook/route.ts`) verifies Telegram's
-`X-Telegram-Bot-Api-Secret-Token` header against `TELEGRAM_WEBHOOK_SECRET`
-before touching any data (401 otherwise) and always responds 200 to a
-Telegram-shaped payload regardless of internal outcome (Telegram retries
-aggressively on non-2xx). New tables `qkit.vendor_telegram` +
-`qkit.telegram_link_tokens` (migration 0076) — see the Data model section
-above. Distinct from, but sharing the same bot/webhook infrastructure
-conceptually with, the still-draft customer-facing
-`2026-07-18-vendor-notification-channels-design.md` (not built here). The
-one-time `setWebhook` registration is a manual deploy step, not automated
-by this repo — see `docs/DEPLOY.md`.
+**Vendor Telegram alerts, Phase A → A2 (2026-08-16):** Phase A (a vendor
+connects qkit's own Telegram bot once via a deep-link QR in dashboard
+settings; a webhook route verifies Telegram's
+`X-Telegram-Bot-Api-Secret-Token` before touching any data) shipped and was
+retired the same day by Phase A2, once the sibling merqo repo shipped a
+shared bot every kit calls into instead of running its own. `placeOrder`
+(`src/app/o/[code]/actions.ts`'s `notifyVendorTelegram`) still fires a
+redundant new-order alert to the booth's vendor, entirely best-effort and
+wrapped so a failure can never affect order placement itself (tested
+explicitly, not just claimed — see `actions.place-order.test.ts`'s "vendor
+alert" block) — only its internals changed, from a local
+`vendor_telegram`/Bot API call to `notifyVendor` in
+`src/lib/merqo-customer-notify.ts`. See the Data model section above and
+`docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`.
+Distinct from, but sharing the same underlying-bot concept as, the
+still-draft customer-facing
+`2026-07-18-vendor-notification-channels-design.md` (not built here).
 
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration -->

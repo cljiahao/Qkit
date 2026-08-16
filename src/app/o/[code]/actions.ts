@@ -5,7 +5,7 @@ import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { logEvent } from "@/app/actions/events";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { notifyVendor } from "@/lib/merqo-customer-notify";
 import type { ActionResult } from "@/lib/action-result";
 
 type Result = ActionResult<{
@@ -31,14 +31,12 @@ function messageFor(raw: string): string {
 }
 
 /**
- * Redundant new-order channel: if the booth's vendor has linked Telegram
- * (qkit.vendor_telegram), alert their chat alongside the live dashboard
- * board. Entirely best-effort — every step reads via the service-role
- * client (vendor_telegram has no client SELECT for anyone but the owning
- * vendor's own session, and this runs with no vendor session at all) and
- * the whole thing is wrapped so nothing here can ever affect placeOrder's
- * own returned result. See
- * docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md.
+ * Redundant new-order channel: alerts the booth's vendor via merqo's shared
+ * Telegram bot (Phase A2 — supersedes qkit's own now-retired bot). Entirely
+ * best-effort — the booth lookup reads via the service-role client (this
+ * runs with no vendor session at all) and the whole thing is wrapped so
+ * nothing here can ever affect placeOrder's own returned result. See
+ * docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md.
  */
 async function notifyVendorTelegram(
   boothId: string,
@@ -54,13 +52,6 @@ async function notifyVendorTelegram(
       .maybeSingle();
     if (!booth) return;
 
-    const { data: link } = await service
-      .from("vendor_telegram")
-      .select("chat_id")
-      .eq("vendor_id", booth.vendor_id)
-      .maybeSingle();
-    if (!link) return;
-
     const { data: order } = await service
       .from("orders")
       .select("total_cents")
@@ -71,8 +62,8 @@ async function notifyVendorTelegram(
       ? ` — $${(order.total_cents / 100).toFixed(2)}`
       : "";
 
-    await sendTelegramMessage(
-      link.chat_id,
+    await notifyVendor(
+      booth.vendor_id,
       `New order #${orderNumber}${totalLabel}`,
     );
   } catch (err) {

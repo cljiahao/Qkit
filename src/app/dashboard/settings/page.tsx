@@ -3,8 +3,6 @@ import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { BackButton } from "@/components/back-button";
 import { currentPrepEstimate, type StatsOrder } from "@/lib/stats";
 import { SettingsForm } from "./settings-form";
-import { TelegramSection } from "./telegram-section";
-import { generateTelegramLink } from "./telegram-actions";
 
 export const revalidate = 0;
 
@@ -38,24 +36,6 @@ export default async function SettingsPage() {
     prepEstimate = currentPrepEstimate((recent ?? []) as StatsOrder[]);
   }
 
-  // RLS grants authenticated SELECT on their own vendor_telegram row
-  // (migration 0076) — the normal session client can read this directly,
-  // only writes need the service-role client (telegram-actions.ts).
-  const { data: telegramLink } = await supabase
-    .from("vendor_telegram")
-    .select("vendor_id")
-    .eq("vendor_id", vendor.id)
-    .maybeSingle();
-  const telegramConnected = !!telegramLink;
-  // A fresh 30-minute deep-link token per page load when not yet linked —
-  // null here (generation failed, e.g. TELEGRAM_BOT_USERNAME unset) shows a
-  // "try again" message instead of a broken QR.
-  let telegramDeepLink: string | null = null;
-  if (!telegramConnected) {
-    const linkResult = await generateTelegramLink();
-    telegramDeepLink = linkResult.success ? linkResult.deepLinkUrl : null;
-  }
-
   return (
     <div className="mx-auto max-w-lg space-y-8 md:max-w-4xl">
       <header>
@@ -77,11 +57,6 @@ export default async function SettingsPage() {
       <SettingsForm
         initial={vendor.board_settings}
         prepEstimate={prepEstimate}
-      />
-
-      <TelegramSection
-        connected={telegramConnected}
-        deepLinkUrl={telegramDeepLink}
       />
     </div>
   );

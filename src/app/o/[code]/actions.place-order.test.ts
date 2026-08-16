@@ -4,12 +4,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // execution flows exactly to the reject/success point under test.
 const rpc = vi.fn();
 
-// Service-role lookups for the post-order Telegram alert: booths -> vendor_id
-// -> vendor_telegram -> orders (total_cents). Each test configures the three
-// queues it needs; defaults resolve to "not found" so tests that don't care
-// about Telegram at all (the pre-existing ones above) just no-op through it.
+// Service-role lookups for the post-order vendor alert: booths -> vendor_id,
+// orders -> total_cents. Each test configures the queues it needs; defaults
+// resolve to "not found" so tests that don't care about the alert at all
+// (the pre-existing ones above) just no-op through it.
 let boothQueue: { data: unknown }[] = [];
-let vendorTelegramQueue: { data: unknown }[] = [];
 let orderQueue: { data: unknown }[] = [];
 const serviceFrom = vi.fn((table: string) => {
   if (table === "booths") {
@@ -18,16 +17,6 @@ const serviceFrom = vi.fn((table: string) => {
         eq: () => ({
           maybeSingle: () =>
             Promise.resolve(boothQueue.shift() ?? { data: null }),
-        }),
-      }),
-    };
-  }
-  if (table === "vendor_telegram") {
-    return {
-      select: () => ({
-        eq: () => ({
-          maybeSingle: () =>
-            Promise.resolve(vendorTelegramQueue.shift() ?? { data: null }),
         }),
       }),
     };
@@ -47,14 +36,14 @@ const serviceFrom = vi.fn((table: string) => {
   throw new Error(`unexpected table: ${table}`);
 });
 
-const sendTelegramMessage = vi.fn().mockResolvedValue(undefined);
+const notifyVendor = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ rpc }),
   createServiceClient: async () => ({ from: serviceFrom }),
 }));
-vi.mock("@/lib/telegram", () => ({
-  sendTelegramMessage: (...args: unknown[]) => sendTelegramMessage(...args),
+vi.mock("@/lib/merqo-customer-notify", () => ({
+  notifyVendor: (...args: unknown[]) => notifyVendor(...args),
 }));
 vi.mock("next/headers", () => ({
   headers: async () => new Map<string, string>(),
@@ -64,10 +53,9 @@ import { placeOrder } from "./actions";
 
 beforeEach(() => {
   boothQueue = [];
-  vendorTelegramQueue = [];
   orderQueue = [];
   serviceFrom.mockClear();
-  sendTelegramMessage.mockClear();
+  notifyVendor.mockClear();
 });
 
 const validInput = {
@@ -257,7 +245,7 @@ describe("placeOrder", () => {
     },
   );
 
-  describe("Telegram alert (redundant channel — must never affect the result)", () => {
+  describe("vendor alert (redundant channel — must never affect the result)", () => {
     function mockSuccessfulRpc() {
       rpc.mockImplementation((name: string) => {
         if (name === "check_rate_limit") return Promise.resolve({ data: true });
@@ -274,10 +262,9 @@ describe("placeOrder", () => {
       });
     }
 
-    it("sends a Telegram alert when the booth's vendor has a linked chat_id", async () => {
+    it("calls notifyVendor with the booth's vendor_id and a message containing the order number/total", async () => {
       mockSuccessfulRpc();
       boothQueue = [{ data: { vendor_id: "vendor-1" } }];
-      vendorTelegramQueue = [{ data: { chat_id: 555 } }];
       orderQueue = [{ data: { total_cents: 700 } }];
 
       const res = await placeOrder("code123", validInput, IDEM);
@@ -288,29 +275,28 @@ describe("placeOrder", () => {
         boothId: "booth-1",
         accessToken: "tok7",
       });
-      expect(sendTelegramMessage).toHaveBeenCalledTimes(1);
-      const [chatId, text] = sendTelegramMessage.mock.calls[0];
-      expect(chatId).toBe(555);
-      expect(text).toContain("0007");
+      expect(notifyVendor).toHaveBeenCalledTimes(1);
+      const [vendorId, message] = notifyVendor.mock.calls[0];
+      expect(vendorId).toBe("vendor-1");
+      expect(message).toContain("0007");
+      expect(message).toContain("7.00");
     });
 
-    it("skips silently when the booth's vendor has no Telegram link", async () => {
+    it("skips silently when the booth can't be resolved", async () => {
       mockSuccessfulRpc();
-      boothQueue = [{ data: { vendor_id: "vendor-1" } }];
-      vendorTelegramQueue = [{ data: null }];
+      boothQueue = [{ data: null }];
 
       const res = await placeOrder("code123", validInput, IDEM);
 
       expect(res.success).toBe(true);
-      expect(sendTelegramMessage).not.toHaveBeenCalled();
+      expect(notifyVendor).not.toHaveBeenCalled();
     });
 
-    it("a sendTelegramMessage rejection doesn't change placeOrder's own result", async () => {
+    it("a notifyVendor failure doesn't change placeOrder's own result", async () => {
       mockSuccessfulRpc();
       boothQueue = [{ data: { vendor_id: "vendor-1" } }];
-      vendorTelegramQueue = [{ data: { chat_id: 555 } }];
       orderQueue = [{ data: { total_cents: 700 } }];
-      sendTelegramMessage.mockRejectedValueOnce(new Error("network down"));
+      notifyVendor.mockRejectedValueOnce(new Error("network down"));
 
       const res = await placeOrder("code123", validInput, IDEM);
 
