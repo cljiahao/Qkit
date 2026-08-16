@@ -51,6 +51,7 @@ Approved design docs, one per feature, each with a matching implementation plan 
 - `2026-07-21-drop-vendor-identity-columns-design.md` — "Drop `qkit.vendors.name` / `qkit.vendors.social_links` — Design": finishes the deferred step 4 of merqo's shared-vendor-profile cutover (which shipped 2026-07-17) by dropping the two now-stale columns once a full deploy cycle had passed.
 - `2026-08-16-telegram-order-alerts-design.md` — "Telegram Order Alerts — Design": a vendor connects Telegram once (deep-link QR, own bot/webhook), then gets a message the moment a new order lands — a redundant channel alongside the live dashboard board. Phase A of the cross-kit Telegram integration design; distinct from (but infra-compatible with) the still-draft `2026-07-18-vendor-notification-channels-design.md`'s customer-facing "order ready" ping.
 - `2026-08-16-customer-telegram-connect-design.md` — "Customer Telegram Connect — Design": qkit's half of Phase B+D — a "Get notified on Telegram" button on the order-status page's waiting moment, calling merqo's new `customer-connect-token`/`notify-customer` endpoints; `advanceOrder`'s `ready` transition fires the notification. No new qkit table or webhook — the connection lives entirely in `merqo.customers`.
+- `2026-08-16-customer-notify-vendor-toggle-design.md` — "Customer Notify Vendor Toggle — Design": fast-follow on the customer Telegram connect work — a `board_settings` on/off switch (default on) letting a vendor turn off the customer order-ready notification without touching the customer's own consent.
 
 ## Parent
 

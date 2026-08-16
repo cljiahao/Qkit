@@ -10,16 +10,35 @@ import { useAsyncAction } from "@/hooks/use-async-action";
 import { disconnectTelegram } from "./telegram-actions";
 
 /** Disconnected state: the deep-link QR + tappable link, or (deepLinkUrl
- *  generation failed server-side) a plain retry message. Split out of
- *  TelegramSection so the connected/disconnected branch stays a single
- *  ternary, not a nested one. */
-function DisconnectedState({ deepLinkUrl }: { deepLinkUrl: string | null }) {
+ *  generation failed server-side) a retry prompt with a real action, not
+ *  just instructions to refresh manually. Split out of TelegramSection so
+ *  the connected/disconnected branch stays a single ternary, not a nested
+ *  one. */
+function DisconnectedState({
+  deepLinkUrl,
+  onRetry,
+}: {
+  deepLinkUrl: string | null;
+  onRetry: () => void;
+}) {
   if (!deepLinkUrl) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Couldn&apos;t set up the Telegram link right now — refresh the page to
-        try again.
-      </p>
+      <div className="flex flex-col items-center gap-3 text-center">
+        <p className="text-sm text-muted-foreground">
+          Couldn&apos;t set up the Telegram link right now.
+          <br />
+          Give it another try.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+          className="rounded-lg"
+        >
+          Try again
+        </Button>
+      </div>
     );
   }
   return (
@@ -78,7 +97,7 @@ export function TelegramSection({
     <Section
       icon={<Send className="size-5" />}
       title="Telegram alerts"
-      description="A Telegram message the moment a new order lands — a backup channel alongside the live board, for whenever you're not looking at the tablet."
+      description="Get a message the moment a new order comes in, so you never have to keep one eye on the tablet."
     >
       {connected ? (
         <div className="flex items-center justify-between gap-3">
@@ -97,7 +116,10 @@ export function TelegramSection({
           </Button>
         </div>
       ) : (
-        <DisconnectedState deepLinkUrl={deepLinkUrl} />
+        <DisconnectedState
+          deepLinkUrl={deepLinkUrl}
+          onRetry={() => router.refresh()}
+        />
       )}
     </Section>
   );

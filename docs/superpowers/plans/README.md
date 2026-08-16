@@ -28,6 +28,7 @@ Step-by-step implementation plans, one per feature, each derived from the matchi
 - `2026-07-21-drop-vendor-identity-columns.md` — "Drop Stale Vendor Identity Columns Implementation Plan": drops the stale `qkit.vendors.name`/`social_links` columns (superseded by `merqo.vendor_profile`) and migrates onboarding's write plus four admin pages' raw reads onto the shared profile instead.
 - `2026-08-16-telegram-order-alerts.md` — "Telegram Order Alerts Implementation Plan": adds `vendor_telegram`/`telegram_link_tokens` tables, a signature-verified webhook route, a dashboard "Connect Telegram" section, and wires a fire-and-forget alert into `placeOrder` — a failed/missing link never affects order placement itself.
 - `2026-08-16-customer-telegram-connect.md` — "Customer Telegram Connect Implementation Plan": adds a `TelegramConnect` order-status component calling merqo's `customer-connect-token` endpoint, and wires `advanceOrder`'s `ready` transition to merqo's `notify-customer` endpoint. No new qkit table or webhook — depends on merqo's own plan shipping first.
+- `2026-08-16-customer-notify-vendor-toggle.md` — "Customer Notify Vendor Toggle Implementation Plan": adds `customer_telegram_notify_enabled` to `board_settings` (default true) and gates `advanceOrder`'s `notifyCustomer` call on it, plus a settings-page switch. Depends on the customer Telegram connect plan already being on `main`.
 
 ## Parent
 
