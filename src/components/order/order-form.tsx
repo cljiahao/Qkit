@@ -58,8 +58,10 @@ export function OrderForm({
     handleSubmit,
     setValue,
     formState: { errors },
-  } = useForm<{ customerName: string }>({
-    resolver: zodResolver(placeOrderSchema.pick({ customerName: true })),
+  } = useForm<{ customerName: string; customerPhone?: string }>({
+    resolver: zodResolver(
+      placeOrderSchema.pick({ customerName: true, customerPhone: true }),
+    ),
   });
 
   // Funnel: a QR landing (this form mounted). Fire-and-forget; paired with the
@@ -223,7 +225,10 @@ export function OrderForm({
   const total = cartTotal(cartItems);
   const itemCount = cartItems.reduce((n, it) => n + it.quantity, 0);
 
-  async function onSubmit(formData: { customerName: string }) {
+  async function onSubmit(formData: {
+    customerName: string;
+    customerPhone?: string;
+  }) {
     if (closed) {
       toast.error("This booth is closed right now");
       return;
@@ -236,6 +241,7 @@ export function OrderForm({
 
     const input: PlaceOrderInput = {
       customerName: formData.customerName,
+      customerPhone: formData.customerPhone,
       items: cartItems,
     };
     // One idempotency key for this submit, generated BEFORE the try so it stays
@@ -524,6 +530,35 @@ export function OrderForm({
             className="text-sm font-medium text-destructive"
           >
             {errors.customerName.message}
+          </p>
+        )}
+      </section>
+
+      {/* Customer phone — optional, cross-kit customer identity */}
+      <section className="space-y-2.5">
+        <Label
+          htmlFor="customerPhone"
+          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+        >
+          Phone number (optional)
+        </Label>
+        <Input
+          id="customerPhone"
+          type="tel"
+          placeholder="So we can recognize you next time"
+          className="h-12 rounded-xl text-base"
+          aria-invalid={!!errors.customerPhone}
+          aria-describedby={
+            errors.customerPhone ? "customerPhone-error" : undefined
+          }
+          {...register("customerPhone")}
+        />
+        {errors.customerPhone && (
+          <p
+            id="customerPhone-error"
+            className="text-sm font-medium text-destructive"
+          >
+            {errors.customerPhone.message}
           </p>
         )}
       </section>

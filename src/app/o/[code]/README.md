@@ -9,9 +9,11 @@ the current (non-legacy) customer ordering entry point.
 
 - `actions.ts` — `placeOrder(code, input, idempotencyKey)` server action:
   validates `code`/`idempotencyKey`/`input` (`placeOrderSchema`), applies a
-  best-effort per-IP flood guard (`rateLimit`, 8/60s, fails open), then calls
-  the `place_order` RPC. Maps known Postgres `RAISE` prefixes
-  (`ORDER_EXPIRED`/`ORDER_UNSERVABLE`/`ORDER_SOLD_OUT`/
+  best-effort per-IP flood guard (`rateLimit`, 8/60s, fails open), normalizes
+  a blank/whitespace-only `customerPhone` to `undefined` (so "left blank" and
+  "never typed" are indistinguishable to the RPC), then calls the
+  `place_order` RPC with `p_customer_phone`. Maps known Postgres `RAISE`
+  prefixes (`ORDER_EXPIRED`/`ORDER_UNSERVABLE`/`ORDER_SOLD_OUT`/
   `ORDER_ITEM_UNAVAILABLE`/`ORDER_RATE_LIMITED`) to customer-facing messages
   via `messageFor()`, logs only the genuinely-unexpected failures, and on
   success fires the `order_placed` analytics event and returns
@@ -20,8 +22,12 @@ the current (non-legacy) customer ordering entry point.
   expired-code message mapping, a successful order, the action-level flood
   guard rejecting before `place_order` is ever called, fail-open behaviour
   when the limiter RPC itself errors, every known raise→message mapping via
-  `it.each`, a malformed-RPC-output guard, and rejection of a non-UUID
-  idempotency key before any RPC call.
+  `it.each`, a malformed-RPC-output guard, rejection of a non-UUID
+  idempotency key before any RPC call, a supplied `customerPhone` reaching
+  `place_order` as `p_customer_phone`, and an omitted/blank/whitespace-only
+  one instead sending `p_customer_phone: undefined` (cross-kit customer
+  identity, migration `0075` — the "genuinely optional" contract at the
+  action layer).
 - `page.tsx` — `OrderEntryPage` (route entry, `revalidate=0`): resolves the
   booth via `get_booth_for_order(p_short_code)` (public-safe — omits
   `cost_cents`/`short_code`), distinguishes a real RPC error (shows a

@@ -117,8 +117,18 @@ export const selectedOptionSchema = z.object({
   choice: z.string().min(1).max(100),
 });
 
+// Cross-kit customer identity (see docs/business/2026-08-16-cross-kit-
+// customer-identity-design.md): a genuinely optional convenience field, not a
+// verified identity — same trust level customerName already has, no format
+// validation beyond a loose length bound. Left as a plain optional string
+// (not trim-and-blank-to-undefined here) so the form's inferred field type
+// stays a simple `string | undefined` — placeOrder normalizes a blank value
+// to "omitted" right before the RPC call, the one place it actually matters.
+const customerPhone = z.string().trim().max(30).optional();
+
 export const placeOrderSchema = z.object({
   customerName: z.string().min(1, "Your name is required").max(100),
+  customerPhone,
   items: z
     .array(
       z.object({
