@@ -39,6 +39,30 @@ async function loadOwnOrder(orderId: string) {
 }
 
 /**
+ * Vendor-side gate on the `ready`-transition customer Telegram ping — a
+ * brand-preference switch, not a consent gate (the customer's own consent,
+ * given once via merqo's connect flow, is untouched by this). Fails open:
+ * an unparseable/missing board_settings row (every vendor whose row predates
+ * this key, i.e. everyone at ship time) reads as "not explicitly disabled",
+ * same default-true rationale as boardSettingsSchema's own `.default(true)`.
+ * Only an explicit `customer_telegram_notify_enabled: false` suppresses it.
+ */
+async function customerNotifyEnabled(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  vendorId: string,
+): Promise<boolean> {
+  const { data: vendor } = await supabase
+    .from("vendors")
+    .select("board_settings")
+    .eq("id", vendorId)
+    .maybeSingle();
+  const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
+  return !(
+    settings.success && settings.data.customer_telegram_notify_enabled === false
+  );
+}
+
+/**
  * Advance an order to its next state (preparing→ready→completed), stamping the
  * transition timestamp. The next state is derived server-side from the order's
  * current status — the client never dictates it. Rejects an order with no legal
@@ -80,7 +104,11 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   // src/app/o/[code]/actions.ts: notifyCustomer already never throws on its
   // own, but this call site still wraps it so nothing here can ever change
   // advanceOrder's own returned result below.
-  if (adv.next === "ready" && userId) {
+  if (
+    adv.next === "ready" &&
+    userId &&
+    (await customerNotifyEnabled(supabase, userId))
+  ) {
     try {
       await notifyCustomer(
         userId,
