@@ -105,6 +105,18 @@ unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
   (page-1-only, 1000-user cap, logs if that ceiling is hit so pagination gaps
   don't fail invisibly) and `findAuthUserByEmail` — shared auth-user lookup
   helpers for the merqo cross-kit admin flows.
+- `merqo-customer-notify.ts` — `mintCustomerConnectToken(vendorId, kitSlug,
+notifyRef)`/`notifyCustomer(vendorId, notifyRef, message)`: server-only
+  HTTP client for merqo's `POST /api/merqo/customer-connect-token`/`POST
+/api/merqo/notify-customer` endpoints (bearer `MERQO_CUSTOMER_SECRET`,
+  `AbortSignal.timeout(3000)`) — the first **kit → merqo** HTTP direction in
+  this codebase (every other cross-kit call flows merqo → kit). Both fail
+  closed: `mintCustomerConnectToken` returns `null` on any non-2xx/timeout/
+  network error, `notifyCustomer` catches + logs and never throws, same
+  fail-closed philosophy as `fetchEarnConfig` in `earn-link.tsx`.
+- `merqo-customer-notify.test.ts` — tests the request body/header shape for
+  both calls and the fail-closed/never-throw behavior on non-2xx, timeout,
+  and network-error cases.
 - `merqo-downgrade-request.ts` — `resolveDowngradeOutcome(hasVendorRow,
 currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
   admin downgrade-vendor action.

@@ -8,6 +8,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Customer Telegram connect (Phase B+D): a "Get notified on Telegram" button
+  on the order-status page while an order is still waiting (`!isTerminal`
+  and not yet `ready`), calling merqo's new `POST
+/api/merqo/customer-connect-token`; `advanceOrder`'s `ready` transition
+  now fires merqo's `POST /api/merqo/notify-customer` (`notify_ref` mode,
+  `` `qkit:${order.id}` ``). No new qkit table or webhook — the customer's
+  connection lives entirely in `merqo.customers`, owned by merqo. New
+  `src/lib/merqo-customer-notify.ts` HTTP client (bearer
+  `MERQO_CUSTOMER_SECRET`) — the first kit → merqo HTTP direction in this
+  codebase; fails closed/never throws on either call, so a merqo outage
+  never breaks the order-status page or changes `advanceOrder`'s own
+  result.
 - Telegram order alerts (Phase A): a vendor links Telegram once via a
   deep-link QR in dashboard settings, then gets a message on every new
   order as a redundant channel alongside the live order board. New
