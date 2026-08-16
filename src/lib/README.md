@@ -260,7 +260,12 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `feedbackSchema`, `supportMessageSchema`, `profileNameSchema`/
   `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema` (now also
   `daily_order_number_reset: boolean` and `default_prep_minutes:
-1-60|null`, migration 0062; `show_wait_estimate: boolean`, migration 0068),
+1-60|null`, migration 0062; `show_wait_estimate: boolean`, migration 0068;
+  `customer_telegram_notify_enabled: z.boolean().default(true)`, 2026-08-16 —
+  a vendor-side opt-out for `advanceOrder`'s customer Telegram "order ready"
+  ping, `.default(true)` so every pre-existing `board_settings` row, which
+  predates this key, keeps notifying exactly as before — no migration, this
+  is a JSONB column key not a SQL column),
   `pricingFormSchema`/`grantPassSchema`,
   `parseMenuItems`/`parseOrderItems`, `menuCategorySchema`/
   `menuCategoriesSchema`/`parseMenuCategories` (booth's ordered

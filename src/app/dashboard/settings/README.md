@@ -5,7 +5,8 @@
 Lets a vendor tune how their live order board gets their attention and what
 customers see while they wait: the amber/red aging thresholds, how long
 staff have to undo a tap, how long an uncollected ready order sits before
-auto-clearing, the new-order sound, desktop notifications, whether order
+auto-clearing, whether the customer Telegram "order ready" ping is on for
+this vendor, the new-order sound, desktop notifications, whether order
 numbers reset daily, whether a wait-time estimate shows at all, and a
 backup prep-time estimate. Settings are stored on the vendor's own row and
 sync across devices. The "Connect Telegram" section that used to live here
@@ -51,9 +52,17 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
   card leans on a long inline paragraph to explain a single control. "Board timing" holds "Turn amber
   after"/"Turn red after" (the aging/overdue minute thresholds), "Undo
   window" (`undo_seconds`, 2-15s, validated live via `boardSettingsSchema`),
-  and "Auto-clear after" (`ready_auto_clear_min`, 1-60min, blank/empty =
+  "Auto-clear after" (`ready_auto_clear_min`, 1-60min, blank/empty =
   `null` = the auto-clear sweep is off for that vendor entirely — see
-  `sweepReadyOrders` in `src/app/dashboard/order-actions.ts`); "New-order
+  `sweepReadyOrders` in `src/app/dashboard/order-actions.ts`), and (2026-08-16,
+  directly below Auto-clear after, same "Save timing" submit) a `Switch`
+  labeled "Notify customers on Telegram when their order is ready" for
+  `customer_telegram_notify_enabled` — defaults checked (`?? true` on read,
+  covering a legacy vendor row whose stored `board_settings` predates this
+  key, same rationale as `boardSettingsSchema`'s own `.default(true)`); this
+  is a vendor-side opt-out layered on the customer's own already-given
+  consent (merqo's connect flow), not a re-ask — see `customerNotifyEnabled`
+  in `src/app/dashboard/order-actions.ts`; "New-order
   sound" is a `ToggleGroup` of `SOUND_OPTIONS` —
   chime/bell/ding/horn/triple/off — that previews via `playSound` on pick and
   saves immediately; "Notifications" is a `Switch` (its extra iOS/Android
@@ -110,7 +119,12 @@ aging_min` and an out-of-range `undo_seconds` client-side without calling
   prep time, saves `null` when it's cleared, rejects an out-of-1-60-range
   value without calling the action, and the three `prepEstimate` states:
   not-enough-history naming the
-  queue-position fallback, naming the backup number once one's set, and the
+  queue-position fallback, naming the backup number once one's set, and (2026-08-16)
+  the customer-notify toggle (renders checked by default and saves
+  `customer_telegram_notify_enabled: false` via "Save timing" once toggled
+  off; still renders checked when `initial` is a legacy `BoardSettings`
+  object with the key stripped out entirely, simulating a vendor row stored
+  before this key existed), and the
   live-estimate line once enough history exists) — all with
   `updateBoardSettings`/`sonner`/`order-alerts` mocked.
 

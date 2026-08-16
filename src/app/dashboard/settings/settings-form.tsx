@@ -272,6 +272,14 @@ export function SettingsForm({
       ? String(initial.ready_auto_clear_min)
       : "",
   );
+  // ?? true, not just the type's own default: a legacy vendor row (one that
+  // predates this key) reads back with the field genuinely absent at
+  // runtime even though BoardSettings says it's required — see
+  // boardSettingsSchema's own `.default(true)` for the same backward-compat
+  // rationale one layer down.
+  const [customerNotify, setCustomerNotify] = useState(
+    initial.customer_telegram_notify_enabled ?? true,
+  );
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const { pending: savingThresholds, run: runThresholds } = useAsyncAction();
 
@@ -316,6 +324,7 @@ export function SettingsForm({
         defaultPrepMin.trim() === "" ? null : Number(defaultPrepMin),
       ready_auto_clear_min:
         readyAutoClearMin.trim() === "" ? null : Number(readyAutoClearMin),
+      customer_telegram_notify_enabled: customerNotify,
     };
   }
 
@@ -367,7 +376,8 @@ export function SettingsForm({
     readyAutoClearMin ===
       (initial.ready_auto_clear_min != null
         ? String(initial.ready_auto_clear_min)
-        : "");
+        : "") &&
+    customerNotify === (initial.customer_telegram_notify_enabled ?? true);
 
   const displayUnchanged =
     dailyReset === initial.daily_order_number_reset &&
@@ -528,6 +538,21 @@ export function SettingsForm({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3 border-t border-border pt-4">
+                <Switch
+                  checked={customerNotify}
+                  onCheckedChange={setCustomerNotify}
+                  aria-label="Notify customers on Telegram when their order is ready"
+                />
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  Notify customers on Telegram when their order is ready
+                  <InfoTooltip
+                    content="Fires the same Telegram ping a customer opted into on the order-status page. Turning this off doesn't touch their connection — it just stops this booth from using it."
+                    ariaLabel="More about this setting"
+                  />
+                </span>
               </div>
             </div>
             {thresholdError && (

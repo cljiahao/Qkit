@@ -36,6 +36,7 @@ const DEFAULTS: BoardSettings = {
   show_wait_estimate: true,
   default_prep_minutes: null,
   ready_auto_clear_min: 3,
+  customer_telegram_notify_enabled: true,
 };
 
 const PREP_ESTIMATE = { avgMinutes: null, sampleCount: 0, minSample: 10 };
@@ -117,6 +118,40 @@ describe("SettingsForm thresholds", () => {
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ ready_auto_clear_min: 5 }),
     );
+  });
+});
+
+describe("SettingsForm customer notify toggle", () => {
+  it("renders next to Auto-clear after, defaults checked, and saves it via Save timing", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+
+    const toggle = screen.getByRole("switch", {
+      name: /notify customers on telegram when their order is ready/i,
+    });
+    expect(toggle).toBeChecked();
+
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ customer_telegram_notify_enabled: false }),
+    );
+  });
+
+  it("defaults to checked for a legacy vendor row that predates this key", () => {
+    const { customer_telegram_notify_enabled: _omit, ...legacyRest } = DEFAULTS;
+    const legacyInitial = legacyRest as unknown as BoardSettings;
+    render(
+      <SettingsForm initial={legacyInitial} prepEstimate={PREP_ESTIMATE} />,
+    );
+
+    expect(
+      screen.getByRole("switch", {
+        name: /notify customers on telegram when their order is ready/i,
+      }),
+    ).toBeChecked();
   });
 });
 
