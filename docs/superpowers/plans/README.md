@@ -27,6 +27,7 @@ Step-by-step implementation plans, one per feature, each derived from the matchi
 - `2026-07-21-arrival-confirmation-and-auto-clear.md` — "Arrival Confirmation + Ready-Order Auto-Clear Implementation Plan": ships (1) arrival confirmation ("scan-to-start") that holds prep for perishable-item booths until the customer taps arrival, (2) an auto-clear sweep that flips a `ready` order to `completed` after a vendor-configurable timeout, and (3) a "Restore to ready" undo action for a premature auto-clear.
 - `2026-07-21-drop-vendor-identity-columns.md` — "Drop Stale Vendor Identity Columns Implementation Plan": drops the stale `qkit.vendors.name`/`social_links` columns (superseded by `merqo.vendor_profile`) and migrates onboarding's write plus four admin pages' raw reads onto the shared profile instead.
 - `2026-08-16-telegram-order-alerts.md` — "Telegram Order Alerts Implementation Plan": adds `vendor_telegram`/`telegram_link_tokens` tables, a signature-verified webhook route, a dashboard "Connect Telegram" section, and wires a fire-and-forget alert into `placeOrder` — a failed/missing link never affects order placement itself.
+- `2026-08-16-customer-telegram-connect.md` — "Customer Telegram Connect Implementation Plan": adds a `TelegramConnect` order-status component calling merqo's `customer-connect-token` endpoint, and wires `advanceOrder`'s `ready` transition to merqo's `notify-customer` endpoint. No new qkit table or webhook — depends on merqo's own plan shipping first.
 
 ## Parent
 
