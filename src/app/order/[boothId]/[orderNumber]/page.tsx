@@ -17,13 +17,14 @@ import {
   parseSocialLinks,
   resolveSocialLinks,
 } from "@/lib/schemas";
-import { displayOrderNumber } from "@/lib/orders";
+import { displayOrderNumber, isTerminal } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
 import { createCheckout, type CheckoutView } from "@/lib/paykit/client";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
 import { EarnLink } from "./earn-link";
+import { TelegramConnect } from "./telegram-connect";
 import { SocialLinksRow } from "@/components/social-links-row";
 
 // Split out react-qr-code's bundle: showPay is false for most orders
@@ -268,6 +269,15 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           // settled when it isn't.
           awaitingPayment={showPay && order.payment_status !== "confirmed"}
         />
+
+        {/* The connect button only makes sense while the order is still
+            waiting — once it's ready/completed/cancelled, there's nothing
+            left to notify about, or the moment already passed. */}
+        {!isTerminal(order.status) &&
+          order.status !== "ready" &&
+          booth?.vendor_id && (
+            <TelegramConnect orderId={order.id} vendorId={booth.vendor_id} />
+          )}
 
         {/* Pulled up next to the status/ETA block rather than buried in the
             footer below items — a customer stares at this page for several

@@ -61,6 +61,9 @@ src/app/api/telegram/webhook/   — Telegram Bot API webhook (signature-verified
 src/proxy.ts                    — Supabase session refresh + /dashboard guard (Next 16)
 src/lib/supabase/               — browser / server / service clients + mw helper
 src/lib/telegram.ts             — sendTelegramMessage + generateLinkToken (Bot API, no SDK)
+src/lib/merqo-customer-notify.ts — mintCustomerConnectToken/notifyCustomer: HTTP client
+                                    calling merqo's customer-connect-token/notify-customer
+                                    endpoints (kit → merqo, the new direction — see below)
 src/lib/types.ts                — DB types (mirror of supabase/migrations)
 src/lib/schemas.ts              — Zod schemas for forms + actions
 src/components/ui/              — shadcn primitives (CLI-managed, do not hand-edit)
@@ -94,6 +97,21 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   the **service-role client** — the webhook route (on link) and the
   settings page's disconnect/link-token actions — never a direct client
   write. See `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`.
+- **Customer Telegram connect** (2026-08-16, Phase B+D of the cross-kit
+  Telegram integration design): a new architectural direction — this is the
+  first **kit → merqo** HTTP call in this codebase (every existing cross-kit
+  call up to this point flows merqo → kit, e.g. metrics pull,
+  vendor-provision). No new qkit table, no new webhook — the customer's
+  Telegram connection lives entirely in `merqo.customers`, owned by merqo.
+  `src/lib/merqo-customer-notify.ts` calls merqo's bearer-secret
+  (`MERQO_CUSTOMER_SECRET`) `POST /api/merqo/customer-connect-token` (mints
+  a deep-link token, rendered by the order-status page's `TelegramConnect`
+  component while an order isn't yet `ready`) and `POST
+/api/merqo/notify-customer` (fired from `advanceOrder`'s `ready`
+  transition, `notify_ref` mode, `` `qkit:${order.id}` ``). Both fail
+  closed/never throw — a merqo outage never breaks the order-status page or
+  changes `advanceOrder`'s own result. See
+  `docs/superpowers/specs/2026-08-16-customer-telegram-connect-design.md`.
 
 ## Rules (always)
 

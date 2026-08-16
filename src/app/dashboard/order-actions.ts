@@ -6,6 +6,7 @@ import { getUser } from "@/lib/supabase/get-user";
 import { boardSettingsSchema } from "@/lib/schemas";
 import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
 import { createCheckout, confirmCheckout } from "@/lib/paykit/client";
+import { notifyCustomer } from "@/lib/merqo-customer-notify";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus, PaymentStatus } from "@/lib/types";
 
@@ -47,7 +48,7 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   if (!idSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
-  const { supabase, order } = await loadOwnOrder(orderId);
+  const { supabase, order, userId } = await loadOwnOrder(orderId);
   if (!supabase || !order) return { success: false, error: "Order not found" };
 
   const adv = ADVANCE[order.status];
@@ -74,6 +75,22 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   }
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
+
+  // Same fire-and-forget pattern as notifyVendorTelegram in
+  // src/app/o/[code]/actions.ts: notifyCustomer already never throws on its
+  // own, but this call site still wraps it so nothing here can ever change
+  // advanceOrder's own returned result below.
+  if (adv.next === "ready" && userId) {
+    try {
+      await notifyCustomer(
+        userId,
+        `qkit:${orderId}`,
+        "Your order is ready for pickup!",
+      );
+    } catch (err) {
+      console.error("advanceOrder: notifyCustomer failed", err);
+    }
+  }
 
   return { success: true, status: adv.next };
 }

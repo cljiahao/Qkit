@@ -5,7 +5,9 @@
 Live customer order-status page — the page a customer lands on right after
 placing an order (and can return to via "recent orders"). Polls status and
 payment state, shows a PayNow/QR/link pay panel when the booth expects
-payment, and surfaces a loyalty "earn a stamp" link once the order completes.
+payment, offers a "Get notified on Telegram" connect button while the order
+is still waiting, and surfaces a loyalty "earn a stamp" link once the order
+completes.
 
 ## Contents
 
@@ -17,6 +19,16 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   enabled.
 - `earn-link.dom.test.tsx` — RTL tests for `EarnLink`'s enabled/disabled/
   fetch-failure branches.
+- `telegram-connect.tsx` — `TelegramConnect({ orderId, vendorId })` (async
+  server component, same shape as `EarnLink`): mints a single-order-scoped
+  connect token from merqo (`mintCustomerConnectToken`,
+  `@/lib/merqo-customer-notify`, `notify_ref` `` `qkit:${orderId}` ``) and
+  renders the deep-link button plus a one-line disclosure preview — merqo's
+  own connect flow holds the actual consent copy, this never restates or
+  diverges from it — or `null` on any mint failure (a merqo outage must
+  never break this page, same fail-closed rule as `EarnLink`).
+- `telegram-connect.dom.test.tsx` — RTL tests for `TelegramConnect`'s
+  successful-mint (link + disclosure) and failed-mint (`null`) branches.
 - `loading.tsx` — animated skeleton matching the real ticket's shadow/layout,
   shown while `page.tsx`'s server reads resolve.
 - `order-status-poller.tsx` — `OrderStatusPoller` client component: polls
@@ -67,7 +79,10 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   gate plus `order.payment_status !== 'confirmed'`, an
   `awaitingPayment` flag passed to `OrderStatusPoller` so its status copy
   never outruns the actual payment state, and renders the ticket
-  header, `OrderStatusPoller`, the resolved social links (`SocialLinksRow`,
+  header, `OrderStatusPoller`, `TelegramConnect` (gated on
+  `!isTerminal(order.status) && order.status !== 'ready'` plus
+  `booth?.vendor_id` — the connect button only makes sense while the order
+  is still waiting), the resolved social links (`SocialLinksRow`,
   `@/components`, booth override else the vendor's shared default from
   `merqo.vendor_profile` via `getOrCreateVendorProfile` —
   `@/lib/merqo-vendor-profile` — degrading to booth-only links on any RPC
@@ -87,6 +102,14 @@ payment, and surfaces a loyalty "earn a stamp" link once the order completes.
   read failure (decorative, never worth breaking the page over). `PayPanel`'s
   `orderRef` always stays the real, permanent number regardless — that one's
   for payment reconciliation, not display.
+- `page.dom.test.tsx` — RTL test rendering `OrderStatusPage` directly (same
+  pattern as `src/app/dashboard/layout.dom.test.tsx`: an async Server
+  Component page can be awaited and its returned tree rendered like any
+  other component), with every nested async/side-effecting child
+  (`OrderStatusPoller`, `EarnLink`, `next/dynamic`'s `PayPanel`) stubbed out
+  so the test stays focused on `TelegramConnect`'s gating: renders while
+  `status` is `pending`/`confirmed`/`preparing`, not once
+  `ready`/`completed`/`cancelled`.
 - `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, checkout,
 initialStatus, amountCents })` client component: polls `getPaymentStatus`
   every 5s until `confirmed`/`not_required`; renders a QR
@@ -157,7 +180,9 @@ client since the customer is anonymous and the per-order `access_token` is
 the sole authorization. `page.tsx` and `payment-actions.ts` both call out to
 paykit's checkout API (`@/lib/paykit/client`) for the actual QR/link/image
 and the claim transition; `EarnLink` calls out to the separate LoopKit
-service.
+service, and `TelegramConnect` calls out to merqo's `customer-connect-token`
+endpoint (`@/lib/merqo-customer-notify`) — the first kit → merqo HTTP
+direction in this codebase.
 
 ## Parent
 
