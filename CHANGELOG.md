@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Optional "Phone number (optional)" field on the customer checkout form,
+  next to the name field. When a customer provides one, `place_order`/
+  `place_walkup_order` link the order to the shared `merqo.customers` table
+  (cross-kit customer identity) so a repeat customer can eventually be
+  recognized across kits for the same vendor — genuinely optional, never
+  required, and skipped entirely (no merqo write at all) when left blank.
 - Adopted `@merqo/ui` v0.13.0's `switchKits` prop on `DashboardNav`: the
   account menu now has a "Switch products" submenu listing the three other
   live kits (loopkit, paykit, stockkit), letting a signed-in vendor jump

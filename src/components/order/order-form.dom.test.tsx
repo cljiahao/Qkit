@@ -153,6 +153,7 @@ describe("OrderForm cart", () => {
         "code123",
         {
           customerName: "Ada",
+          customerPhone: "",
           items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
         },
         expect.stringMatching(/^[0-9a-f-]{36}$/),
@@ -313,6 +314,51 @@ describe("OrderForm cart", () => {
       secondIdem,
     );
     expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
+  });
+
+  it("renders the phone field as optional and submits successfully when left blank", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText("Your name"), "Ada");
+
+    const phoneField = screen.getByLabelText("Phone number (optional)");
+    expect(phoneField).toBeInTheDocument();
+    expect(phoneField).toHaveValue("");
+
+    await user.click(screen.getByRole("button", { name: /Place order/ }));
+
+    await waitFor(() =>
+      expect(placeOrder).toHaveBeenCalledWith(
+        "code123",
+        expect.objectContaining({ customerName: "Ada", customerPhone: "" }),
+        expect.stringMatching(/^[0-9a-f-]{36}$/),
+      ),
+    );
+    expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
+  });
+
+  it("passes the phone value through to placeOrder when filled", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.type(
+      screen.getByLabelText("Phone number (optional)"),
+      "+6591234567",
+    );
+    await user.click(screen.getByRole("button", { name: /Place order/ }));
+
+    await waitFor(() =>
+      expect(placeOrder).toHaveBeenCalledWith(
+        "code123",
+        expect.objectContaining({
+          customerName: "Ada",
+          customerPhone: "+6591234567",
+        }),
+        expect.stringMatching(/^[0-9a-f-]{36}$/),
+      ),
+    );
   });
 
   it("disables ordering when the booth is closed", () => {

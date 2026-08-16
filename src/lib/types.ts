@@ -628,6 +628,7 @@ export interface Database {
           p_customer_name: string;
           p_items: Json;
           p_idempotency_key: string;
+          p_customer_phone?: string;
         };
         Returns: Json;
       };
@@ -637,6 +638,7 @@ export interface Database {
           p_customer_name: string;
           p_items: Json;
           p_paid: boolean;
+          p_customer_phone?: string;
         };
         Returns: Json;
       };
