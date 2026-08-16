@@ -120,6 +120,19 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   closed/never throw — a merqo outage never breaks the order-status page or
   changes `advanceOrder`'s own result. See
   `docs/superpowers/specs/2026-08-16-customer-telegram-connect-design.md`.
+- **Customer notify vendor toggle** (2026-08-16, fast-follow on the above):
+  `boardSettingsSchema` (`src/lib/schemas.ts`) gained one more
+  `board_settings` key, `customer_telegram_notify_enabled:
+z.boolean().default(true)` — a vendor-side opt-out for the `ready`-transition
+  Telegram ping, distinct from the customer's own consent above (which this
+  never touches). `advanceOrder` (`src/app/dashboard/order-actions.ts`)
+  reads+parses the vendor's `board_settings` via a new
+  `customerNotifyEnabled` helper before firing `notifyCustomer`, skipping
+  the call only on an explicit `false`; an unparseable/missing row (every
+  vendor whose row predates this key) fails open. Surfaced as a `Switch`
+  next to "Auto-clear after" in dashboard settings
+  (`src/app/dashboard/settings/settings-form.tsx`). See
+  `docs/superpowers/specs/2026-08-16-customer-notify-vendor-toggle-design.md`.
 
 ## Rules (always)
 
