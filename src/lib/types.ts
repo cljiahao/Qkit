@@ -587,6 +587,41 @@ export interface Database {
         Update: { booth_id?: string; menu_item_id?: string; qty?: number };
         Relationships: [];
       };
+      vendor_telegram: {
+        Row: { vendor_id: string; chat_id: number; linked_at: string };
+        Insert: {
+          vendor_id: string;
+          chat_id: number;
+          linked_at?: string;
+        };
+        Update: {
+          vendor_id?: string;
+          chat_id?: number;
+          linked_at?: string;
+        };
+        Relationships: [];
+      };
+      telegram_link_tokens: {
+        Row: {
+          token: string;
+          vendor_id: string;
+          expires_at: string;
+          created_at: string;
+        };
+        Insert: {
+          token: string;
+          vendor_id: string;
+          expires_at: string;
+          created_at?: string;
+        };
+        Update: {
+          token?: string;
+          vendor_id?: string;
+          expires_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
