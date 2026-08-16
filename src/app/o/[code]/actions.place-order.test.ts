@@ -1,16 +1,74 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // place_order is reached only after the anti-flood check; stub both RPCs so
 // execution flows exactly to the reject/success point under test.
 const rpc = vi.fn();
+
+// Service-role lookups for the post-order Telegram alert: booths -> vendor_id
+// -> vendor_telegram -> orders (total_cents). Each test configures the three
+// queues it needs; defaults resolve to "not found" so tests that don't care
+// about Telegram at all (the pre-existing ones above) just no-op through it.
+let boothQueue: { data: unknown }[] = [];
+let vendorTelegramQueue: { data: unknown }[] = [];
+let orderQueue: { data: unknown }[] = [];
+const serviceFrom = vi.fn((table: string) => {
+  if (table === "booths") {
+    return {
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () =>
+            Promise.resolve(boothQueue.shift() ?? { data: null }),
+        }),
+      }),
+    };
+  }
+  if (table === "vendor_telegram") {
+    return {
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () =>
+            Promise.resolve(vendorTelegramQueue.shift() ?? { data: null }),
+        }),
+      }),
+    };
+  }
+  if (table === "orders") {
+    return {
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            maybeSingle: () =>
+              Promise.resolve(orderQueue.shift() ?? { data: null }),
+          }),
+        }),
+      }),
+    };
+  }
+  throw new Error(`unexpected table: ${table}`);
+});
+
+const sendTelegramMessage = vi.fn().mockResolvedValue(undefined);
+
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ rpc }),
+  createServiceClient: async () => ({ from: serviceFrom }),
+}));
+vi.mock("@/lib/telegram", () => ({
+  sendTelegramMessage: (...args: unknown[]) => sendTelegramMessage(...args),
 }));
 vi.mock("next/headers", () => ({
   headers: async () => new Map<string, string>(),
 }));
 
 import { placeOrder } from "./actions";
+
+beforeEach(() => {
+  boothQueue = [];
+  vendorTelegramQueue = [];
+  orderQueue = [];
+  serviceFrom.mockClear();
+  sendTelegramMessage.mockClear();
+});
 
 const validInput = {
   customerName: "Ada",
@@ -150,5 +208,71 @@ describe("placeOrder", () => {
     const res = await placeOrder("code123", validInput, "not-a-uuid");
     expect(res).toEqual({ success: false, error: "Invalid request" });
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  describe("Telegram alert (redundant channel — must never affect the result)", () => {
+    function mockSuccessfulRpc() {
+      rpc.mockImplementation((name: string) => {
+        if (name === "check_rate_limit") return Promise.resolve({ data: true });
+        if (name === "place_order")
+          return Promise.resolve({
+            data: {
+              order_number: "0007",
+              booth_id: "booth-1",
+              access_token: "tok7",
+            },
+            error: null,
+          });
+        throw new Error(`unexpected rpc: ${name}`);
+      });
+    }
+
+    it("sends a Telegram alert when the booth's vendor has a linked chat_id", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [{ data: { vendor_id: "vendor-1" } }];
+      vendorTelegramQueue = [{ data: { chat_id: 555 } }];
+      orderQueue = [{ data: { total_cents: 700 } }];
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res).toEqual({
+        success: true,
+        orderNumber: "0007",
+        boothId: "booth-1",
+        accessToken: "tok7",
+      });
+      expect(sendTelegramMessage).toHaveBeenCalledTimes(1);
+      const [chatId, text] = sendTelegramMessage.mock.calls[0];
+      expect(chatId).toBe(555);
+      expect(text).toContain("0007");
+    });
+
+    it("skips silently when the booth's vendor has no Telegram link", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [{ data: { vendor_id: "vendor-1" } }];
+      vendorTelegramQueue = [{ data: null }];
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
+      expect(sendTelegramMessage).not.toHaveBeenCalled();
+    });
+
+    it("a sendTelegramMessage rejection doesn't change placeOrder's own result", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [{ data: { vendor_id: "vendor-1" } }];
+      vendorTelegramQueue = [{ data: { chat_id: 555 } }];
+      orderQueue = [{ data: { total_cents: 700 } }];
+      sendTelegramMessage.mockRejectedValueOnce(new Error("network down"));
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res).toEqual({
+        success: true,
+        orderNumber: "0007",
+        boothId: "booth-1",
+        accessToken: "tok7",
+      });
+    });
   });
 });
