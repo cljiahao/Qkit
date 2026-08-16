@@ -14,14 +14,27 @@ the current (non-legacy) customer ordering entry point.
   (`ORDER_EXPIRED`/`ORDER_UNSERVABLE`/`ORDER_SOLD_OUT`/
   `ORDER_ITEM_UNAVAILABLE`/`ORDER_RATE_LIMITED`) to customer-facing messages
   via `messageFor()`, logs only the genuinely-unexpected failures, and on
-  success fires the `order_placed` analytics event and returns
-  `{ orderNumber, boothId, accessToken }`.
+  success fires the `order_placed` analytics event, fires
+  `notifyVendorTelegram(boothId, orderNumber)` (a redundant Telegram alert
+  to the booth's vendor, if linked), and returns
+  `{ orderNumber, boothId, accessToken }`. `notifyVendorTelegram` is
+  entirely best-effort and wrapped in its own try/catch: it resolves the
+  booth's `vendor_id` → `qkit.vendor_telegram.chat_id` → (for the message
+  text) the order's `total_cents`, all via the service-role client (no
+  vendor session exists in this customer-facing action), and silently
+  no-ops if any step comes back empty — a failed or missing Telegram link
+  can never affect `placeOrder`'s own returned result. See
+  `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`.
 - `actions.place-order.test.ts` — unit tests (RPC mocked) covering: the
   expired-code message mapping, a successful order, the action-level flood
   guard rejecting before `place_order` is ever called, fail-open behaviour
   when the limiter RPC itself errors, every known raise→message mapping via
-  `it.each`, a malformed-RPC-output guard, and rejection of a non-UUID
-  idempotency key before any RPC call.
+  `it.each`, a malformed-RPC-output guard, rejection of a non-UUID
+  idempotency key before any RPC call, and a "Telegram alert" block proving
+  the redundant-channel contract explicitly (not just claiming it): sends
+  the alert when the booth's vendor has a linked `chat_id`, skips silently
+  when there's no link, and a `sendTelegramMessage` rejection doesn't
+  change `placeOrder`'s own returned result.
 - `page.tsx` — `OrderEntryPage` (route entry, `revalidate=0`): resolves the
   booth via `get_booth_for_order(p_short_code)` (public-safe — omits
   `cost_cents`/`short_code`), distinguishes a real RPC error (shows a
@@ -42,6 +55,10 @@ Reached at `/o/<short_code>` from a booth's QR code. `page.tsx` renders
 `OrderForm` (`@/components/order/order-form.tsx`), which imports and calls
 this folder's `actions.ts#placeOrder` directly on submit; on success it
 navigates to `/order/[boothId]/[orderNumber]?t=<accessToken>` for live status.
+`placeOrder` also calls `@/lib/telegram`'s `sendTelegramMessage` via its own
+`notifyVendorTelegram` helper, reading `qkit.vendor_telegram` (written by
+`src/app/api/telegram/webhook/route.ts` and
+`src/app/dashboard/settings/telegram-actions.ts`).
 
 ## Parent
 

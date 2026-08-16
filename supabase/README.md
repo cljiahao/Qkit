@@ -19,7 +19,7 @@ explicit Data-API grants), not in application code.
   the standard local ports/services (API 54321, DB 54322, Studio 54323,
   Inbucket 54324, seed file `./seed.sql` — though this project's real seeding
   is the manually-run scripts in `seed/`, not `db reset`'s auto-seed path).
-- `migrations/` — the ordered SQL schema history (74 files, `0000`-`0073`);
+- `migrations/` — the ordered SQL schema history (77 files, `0000`-`0076`);
   see its own README for the full theme breakdown.
 - `seed/` — demo and CI seed data (sample booths/menus, a CI auth bootstrap);
   see its own README.
