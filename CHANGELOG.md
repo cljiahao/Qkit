@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Bumped `@merqo/ui` to v0.16.0 and migrated `/dashboard/plan`'s Free/Pass/Pro
+  feature-comparison grid onto the new shared `PlanComparisonTable` component,
+  replacing the local `FEATURES`-rendering JSX and `Cell` check/dash helper —
+  same visible output (column order, check/dash rendering, row order),
+  different render path. The shared component (`tiers`/`rows` props, a
+  computed `gridTemplateColumns` inline style rather than a Tailwind
+  arbitrary-value class) also supports loopkit's 2-tier Free/Pro grid and its
+  string-valued cells, for that repo's own separate follow-up migration.
 - Customer Telegram connect (Phase B+D): a "Get notified on Telegram" button
   on the order-status page while an order is still waiting (`!isTerminal`
   and not yet `ready`), calling merqo's new `POST
