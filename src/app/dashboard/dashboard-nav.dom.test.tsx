@@ -178,11 +178,11 @@ describe("DashboardNav", () => {
     await user.click(await screen.findByText(/switch products/i));
 
     const loopkit = await screen.findByRole("menuitem", { name: "loopkit" });
-    expect(loopkit).toHaveAttribute("href", "https://loopkit-sg.vercel.app");
+    expect(loopkit).toHaveAttribute("href", "https://loopkit.merqo.io");
     const paykit = await screen.findByRole("menuitem", { name: "paykit" });
-    expect(paykit).toHaveAttribute("href", "https://paykit-sg.vercel.app");
+    expect(paykit).toHaveAttribute("href", "https://paykit.merqo.io");
     const stockkit = await screen.findByRole("menuitem", { name: "stockkit" });
-    expect(stockkit).toHaveAttribute("href", "https://stockkit-sg.vercel.app");
+    expect(stockkit).toHaveAttribute("href", "https://stockkit.merqo.io");
   });
 
   it("opening Get help and submitting maps the sheet's message to submitSupportMessage's body field", async () => {
