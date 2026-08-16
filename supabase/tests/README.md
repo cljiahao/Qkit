@@ -13,14 +13,15 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(105)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(95)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
-    `purchase_requests`, `licenses`, `vendor_telegram`,
-    `telegram_link_tokens`. (`support_messages` was dropped in migration
-    `0073` — fully superseded by the shared `merqo.support_messages` table,
-    see `../migrations/README.md`.)
+    `purchase_requests`, `licenses`. (`support_messages` was dropped in
+    migration `0073` — fully superseded by the shared
+    `merqo.support_messages` table; `vendor_telegram`/`telegram_link_tokens`
+    were added in migration `0076` and dropped again in `0077`, Phase A2's
+    retirement of qkit's own Telegram bot — see `../migrations/README.md`.)
   - `qkit.order_item_quantities` pools and clamps quantities per menu item
     (negative lines clamp to 0; net-zero items are dropped) — the shared
     helper behind the stock-race fix (migration `0034`).
@@ -46,15 +47,8 @@ from the Vitest/Playwright tests elsewhere in the repo.
     feedback/upgrade-request RLS scopes each vendor to its own rows and
     blocks filing as another vendor; `set_license_label` only affects the
     caller's own license.
-  - **Telegram order alerts** (migration `0076`): as vendor A, reads its own
-    `vendor_telegram` row but not B's; UPDATE/DELETE/INSERT on
-    `vendor_telegram` and SELECT on `telegram_link_tokens` all fail
-    grant-level (`42501`/permission denied) — no client write grant on
-    either table, and no client read grant at all on
-    `telegram_link_tokens`, even for the linking vendor.
   - **As anon** (no `auth.uid()`): cannot SELECT `booths` directly (the only
-    public read is `get_booth_for_order`), cannot SELECT `vendor_telegram`
-    or `telegram_link_tokens` (no grant at all), cannot confirm payment on
+    public read is `get_booth_for_order`), cannot confirm payment on
     any order, but CAN insert an analytics `events` row (a positive
     assertion guarding against a repeat of migration `0041`'s accidental
     regression).

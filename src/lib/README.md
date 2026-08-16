@@ -106,17 +106,22 @@ unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
   don't fail invisibly) and `findAuthUserByEmail` — shared auth-user lookup
   helpers for the merqo cross-kit admin flows.
 - `merqo-customer-notify.ts` — `mintCustomerConnectToken(vendorId, kitSlug,
-notifyRef)`/`notifyCustomer(vendorId, notifyRef, message)`: server-only
-  HTTP client for merqo's `POST /api/merqo/customer-connect-token`/`POST
-/api/merqo/notify-customer` endpoints (bearer `MERQO_CUSTOMER_SECRET`,
+notifyRef)`/`notifyCustomer(vendorId, notifyRef, message)`/
+  `notifyVendor(vendorId, message)`: server-only HTTP client for merqo's
+  `POST /api/merqo/customer-connect-token`/`POST /api/merqo/notify-customer`/
+  `POST /api/merqo/notify-vendor` endpoints (bearer `MERQO_CUSTOMER_SECRET`,
   `AbortSignal.timeout(3000)`) — the first **kit → merqo** HTTP direction in
-  this codebase (every other cross-kit call flows merqo → kit). Both fail
-  closed: `mintCustomerConnectToken` returns `null` on any non-2xx/timeout/
-  network error, `notifyCustomer` catches + logs and never throws, same
-  fail-closed philosophy as `fetchEarnConfig` in `earn-link.tsx`.
+  this codebase (every other cross-kit call flows merqo → kit).
+  `notifyVendor` is the Phase A2 replacement for qkit's own now-retired
+  Telegram bot (`placeOrder`'s vendor order-alert call — see
+  `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`).
+  All three fail closed: `mintCustomerConnectToken` returns `null` on any
+  non-2xx/timeout/network error, `notifyCustomer`/`notifyVendor` catch + log
+  and never throw, same fail-closed philosophy as `fetchEarnConfig` in
+  `earn-link.tsx`.
 - `merqo-customer-notify.test.ts` — tests the request body/header shape for
-  both calls and the fail-closed/never-throw behavior on non-2xx, timeout,
-  and network-error cases.
+  all three calls and the fail-closed/never-throw behavior on non-2xx,
+  timeout, and network-error cases.
 - `merqo-downgrade-request.ts` — `resolveDowngradeOutcome(hasVendorRow,
 currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
   admin downgrade-vendor action.
@@ -292,18 +297,6 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
 - `stock.test.ts` — tests parsing of malformed/partial remaining-stock data.
 - `supabase/` — the three Supabase client factories (browser/server/service-
   role) plus entitlement/user/vendor read helpers; see its own README.
-- `telegram.ts` — `sendTelegramMessage(chatId, text)`: fire-and-forget
-  `POST` to the Telegram Bot API's `sendMessage` (no SDK) — a no-op when
-  `TELEGRAM_BOT_TOKEN` is unset, catches and logs a fetch rejection instead
-  of throwing, never surfaces a success/failure outcome to the caller.
-  `generateLinkToken()`: a hex-UUID single-use account-linking token for
-  the Telegram deep link, satisfying Telegram's own `[A-Za-z0-9_-]{1,64}`
-  deep-link payload charset. Used by the settings page's Connect Telegram
-  flow (`dashboard/settings/telegram-actions.ts`) and
-  `o/[code]/actions.ts`'s post-order vendor alert.
-- `telegram.test.ts` — tests the sendMessage request shape, the missing-
-  token no-op, the caught-fetch-rejection behavior, and the link-token
-  charset/uniqueness.
 - `types.ts` — the hand-maintained mirror of the `qkit` Postgres schema: core
   domain types (`OrderStatus`, `OrderSource` — `"qr"` | `"walkup"`, migration
   0060 — `Plan`, `PaymentConfig`, `MenuItem`, `CartItem`,
@@ -311,8 +304,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `daily_order_number_reset`/`default_prep_minutes`, migration 0062), and the
   full `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
   admin_audit, events, licenses, payments, pricing, feedback,
-  purchase_requests, support_messages, booths, orders, booth_item_sold,
-  vendor_telegram, telegram_link_tokens (migration 0076); RPCs
+  purchase_requests, support_messages, booths, orders, booth_item_sold —
+  `vendor_telegram`/`telegram_link_tokens` from migration 0076 were dropped
+  again in migration 0077, Phase A2's retirement of qkit's own Telegram bot;
+  RPCs
   `next_order_number`, `booth_remaining_stock`, `booth_servable`,
   `check_rate_limit`, `place_order`, `place_walkup_order` (now with `p_paid`,
   migration 0061), `get_booth_for_order`, `regenerate_short_code`,

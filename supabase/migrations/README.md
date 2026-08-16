@@ -289,7 +289,7 @@ DEFAULT NULL` argument — same signature-change treatment as `0061`'s
   no `merqo` schema at all), and skipped entirely when the phone is
   null/omitted — no new required column, no backfill, zero added checkout
   friction for a customer who declines to give one.
-- `0076_vendor_telegram.sql` adds Phase A of the Telegram order-alerts
+- `0076_vendor_telegram.sql` added Phase A of the Telegram order-alerts
   design (`docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`):
   `qkit.vendor_telegram` (`vendor_id` PK → `chat_id`, RLS `SELECT` granted
   to `authenticated` scoped to the caller's own row via
@@ -297,7 +297,17 @@ DEFAULT NULL` argument — same signature-change treatment as `0061`'s
   through the service-role client) and `qkit.telegram_link_tokens`
   (short-lived deep-link tokens; RLS enabled with zero policies, same
   "service-role only, no client read either" shape as `qkit.pricing`'s
-  writer restriction).
+  writer restriction). **Superseded by `0077` below** — kept here only as
+  history, since migrations are never edited retroactively.
+- `0077_drop_vendor_telegram.sql` drops both `0076` tables — Phase A2
+  (`docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`)
+  retires qkit's own Telegram bot in favor of merqo's shared one;
+  `placeOrder`'s vendor alert now calls merqo's
+  `POST /api/merqo/notify-vendor` instead (see `src/lib/merqo-customer-
+notify.ts`'s `notifyVendor`). No data migration — a vendor's `chat_id`
+  under qkit's own (now-dead) bot is meaningless under merqo's bot, so
+  every vendor who'd linked qkit's own bot must reconnect once via merqo's
+  `/profile` page.
 
 ## Connectivity
 
