@@ -507,6 +507,7 @@ export function RealtimeOrderBoard({
             className="rounded-full"
             onClick={() => setWalkupOpen(true)}
             aria-label="New order"
+            data-tour="new-order"
           >
             <Plus className="size-3.5" />
             {/* Same fix as the booth-status button above: one label child,

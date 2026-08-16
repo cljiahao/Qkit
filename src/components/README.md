@@ -200,8 +200,11 @@ tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
   own combination.
 - `tour-steps.ts` — `tourSteps(isMobile)`: pure step config (element
   selector + title + description) for the dashboard tour, kept free of any
-  `driver.js` import so it's unit-testable; desktop spotlights each nav
-  landmark, mobile spotlights the collapsed hamburger menu instead.
+  `driver.js` import so it's unit-testable. Covers the full order
+  lifecycle (accept/mark ready/mark picked up/confirm payment), bump and
+  auto-clear, and walk-up ("New order") orders — not just navigation
+  landmarks; desktop spotlights each nav landmark too, mobile spotlights
+  the collapsed hamburger menu instead.
 - `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists.
 - `ui/` — the shadcn/ui primitive library everything else in this tree is
   built from. See its own README.
