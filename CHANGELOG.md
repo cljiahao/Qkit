@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Bumped `@merqo/ui` to v0.14.0 and switched `DashboardNav`'s `switchKits`
+  prop to call the new centralized `getSwitchKits("qkit")` helper instead
+  of a locally hardcoded array, so a future new kit only needs adding to
+  `@merqo/ui`'s `KIT_FAMILY` registry, not to every kit's own nav wrapper.
+  No behavior change — same three sibling kits (loopkit, paykit, stockkit)
+  with the same URLs.
 - Adopted `@merqo/ui` v0.13.0's `switchKits` prop on `DashboardNav`: the
   account menu now has a "Switch products" submenu listing the three other
   live kits (loopkit, paykit, stockkit), letting a signed-in vendor jump
