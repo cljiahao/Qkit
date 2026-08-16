@@ -1,4 +1,5 @@
-import { Check, Sparkles, Ticket } from "lucide-react";
+import { Sparkles, Ticket } from "lucide-react";
+import { PlanComparisonTable } from "@merqo/ui";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { DEFAULT_PRICING } from "@/lib/pricing";
@@ -36,18 +37,6 @@ const FEATURES: {
     pro: true,
   },
 ];
-
-function Cell({ on }: { on: boolean }) {
-  return (
-    <span className="flex justify-center">
-      {on ? (
-        <Check className="size-4 text-status-ready" />
-      ) : (
-        <span className="text-muted-foreground/40">-</span>
-      )}
-    </span>
-  );
-}
 
 export default async function PlanPage() {
   const { entitlement, licenseExpiresAt } = await requireEntitledVendor();
@@ -185,28 +174,17 @@ export default async function PlanPage() {
         </p>
       )}
 
-      {/* Three-rung comparison. Header and every row use the same fixed
-          column widths (not "auto") so the Free/Pass/Pro ticks line up under
-          their headers regardless of each row being its own grid instance. */}
-      <div className="overflow-hidden rounded-2xl border border-border">
-        <div className="grid grid-cols-[1fr_2.75rem_2.75rem_2.75rem] gap-x-5 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          <span>Feature</span>
-          <span className="text-center">Free</span>
-          <span className="text-center">Pass</span>
-          <span className="text-center">Pro</span>
-        </div>
-        {FEATURES.map((f) => (
-          <div
-            key={f.label}
-            className="grid grid-cols-[1fr_2.75rem_2.75rem_2.75rem] items-center gap-x-5 border-t border-border px-5 py-3 text-sm"
-          >
-            <span>{f.label}</span>
-            <Cell on={f.free} />
-            <Cell on={f.pass} />
-            <Cell on={f.pro} />
-          </div>
-        ))}
-      </div>
+      <PlanComparisonTable
+        tiers={[
+          { key: "free", label: "Free" },
+          { key: "pass", label: "Pass" },
+          { key: "pro", label: "Pro" },
+        ]}
+        rows={FEATURES.map((f) => ({
+          label: f.label,
+          values: { free: f.free, pass: f.pass, pro: f.pro },
+        }))}
+      />
     </div>
   );
 }
