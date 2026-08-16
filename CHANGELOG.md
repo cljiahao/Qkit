@@ -47,6 +47,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cookie already signs them in there too, so this is purely an in-product
   navigation affordance, no new backend.
 
+### Removed
+
+- **qkit's own Telegram bot (Phase A)** — retired the same day it shipped,
+  in favor of merqo's shared Telegram bot (Phase A2). Deleted
+  `src/app/api/telegram/webhook/`, `src/lib/telegram.ts`, the dashboard
+  settings "Connect Telegram" section (`telegram-section.tsx`/
+  `telegram-actions.ts`), and the `qkit.vendor_telegram`/
+  `qkit.telegram_link_tokens` tables (migration `0077` drops what `0076`
+  created); dropped `TELEGRAM_BOT_TOKEN`/`TELEGRAM_BOT_USERNAME`/
+  `TELEGRAM_WEBHOOK_SECRET` from `.env.example`. `placeOrder`'s vendor
+  order-alert keeps its name/call site but now calls merqo's
+  `POST /api/merqo/notify-vendor` (`notifyVendor` in
+  `src/lib/merqo-customer-notify.ts`) instead of running a local bot.
+  **Any vendor who'd already linked qkit's own bot must reconnect once via
+  merqo's `/profile` page** — a Telegram `chat_id` is scoped to a
+  (bot, user) pair, so the old link is meaningless under a different bot.
+  This is an expected, already-approved consequence of the retirement, not
+  a regression.
+
 ### Changed
 
 - Second-pass frontend-design/impeccable critique, hunting for what the
