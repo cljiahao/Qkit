@@ -58,6 +58,12 @@ export type BoardSettings = {
   // 'completed' (sweepReadyOrders, order-actions.ts). null disables the
   // sweep. Default 3 — see migration 0065.
   ready_auto_clear_min: number | null;
+  // Vendor-side opt-out for the customer Telegram "order ready" ping
+  // (advanceOrder's ready transition, see customerNotifyEnabled in
+  // order-actions.ts) — a brand-preference switch layered on top of the
+  // customer's own consent (merqo's, untouched by this). Default true: the
+  // customer already asked for this by connecting.
+  customer_telegram_notify_enabled: boolean;
 };
 
 // Falls back to this until migration 0050 (board_settings column) has been
@@ -74,6 +80,7 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   default_prep_minutes: null,
   undo_seconds: 4,
   ready_auto_clear_min: 3,
+  customer_telegram_notify_enabled: true,
 };
 
 export type PaymentStatus =

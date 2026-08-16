@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Vendor-level opt-out for the customer Telegram "order ready" notification:
+  a new `customer_telegram_notify_enabled` key on `board_settings`
+  (`.default(true)` — every pre-existing vendor row keeps notifying exactly
+  as before), a switch next to "Auto-clear after" in dashboard settings, and
+  a gate in `advanceOrder` that skips the `notifyCustomer` call only when a
+  vendor has explicitly turned it off. A brand-preference control, not a
+  consent gate — the customer's own Telegram-connect consent (merqo's,
+  see "Customer Telegram connect" below) is untouched.
 - Bumped `@merqo/ui` to v0.16.0 and migrated `/dashboard/plan`'s Free/Pass/Pro
   feature-comparison grid onto the new shared `PlanComparisonTable` component,
   replacing the local `FEATURES`-rendering JSX and `Cell` check/dash helper —

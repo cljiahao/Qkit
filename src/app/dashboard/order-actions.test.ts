@@ -196,6 +196,72 @@ describe("advanceOrder", () => {
     expect(notifyCustomerMock).not.toHaveBeenCalled();
   });
 
+  it("does not notify when the vendor has disabled the customer notification", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    vendorSingle.mockResolvedValue({
+      data: {
+        board_settings: {
+          aging_min: 5,
+          overdue_min: 10,
+          sound_id: "chime",
+          desktop_notify: false,
+          undo_seconds: 4,
+          daily_order_number_reset: false,
+          show_wait_estimate: true,
+          default_prep_minutes: null,
+          ready_auto_clear_min: 3,
+          customer_telegram_notify_enabled: false,
+        },
+      },
+    });
+    const res = await advanceOrder(ID);
+    expect(res).toEqual({ success: true, status: "ready" });
+    expect(notifyCustomerMock).not.toHaveBeenCalled();
+  });
+
+  it("still notifies when customer_telegram_notify_enabled is explicitly true", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    vendorSingle.mockResolvedValue({
+      data: {
+        board_settings: {
+          aging_min: 5,
+          overdue_min: 10,
+          sound_id: "chime",
+          desktop_notify: false,
+          undo_seconds: 4,
+          daily_order_number_reset: false,
+          show_wait_estimate: true,
+          default_prep_minutes: null,
+          ready_auto_clear_min: 3,
+          customer_telegram_notify_enabled: true,
+        },
+      },
+    });
+    await advanceOrder(ID);
+    expect(notifyCustomerMock).toHaveBeenCalledWith(
+      "v1",
+      `qkit:${ID}`,
+      "Your order is ready for pickup!",
+    );
+  });
+
+  it("still notifies when the vendor has no board_settings row at all (defaults true, backward compat)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    vendorSingle.mockResolvedValue({ data: null });
+    await advanceOrder(ID);
+    expect(notifyCustomerMock).toHaveBeenCalledWith(
+      "v1",
+      `qkit:${ID}`,
+      "Your order is ready for pickup!",
+    );
+  });
+
   it("rejects an invalid order id before touching the DB", async () => {
     const res = await advanceOrder("not-a-uuid");
     expect(res.success).toBe(false);

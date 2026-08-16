@@ -504,6 +504,12 @@ export const boardSettingsSchema = z
     // null = the auto-clear sweep is off. 1-60min mirrors default_prep_minutes'
     // bound rationale — generous headroom against a fat-fingered value.
     ready_auto_clear_min: z.number().int().min(1).max(60).nullable(),
+    // Opt-out, not opt-in: the customer already consented to the Telegram
+    // "order ready" ping by connecting (merqo's own consent model, untouched
+    // by this flag). Default true so every pre-existing vendor row (this key
+    // postdates the column) keeps notifying exactly as before this shipped —
+    // only an explicit `false` (a vendor who finds it off-brand) turns it off.
+    customer_telegram_notify_enabled: z.boolean().default(true),
   })
   .refine((d) => d.overdue_min > d.aging_min, {
     message: "Overdue must be later than amber",
