@@ -4,16 +4,18 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const disconnectTelegram = vi.fn();
+const refresh = vi.fn();
 vi.mock("./telegram-actions", () => ({
   disconnectTelegram: (...args: unknown[]) => disconnectTelegram(...args),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { TelegramSection } from "./telegram-section";
 
 beforeEach(() => {
   disconnectTelegram.mockReset();
+  refresh.mockReset();
 });
 
 describe("TelegramSection", () => {
@@ -51,5 +53,15 @@ describe("TelegramSection", () => {
     await user.click(screen.getByRole("button", { name: /disconnect/i }));
 
     expect(disconnectTelegram).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a Try again action (not just refresh instructions) when link generation failed", async () => {
+    const user = userEvent.setup();
+    render(<TelegramSection connected={false} deepLinkUrl={null} />);
+
+    expect(screen.queryByTestId("telegram-qr")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /try again/i }));
+
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });
