@@ -210,6 +210,53 @@ describe("placeOrder", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it("passes a supplied customer phone through to place_order", async () => {
+    let placeOrderArgs: Record<string, unknown> | undefined;
+    rpc.mockImplementation((name: string, args?: Record<string, unknown>) => {
+      if (name === "check_rate_limit") return Promise.resolve({ data: true });
+      if (name === "place_order") {
+        placeOrderArgs = args;
+        return Promise.resolve({
+          data: { order_number: "0007", booth_id: "b1", access_token: "tok7" },
+          error: null,
+        });
+      }
+      throw new Error(`unexpected rpc: ${name}`);
+    });
+
+    await placeOrder(
+      "code123",
+      { ...validInput, customerPhone: "+6591234567" },
+      IDEM,
+    );
+    expect(placeOrderArgs).toMatchObject({ p_customer_phone: "+6591234567" });
+  });
+
+  it.each([[undefined], [""], ["   "]])(
+    "sends an undefined p_customer_phone when omitted or blank (%j)",
+    async (customerPhone) => {
+      let placeOrderArgs: Record<string, unknown> | undefined;
+      rpc.mockImplementation((name: string, args?: Record<string, unknown>) => {
+        if (name === "check_rate_limit") return Promise.resolve({ data: true });
+        if (name === "place_order") {
+          placeOrderArgs = args;
+          return Promise.resolve({
+            data: {
+              order_number: "0007",
+              booth_id: "b1",
+              access_token: "tok7",
+            },
+            error: null,
+          });
+        }
+        throw new Error(`unexpected rpc: ${name}`);
+      });
+
+      await placeOrder("code123", { ...validInput, customerPhone }, IDEM);
+      expect(placeOrderArgs?.p_customer_phone).toBeUndefined();
+    },
+  );
+
   describe("Telegram alert (redundant channel — must never affect the result)", () => {
     function mockSuccessfulRpc() {
       rpc.mockImplementation((name: string) => {

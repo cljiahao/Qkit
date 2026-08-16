@@ -106,11 +106,21 @@ export async function placeOrder(
       error: "Too many orders too fast — wait a moment and try again.",
     };
 
+  // Blank ("" or whitespace-only, from a field left empty) is treated the same
+  // as omitted — both skip the merqo.customers write. See placeOrderSchema's
+  // customerPhone comment for why this normalization lives here, not in the
+  // schema itself.
+  const phone =
+    parsed.data.customerPhone && parsed.data.customerPhone.length > 0
+      ? parsed.data.customerPhone
+      : undefined;
+
   const { data, error } = await supabase.rpc("place_order", {
     p_short_code: code,
     p_customer_name: parsed.data.customerName,
     p_items: parsed.data.items,
     p_idempotency_key: idempotencyKey,
+    p_customer_phone: phone,
   });
   if (error) {
     const message = messageFor(error.message);

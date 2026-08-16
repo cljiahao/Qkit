@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(97);
+select plan(105);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -701,6 +701,103 @@ select throws_like(
        gen_random_uuid()) $$,
   '%ORDER_INVALID%',
   'place_order rejects an option not in the item''s option groups (V3)');
+
+-- ── Cross-kit customer identity (0075) ───────────────────────────────────────
+-- place_order/place_walkup_order gain a genuinely optional p_customer_phone,
+-- and — only when supplied — link the order to the shared merqo.customers
+-- table via the guarded merqo.upsert_customer call. qkit's own isolated CI
+-- Postgres has no real merqo schema (see 0075's own header), so a plain
+-- lives_ok can only prove the guard doesn't crash, not that the write it
+-- guards actually happens. Stub the minimal real shape here — INSIDE this
+-- same rolled-back transaction, matching merqo migration 0018's
+-- merqo.customers/merqo.upsert_customer exactly — so this suite can prove
+-- BOTH halves of the "genuinely optional" claim: a phone-set call really
+-- upserts a row, and an omitted one really never touches the table at all.
+reset role;
+create schema if not exists merqo;
+create table if not exists merqo.customers (
+  vendor_id      uuid not null,
+  phone          text not null,
+  name           text,
+  first_seen_at  timestamptz not null default now(),
+  last_seen_at   timestamptz not null default now(),
+  primary key (vendor_id, phone)
+);
+create or replace function merqo.upsert_customer(
+  p_vendor_id uuid,
+  p_phone text,
+  p_name text default null
+) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  insert into merqo.customers (vendor_id, phone, name, first_seen_at, last_seen_at)
+    values (p_vendor_id, p_phone, p_name, now(), now())
+  on conflict (vendor_id, phone) do update set
+    name = coalesce(excluded.name, merqo.customers.name),
+    last_seen_at = excluded.last_seen_at;
+end;
+$$;
+grant execute on function merqo.upsert_customer(uuid, text, text) to authenticated, service_role;
+
+select is(
+  (select count(*)::int from merqo.customers),
+  0, 'baseline: merqo.customers is empty before any phone-linked order');
+
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode1', 'Nora',
+       '[{"menuItemId":"free1","name":"Unlimited Tea","quantity":1}]'::jsonb,
+       '77777777-7777-7777-7777-777777777777'::uuid,
+       '+6598765432') $$,
+  'place_order accepts a supplied customer phone');
+reset role;
+select is(
+  (select count(*)::int from merqo.customers
+   where vendor_id = '00000000-0000-0000-0000-00000000000c'
+     and phone = '+6598765432'),
+  1, 'a phone-set order upserts exactly one row into merqo.customers');
+select is(
+  (select name from merqo.customers
+   where vendor_id = '00000000-0000-0000-0000-00000000000c'
+     and phone = '+6598765432'),
+  'Nora', 'the upserted merqo.customers row carries the order''s customer name');
+
+-- The key "genuinely optional" proof: a second order with the phone
+-- OMITTED must not add or touch any merqo.customers row at all.
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode1', 'Omar',
+       '[{"menuItemId":"free1","name":"Unlimited Tea","quantity":1}]'::jsonb,
+       '88888888-8888-8888-8888-888888888888'::uuid) $$,
+  'place_order still succeeds when the phone is omitted (genuinely optional)');
+reset role;
+select is(
+  (select count(*)::int from merqo.customers),
+  1, 'omitting the phone leaves merqo.customers untouched — still exactly the one prior row');
+
+-- place_walkup_order shares the identical customer-write path (its own
+-- header comment, 0075) — spot-check the same guarded call here too.
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '00000000-0000-0000-0000-00000000000c', 'role', 'authenticated')::text,
+  true);
+select lives_ok(
+  $$ select qkit.place_walkup_order(
+       '00000000-0000-0000-0000-0000000b0004'::uuid, 'Priya',
+       '[{"menuItemId":"free1","name":"Unlimited Tea","quantity":1}]'::jsonb,
+       false, '+6591112222') $$,
+  'place_walkup_order accepts a supplied customer phone');
+reset role;
+select is(
+  (select count(*)::int from merqo.customers
+   where vendor_id = '00000000-0000-0000-0000-00000000000c'
+     and phone = '+6591112222'),
+  1, 'place_walkup_order with a phone upserts into merqo.customers too');
 
 -- submit_feedback: the only feedback insert path (public policy dropped).
 -- Customer feedback is bound to the order's access token (0048) — a review must

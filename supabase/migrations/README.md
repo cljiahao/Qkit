@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-74 files, `0000` through `0073`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0073` tail; skimmed by filename/theme otherwise. The
+76 files, `0000` through `0075`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0075` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -265,7 +265,30 @@ display_options.sql` adds `daily_order_number_reset` (bool, default
   deletes the (already-backfilled) `source='vendor'` rows from
   `qkit.feedback` and drops its now-dead `nps` column (customer rows only
   ever used `rating`), and drops `qkit.support_messages` outright (fully
-  superseded for both writes and admin reads).
+  superseded for both writes and admin reads). `0074_qkit_wedge_pricing.sql`
+  lowers `qkit.pricing.monthly_cents` from $24.99 to $14.99 (qkit is the
+  family's acquisition wedge, not a standalone premium product — see
+  `docs/business/2026-08-15-per-kit-pricing-rationale.md` in the sibling
+  `Merqo Business` tree), guarded on the known current value so it never
+  clobbers a price an admin has since changed via `/admin`.
+- **Cross-kit customer identity (`0075`)** —
+  `0075_place_order_customer_phone.sql` gives both `place_order` and
+  `place_walkup_order` a new, genuinely optional `p_customer_phone text
+DEFAULT NULL` argument — same signature-change treatment as `0061`'s
+  `p_paid` addition (`DROP FUNCTION` the old signature first, so
+  `CREATE OR REPLACE` can't leave it behind as a stale second overload).
+  When a phone is supplied, each function calls the shared
+  `merqo.upsert_customer(b.vendor_id, p_customer_phone, p_customer_name)`
+  after its own successful order insert, linking the order to the shared
+  `merqo.customers` table (merqo migration `0018`) so a repeat customer can
+  eventually be recognized across kits for the same vendor — see
+  `docs/business/2026-08-16-cross-kit-customer-identity-design.md` in the
+  sibling `Merqo Business` tree. Guarded with the same
+  `information_schema.routines` existence check as `0071`'s
+  `merqo.submit_vendor_feedback` call (qkit's own isolated CI Postgres has
+  no `merqo` schema at all), and skipped entirely when the phone is
+  null/omitted — no new required column, no backfill, zero added checkout
+  friction for a customer who declines to give one.
 - `0076_vendor_telegram.sql` adds Phase A of the Telegram order-alerts
   design (`docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`):
   `qkit.vendor_telegram` (`vendor_id` PK → `chat_id`, RLS `SELECT` granted

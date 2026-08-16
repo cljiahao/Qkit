@@ -13,7 +13,7 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(97)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(105)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
@@ -78,6 +78,15 @@ from the Vitest/Playwright tests elsewhere in the repo.
     `(booth_id, order_number, access_token)` succeeds; a mismatched token is
     rejected (`FEEDBACK_UNAUTHORIZED`) — the migration `0048` review-bombing
     fix.
+  - Cross-kit customer identity (migration `0075`): a real (not just stubbed-
+    safe) `merqo` schema/`merqo.customers` table/`merqo.upsert_customer`
+    function are created inside this same rolled-back transaction — matching
+    merqo migration `0018`'s shape exactly — so the suite can prove both
+    halves of the "genuinely optional" claim directly, not just that the
+    guarded call doesn't crash: a `place_order`/`place_walkup_order` call
+    with `p_customer_phone` set upserts exactly one row into
+    `merqo.customers` (name included); a call with it omitted leaves that
+    table completely untouched.
 
 ## Connectivity
 

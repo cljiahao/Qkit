@@ -16,6 +16,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`/api/telegram/webhook`, `X-Telegram-Bot-Api-Secret-Token`), and a
   fire-and-forget alert wired into `placeOrder` — a failed or missing
   Telegram link never affects order placement itself.
+- Optional "Phone number (optional)" field on the customer checkout form,
+  next to the name field. When a customer provides one, `place_order`/
+  `place_walkup_order` link the order to the shared `merqo.customers` table
+  (cross-kit customer identity) so a repeat customer can eventually be
+  recognized across kits for the same vendor — genuinely optional, never
+  required, and skipped entirely (no merqo write at all) when left blank.
 - Bumped `@merqo/ui` to v0.14.0 and switched `DashboardNav`'s `switchKits`
   prop to call the new centralized `getSwitchKits("qkit")` helper instead
   of a locally hardcoded array, so a future new kit only needs adding to

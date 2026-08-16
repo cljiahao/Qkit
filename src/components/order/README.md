@@ -25,10 +25,15 @@ remaining })`: the full menu + cart + checkout UI. Seeds the cart on mount
   option groups, and on submit calls `placeOrder`
   (`@/app/o/[code]/actions`) with a stable per-submit idempotency key
   (retried once on a network error), then clears the cart, stashes an
-  `addRecentOrder` entry, and navigates to the order-status page.
+  `addRecentOrder` entry, and navigates to the order-status page. Also
+  collects an optional "Phone number (optional)" field next to the name
+  field — a genuinely optional convenience (cross-kit customer identity,
+  migration `0075`), never required to submit — passed through
+  `placeOrder`'s `customerPhone` input.
 - `order-form.dom.test.tsx` — RTL tests covering cart add/increment/decrement,
   stock-cap blocking, reorder seeding/reconciliation, the closed-booth submit
-  guard, and the placeOrder retry-then-fail path.
+  guard, the placeOrder retry-then-fail path, and the phone field (renders,
+  optional — submits with it blank, passes its value through when filled).
 - `recent-orders.tsx` — `RecentOrders({ boothId })`: reads
   `getRecentOrdersForBooth` from localStorage post-mount (avoids an SSR
   hydration mismatch — there's no server-side customer identity), rendering
