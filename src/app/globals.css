@@ -4,20 +4,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── "Kraft & Ember" — warm night-market food-stall theme ──────────────────── */
+/* ── "Market Ochre" — warm saffron + moss, replacing the old "Kraft & Ember" ember/chili identity ──── */
 
 :root {
-  /* warm oat paper canvas, espresso ink, ember/chili accent */
-  --background: oklch(0.965 0.013 78);
-  --foreground: oklch(0.24 0.024 48);
-  --card: oklch(0.992 0.007 86);
-  --card-foreground: oklch(0.24 0.024 48);
-  --popover: oklch(0.992 0.007 86);
-  --popover-foreground: oklch(0.24 0.024 48);
-  --primary: oklch(0.595 0.18 36);
-  --primary-foreground: oklch(0.98 0.015 86);
-  --secondary: oklch(0.91 0.022 72);
-  --secondary-foreground: oklch(0.3 0.03 50);
+  /* chalk-cream paper canvas, charcoal ink, saffron primary + moss counter-tone */
+  --background: oklch(0.918 0.038 86.9);
+  --foreground: oklch(0.273 0.014 67.2);
+  --card: oklch(0.918 0.038 86.9);
+  --card-foreground: oklch(0.273 0.014 67.2);
+  --popover: oklch(0.918 0.038 86.9);
+  --popover-foreground: oklch(0.273 0.014 67.2);
+  --primary: oklch(0.654 0.12 78);
+  --primary-foreground: oklch(0.273 0.014 67.2);
+  --secondary: oklch(0.504 0.059 127.4);
+  --secondary-foreground: oklch(0.918 0.038 86.9);
   --muted: oklch(0.93 0.014 76);
   --muted-foreground: oklch(0.5 0.022 55);
   --accent: oklch(0.9 0.038 70);
@@ -25,7 +25,7 @@
   --destructive: oklch(0.55 0.2 27);
   --border: oklch(0.87 0.02 70);
   --input: oklch(0.89 0.018 72);
-  --ring: oklch(0.595 0.18 36);
+  --ring: oklch(0.654 0.12 78);
   --radius: 0.5rem;
 
   /* kitchen-ticket status stamps */
@@ -43,17 +43,17 @@
 }
 
 .dark {
-  /* dusk night-market: espresso canvas, warm cream ink, ember stays hot */
-  --background: oklch(0.2 0.018 50);
-  --foreground: oklch(0.94 0.012 80);
-  --card: oklch(0.25 0.02 50);
-  --card-foreground: oklch(0.94 0.012 80);
-  --popover: oklch(0.25 0.02 50);
-  --popover-foreground: oklch(0.94 0.012 80);
-  --primary: oklch(0.68 0.18 40);
-  --primary-foreground: oklch(0.2 0.02 45);
-  --secondary: oklch(0.32 0.022 55);
-  --secondary-foreground: oklch(0.94 0.012 80);
+  /* near-black paper canvas, warm cream ink, saffron primary + moss counter-tone */
+  --background: oklch(0.195 0.01 67.2);
+  --foreground: oklch(0.906 0.043 88);
+  --card: oklch(0.243 0.012 67.2);
+  --card-foreground: oklch(0.906 0.043 88);
+  --popover: oklch(0.243 0.012 67.2);
+  --popover-foreground: oklch(0.906 0.043 88);
+  --primary: oklch(0.745 0.13 78);
+  --primary-foreground: oklch(0.243 0.012 67.2);
+  --secondary: oklch(0.635 0.075 129.5);
+  --secondary-foreground: oklch(0.243 0.012 67.2);
   --muted: oklch(0.3 0.018 52);
   --muted-foreground: oklch(0.72 0.02 70);
   --accent: oklch(0.36 0.03 58);
@@ -61,7 +61,7 @@
   --destructive: oklch(0.62 0.2 27);
   --border: oklch(0.36 0.02 55);
   --input: oklch(0.38 0.02 55);
-  --ring: oklch(0.68 0.18 40);
+  --ring: oklch(0.745 0.13 78);
 
   --status-pending: oklch(0.78 0.15 80);
   --status-confirmed: oklch(0.7 0.13 245);
