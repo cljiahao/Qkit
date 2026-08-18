@@ -14,8 +14,9 @@ import {
 // row; `updateSelect` returns the updated rows — [] models a concurrent change
 // that the status/payment guard filtered out. `from("vendors")` is a separate
 // branch (select→eq→maybeSingle) for sweepReadyOrders' board_settings read;
-// `update(...)` on the orders branch also exposes a `.eq().lt(...)` chain for
-// the sweep's bulk update alongside the existing `.eq().eq().select(...)`.
+// `update(...)` on the orders branch also exposes a `.eq().lt(...).select(...)`
+// chain for the sweep's bulk update (returns the swept ids) alongside the
+// existing `.eq().eq().select(...)`.
 const {
   getUserMock,
   maybeSingle,
@@ -23,9 +24,11 @@ const {
   updateSelect,
   vendorSingle,
   sweepLt,
+  sweepSelect,
 } = vi.hoisted(() => {
   const updateSelect = vi.fn();
-  const sweepLt = vi.fn();
+  const sweepSelect = vi.fn();
+  const sweepLt = vi.fn(() => ({ select: sweepSelect }));
   const vendorSingle = vi.fn();
   return {
     getUserMock: vi.fn(),
@@ -39,6 +42,7 @@ const {
     updateSelect,
     vendorSingle,
     sweepLt,
+    sweepSelect,
   };
 });
 
@@ -75,6 +79,15 @@ vi.mock("@/lib/merqo-customer-notify", () => ({
   notifyCustomer: notifyCustomerMock,
 }));
 
+const { recordAuditMock, recordOrderStatusEventMock } = vi.hoisted(() => ({
+  recordAuditMock: vi.fn(),
+  recordOrderStatusEventMock: vi.fn(),
+}));
+vi.mock("@/lib/audit", () => ({
+  recordAudit: recordAuditMock,
+  recordOrderStatusEvent: recordOrderStatusEventMock,
+}));
+
 const ID = "00000000-0000-4000-8000-000000000001";
 
 beforeEach(() => {
@@ -103,7 +116,10 @@ beforeEach(() => {
       },
     },
   });
-  sweepLt.mockReset().mockResolvedValue({ error: null });
+  sweepLt.mockClear();
+  sweepSelect.mockReset().mockResolvedValue({ data: [], error: null });
+  recordAuditMock.mockReset().mockResolvedValue(undefined);
+  recordOrderStatusEventMock.mockReset().mockResolvedValue(undefined);
   createCheckoutMock.mockReset().mockResolvedValue({
     ok: true,
     data: { type: "qr", transactionId: "tx1", payload: "0002" },
@@ -589,11 +605,47 @@ describe("restoreAutoCompleted", () => {
 
 describe("sweepReadyOrders", () => {
   it("sweeps ready orders older than the vendor's configured minutes", async () => {
+    sweepSelect.mockResolvedValue({ data: [{ id: ID }], error: null });
     await sweepReadyOrders();
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ status: "completed", auto_completed: true }),
     );
     expect(sweepLt).toHaveBeenCalledWith("ready_at", expect.any(String));
+  });
+
+  it("records an order_status_events row for each swept order, but no admin_audit entry", async () => {
+    const OTHER = "00000000-0000-4000-8000-000000000002";
+    sweepSelect.mockResolvedValue({
+      data: [{ id: ID }, { id: OTHER }],
+      error: null,
+    });
+    await sweepReadyOrders();
+    expect(recordOrderStatusEventMock).toHaveBeenCalledTimes(2);
+    expect(recordOrderStatusEventMock).toHaveBeenCalledWith({
+      order_id: ID,
+      from_status: "ready",
+      to_status: "completed",
+      actor: "v1",
+    });
+    expect(recordOrderStatusEventMock).toHaveBeenCalledWith({
+      order_id: OTHER,
+      from_status: "ready",
+      to_status: "completed",
+      actor: "v1",
+    });
+    expect(recordAuditMock).not.toHaveBeenCalled();
+  });
+
+  it("records nothing when no order was old enough to sweep", async () => {
+    sweepSelect.mockResolvedValue({ data: [], error: null });
+    await sweepReadyOrders();
+    expect(recordOrderStatusEventMock).not.toHaveBeenCalled();
+  });
+
+  it("logs and stops without recording anything when the sweep update errors", async () => {
+    sweepSelect.mockResolvedValue({ data: null, error: { message: "boom" } });
+    await sweepReadyOrders();
+    expect(recordOrderStatusEventMock).not.toHaveBeenCalled();
   });
 
   it("does nothing when the vendor has disabled the sweep (null)", async () => {

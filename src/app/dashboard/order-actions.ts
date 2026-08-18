@@ -7,6 +7,7 @@ import { boardSettingsSchema } from "@/lib/schemas";
 import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
 import { createCheckout, confirmCheckout } from "@/lib/paykit/client";
 import { notifyCustomer } from "@/lib/merqo-customer-notify";
+import { recordAudit, recordOrderStatusEvent } from "@/lib/audit";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus, PaymentStatus } from "@/lib/types";
 
@@ -16,6 +17,14 @@ import type { OrderStatus, PaymentStatus } from "@/lib/types";
 // booths — the server client runs as the AUTHENTICATED role, never service-role.
 // The 0032 freeze trigger blocks any attempt to change financial/identity
 // columns, so these actions only ever touch the state-machine columns.
+//
+// Every actual order.status transition below is also recorded to
+// qkit.order_status_events (migration 0078, append-only) via
+// recordOrderStatusEvent, and a short qkit.admin_audit entry (migration 0006,
+// reused for vendor-initiated actions too — see src/lib/audit.ts) is
+// recorded for the vendor-facing actions worth being able to reconstruct or
+// dispute later. Both are best-effort/non-blocking: a write failure there is
+// only logged, never surfaced to the caller.
 
 const idSchema = z.string().uuid();
 
@@ -100,6 +109,21 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
 
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: order.status,
+      to_status: adv.next,
+      actor: userId,
+    });
+    await recordAudit({
+      admin_id: userId,
+      action: "advance_order_status",
+      target_id: orderId,
+      detail: { from: order.status, to: adv.next },
+    });
+  }
+
   // Same fire-and-forget pattern as notifyVendorTelegram in
   // src/app/o/[code]/actions.ts: notifyCustomer already never throws on its
   // own, but this call site still wraps it so nothing here can ever change
@@ -144,7 +168,7 @@ export async function revertOrderAdvance(
   if (ADVANCE[revertTo]?.next !== revertFrom)
     return { success: false, error: "Not a valid undo" };
 
-  const { supabase, order } = await loadOwnOrder(orderId);
+  const { supabase, order, userId } = await loadOwnOrder(orderId);
   if (!supabase || !order) return { success: false, error: "Order not found" };
 
   const patch: {
@@ -181,6 +205,21 @@ export async function revertOrderAdvance(
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
 
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: revertFrom,
+      to_status: revertTo,
+      actor: userId,
+    });
+    await recordAudit({
+      admin_id: userId,
+      action: "revert_order_advance",
+      target_id: orderId,
+      detail: { from: revertFrom, to: revertTo },
+    });
+  }
+
   return { success: true, status: revertTo };
 }
 
@@ -201,7 +240,7 @@ export async function restoreAutoCompleted(
   if (!idSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
-  const { supabase, order } = await loadOwnOrder(orderId);
+  const { supabase, order, userId } = await loadOwnOrder(orderId);
   if (!supabase || !order) return { success: false, error: "Order not found" };
   if (order.status !== "completed" || !order.auto_completed)
     return { success: false, error: "This order can't be restored" };
@@ -223,6 +262,21 @@ export async function restoreAutoCompleted(
   }
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
+
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: "completed",
+      to_status: "ready",
+      actor: userId,
+    });
+    await recordAudit({
+      admin_id: userId,
+      action: "restore_completed_order",
+      target_id: orderId,
+      detail: { from: "completed", to: "ready" },
+    });
+  }
 
   return { success: true, status: "ready" };
 }
@@ -293,6 +347,15 @@ export async function confirmOrderPayment(
       error.message,
     );
 
+  // Covers both the QR and walk-up paths — a walk-up order taken unpaid at
+  // the counter and settled later goes through this same confirm action.
+  await recordAudit({
+    admin_id: userId,
+    action: "confirm_order_payment",
+    target_id: orderId,
+    detail: { from: order.payment_status, amount_cents: order.total_cents },
+  });
+
   return { success: true };
 }
 
@@ -344,7 +407,7 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
   if (!idSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
-  const { supabase, order } = await loadOwnOrder(orderId);
+  const { supabase, order, userId } = await loadOwnOrder(orderId);
   if (!supabase || !order) return { success: false, error: "Order not found" };
   const autoCompletedRace =
     order.status === "completed" && order.auto_completed;
@@ -379,6 +442,21 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
   if (!rows || rows.length === 0)
     return { success: false, error: "Order changed — please refresh." };
 
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: order.status,
+      to_status: "cancelled",
+      actor: userId,
+    });
+    await recordAudit({
+      admin_id: userId,
+      action: "cancel_order",
+      target_id: orderId,
+      detail: { from: order.status },
+    });
+  }
+
   return { success: true };
 }
 
@@ -407,7 +485,7 @@ export async function sweepReadyOrders(): Promise<void> {
   if (minutes === null) return;
 
   const cutoff = new Date(Date.now() - minutes * 60_000).toISOString();
-  const { error } = await supabase
+  const { data: swept, error } = await supabase
     .from("orders")
     .update({
       status: "completed",
@@ -415,6 +493,23 @@ export async function sweepReadyOrders(): Promise<void> {
       auto_completed: true,
     })
     .eq("status", "ready")
-    .lt("ready_at", cutoff);
-  if (error) console.error("sweepReadyOrders failed", error.message);
+    .lt("ready_at", cutoff)
+    .select("id");
+  if (error) {
+    console.error("sweepReadyOrders failed", error.message);
+    return;
+  }
+
+  // Log the same real column transition each swept order just got, one
+  // order_status_events row per order — no admin_audit entry here (this is
+  // an automatic sweep, not a deliberate vendor decision, matching the
+  // no-toast/logged-only failure handling this function already uses).
+  for (const { id } of swept ?? []) {
+    await recordOrderStatusEvent({
+      order_id: id,
+      from_status: "ready",
+      to_status: "completed",
+      actor: user.id,
+    });
+  }
 }
