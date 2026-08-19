@@ -28,8 +28,8 @@ importers:
         specifier: ^13.13.0
         version: 13.13.0(react@19.2.7)
       '@merqo/ui':
-        specifier: github:cljiahao/merqo-ui#v0.16.0
-        version: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/ad89eb8c9ff7010fa21dcc32a07c7bd96da375c8(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)
+        specifier: github:cljiahao/merqo-ui#v0.18.0
+        version: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)
       '@supabase/ssr':
         specifier: ^0.10.3
         version: 0.10.3(@supabase/supabase-js@2.107.0)
@@ -48,6 +48,9 @@ importers:
       next:
         specifier: ^16.2.12
         version: 16.2.12(@babel/core@7.29.7)(@playwright/test@1.60.0)(@types/node@24.13.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next-themes:
+        specifier: 0.4.6
+        version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       radix-ui:
         specifier: ^1.4.3
         version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -962,9 +965,9 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/ad89eb8c9ff7010fa21dcc32a07c7bd96da375c8':
-    resolution: {gitHosted: true, integrity: sha512-x5OKJzePYuxRgN/9ung6Eop4L8iDpQuUIxNSFuZGKs/61MzcVriY9IK+y5671cawsgQvIv6Nr0MsWQuUolRF3g==, tarball: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/ad89eb8c9ff7010fa21dcc32a07c7bd96da375c8}
-    version: 0.16.0
+  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8':
+    resolution: {gitHosted: true, integrity: sha512-zbxsc6mvgfPFISoB0me0gGR1EsSqS3iyTHeqZr2DeDhsQWez9AZm/cMSeiNSqNKUVma30FtlI/S0KE0LqYp7Ew==, tarball: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8}
+    version: 0.18.0
     engines: {node: '>=24'}
     peerDependencies:
       react: ^19
@@ -3696,6 +3699,12 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
+  next-themes@0.4.6:
+    resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
+    peerDependencies:
+      react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+
   next@16.2.12:
     resolution: {integrity: sha512-iD59eYQWmbFcEbX7v/acG5DRym9iw1DdaPoD0WTA920naWsE25wShzJW4+UvAs8MK9EC2kBfIH6vtto1H1PHGw==}
     engines: {node: '>=20.9.0'}
@@ -5319,7 +5328,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/ad89eb8c9ff7010fa21dcc32a07c7bd96da375c8(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)':
+  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)':
     dependencies:
       '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-dropdown-menu': 2.1.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -5329,6 +5338,7 @@ snapshots:
       clsx: 2.1.1
       driver.js: 1.6.0
       lucide-react: 0.468.0(react@19.2.7)
+      next-themes: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       tailwind-merge: 2.6.1
@@ -8156,6 +8166,11 @@ snapshots:
   napi-postinstall@0.3.4: {}
 
   natural-compare@1.4.0: {}
+
+  next-themes@0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
 
   next@16.2.12(@babel/core@7.29.7)(@playwright/test@1.60.0)(@types/node@24.13.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
