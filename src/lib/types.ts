@@ -594,6 +594,40 @@ export interface Database {
         Update: { booth_id?: string; menu_item_id?: string; qty?: number };
         Relationships: [];
       };
+      order_status_events: {
+        Row: {
+          id: string;
+          order_id: string;
+          from_status: string | null;
+          to_status: string;
+          actor: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          from_status?: string | null;
+          to_status: string;
+          actor?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          order_id?: string;
+          from_status?: string | null;
+          to_status?: string;
+          actor?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_status_events_order_id_fkey";
+            columns: ["order_id"];
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -692,3 +726,5 @@ export type Payment = Database["qkit"]["Tables"]["payments"]["Row"];
 export type Feedback = Database["qkit"]["Tables"]["feedback"]["Row"];
 export type Admin = Database["qkit"]["Tables"]["admins"]["Row"];
 export type AdminAudit = Database["qkit"]["Tables"]["admin_audit"]["Row"];
+export type OrderStatusEvent =
+  Database["qkit"]["Tables"]["order_status_events"]["Row"];

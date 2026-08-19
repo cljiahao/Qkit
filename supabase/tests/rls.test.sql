@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(95);
+select plan(101);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -846,6 +846,63 @@ select throws_ok(
   '42501',
   null,
   'authenticated (a real vendor, not an admin) cannot write platform_settings either');
+
+reset role;
+
+-- ── service_role cannot rewrite or erase admin_audit/order_status_events (0079) ──
+-- RLS never binds service_role (BYPASSRLS), so the guarantee here is the
+-- table-level REVOKE from 0079, checked independently of, and before, any
+-- RLS policy. select/insert stay granted (recordAudit and
+-- recordOrderStatusEvent both still need to write new rows).
+insert into qkit.admin_audit (id, admin_id, action, target_id, detail)
+values (
+  '00000000-0000-0000-0000-0000000e0001',
+  '00000000-0000-0000-0000-00000000000a',
+  'advance_order_status',
+  '00000000-0000-0000-0000-00000000d001',
+  '{"from":"pending","to":"confirmed"}'::jsonb);
+
+insert into qkit.order_status_events (id, order_id, from_status, to_status, actor)
+values (
+  '00000000-0000-0000-0000-0000000f0001',
+  '00000000-0000-0000-0000-00000000d001',
+  'pending',
+  'confirmed',
+  '00000000-0000-0000-0000-00000000000a');
+
+set local role service_role;
+select lives_ok(
+  $$ insert into qkit.admin_audit (admin_id, action, target_id, detail)
+     values ('00000000-0000-0000-0000-00000000000a', 'set_vendor_plan', null, '{}'::jsonb) $$,
+  'service_role can insert an admin_audit row');
+select throws_ok(
+  $$ update qkit.admin_audit set detail = '{"tampered":true}'::jsonb
+     where id = '00000000-0000-0000-0000-0000000e0001' $$,
+  '42501',
+  null,
+  'service_role cannot UPDATE admin_audit (0079 revoke)');
+select throws_ok(
+  $$ delete from qkit.admin_audit where id = '00000000-0000-0000-0000-0000000e0001' $$,
+  '42501',
+  null,
+  'service_role cannot DELETE admin_audit (0079 revoke)');
+
+select lives_ok(
+  $$ insert into qkit.order_status_events (order_id, from_status, to_status, actor)
+     values ('00000000-0000-0000-0000-00000000d001', 'confirmed', 'preparing',
+             '00000000-0000-0000-0000-00000000000a') $$,
+  'service_role can insert an order_status_events row');
+select throws_ok(
+  $$ update qkit.order_status_events set to_status = 'tampered'
+     where id = '00000000-0000-0000-0000-0000000f0001' $$,
+  '42501',
+  null,
+  'service_role cannot UPDATE order_status_events (0079 revoke)');
+select throws_ok(
+  $$ delete from qkit.order_status_events where id = '00000000-0000-0000-0000-0000000f0001' $$,
+  '42501',
+  null,
+  'service_role cannot DELETE order_status_events (0079 revoke)');
 
 reset role;
 

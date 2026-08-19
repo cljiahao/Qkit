@@ -16,9 +16,7 @@ import {
 } from "@/lib/schemas";
 import { MS_PER_DAY } from "@/lib/utils";
 import type { ActionResult } from "@/lib/action-result";
-import type { Database } from "@/lib/types";
-
-type AuditInsert = Database["qkit"]["Tables"]["admin_audit"]["Insert"];
+import { recordAudit } from "@/lib/audit";
 
 /**
  * merqo owns this table's real generated types — this is a hand-written
@@ -43,18 +41,6 @@ type MerqoSupportMessagesSchema = {
     CompositeTypes: Record<string, never>;
   };
 };
-
-/**
- * Append an admin-audit row. Best-effort: a hiccup here must not fail the
- * action it records, but it's logged so a broken trail stays visible.
- */
-async function recordAudit(
-  supabase: Awaited<ReturnType<typeof createServiceClient>>,
-  entry: AuditInsert,
-) {
-  const { error } = await supabase.from("admin_audit").insert(entry);
-  if (error) console.error("admin_audit insert failed", error.message);
-}
 
 const setPlanSchema = z.object({
   vendorId: z.string().uuid(),
@@ -121,7 +107,7 @@ export async function setVendorPlan(
   }
 
   // Audit trail of who changed what (records the change regardless).
-  await recordAudit(supabase, {
+  await recordAudit({
     admin_id: user.id,
     action: "set_plan",
     target_id: parsed.data.vendorId,
@@ -211,7 +197,7 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
     }
   }
 
-  await recordAudit(supabase, {
+  await recordAudit({
     admin_id: user.id,
     action: "grant_pass",
     target_id: parsed.data.vendorId,
@@ -243,19 +229,29 @@ const resolveRequestSchema = z.object({ id: z.string().uuid() });
 export async function resolvePurchaseRequest(
   input: z.infer<typeof resolveRequestSchema>,
 ): Promise<ActionResult> {
-  await requireAdmin();
+  const { user } = await requireAdmin();
   const parsed = resolveRequestSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Invalid input" };
 
   const supabase = await createServiceClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("purchase_requests")
     .update({ status: "resolved" })
-    .eq("id", parsed.data.id);
+    .eq("id", parsed.data.id)
+    .select("vendor_id")
+    .maybeSingle();
   if (error) {
     console.error("resolvePurchaseRequest failed", error.message);
     return { success: false, error: "Could not resolve" };
   }
+
+  if (updated)
+    await recordAudit({
+      admin_id: user.id,
+      action: "resolve_purchase_request",
+      target_id: updated.vendor_id,
+      detail: { request_id: parsed.data.id },
+    });
 
   revalidatePath("/admin");
   return { success: true };
@@ -289,7 +285,7 @@ export async function resolveSupportMessage(
     return { success: false, error: "Could not resolve" };
   }
 
-  await recordAudit(supabase, {
+  await recordAudit({
     admin_id: user.id,
     action: "resolve_support_message",
     target_id: updated.user_id,
@@ -328,7 +324,7 @@ export async function revokePass(
     return { success: false, error: "Could not revoke pass" };
   }
 
-  await recordAudit(supabase, {
+  await recordAudit({
     admin_id: user.id,
     action: "revoke_pass",
     target_id: parsed.data.vendorId,
@@ -364,7 +360,7 @@ export async function setPricing(
     return { success: false, error: "Could not update pricing" };
   }
 
-  await recordAudit(supabase, {
+  await recordAudit({
     admin_id: user.id,
     action: "set_pricing",
     detail: {
@@ -404,7 +400,7 @@ export async function setBanner(input: BannerFormInput): Promise<ActionResult> {
     return { success: false, error: "Could not update banner" };
   }
 
-  await recordAudit(supabase, {
+  await recordAudit({
     admin_id: user.id,
     action: "set_banner",
     detail: {
