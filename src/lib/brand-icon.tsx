@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
 
-// Kraft & Ember marks, approximated from the oklch tokens as hex (ImageResponse
-// needs concrete CSS colours): ember primary on warm oat.
-export const BRAND_EMBER = "#c4572f";
-export const BRAND_OAT = "#f6f1e7";
+// Market Ochre marks, approximated from the oklch tokens as hex (ImageResponse
+// needs concrete CSS colours): saffron primary on chalk-cream paper.
+export const BRAND_EMBER = "#b8862c";
+export const BRAND_OAT = "#efe3c8";
 
 /**
  * The qkit "Q" app mark for ImageResponse-generated icons (favicon, manifest,

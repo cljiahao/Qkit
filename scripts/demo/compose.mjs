@@ -18,7 +18,7 @@ import fs from "node:fs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, "out");
 const ASSETS = path.join(HERE, "assets");
-const BG = "0x241a12"; // Kraft & Ember dark — the pillarbox backdrop
+const BG = "0x181410"; // Market Ochre dark — the pillarbox backdrop
 // Bold font for captions. Override with DEMO_FONT if this path is absent.
 const FONT = process.env.DEMO_FONT ?? "C:/Windows/Fonts/arialbd.ttf";
 
