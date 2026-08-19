@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +52,11 @@ interface Props {
   vendorId: string;
   entitlement: Entitlement;
   vendorSocialLinks: SocialLinks;
+  // Pre-checks (and lightly emphasizes) the walk-up-default toggle below for
+  // the "Set up for an event" create flow (src/app/dashboard/booths/new/
+  // page.tsx, ?mode=event) — never applies once `initial` is set, an
+  // existing booth's own saved value always wins.
+  eventMode?: boolean;
   initial?: {
     boothId: string;
     name: string;
@@ -61,6 +67,7 @@ interface Props {
     payment: PaymentConfig | null;
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
+    walkup_default: boolean;
   };
 }
 
@@ -68,6 +75,7 @@ export function BoothForm({
   vendorId,
   entitlement,
   vendorSocialLinks,
+  eventMode = false,
   initial,
 }: Props) {
   const router = useRouter();
@@ -88,6 +96,9 @@ export function BoothForm({
   );
   const [requiresArrivalConfirm, setRequiresArrivalConfirm] = useState(
     initial?.requires_arrival_confirm ?? false,
+  );
+  const [walkupDefault, setWalkupDefault] = useState(
+    initial?.walkup_default ?? eventMode,
   );
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
@@ -123,6 +134,7 @@ export function BoothForm({
       payment,
       social_links: socialLinks,
       requires_arrival_confirm: requiresArrivalConfirm,
+      walkup_default: walkupDefault,
     };
     const parsed = boothFormSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -261,6 +273,28 @@ export function BoothForm({
                 </span>
               </span>
             </label>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+              <span className="text-sm">
+                <span className="font-medium">
+                  Default to walk-up order entry
+                  {eventMode && (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-primary">
+                      Recommended
+                    </span>
+                  )}
+                </span>
+                <span className="block text-muted-foreground">
+                  Staff enter every order directly — for a one-off event where
+                  guests don&apos;t scan a QR to order themselves.
+                </span>
+              </span>
+              <Switch
+                checked={walkupDefault}
+                onCheckedChange={setWalkupDefault}
+                aria-label="Default to walk-up order entry"
+              />
+            </div>
           </Section>
 
           <Section

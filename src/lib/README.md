@@ -270,7 +270,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `parseMenuItems`/`parseOrderItems`, `menuCategorySchema`/
   `menuCategoriesSchema`/`parseMenuCategories` (booth's ordered
   `{id, label}` menu sections, migration 0066 — schema/types only, no UI
-  yet).
+  yet). `boothFormSchema` also carries `walkup_default: z.boolean()
+.default(false)` (migration 0080, event-mode setup — makes the live board
+  auto-open walk-up order entry for that booth) alongside
+  `requires_arrival_confirm`.
 - `schemas.test.ts` — the largest test file in `lib/`: validates every schema
   above, including the payment-config cross-field rules (xor of UEN/mobile,
   pointer requiring a link or QR) and the tolerant vs. strict read/write
@@ -309,7 +312,8 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `daily_order_number_reset`/`default_prep_minutes`, migration 0062), and the
   full `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
   admin_audit, events, licenses, payments, pricing, feedback,
-  purchase_requests, support_messages, booths, orders, booth_item_sold —
+  purchase_requests, support_messages, booths — now also `walkup_default:
+boolean`, migration 0080 — orders, booth_item_sold —
   `vendor_telegram`/`telegram_link_tokens` from migration 0076 were dropped
   again in migration 0077, Phase A2's retirement of qkit's own Telegram bot;
   RPCs

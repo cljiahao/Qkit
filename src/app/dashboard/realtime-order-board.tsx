@@ -5,6 +5,7 @@ import { usePolling } from "@/hooks/use-polling";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  CalendarDays,
   Pause,
   Play,
   Plus,
@@ -54,6 +55,10 @@ type BoothView = {
   name: string;
   is_active: boolean;
   open: boolean;
+  // Event-mode setup (migration 0080) — optional so existing test fixtures
+  // and call sites need no changes; a booth without it behaves exactly as
+  // before (never auto-opens the walk-up dialog).
+  walkup_default?: boolean;
 };
 
 interface Props {
@@ -376,6 +381,24 @@ export function RealtimeOrderBoard({
   const [boothDialogOpen, setBoothDialogOpen] = useState(false);
   const bumpAway = useAwayBadge();
 
+  // Event-mode setup (migration 0080): a booth with walkup_default=true
+  // means staff enter every order directly, so open the walk-up dialog the
+  // moment the board loads instead of waiting for a "New order" tap — the
+  // QR/menu-first board underneath is unaffected either way, and a vendor
+  // with no such booth (every booth today) never triggers this. Runs once
+  // on mount only, so closing the dialog doesn't reopen it on a later
+  // render (e.g. after toggling a booth active/inactive).
+  const autoOpenedWalkup = useRef(false);
+  useEffect(() => {
+    if (autoOpenedWalkup.current) return;
+    if (booths.some((b) => b.walkup_default)) {
+      autoOpenedWalkup.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setWalkupOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleNewOrder(order: BoardOrder) {
     void playSound(boardSettings.sound_id);
     toast(`New order #${order.order_number} · ${order.customer_name}`);
@@ -440,11 +463,18 @@ export function RealtimeOrderBoard({
           Set up a booth to start receiving orders. Once it&apos;s live, every
           order lands here in real time.
         </p>
-        <Button asChild className="mt-6 rounded-lg">
-          <Link href="/dashboard/booths/new">
-            <Plus className="size-4" /> Add your first booth
-          </Link>
-        </Button>
+        <div className="mt-6 flex flex-col items-center gap-2.5 sm:flex-row sm:justify-center">
+          <Button asChild className="rounded-lg">
+            <Link href="/dashboard/booths/new">
+              <Plus className="size-4" /> Add your first booth
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-lg">
+            <Link href="/dashboard/booths/new?mode=event">
+              <CalendarDays className="size-4" /> Set up for an event
+            </Link>
+          </Button>
+        </div>
       </Ticket>
     );
   }

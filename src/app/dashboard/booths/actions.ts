@@ -284,6 +284,7 @@ export async function saveBooth(
     payment: paymentMarker(data.payment?.kind),
     social_links: data.social_links,
     requires_arrival_confirm: data.requires_arrival_confirm,
+    walkup_default: data.walkup_default,
   };
 
   return upsertBoothRow(supabase, row, data.boothId, user.id);

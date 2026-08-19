@@ -373,6 +373,9 @@ export const boothFormSchema = z.object({
   // Perishable-immediately items (ice cream) — hold prep until the customer
   // confirms arrival on their status page. See migration 0064.
   requires_arrival_confirm: z.boolean().default(false),
+  // Event-mode setup: makes the live board auto-open walk-up order entry
+  // instead of the QR/menu-first presentation. See migration 0080.
+  walkup_default: z.boolean().default(false),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */

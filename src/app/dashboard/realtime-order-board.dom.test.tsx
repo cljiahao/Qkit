@@ -372,6 +372,66 @@ describe("RealtimeOrderBoard walk-up order button", () => {
   });
 });
 
+describe("RealtimeOrderBoard event-mode (walkup_default)", () => {
+  it("auto-opens the walk-up dialog on load when the sole booth defaults to it", async () => {
+    vi.mocked(getWalkupMenu).mockResolvedValue({
+      menuItems: [],
+      remaining: {},
+      expectsPayment: false,
+      paymentKind: null,
+    });
+    render(
+      <RealtimeOrderBoard
+        booths={[
+          {
+            id: "b1",
+            name: "Kopi Corner",
+            is_active: true,
+            open: true,
+            walkup_default: true,
+          },
+        ]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(await screen.findByText("New walk-up order")).toBeInTheDocument();
+    await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b1"));
+  });
+
+  it("does not auto-open the walk-up dialog for an ordinary QR booth", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText("New walk-up order")).not.toBeInTheDocument();
+    expect(getWalkupMenu).not.toHaveBeenCalled();
+  });
+
+  it("offers a 'Set up for an event' entry point alongside 'Add your first booth' when a vendor has no booths yet", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={[]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("link", { name: /add your first booth/i }),
+    ).toHaveAttribute("href", "/dashboard/booths/new");
+    expect(
+      screen.getByRole("link", { name: /set up for an event/i }),
+    ).toHaveAttribute("href", "/dashboard/booths/new?mode=event");
+  });
+});
+
 describe("RealtimeOrderBoard batch mark-ready", () => {
   it("has no Select control when no order is preparing", () => {
     render(
