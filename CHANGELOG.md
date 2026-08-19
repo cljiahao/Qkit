@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Cleaned up the dashboard onboarding tour copy (`src/components/tour-steps.ts`):
+  removed em dashes and the trailing arrow from the desktop step text, and
+  added a small inline "example order" preview card to the first step (new
+  `.tour-example` CSS in `src/app/globals.css`) so a new vendor can see what
+  a real order looks like before any orders exist.
+
 ### Added
 
 - Vendor-level opt-out for the customer Telegram "order ready" notification:

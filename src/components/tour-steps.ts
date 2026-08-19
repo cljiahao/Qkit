@@ -16,19 +16,20 @@ const DESKTOP: TourStep[] = [
     element: sel("order-board"),
     title: "Your live order board",
     description:
-      "Orders land here the moment a customer taps Order — no refresh, no reload. Tap Start now to accept one, Mark Ready when it's done, and Mark Picked Up once they collect it. If a customer pays you first, confirm it with Confirm payment received.",
+      "Orders land here the moment a customer taps Order, no refresh needed. Tap Start now to accept one, Mark Ready when it's done, and Mark Picked Up once they collect it. If a customer pays you first, confirm it with Confirm payment received." +
+      '<div class="tour-example"><div class="tour-example-label">Example order</div><div class="tour-example-row" style="margin-top:0.35rem"><strong>#118 &middot; Oat Flat White &times;2</strong><span class="tour-example-pill">Preparing</span></div></div>',
   },
   {
     element: sel("order-board"),
     title: "Two more things worth knowing",
     description:
-      "Need to jump someone to the front? Tap the bump icon on their card. And don't worry about forgetting a ready order — one you don't clear yourself auto-completes after your configured timeout (tune it from Settings), so the board never clutters up.",
+      "Need to jump someone to the front? Tap the bump icon on their card. And don't worry about forgetting a ready order: one you don't clear yourself auto-completes after your configured timeout, which you can tune from Settings, so the board never clutters up.",
   },
   {
     element: sel("new-order"),
     title: "Customer walks up to you in person?",
     description:
-      "Tap New order to log it yourself, right from the board — no QR code needed for a face-to-face order.",
+      "Tap New order to log it yourself, right from the board. No QR code needed for a face-to-face order.",
   },
   {
     element: sel("nav-booths"),
@@ -52,7 +53,7 @@ const DESKTOP: TourStep[] = [
     element: sel("tour-replay"),
     title: "Replay anytime",
     description:
-      "Tap here to run this tour again whenever you like. Now — go create your first booth →",
+      "Tap here to run this tour again whenever you like. Ready? Go create your first booth.",
   },
 ];
 

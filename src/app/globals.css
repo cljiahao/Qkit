@@ -300,3 +300,35 @@ html::-webkit-scrollbar {
     scroll-behavior: smooth;
   }
 }
+
+/* Tour: inline "example" preview shown inside a driver.js popover's
+   description via innerHTML (see src/components/tour-steps.ts). */
+.tour-example {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, var(--radius));
+  background: var(--card);
+  font-size: 0.8rem;
+}
+.tour-example-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.tour-example-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.tour-example-label {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
