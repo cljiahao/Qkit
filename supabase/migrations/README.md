@@ -10,8 +10,8 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-76 files, `0000` through `0075`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0075` tail; skimmed by filename/theme otherwise. The
+81 files, `0000` through `0080`. Read in full: `0000`, `0001`, `0010`, `0030`,
+and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
 - **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
@@ -308,6 +308,15 @@ notify.ts`'s `notifyVendor`). No data migration — a vendor's `chat_id`
   under qkit's own (now-dead) bot is meaningless under merqo's bot, so
   every vendor who'd linked qkit's own bot must reconnect once via merqo's
   `/profile` page.
+- `0080_booth_walkup_default.sql` adds `booths.walkup_default` (bool,
+  default `false`) — the event-mode setup flow's per-booth default that
+  makes walk-up order entry (`place_walkup_order`, `0060`-`0061`) the live
+  board's opening action instead of the QR/menu-first presentation, for a
+  one-off event where staff key in every order and guests never scan a QR
+  themselves. Purely a UI hint read by `src/app/dashboard/
+realtime-order-board.tsx`; changes neither `place_order` nor
+  `place_walkup_order`'s own behavior, and every existing booth defaults to
+  `false` (QR ordering unaffected).
 
 ## Connectivity
 

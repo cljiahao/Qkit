@@ -127,6 +127,7 @@ function makeBooth(over: Partial<BoothFormInput> = {}): BoothFormInput {
     payment: null,
     social_links: null,
     requires_arrival_confirm: false,
+    walkup_default: false,
     ...over,
   };
 }

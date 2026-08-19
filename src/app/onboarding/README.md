@@ -34,7 +34,11 @@ Reached at `/onboarding`, typically right after sign-up (see the `(auth)`
 route group). `onboarding-form.tsx` calls this folder's own
 `actions.ts#createVendor`; the resulting `vendors` row is what
 `page.tsx`'s own guard (and `requireEntitledVendor()` elsewhere) checks for
-on every subsequent visit to gate dashboard access.
+on every subsequent visit to gate dashboard access. A fresh vendor with no
+booths yet lands on `/dashboard`'s own "No booths yet" empty state
+(`dashboard/realtime-order-board.tsx`), which is where the "Set up for an
+event" alternative to "Add your first booth" lives — not here, since this
+page has nothing booth-related of its own to gate.
 
 ## Parent
 

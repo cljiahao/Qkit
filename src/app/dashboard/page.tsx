@@ -52,7 +52,7 @@ export default async function DashboardPage() {
 
   const { data: booths, error: boothErr } = await supabase
     .from("booths")
-    .select("id, name, is_active, hours")
+    .select("id, name, is_active, hours, walkup_default")
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: true });
   if (boothErr) console.error("dashboard booths read failed", boothErr.message);
@@ -67,6 +67,7 @@ export default async function DashboardPage() {
       { is_active: b.is_active, hours: parseBoothHours(b.hours) },
       nowIso,
     ),
+    walkup_default: b.walkup_default,
   }));
 
   const boothIds = (booths ?? []).map((b) => b.id);

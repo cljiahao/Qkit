@@ -16,6 +16,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Event-mode setup flow for event-cart/pop-up vendors: a new `booths
+.walkup_default` flag (migration 0080) makes walk-up order entry the
+  booth's default way orders get created, instead of opt-in per order.
+  Toggle it from the booth form ("Default to walk-up order entry"); when
+  on, the live order board auto-opens the walk-up dialog on load instead of
+  the QR/menu-first presentation. A new "Set up for an event" entry point
+  (`/dashboard/booths/new?mode=event`, alongside "Add your first booth" on
+  the empty-board state) pre-checks the toggle and links out to
+  `/dashboard/plan` to buy an event pass — reusing the existing pass
+  entitlement and walk-up order entry rather than duplicating either.
+  Every existing booth defaults to `false`; QR ordering is unaffected.
 - Manual Light/Dark/System theme control in the account menu (`@merqo/ui`
   v0.18.0's built-in `AccountMenu` theme switcher), replacing the previous
   OS-only automatic dark mode. `src/app/layout.tsx` now wraps `Providers` in
