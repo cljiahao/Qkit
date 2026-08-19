@@ -16,6 +16,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Manual Light/Dark/System theme control in the account menu (`@merqo/ui`
+  v0.18.0's built-in `AccountMenu` theme switcher), replacing the previous
+  OS-only automatic dark mode. `src/app/layout.tsx` now wraps `Providers` in
+  next-themes' own `ThemeProvider` (`attribute="class"`, `defaultTheme=
+"system"`, `enableSystem`, `disableTransitionOnChange`) instead of the old
+  hand-rolled `beforeInteractive` `<Script>` that toggled `.dark` from
+  `prefers-color-scheme`; `globals.css`'s existing `.dark` palette is
+  unchanged. New `next-themes` dependency (pinned `0.4.6`).
 - Vendor-level opt-out for the customer Telegram "order ready" notification:
   a new `customer_telegram_notify_enabled` key on `board_settings`
   (`.default(true)` — every pre-existing vendor row keeps notifying exactly
