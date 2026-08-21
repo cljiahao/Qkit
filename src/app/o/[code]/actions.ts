@@ -71,6 +71,67 @@ async function notifyVendorTelegram(
   }
 }
 
+/**
+ * Fires a printkit job-creation call for this order — best-effort, same
+ * never-affects-the-result contract as notifyVendorTelegram above. Does its
+ * own orders.id lookup: place_order's RPC output has no order id (only
+ * order_number/booth_id/access_token — see
+ * supabase/migrations/0075_place_order_customer_phone.sql), and printkit's
+ * print_jobs.source_ref needs the real id (globally unique), not
+ * order_number (only unique per booth_id). printkit itself decides whether
+ * this vendor actually has a bridge configured; qkit doesn't ask.
+ *
+ * On a successful job creation, also marks this order's own print_status
+ * 'queued' — without this, print_status stays 'not_required' for the
+ * entire in-flight window (printkit only calls back on a TERMINAL status,
+ * printed/failed — see Task 3's updatePrintJobStatus), which would make
+ * the column lie about a job that's genuinely in progress. Best-effort,
+ * same fire-and-forget contract as the createPrintJob call itself.
+ */
+async function notifyPrintkit(
+  boothId: string,
+  orderNumber: string,
+  customerName: string,
+): Promise<void> {
+  try {
+    const service = await createServiceClient();
+    const { data: booth } = await service
+      .from("booths")
+      .select("vendor_id")
+      .eq("id", boothId)
+      .maybeSingle();
+    if (!booth) return;
+
+    const { data: order } = await service
+      .from("orders")
+      .select("id")
+      .eq("booth_id", boothId)
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+    if (!order) return;
+
+    const { createPrintJob } = await import("@/lib/printkit/client");
+    const result = await createPrintJob({
+      vendorId: booth.vendor_id,
+      orderId: order.id,
+      customerName,
+      orderNumber,
+    });
+
+    if (result.ok) {
+      await service
+        .from("orders")
+        .update({
+          print_status: "queued",
+          print_status_updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
+    }
+  } catch (err) {
+    console.error("notifyPrintkit failed", err);
+  }
+}
+
 export async function placeOrder(
   code: string,
   input: PlaceOrderInput,
@@ -145,6 +206,13 @@ export async function placeOrder(
   // Redundant vendor alert channel — same fire-and-forget contract as
   // logEvent above, never throws, never affects the result below.
   await notifyVendorTelegram(out.data.booth_id, out.data.order_number);
+
+  // Printing job — same fire-and-forget contract.
+  await notifyPrintkit(
+    out.data.booth_id,
+    out.data.order_number,
+    parsed.data.customerName,
+  );
 
   return {
     success: true,

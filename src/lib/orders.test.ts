@@ -30,6 +30,8 @@ function order(over: Partial<Order>): Order {
     payment_status: over.payment_status ?? "not_required",
     payment_method_kind: over.payment_method_kind ?? null,
     paid_at: over.paid_at ?? null,
+    print_status: over.print_status ?? "not_required",
+    print_status_updated_at: over.print_status_updated_at ?? null,
     created_at: over.created_at ?? "2026-06-12T10:00:00Z",
     ready_at: over.ready_at ?? null,
     completed_at: over.completed_at ?? null,

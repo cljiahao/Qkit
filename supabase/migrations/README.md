@@ -10,7 +10,7 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-81 files, `0000` through `0080`. Read in full: `0000`, `0001`, `0010`, `0030`,
+82 files, `0000` through `0081`. Read in full: `0000`, `0001`, `0010`, `0030`,
 and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
@@ -317,6 +317,7 @@ notify.ts`'s `notifyVendor`). No data migration — a vendor's `chat_id`
 realtime-order-board.tsx`; changes neither `place_order` nor
   `place_walkup_order`'s own behavior, and every existing booth defaults to
   `false` (QR ordering unaffected).
+- `0081_orders_print_status.sql` — `orders.print_status` (enum: not_required/queued/sent/printed/failed) + `print_status_updated_at`, mirroring `payment_status`'s shape. Mirrored/pushed by printkit's callback on a job's status change (see `printkit/client.ts`, `api/printkit/print-status/route.ts`).
 
 ## Connectivity
 

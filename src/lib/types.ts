@@ -89,6 +89,13 @@ export type PaymentStatus =
   | "claimed"
   | "confirmed";
 
+export type PrintStatus =
+  | "not_required"
+  | "queued"
+  | "sent"
+  | "printed"
+  | "failed";
+
 export type PaymentKind = "pointer" | "paynow" | "stripe";
 
 // Discriminated union stored in booths.payment (JSONB). No secrets in any
@@ -530,6 +537,8 @@ export interface Database {
           payment_status: PaymentStatus;
           payment_method_kind: PaymentKind | null;
           paid_at: string | null;
+          print_status: PrintStatus;
+          print_status_updated_at: string | null;
           created_at: string;
           ready_at: string | null;
           completed_at: string | null;
@@ -551,6 +560,8 @@ export interface Database {
           payment_status?: PaymentStatus;
           payment_method_kind?: PaymentKind | null;
           paid_at?: string | null;
+          print_status?: PrintStatus;
+          print_status_updated_at?: string | null;
           created_at?: string;
           ready_at?: string | null;
           completed_at?: string | null;
@@ -572,6 +583,8 @@ export interface Database {
           payment_status?: PaymentStatus;
           payment_method_kind?: PaymentKind | null;
           paid_at?: string | null;
+          print_status?: PrintStatus;
+          print_status_updated_at?: string | null;
           created_at?: string;
           ready_at?: string | null;
           completed_at?: string | null;

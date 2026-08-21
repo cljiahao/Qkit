@@ -49,6 +49,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     payment_status: "not_required",
     payment_method_kind: null,
     paid_at: null,
+    print_status: "not_required",
+    print_status_updated_at: null,
     created_at: new Date(0).toISOString(),
     ready_at: null,
     completed_at: null,

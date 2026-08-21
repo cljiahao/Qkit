@@ -10,6 +10,9 @@ const rpc = vi.fn();
 // (the pre-existing ones above) just no-op through it.
 let boothQueue: { data: unknown }[] = [];
 let orderQueue: { data: unknown }[] = [];
+const orderUpdateMock = vi
+  .fn()
+  .mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
 const serviceFrom = vi.fn((table: string) => {
   if (table === "booths") {
     return {
@@ -31,12 +34,16 @@ const serviceFrom = vi.fn((table: string) => {
           }),
         }),
       }),
+      update: orderUpdateMock,
     };
   }
   throw new Error(`unexpected table: ${table}`);
 });
 
 const notifyVendor = vi.fn().mockResolvedValue(undefined);
+const createPrintJob = vi
+  .fn()
+  .mockResolvedValue({ ok: true, data: { id: "job-1" } });
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ rpc }),
@@ -44,6 +51,9 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("@/lib/merqo-customer-notify", () => ({
   notifyVendor: (...args: unknown[]) => notifyVendor(...args),
+}));
+vi.mock("@/lib/printkit/client", () => ({
+  createPrintJob: (...args: unknown[]) => createPrintJob(...args),
 }));
 vi.mock("next/headers", () => ({
   headers: async () => new Map<string, string>(),
@@ -56,6 +66,8 @@ beforeEach(() => {
   orderQueue = [];
   serviceFrom.mockClear();
   notifyVendor.mockClear();
+  createPrintJob.mockClear();
+  orderUpdateMock.mockClear();
 });
 
 const validInput = {
@@ -63,6 +75,25 @@ const validInput = {
   items: [{ menuItemId: "m1", name: "Kopi", price_cents: 200, quantity: 1 }],
 };
 const IDEM = "11111111-1111-1111-1111-111111111111";
+
+// Shared by the vendor-alert and printkit-notify describe blocks below —
+// both exercise a redundant post-order notify channel off the same
+// successful place_order RPC response.
+function mockSuccessfulRpc() {
+  rpc.mockImplementation((name: string) => {
+    if (name === "check_rate_limit") return Promise.resolve({ data: true });
+    if (name === "place_order")
+      return Promise.resolve({
+        data: {
+          order_number: "0007",
+          booth_id: "booth-1",
+          access_token: "tok7",
+        },
+        error: null,
+      });
+    throw new Error(`unexpected rpc: ${name}`);
+  });
+}
 
 describe("placeOrder", () => {
   it("maps an ORDER_EXPIRED raise to the rescan message", async () => {
@@ -246,22 +277,6 @@ describe("placeOrder", () => {
   );
 
   describe("vendor alert (redundant channel — must never affect the result)", () => {
-    function mockSuccessfulRpc() {
-      rpc.mockImplementation((name: string) => {
-        if (name === "check_rate_limit") return Promise.resolve({ data: true });
-        if (name === "place_order")
-          return Promise.resolve({
-            data: {
-              order_number: "0007",
-              booth_id: "booth-1",
-              access_token: "tok7",
-            },
-            error: null,
-          });
-        throw new Error(`unexpected rpc: ${name}`);
-      });
-    }
-
     it("calls notifyVendor with the booth's vendor_id and a message containing the order number/total", async () => {
       mockSuccessfulRpc();
       boothQueue = [{ data: { vendor_id: "vendor-1" } }];
@@ -306,6 +321,103 @@ describe("placeOrder", () => {
         boothId: "booth-1",
         accessToken: "tok7",
       });
+    });
+  });
+
+  describe("printkit notify (redundant channel — must never affect the result)", () => {
+    it("calls createPrintJob with the booth's vendor_id, order id, order number, and customer name", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [
+        { data: { vendor_id: "vendor-1" } }, // consumed by notifyVendorTelegram
+        { data: { vendor_id: "vendor-1" } }, // consumed by notifyPrintkit
+      ];
+      orderQueue = [
+        { data: { total_cents: 700 } }, // consumed by notifyVendorTelegram
+        { data: { id: "order-uuid-1" } }, // consumed by notifyPrintkit
+      ];
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
+      expect(createPrintJob).toHaveBeenCalledTimes(1);
+      expect(createPrintJob).toHaveBeenCalledWith({
+        vendorId: "vendor-1",
+        orderId: "order-uuid-1",
+        customerName: validInput.customerName,
+        orderNumber: "0007",
+      });
+    });
+
+    it("marks the order's print_status 'queued' when createPrintJob succeeds", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [
+        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1" } },
+      ];
+      orderQueue = [
+        { data: { total_cents: 700 } },
+        { data: { id: "order-uuid-1" } },
+      ];
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
+      expect(orderUpdateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ print_status: "queued" }),
+      );
+    });
+
+    it("does not touch print_status when createPrintJob fails", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [
+        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1" } },
+      ];
+      orderQueue = [
+        { data: { total_cents: 700 } },
+        { data: { id: "order-uuid-1" } },
+      ];
+      createPrintJob.mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        error: "printkit down",
+      });
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
+      expect(orderUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it("skips silently when the order id can't be resolved", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [
+        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1" } },
+      ];
+      orderQueue = [{ data: { total_cents: 700 } }, { data: null }];
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
+      expect(createPrintJob).not.toHaveBeenCalled();
+    });
+
+    it("a createPrintJob failure doesn't change placeOrder's own result", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [
+        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1" } },
+      ];
+      orderQueue = [
+        { data: { total_cents: 700 } },
+        { data: { id: "order-uuid-1" } },
+      ];
+      createPrintJob.mockRejectedValueOnce(new Error("printkit down"));
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
     });
   });
 });

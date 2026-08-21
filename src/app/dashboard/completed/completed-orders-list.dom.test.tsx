@@ -26,6 +26,8 @@ function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
     payment_status: "not_required",
     payment_method_kind: null,
     paid_at: null,
+    print_status: "not_required",
+    print_status_updated_at: null,
     created_at: new Date(0).toISOString(),
     ready_at: new Date(0).toISOString(),
     completed_at: new Date(0).toISOString(),

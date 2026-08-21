@@ -284,6 +284,14 @@ export const paymentStatusSchema = z.enum([
   "confirmed",
 ]);
 
+export const printStatusSchema = z.enum([
+  "not_required",
+  "queued",
+  "sent",
+  "printed",
+  "failed",
+]);
+
 // Customer order-route params, shared by the status page and its status/payment
 // polling reads. boothId is a UUID; order numbers are short sequential per-booth
 // strings (bounded to reject junk before it reaches a query).
@@ -591,6 +599,11 @@ export const orderRowSchema = z.object({
     // rather than dropping the whole realtime order.
     .catch(null),
   paid_at: z.string().nullable(),
+  // Tolerant like source/auto_completed below — a payload from mid-deploy
+  // (before migration 0081 lands everywhere) shouldn't drop the event;
+  // degrade to the column's own DB default.
+  print_status: printStatusSchema.catch("not_required"),
+  print_status_updated_at: z.string().nullable().catch(null),
   created_at: z.string(),
   ready_at: z.string().nullable(),
   completed_at: z.string().nullable(),
