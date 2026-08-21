@@ -213,6 +213,14 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   fails closed rather than guessing a deployment.
 - `pricing.ts` — `PricingConfig` type and `DEFAULT_PRICING` (zeroed fallback
   when the `pricing` row is unreadable, e.g. pre-migration).
+- `qkit-printkit-auth.ts` — `printkitCallbackBearerOk`: constant-time bearer
+  check against `PRINTKIT_CALLBACK_SECRET` for `POST
+/api/printkit/print-status` — a plain shared secret, no `kit_slug:` prefix
+  (mirrors `merqo-auth.ts`'s `bearerOk`, not `paykit/client.ts`'s outbound
+  `qkit:<secret>` convention), since printkit has exactly one caller
+  registered for this endpoint.
+- `qkit-printkit-auth.test.ts` — tests the unset-secret, missing-header,
+  mismatched-secret, and matching-secret cases.
 - `rate-limit.ts` — `clientIp(headers)` (best-effort, spoofable fairness key —
   not an authz signal) and `rateLimit(supabase, key, limit, windowSeconds)`,
   which calls the `check_rate_limit` RPC and fails OPEN (with a logged error)

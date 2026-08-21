@@ -85,6 +85,9 @@ prompt, metric })`: compact rating widget posting to
 overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs, selectable,
 selected, onToggleSelect })`: the
   vendor dashboard's live order ticket — status/payment badges (plus a
+  "Print failed" badge, `PrintBadge`, when `order.print_status === "failed"`
+  — silent for `queued`/`sent`/`printed`/`not_required`, set via printkit's
+  `POST /api/printkit/print-status` callback — and a
   "Walk-up" badge when `order.source === "walkup"`, staff-entered orders vs.
   the default QR-placed ones), an aging
   clock (`orderAgeTone`, ticks every 30s) moved to the footer beside the
