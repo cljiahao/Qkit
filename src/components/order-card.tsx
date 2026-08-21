@@ -76,6 +76,15 @@ function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   );
 }
 
+function PrintBadge({ status }: { status: BoardOrder["print_status"] }) {
+  if (status !== "failed") return null;
+  return (
+    <span className="inline-flex items-center rounded-full bg-status-print-failed px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-white">
+      Print failed
+    </span>
+  );
+}
+
 function ageToneClass(tone: AgeTone): string {
   if (tone === "overdue") return "text-status-cancelled";
   if (tone === "aging") return "text-status-aging";
@@ -464,6 +473,7 @@ export function OrderCard({
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <OrderStatusBadge status={status} />
             <PaymentBadge status={payStatus} />
+            <PrintBadge status={order.print_status} />
             {order.source === "walkup" && (
               <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
                 Walk-up
