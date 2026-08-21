@@ -90,6 +90,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cookie already signs them in there too, so this is purely an in-product
   navigation affordance, no new backend.
 
+### Fixed
+
+- Cards were visually indistinguishable from the page background in light
+  mode — the Market Ochre rebrand set `--card`/`--popover` to the exact
+  same OKLCH value as `--background`. Restored a distinct, lighter card
+  treatment in light mode (`src/app/globals.css`); dark mode already
+  differentiated the two, and got a further brightness bump for better
+  contrast.
+
 ### Removed
 
 - **qkit's own Telegram bot (Phase A)** — retired the same day it shipped,

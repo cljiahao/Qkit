@@ -46,9 +46,9 @@
   /* near-black paper canvas, warm cream ink, saffron primary + moss counter-tone */
   --background: oklch(0.195 0.01 67.2);
   --foreground: oklch(0.906 0.043 88);
-  --card: oklch(0.243 0.012 67.2);
+  --card: oklch(0.263 0.015 67.2);
   --card-foreground: oklch(0.906 0.043 88);
-  --popover: oklch(0.243 0.012 67.2);
+  --popover: oklch(0.263 0.015 67.2);
   --popover-foreground: oklch(0.906 0.043 88);
   --primary: oklch(0.745 0.13 78);
   --primary-foreground: oklch(0.243 0.012 67.2);
