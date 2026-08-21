@@ -10,9 +10,9 @@
   /* chalk-cream paper canvas, charcoal ink, saffron primary + moss counter-tone */
   --background: oklch(0.918 0.038 86.9);
   --foreground: oklch(0.273 0.014 67.2);
-  --card: oklch(0.965 0.024 86.9);
+  --card: oklch(0.99 0.012 86.9);
   --card-foreground: oklch(0.273 0.014 67.2);
-  --popover: oklch(0.965 0.024 86.9);
+  --popover: oklch(0.99 0.012 86.9);
   --popover-foreground: oklch(0.273 0.014 67.2);
   --primary: oklch(0.654 0.12 78);
   --primary-foreground: oklch(0.273 0.014 67.2);
