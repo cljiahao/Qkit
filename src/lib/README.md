@@ -6,8 +6,9 @@ Framework-agnostic business logic for qkit: order/booth/entitlement rules, stats
 and margin aggregation, the Zod schemas that validate every server-action/form
 boundary, and the DB type mirror. Kept free of React and Next.js so it is
 unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
-`paykit/` and `supabase/` are the two subfolders that do carry I/O concerns
-(the paykit HTTP client and the Supabase client factories, respectively).
+`paykit/`, `printkit/`, and `supabase/` are the subfolders that do carry I/O
+concerns (the paykit and printkit HTTP clients, and the Supabase client
+factories, respectively).
 
 ## Contents
 
@@ -206,6 +207,10 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `DEFAULT_PLATFORM_SETTINGS` (banner off): the fail-safe fallback when the
   `platform_settings` row can't be read, so a read failure never shows a
   stale/wrong banner to every visitor.
+- `printkit/` — server-only HTTP client for printkit's job-creation API
+  (`createPrintJob`, the only endpoint today); see its own README. Unlike
+  `paykit/`, an unset `NEXT_PUBLIC_PRINTKIT_URL` has no fallback host — it
+  fails closed rather than guessing a deployment.
 - `pricing.ts` — `PricingConfig` type and `DEFAULT_PRICING` (zeroed fallback
   when the `pricing` row is unreadable, e.g. pre-migration).
 - `rate-limit.ts` — `clientIp(headers)` (best-effort, spoofable fairness key —
