@@ -3,8 +3,6 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { printkitCallbackBearerOk } from "@/lib/qkit-printkit-auth";
 
-export const revalidate = 0;
-
 const bodySchema = z.object({
   order_id: z.string().uuid(),
   status: z.enum(["queued", "sent", "printed", "failed"]),
