@@ -223,16 +223,17 @@ export async function placeOrder(
   // it can't fail a placed order.
   await logEvent("order_placed", { boothId: out.data.booth_id });
 
-  // Redundant vendor alert channel — same fire-and-forget contract as
-  // logEvent above, never throws, never affects the result below.
-  await notifyVendorTelegram(out.data.booth_id, out.data.order_number);
-
-  // Printing job — same fire-and-forget contract.
-  await notifyPrintkit(
-    out.data.booth_id,
-    out.data.order_number,
-    parsed.data.customerName,
-  );
+  // Redundant vendor alert + printing job — both fire-and-forget, run
+  // concurrently so a slow/unreachable one doesn't add its timeout on top
+  // of the other's before the customer gets a response.
+  await Promise.all([
+    notifyVendorTelegram(out.data.booth_id, out.data.order_number),
+    notifyPrintkit(
+      out.data.booth_id,
+      out.data.order_number,
+      parsed.data.customerName,
+    ),
+  ]);
 
   return {
     success: true,

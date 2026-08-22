@@ -33,13 +33,15 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createServiceClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("orders")
     .update({
       print_status: parsed.data.status,
       print_status_updated_at: new Date().toISOString(),
     })
-    .eq("id", parsed.data.order_id);
+    .eq("id", parsed.data.order_id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -50,6 +52,10 @@ export async function POST(request: Request) {
       { error: "Upstream unavailable" },
       { status: 503 },
     );
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true });

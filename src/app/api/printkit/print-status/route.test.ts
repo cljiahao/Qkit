@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const printkitCallbackBearerOkMock = vi.fn();
 const updateMock = vi.fn();
 const eqMock = vi.fn();
+const selectMock = vi.fn();
+const maybeSingleMock = vi.fn();
 
 vi.mock("@/lib/qkit-printkit-auth", () => ({
   printkitCallbackBearerOk: (...args: unknown[]) =>
@@ -33,8 +35,12 @@ describe("POST /api/printkit/print-status", () => {
     printkitCallbackBearerOkMock.mockReset();
     updateMock.mockReset();
     eqMock.mockReset();
+    selectMock.mockReset();
+    maybeSingleMock.mockReset();
     updateMock.mockReturnValue({ eq: eqMock });
-    eqMock.mockResolvedValue({ error: null });
+    eqMock.mockReturnValue({ select: selectMock });
+    selectMock.mockReturnValue({ maybeSingle: maybeSingleMock });
+    maybeSingleMock.mockResolvedValue({ data: { id: ORDER_ID }, error: null });
   });
 
   const ORDER_ID = "11111111-1111-1111-1111-111111111111";
@@ -88,12 +94,26 @@ describe("POST /api/printkit/print-status", () => {
 
   it("returns 503 on a database error", async () => {
     printkitCallbackBearerOkMock.mockReturnValue(true);
-    eqMock.mockResolvedValue({ error: { message: "connection reset" } });
+    maybeSingleMock.mockResolvedValue({
+      data: null,
+      error: { message: "connection reset" },
+    });
 
     const res = await POST(
       requestWith({ order_id: ORDER_ID, status: "printed" }),
     );
 
     expect(res.status).toBe(503);
+  });
+
+  it("returns 404 when no order matches order_id (silent no-op prevention)", async () => {
+    printkitCallbackBearerOkMock.mockReturnValue(true);
+    maybeSingleMock.mockResolvedValue({ data: null, error: null });
+
+    const res = await POST(
+      requestWith({ order_id: ORDER_ID, status: "printed" }),
+    );
+
+    expect(res.status).toBe(404);
   });
 });
