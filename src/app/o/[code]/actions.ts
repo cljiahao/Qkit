@@ -6,6 +6,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { logEvent } from "@/app/actions/events";
 import { notifyVendor } from "@/lib/merqo-customer-notify";
+import { createPrintJob } from "@/lib/printkit/client";
 import type { ActionResult } from "@/lib/action-result";
 
 type Result = ActionResult<{
@@ -78,8 +79,10 @@ async function notifyVendorTelegram(
  * order_number/booth_id/access_token — see
  * supabase/migrations/0075_place_order_customer_phone.sql), and printkit's
  * print_jobs.source_ref needs the real id (globally unique), not
- * order_number (only unique per booth_id). printkit itself decides whether
- * this vendor actually has a bridge configured; qkit doesn't ask.
+ * order_number (only unique per booth_id). v0.1 has no vendor-bridge-
+ * configured gate on either side — every order fires this call; a vendor
+ * without a printer configured just gets a job that never progresses past
+ * 'queued' on printkit's side. A real gate is Plan 3/4 scope.
  *
  * On a successful job creation, also marks this order's own print_status
  * 'queued' — without this, print_status stays 'not_required' for the
@@ -110,7 +113,6 @@ async function notifyPrintkit(
       .maybeSingle();
     if (!order) return;
 
-    const { createPrintJob } = await import("@/lib/printkit/client");
     const result = await createPrintJob({
       vendorId: booth.vendor_id,
       orderId: order.id,
@@ -118,14 +120,32 @@ async function notifyPrintkit(
       orderNumber,
     });
 
-    if (result.ok) {
-      await service
-        .from("orders")
-        .update({
-          print_status: "queued",
-          print_status_updated_at: new Date().toISOString(),
-        })
-        .eq("id", order.id);
+    if (!result.ok) {
+      console.error(
+        "notifyPrintkit: createPrintJob failed",
+        result.status,
+        result.error,
+      );
+      return;
+    }
+
+    // Conditioned on the order still being in its pre-print state so a
+    // genuine terminal status from the print-status callback route (which
+    // may land inside the tiny race window before this write runs) can
+    // never be overwritten back to 'queued'.
+    const { error: updateError } = await service
+      .from("orders")
+      .update({
+        print_status: "queued",
+        print_status_updated_at: new Date().toISOString(),
+      })
+      .eq("id", order.id)
+      .eq("print_status", "not_required");
+    if (updateError) {
+      console.error(
+        "notifyPrintkit: print_status update failed",
+        updateError.message,
+      );
     }
   } catch (err) {
     console.error("notifyPrintkit failed", err);

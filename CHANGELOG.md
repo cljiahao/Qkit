@@ -16,6 +16,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- printkit print-job integration: a new `orders.print_status` enum column
+  (`not_required`|`queued`|`sent`|`printed`|`failed`, migration 0081).
+  `placeOrder` now fires an outbound job-creation call to printkit's
+  `/api/v1/print-jobs` (`src/lib/printkit/client.ts`, bearer
+  `PRINTKIT_KIT_SECRET`) as a redundant, fire-and-forget channel alongside
+  the existing vendor Telegram alert — a printkit outage never affects
+  order placement. A new inbound `POST /api/printkit/print-status` route
+  (bearer `PRINTKIT_CALLBACK_SECRET`) lets printkit report a job's
+  in-flight/terminal status back; the vendor dashboard board now renders a
+  "Print failed" badge (`PrintBadge` in `src/components/order-card.tsx`)
+  when a job lands on `failed` — the only visible v0.1 outcome of this
+  integration. See `.env.example` for the three new required env vars
+  (`NEXT_PUBLIC_PRINTKIT_URL`, `PRINTKIT_KIT_SECRET`,
+  `PRINTKIT_CALLBACK_SECRET`) and `docs/DEPLOY.md`.
 - Event-mode setup flow for event-cart/pop-up vendors: a new `booths
 .walkup_default` flag (migration 0080) makes walk-up order entry the
   booth's default way orders get created, instead of opt-in per order.

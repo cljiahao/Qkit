@@ -10,9 +10,11 @@ const rpc = vi.fn();
 // (the pre-existing ones above) just no-op through it.
 let boothQueue: { data: unknown }[] = [];
 let orderQueue: { data: unknown }[] = [];
-const orderUpdateMock = vi
-  .fn()
-  .mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+const orderUpdateMock = vi.fn().mockReturnValue({
+  eq: vi.fn().mockReturnValue({
+    eq: vi.fn().mockResolvedValue({ error: null }),
+  }),
+});
 const serviceFrom = vi.fn((table: string) => {
   if (table === "booths") {
     return {

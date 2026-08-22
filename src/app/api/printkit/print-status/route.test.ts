@@ -37,11 +37,13 @@ describe("POST /api/printkit/print-status", () => {
     eqMock.mockResolvedValue({ error: null });
   });
 
+  const ORDER_ID = "11111111-1111-1111-1111-111111111111";
+
   it("returns 401 when the bearer secret doesn't verify", async () => {
     printkitCallbackBearerOkMock.mockReturnValue(false);
 
     const res = await POST(
-      requestWith({ order_id: "order-1", status: "failed" }),
+      requestWith({ order_id: ORDER_ID, status: "failed" }),
     );
 
     expect(res.status).toBe(401);
@@ -52,7 +54,18 @@ describe("POST /api/printkit/print-status", () => {
     printkitCallbackBearerOkMock.mockReturnValue(true);
 
     const res = await POST(
-      requestWith({ order_id: "order-1", status: "bogus" }),
+      requestWith({ order_id: ORDER_ID, status: "bogus" }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 on a non-UUID order_id, not a 503", async () => {
+    printkitCallbackBearerOkMock.mockReturnValue(true);
+
+    const res = await POST(
+      requestWith({ order_id: "order-1", status: "failed" }),
     );
 
     expect(res.status).toBe(400);
@@ -63,14 +76,14 @@ describe("POST /api/printkit/print-status", () => {
     printkitCallbackBearerOkMock.mockReturnValue(true);
 
     const res = await POST(
-      requestWith({ order_id: "order-1", status: "failed" }),
+      requestWith({ order_id: ORDER_ID, status: "failed" }),
     );
 
     expect(res.status).toBe(200);
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({ print_status: "failed" }),
     );
-    expect(eqMock).toHaveBeenCalledWith("id", "order-1");
+    expect(eqMock).toHaveBeenCalledWith("id", ORDER_ID);
   });
 
   it("returns 503 on a database error", async () => {
@@ -78,7 +91,7 @@ describe("POST /api/printkit/print-status", () => {
     eqMock.mockResolvedValue({ error: { message: "connection reset" } });
 
     const res = await POST(
-      requestWith({ order_id: "order-1", status: "printed" }),
+      requestWith({ order_id: ORDER_ID, status: "printed" }),
     );
 
     expect(res.status).toBe(503);

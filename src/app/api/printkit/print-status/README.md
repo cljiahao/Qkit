@@ -22,8 +22,9 @@ having to poll printkit.
 
 ## Connectivity
 
-Called by printkit's own print-job worker as a job's status changes — see
-printkit's own repo for the caller side. Feeds `orders.print_status`, read
+This endpoint has exactly one caller: printkit's own print-job worker, as a
+job's status changes — see printkit's own repo for the caller side. Feeds
+`orders.print_status`, read
 by `@/components/order-card.tsx`'s `PrintBadge` (renders only on `"failed"`;
 `"queued"`/`"sent"`/`"printed"`/`"not_required"` are silent, v0.1 scope).
 

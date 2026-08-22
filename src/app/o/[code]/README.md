@@ -33,10 +33,13 @@ the current (non-legacy) customer ordering entry point.
   same best-effort, wrapped-in-its-own-try/catch contract. It resolves the
   order's real `id` (the `place_order` RPC output carries none, only
   `order_number`/`booth_id`/`access_token` — migration `0075`), calls
-  `@/lib/printkit/client`'s `createPrintJob`, and on a successful job
-  creation marks `orders.print_status = 'queued'` (migration `0081`) so the
-  column doesn't lie about a job that's genuinely in progress for the whole
-  window before printkit's own terminal-status callback lands.
+  `@/lib/printkit/client`'s `createPrintJob` (logging on a non-ok result),
+  and on a successful job creation marks `orders.print_status = 'queued'`
+  (migration `0081`) — conditioned on `print_status = 'not_required'` so a
+  terminal status from printkit's own callback route landing first can
+  never be overwritten back to `'queued'` — so the column doesn't lie about
+  a job that's genuinely in progress for the whole window before that
+  callback lands. Logs (doesn't discard) an update failure too.
 - `actions.place-order.test.ts` — unit tests (RPC mocked) covering: the
   expired-code message mapping, a successful order, the action-level flood
   guard rejecting before `place_order` is ever called, fail-open behaviour
@@ -82,8 +85,9 @@ own `notifyVendorTelegram` helper — merqo's shared bot resolves the vendor's
 linked chat itself; a vendor connects that link once via merqo's own
 `/profile` page, not through anything in this repo. It likewise calls
 `@/lib/printkit/client`'s `createPrintJob` via its own `notifyPrintkit`
-helper — printkit itself decides whether the vendor has a print bridge
-configured; qkit doesn't ask.
+helper — v0.1 has no vendor-bridge-configured gate on either side; a vendor
+without a printer just gets a job that never progresses past `'queued'` on
+printkit's side.
 
 ## Parent
 

@@ -9,6 +9,14 @@ in its own `qkit` schema.
   then this repo's `0051_emit_order_completed.sql`. Set
   `NEXT_PUBLIC_LOOPKIT_URL` in Vercel env before deploying the order-status
   page change, or the earn link silently never shows (fails closed).
+- **printkit integration**: `NEXT_PUBLIC_PRINTKIT_URL` and `PRINTKIT_KIT_SECRET`
+  (outbound, `src/lib/printkit/client.ts`) and `PRINTKIT_CALLBACK_SECRET`
+  (inbound, `src/app/api/printkit/print-status/route.ts`) are all required
+  for the print-job integration to actually work — every one of them fails
+  closed and silently when unset, so a missing var looks like a correctly
+  configured feature that just never fires rather than an error. Set all
+  three in Vercel env before relying on the "Print failed" dashboard badge.
+  See `.env.example` for what each one guards.
 - **Telegram vendor alerts (2026-08-16, Phase A2)**: qkit's own Telegram bot
   (and its one-time `setWebhook` registration) was retired — vendor order
   alerts now route through merqo's shared bot via `notifyVendor`

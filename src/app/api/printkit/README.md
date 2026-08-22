@@ -17,8 +17,8 @@ print job — is `@/lib/printkit/client.ts`, not a route). Machine-to-machine
 Guarded by `printkitCallbackBearerOk(request)` from
 `@/lib/qkit-printkit-auth` — a plain shared-secret bearer check against
 `PRINTKIT_CALLBACK_SECRET`, no `kit_slug:` prefix (unlike `PAYKIT_KIT_SECRET`
-in `../../../lib/paykit/client.ts`), since printkit has exactly one caller
-registered for this endpoint. Writes land on `orders.print_status`/
+in `../../../lib/paykit/client.ts`), since this endpoint has exactly one
+caller (printkit). Writes land on `orders.print_status`/
 `print_status_updated_at` via `createServiceClient()`, surfaced on the
 dashboard board as `PrintBadge` in `@/components/order-card.tsx`.
 
