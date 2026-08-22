@@ -508,6 +508,32 @@ describe("OrderCard payment", () => {
   });
 });
 
+describe("OrderCard print status", () => {
+  it("shows a Print failed badge when print_status is failed", () => {
+    render(<OrderCard order={makeOrder({ print_status: "failed" })} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.getByText(/^Print failed$/i)).toBeInTheDocument();
+  });
+
+  it("shows no print-status UI when print_status is not_required", () => {
+    render(<OrderCard order={makeOrder({ print_status: "not_required" })} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.queryByText(/print failed/i)).not.toBeInTheDocument();
+  });
+
+  it.each(["queued", "sent", "printed"] as const)(
+    "shows no print-status UI when print_status is %s",
+    (print_status) => {
+      render(<OrderCard order={makeOrder({ print_status })} />, {
+        wrapper: TooltipProvider,
+      });
+      expect(screen.queryByText(/print failed/i)).not.toBeInTheDocument();
+    },
+  );
+});
+
 describe("OrderCard — pending arrival aging", () => {
   it("never shows the aging/overdue wash or footer colour for a pending order, however old", () => {
     const { container } = render(
