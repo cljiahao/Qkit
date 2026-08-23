@@ -49,6 +49,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     payment_status: "not_required",
     payment_method_kind: null,
     paid_at: null,
+    print_status: "not_required",
+    print_status_updated_at: null,
     created_at: new Date(0).toISOString(),
     ready_at: null,
     completed_at: null,
@@ -504,6 +506,32 @@ describe("OrderCard payment", () => {
       screen.queryByLabelText(/manually bumped to the front/i),
     ).not.toBeInTheDocument();
   });
+});
+
+describe("OrderCard print status", () => {
+  it("shows a Print failed badge when print_status is failed", () => {
+    render(<OrderCard order={makeOrder({ print_status: "failed" })} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.getByText(/^Print failed$/i)).toBeInTheDocument();
+  });
+
+  it("shows no print-status UI when print_status is not_required", () => {
+    render(<OrderCard order={makeOrder({ print_status: "not_required" })} />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.queryByText(/print failed/i)).not.toBeInTheDocument();
+  });
+
+  it.each(["queued", "sent", "printed"] as const)(
+    "shows no print-status UI when print_status is %s",
+    (print_status) => {
+      render(<OrderCard order={makeOrder({ print_status })} />, {
+        wrapper: TooltipProvider,
+      });
+      expect(screen.queryByText(/print failed/i)).not.toBeInTheDocument();
+    },
+  );
 });
 
 describe("OrderCard — pending arrival aging", () => {

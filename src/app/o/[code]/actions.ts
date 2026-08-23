@@ -6,6 +6,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { logEvent } from "@/app/actions/events";
 import { notifyVendor } from "@/lib/merqo-customer-notify";
+import { createPrintJob } from "@/lib/printkit/client";
 import type { ActionResult } from "@/lib/action-result";
 
 type Result = ActionResult<{
@@ -68,6 +69,101 @@ async function notifyVendorTelegram(
     );
   } catch (err) {
     console.error("notifyVendorTelegram failed", err);
+  }
+}
+
+/**
+ * Fires a printkit job-creation call for this order — best-effort, same
+ * never-affects-the-result contract as notifyVendorTelegram above. Does its
+ * own orders.id lookup: place_order's RPC output has no order id (only
+ * order_number/booth_id/access_token — see
+ * supabase/migrations/0075_place_order_customer_phone.sql), and printkit's
+ * print_jobs.source_ref needs the real id (globally unique), not
+ * order_number (only unique per booth_id). v0.1 has no vendor-bridge-
+ * configured gate on either side — every order fires this call; a vendor
+ * without a printer configured just gets a job that never progresses past
+ * 'queued' on printkit's side. A real gate is Plan 3/4 scope.
+ *
+ * On a successful job creation, also marks this order's own print_status
+ * 'queued' — without this, print_status stays 'not_required' for the
+ * entire in-flight window (printkit only calls back on a TERMINAL status,
+ * printed/failed — see Task 3's updatePrintJobStatus), which would make
+ * the column lie about a job that's genuinely in progress. Best-effort,
+ * same fire-and-forget contract as the createPrintJob call itself.
+ */
+async function notifyPrintkit(
+  boothId: string,
+  orderNumber: string,
+  customerName: string,
+): Promise<void> {
+  try {
+    const service = await createServiceClient();
+    const { data: booth, error: boothError } = await service
+      .from("booths")
+      .select("vendor_id")
+      .eq("id", boothId)
+      .maybeSingle();
+    if (!booth) {
+      console.error(
+        "notifyPrintkit: booth lookup found nothing",
+        boothId,
+        boothError?.message,
+      );
+      return;
+    }
+
+    const { data: order, error: orderError } = await service
+      .from("orders")
+      .select("id")
+      .eq("booth_id", boothId)
+      .eq("order_number", orderNumber)
+      .maybeSingle();
+    if (!order) {
+      console.error(
+        "notifyPrintkit: order lookup found nothing",
+        boothId,
+        orderNumber,
+        orderError?.message,
+      );
+      return;
+    }
+
+    const result = await createPrintJob({
+      vendorId: booth.vendor_id,
+      orderId: order.id,
+      customerName,
+      orderNumber,
+    });
+
+    if (!result.ok) {
+      console.error(
+        "notifyPrintkit: createPrintJob failed",
+        result.status,
+        result.error,
+      );
+      return;
+    }
+
+    // Conditioned on the order still being in its pre-print state so a
+    // genuine terminal status from the print-status callback route (which
+    // may land inside the tiny race window before this write runs) can
+    // never be overwritten back to 'queued'.
+    const { error: updateError } = await service
+      .from("orders")
+      .update({
+        print_status: "queued",
+        print_status_updated_at: new Date().toISOString(),
+      })
+      .eq("id", order.id)
+      .eq("print_status", "not_required");
+    if (updateError) {
+      console.error(
+        "notifyPrintkit: print_status update failed",
+        updateError.message,
+      );
+    }
+  } catch (err) {
+    console.error("notifyPrintkit failed", err);
   }
 }
 
@@ -142,9 +238,17 @@ export async function placeOrder(
   // it can't fail a placed order.
   await logEvent("order_placed", { boothId: out.data.booth_id });
 
-  // Redundant vendor alert channel — same fire-and-forget contract as
-  // logEvent above, never throws, never affects the result below.
-  await notifyVendorTelegram(out.data.booth_id, out.data.order_number);
+  // Redundant vendor alert + printing job — both fire-and-forget, run
+  // concurrently so a slow/unreachable one doesn't add its timeout on top
+  // of the other's before the customer gets a response.
+  await Promise.all([
+    notifyVendorTelegram(out.data.booth_id, out.data.order_number),
+    notifyPrintkit(
+      out.data.booth_id,
+      out.data.order_number,
+      parsed.data.customerName,
+    ),
+  ]);
 
   return {
     success: true,
