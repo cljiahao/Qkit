@@ -10,6 +10,7 @@ import {
   UtensilsCrossed,
   Wallet,
   Share2,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,6 +37,7 @@ import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
+import { PrintingSection } from "./printing-section";
 import { SocialLinksSection } from "./social-links-section";
 import { CloseBoothControl } from "./close-booth-control";
 import { saveBooth, deleteBooth } from "./actions";
@@ -68,6 +70,8 @@ interface Props {
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
     walkup_default: boolean;
+    // Optional: absent for pre-Task-1 test fixtures / callers, defaults off.
+    print_enabled?: boolean;
   };
 }
 
@@ -99,6 +103,9 @@ export function BoothForm({
   );
   const [walkupDefault, setWalkupDefault] = useState(
     initial?.walkup_default ?? eventMode,
+  );
+  const [printEnabled, setPrintEnabled] = useState(
+    initial?.print_enabled ?? false,
   );
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
@@ -135,6 +142,7 @@ export function BoothForm({
       social_links: socialLinks,
       requires_arrival_confirm: requiresArrivalConfirm,
       walkup_default: walkupDefault,
+      print_enabled: printEnabled,
     };
     const parsed = boothFormSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -308,6 +316,15 @@ export function BoothForm({
               value={payment}
               onChange={setPayment}
             />
+          </Section>
+
+          <Section
+            icon={<Printer className="size-5" />}
+            eyebrow="At your counter"
+            title="Printing"
+            description="Optional. Print a label automatically via printkit."
+          >
+            <PrintingSection value={printEnabled} onChange={setPrintEnabled} />
           </Section>
 
           <Section
