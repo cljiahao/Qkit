@@ -28,9 +28,8 @@ vi.mock("@/lib/printkit/client", () => ({
 //  - INSERT (create):     insert(row).select("id").single()
 //  - UPDATE (edit):       update(row).eq("id").select("id").maybeSingle()
 //                         (preceded by a prev-image read select().eq().maybeSingle())
-//  - deleteBooth's own booth read (name/image_url/menu_items) reuses the same
-//    select().eq().maybeSingle() shape as the prev-image read (prevResult).
-//  - DELETE:              delete({count:"exact"}).eq("id")  (awaited directly)
+//  - DELETE:              delete({count:"exact"}).eq("id")  (awaited directly;
+//                         deleteBooth's own booth read reuses the prevResult shape)
 const h = vi.hoisted(() => {
   const state = {
     count: 0 as number,

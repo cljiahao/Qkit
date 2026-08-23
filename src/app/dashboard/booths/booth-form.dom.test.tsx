@@ -121,6 +121,7 @@ describe("BoothForm walk-up-default toggle", () => {
           social_links: null,
           requires_arrival_confirm: false,
           walkup_default: true,
+          print_enabled: false,
         }}
       />,
     );
@@ -148,6 +149,7 @@ describe("BoothForm walk-up-default toggle", () => {
           social_links: null,
           requires_arrival_confirm: false,
           walkup_default: true,
+          print_enabled: false,
         }}
       />,
     );

@@ -70,8 +70,7 @@ interface Props {
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
     walkup_default: boolean;
-    // Optional: absent for pre-Task-1 test fixtures / callers, defaults off.
-    print_enabled?: boolean;
+    print_enabled: boolean;
   };
 }
 
