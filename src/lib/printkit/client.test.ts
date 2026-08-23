@@ -216,4 +216,30 @@ describe("registerPrintLocation", () => {
 
     expect(result.ok).toBe(false);
   });
+
+  // Exactly what happens today against printkit's current production
+  // deployment — /api/v1/print-locations doesn't exist there yet, so this
+  // POST comes back as an HTML 404 page, not JSON.
+  it("returns ok:false without throwing when the response body isn't valid JSON", async () => {
+    process.env.PRINTKIT_KIT_SECRET = "secret";
+    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.example";
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: () => Promise.reject(new SyntaxError("Unexpected token < in JSON")),
+    });
+
+    const result = await registerPrintLocation({
+      vendorId: "vendor-1",
+      sourceRef: "booth-1",
+      label: "Kopitiam Cart",
+      active: true,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      status: 404,
+      error: "printkit returned an invalid response",
+    });
+  });
 });
