@@ -98,20 +98,35 @@ async function notifyPrintkit(
 ): Promise<void> {
   try {
     const service = await createServiceClient();
-    const { data: booth } = await service
+    const { data: booth, error: boothError } = await service
       .from("booths")
       .select("vendor_id")
       .eq("id", boothId)
       .maybeSingle();
-    if (!booth) return;
+    if (!booth) {
+      console.error(
+        "notifyPrintkit: booth lookup found nothing",
+        boothId,
+        boothError?.message,
+      );
+      return;
+    }
 
-    const { data: order } = await service
+    const { data: order, error: orderError } = await service
       .from("orders")
       .select("id")
       .eq("booth_id", boothId)
       .eq("order_number", orderNumber)
       .maybeSingle();
-    if (!order) return;
+    if (!order) {
+      console.error(
+        "notifyPrintkit: order lookup found nothing",
+        boothId,
+        orderNumber,
+        orderError?.message,
+      );
+      return;
+    }
 
     const result = await createPrintJob({
       vendorId: booth.vendor_id,
