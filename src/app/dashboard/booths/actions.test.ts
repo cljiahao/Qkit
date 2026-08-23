@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ENTITLEMENTS } from "@/lib/plan";
 import type { BoothFormInput } from "@/lib/schemas";
-import { saveBooth, toggleBoothActive } from "./actions";
+import { saveBooth, toggleBoothActive, deleteBooth } from "./actions";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -23,11 +23,14 @@ vi.mock("@/lib/printkit/client", () => ({
 // order is: parse → loadEntitlement → count-cap checks (no DB) → strip
 // hours/stock → createServerClient → active-booth gate → insert|update.
 //
-// The supabase client models the three "booths" chains saveBooth uses:
+// The supabase client models the "booths" chains saveBooth/deleteBooth use:
 //  - active-booth COUNT:  select("id",{count,head:true}).eq.eq[.neq]  (awaited directly)
 //  - INSERT (create):     insert(row).select("id").single()
 //  - UPDATE (edit):       update(row).eq("id").select("id").maybeSingle()
 //                         (preceded by a prev-image read select().eq().maybeSingle())
+//  - deleteBooth's own booth read (name/image_url/menu_items) reuses the same
+//    select().eq().maybeSingle() shape as the prev-image read (prevResult).
+//  - DELETE:              delete({count:"exact"}).eq("id")  (awaited directly)
 const h = vi.hoisted(() => {
   const state = {
     count: 0 as number,
@@ -41,12 +44,18 @@ const h = vi.hoisted(() => {
       error: { message: string } | null;
     },
     prevResult: { data: null } as { data: unknown },
+    deleteResult: { count: 1, error: null } as {
+      count: number | null;
+      error: { message: string } | null;
+    },
+    authUser: { id: "v1" } as { id: string } | null,
   };
   return {
     state,
     loadEntitlementMock: vi.fn(),
     insertSpy: vi.fn(),
     updateSpy: vi.fn(),
+    deleteSpy: vi.fn(),
     neqSpy: vi.fn(),
   };
 });
@@ -58,6 +67,9 @@ vi.mock("@/lib/supabase/get-entitlement", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: () =>
     Promise.resolve({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: h.state.authUser } }),
+      },
       from: () => ({
         select: (_cols: string, opts?: { count?: string; head?: boolean }) => {
           if (opts?.head) {
@@ -77,7 +89,7 @@ vi.mock("@/lib/supabase/server", () => ({
             };
             return builder;
           }
-          // Prev-image read on the update path.
+          // Prev-image read (update path) / booth read (delete path).
           return {
             eq: () => ({
               maybeSingle: () => Promise.resolve(h.state.prevResult),
@@ -100,6 +112,12 @@ vi.mock("@/lib/supabase/server", () => ({
                 maybeSingle: () => Promise.resolve(h.state.updateResult),
               }),
             }),
+          };
+        },
+        delete: (opts: unknown) => {
+          h.deleteSpy(opts);
+          return {
+            eq: () => Promise.resolve(h.state.deleteResult),
           };
         },
       }),
@@ -146,12 +164,15 @@ beforeEach(() => {
     .mockResolvedValue({ user: { id: "v1" }, entitlement: ENTITLEMENTS.free });
   h.insertSpy.mockReset();
   h.updateSpy.mockReset();
+  h.deleteSpy.mockReset();
   h.neqSpy.mockReset();
   h.state.count = 0;
   h.state.countError = null;
   h.state.insertResult = { data: { id: "b-new" }, error: null };
   h.state.updateResult = { data: { id: "b-edit" }, error: null };
   h.state.prevResult = { data: null };
+  h.state.deleteResult = { count: 1, error: null };
+  h.state.authUser = { id: "v1" };
   upsertVendorConfigMock.mockReset().mockResolvedValue({
     ok: true,
     data: { hasConfig: true, displayName: "Cart" },
@@ -371,6 +392,46 @@ describe("saveBooth — printkit location registration", () => {
     const res = await saveBooth(makeBooth({ print_enabled: true }));
 
     expect(res).toEqual({ success: true, boothId: "b-new" });
+  });
+});
+
+describe("deleteBooth — printkit location deregistration", () => {
+  beforeEach(() => {
+    h.state.prevResult = {
+      data: { name: "Kopitiam Cart", image_url: null, menu_items: [] },
+    };
+  });
+
+  it("deregisters the printkit location (active:false) after a successful delete", async () => {
+    const res = await deleteBooth(BOOTH_ID);
+
+    expect(res).toEqual({ success: true });
+    expect(registerPrintLocationMock).toHaveBeenCalledWith({
+      vendorId: "v1",
+      sourceRef: BOOTH_ID,
+      label: "Kopitiam Cart",
+      active: false,
+    });
+  });
+
+  it("never fails the delete when registerPrintLocation rejects", async () => {
+    registerPrintLocationMock.mockRejectedValue(new Error("network down"));
+
+    const res = await deleteBooth(BOOTH_ID);
+
+    expect(res).toEqual({ success: true });
+  });
+
+  it("never fails the delete when registerPrintLocation returns ok:false", async () => {
+    registerPrintLocationMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      error: "printkit unreachable",
+    });
+
+    const res = await deleteBooth(BOOTH_ID);
+
+    expect(res).toEqual({ success: true });
   });
 });
 
