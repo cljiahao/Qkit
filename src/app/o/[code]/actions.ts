@@ -100,7 +100,7 @@ async function notifyPrintkit(
     const service = await createServiceClient();
     const { data: booth, error: boothError } = await service
       .from("booths")
-      .select("vendor_id")
+      .select("vendor_id, print_enabled")
       .eq("id", boothId)
       .maybeSingle();
     if (!booth) {
@@ -111,6 +111,7 @@ async function notifyPrintkit(
       );
       return;
     }
+    if (!booth.print_enabled) return;
 
     const { data: order, error: orderError } = await service
       .from("orders")
