@@ -12,6 +12,7 @@ import {
 } from "@/lib/schemas";
 import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
+import { registerPrintLocation } from "@/lib/printkit/client";
 import type { ActionResult } from "@/lib/action-result";
 import type { Database, PaymentKind } from "@/lib/types";
 
@@ -30,6 +31,36 @@ async function removeBoothImages(
   if (paths.length === 0) return;
   const { error } = await supabase.storage.from("booth-images").remove(paths);
   if (error) console.error(`${context} image cleanup failed`, error.message);
+}
+
+/**
+ * Tell printkit whether this booth's location is active for printing —
+ * best-effort, same never-affects-the-result contract as notifyPrintkit
+ * (src/app/o/[code]/actions.ts). A failure here must never turn a
+ * successful booth save into an error.
+ */
+async function syncPrintLocation(
+  vendorId: string,
+  boothId: string,
+  label: string,
+  active: boolean,
+) {
+  try {
+    const result = await registerPrintLocation({
+      vendorId,
+      sourceRef: boothId,
+      label,
+      active,
+    });
+    if (!result.ok)
+      console.error(
+        "saveBooth: registerPrintLocation failed",
+        result.status,
+        result.error,
+      );
+  } catch (err) {
+    console.error("saveBooth: registerPrintLocation failed", err);
+  }
 }
 
 /**
@@ -285,9 +316,18 @@ export async function saveBooth(
     social_links: data.social_links,
     requires_arrival_confirm: data.requires_arrival_confirm,
     walkup_default: data.walkup_default,
+    print_enabled: data.print_enabled,
   };
 
-  return upsertBoothRow(supabase, row, data.boothId, user.id);
+  const result = await upsertBoothRow(supabase, row, data.boothId, user.id);
+  if (result.success)
+    await syncPrintLocation(
+      user.id,
+      result.boothId,
+      data.name,
+      data.print_enabled,
+    );
+  return result;
 }
 
 /**

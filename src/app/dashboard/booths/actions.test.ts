@@ -12,6 +12,13 @@ vi.mock("@/lib/paykit/client", () => ({
   upsertVendorConfig: upsertVendorConfigMock,
 }));
 
+const { registerPrintLocationMock } = vi.hoisted(() => ({
+  registerPrintLocationMock: vi.fn(),
+}));
+vi.mock("@/lib/printkit/client", () => ({
+  registerPrintLocation: registerPrintLocationMock,
+}));
+
 // Mock the entitlement loader and the supabase server client. saveBooth's entry
 // order is: parse → loadEntitlement → count-cap checks (no DB) → strip
 // hours/stock → createServerClient → active-booth gate → insert|update.
@@ -148,6 +155,10 @@ beforeEach(() => {
   upsertVendorConfigMock.mockReset().mockResolvedValue({
     ok: true,
     data: { hasConfig: true, displayName: "Cart" },
+  });
+  registerPrintLocationMock.mockReset().mockResolvedValue({
+    ok: true,
+    data: { id: "loc-1" },
   });
 });
 
@@ -303,6 +314,63 @@ describe("saveBooth — requires_arrival_confirm", () => {
     expect(h.insertSpy).toHaveBeenCalledWith(
       expect.objectContaining({ requires_arrival_confirm: false }),
     );
+  });
+});
+
+describe("saveBooth — printkit location registration", () => {
+  it("persists print_enabled on the row", async () => {
+    await saveBooth(makeBooth({ print_enabled: true }));
+    expect(h.insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ print_enabled: true }),
+    );
+  });
+
+  it("registers the location as active when print_enabled is true", async () => {
+    const res = await saveBooth(
+      makeBooth({ name: "Kopitiam Cart", print_enabled: true }),
+    );
+
+    expect(res).toEqual({ success: true, boothId: "b-new" });
+    expect(registerPrintLocationMock).toHaveBeenCalledWith({
+      vendorId: "v1",
+      sourceRef: "b-new",
+      label: "Kopitiam Cart",
+      active: true,
+    });
+  });
+
+  it("registers the location as inactive when print_enabled is false", async () => {
+    const res = await saveBooth(
+      makeBooth({ name: "Kopitiam Cart", print_enabled: false }),
+    );
+
+    expect(res).toEqual({ success: true, boothId: "b-new" });
+    expect(registerPrintLocationMock).toHaveBeenCalledWith({
+      vendorId: "v1",
+      sourceRef: "b-new",
+      label: "Kopitiam Cart",
+      active: false,
+    });
+  });
+
+  it("never fails the save when registerPrintLocation rejects", async () => {
+    registerPrintLocationMock.mockRejectedValue(new Error("network down"));
+
+    const res = await saveBooth(makeBooth({ print_enabled: true }));
+
+    expect(res).toEqual({ success: true, boothId: "b-new" });
+  });
+
+  it("never fails the save when registerPrintLocation returns ok:false", async () => {
+    registerPrintLocationMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      error: "printkit unreachable",
+    });
+
+    const res = await saveBooth(makeBooth({ print_enabled: true }));
+
+    expect(res).toEqual({ success: true, boothId: "b-new" });
   });
 });
 
