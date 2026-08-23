@@ -14,7 +14,7 @@ export function PrintingSection({
       <span className="text-sm">
         <span className="font-medium">Print via printkit</span>
         <span className="block text-muted-foreground">
-          Auto-print a label for every order placed on this booth.
+          Auto-print a label for every QR order placed on this booth.
         </span>
       </span>
       <Switch
