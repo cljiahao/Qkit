@@ -12,6 +12,7 @@ import {
 } from "@/lib/schemas";
 import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
+import { registerPrintLocation } from "@/lib/printkit/client";
 import type { ActionResult } from "@/lib/action-result";
 import type { Database, PaymentKind } from "@/lib/types";
 
@@ -30,6 +31,35 @@ async function removeBoothImages(
   if (paths.length === 0) return;
   const { error } = await supabase.storage.from("booth-images").remove(paths);
   if (error) console.error(`${context} image cleanup failed`, error.message);
+}
+
+// Best-effort, same never-affects-the-result contract as notifyPrintkit
+// (o/[code]/actions.ts). Called by both saveBooth (active: print_enabled) and
+// deleteBooth (active: false, so a deleted booth's location stops counting
+// toward printkit's active-location total for the vendor).
+async function syncPrintLocation(
+  vendorId: string,
+  boothId: string,
+  label: string,
+  active: boolean,
+  context: string,
+) {
+  try {
+    const result = await registerPrintLocation({
+      vendorId,
+      sourceRef: boothId,
+      label,
+      active,
+    });
+    if (!result.ok)
+      console.error(
+        `${context}: registerPrintLocation failed`,
+        result.status,
+        result.error,
+      );
+  } catch (err) {
+    console.error(`${context}: registerPrintLocation failed`, err);
+  }
 }
 
 /**
@@ -162,7 +192,11 @@ function paymentMarker(
  * Hard-delete a booth and (via ON DELETE CASCADE, migration 0009) all of its
  * orders. RLS (booths_vendor_all) scopes the delete to the caller's own
  * booths, so a non-owner simply deletes zero rows — the 404-style "not found"
- * never reveals another vendor's booth.
+ * never reveals another vendor's booth. Also best-effort deregisters the
+ * booth's printkit print location (active: false) — otherwise it stays
+ * active forever on printkit's side, counting toward the vendor's
+ * active-location total and breaking auto-delivery for their real remaining
+ * booths. Never blocks the delete itself.
  */
 export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
   if (!z.string().uuid().safeParse(boothId).success)
@@ -174,11 +208,11 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  // Read the referenced images before the row (and its images' only reference)
-  // is gone, so we can reclaim the storage objects after a successful delete.
+  // Read the referenced images (and the name, for the printkit deregister
+  // call below) before the row is gone, so both can proceed after the delete.
   const { data: booth } = await supabase
     .from("booths")
-    .select("image_url, menu_items")
+    .select("name, image_url, menu_items")
     .eq("id", boothId)
     .maybeSingle();
 
@@ -189,8 +223,10 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
   if (error) return { success: false, error: "Could not delete booth" };
   if (!count) return { success: false, error: "Booth not found" };
 
-  if (booth)
+  if (booth) {
     await removeBoothImages(supabase, boothImagePaths(booth), "deleteBooth");
+    await syncPrintLocation(user.id, boothId, booth.name, false, "deleteBooth");
+  }
   return { success: true };
 }
 
@@ -285,9 +321,19 @@ export async function saveBooth(
     social_links: data.social_links,
     requires_arrival_confirm: data.requires_arrival_confirm,
     walkup_default: data.walkup_default,
+    print_enabled: data.print_enabled,
   };
 
-  return upsertBoothRow(supabase, row, data.boothId, user.id);
+  const result = await upsertBoothRow(supabase, row, data.boothId, user.id);
+  if (result.success)
+    await syncPrintLocation(
+      user.id,
+      result.boothId,
+      data.name,
+      data.print_enabled,
+      "saveBooth",
+    );
+  return result;
 }
 
 /**

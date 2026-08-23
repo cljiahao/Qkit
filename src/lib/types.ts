@@ -481,6 +481,7 @@ export interface Database {
           social_links: Json | null;
           requires_arrival_confirm: boolean;
           walkup_default: boolean;
+          print_enabled: boolean;
         };
         Insert: {
           id?: string;
@@ -498,6 +499,7 @@ export interface Database {
           social_links?: Json | null;
           requires_arrival_confirm?: boolean;
           walkup_default?: boolean;
+          print_enabled?: boolean;
         };
         Update: {
           id?: string;
@@ -515,6 +517,7 @@ export interface Database {
           social_links?: Json | null;
           requires_arrival_confirm?: boolean;
           walkup_default?: boolean;
+          print_enabled?: boolean;
         };
         Relationships: [
           {

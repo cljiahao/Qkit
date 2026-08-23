@@ -327,11 +327,11 @@ describe("placeOrder", () => {
   });
 
   describe("printkit notify (redundant channel — must never affect the result)", () => {
-    it("calls createPrintJob with the booth's vendor_id, order id, order number, and customer name", async () => {
+    it("calls createPrintJob with the booth's vendor_id, order id, boothId, order number, and customer name", async () => {
       mockSuccessfulRpc();
       boothQueue = [
         { data: { vendor_id: "vendor-1" } }, // consumed by notifyVendorTelegram
-        { data: { vendor_id: "vendor-1" } }, // consumed by notifyPrintkit
+        { data: { vendor_id: "vendor-1", print_enabled: true } }, // consumed by notifyPrintkit
       ];
       orderQueue = [
         { data: { total_cents: 700 } }, // consumed by notifyVendorTelegram
@@ -345,6 +345,7 @@ describe("placeOrder", () => {
       expect(createPrintJob).toHaveBeenCalledWith({
         vendorId: "vendor-1",
         orderId: "order-uuid-1",
+        boothId: "booth-1",
         customerName: validInput.customerName,
         orderNumber: "0007",
       });
@@ -354,7 +355,7 @@ describe("placeOrder", () => {
       mockSuccessfulRpc();
       boothQueue = [
         { data: { vendor_id: "vendor-1" } },
-        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1", print_enabled: true } },
       ];
       orderQueue = [
         { data: { total_cents: 700 } },
@@ -373,7 +374,7 @@ describe("placeOrder", () => {
       mockSuccessfulRpc();
       boothQueue = [
         { data: { vendor_id: "vendor-1" } },
-        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1", print_enabled: true } },
       ];
       orderQueue = [
         { data: { total_cents: 700 } },
@@ -395,7 +396,7 @@ describe("placeOrder", () => {
       mockSuccessfulRpc();
       boothQueue = [
         { data: { vendor_id: "vendor-1" } },
-        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1", print_enabled: true } },
       ];
       orderQueue = [{ data: { total_cents: 700 } }, { data: null }];
 
@@ -409,7 +410,7 @@ describe("placeOrder", () => {
       mockSuccessfulRpc();
       boothQueue = [
         { data: { vendor_id: "vendor-1" } },
-        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1", print_enabled: true } },
       ];
       orderQueue = [
         { data: { total_cents: 700 } },
@@ -420,6 +421,25 @@ describe("placeOrder", () => {
       const res = await placeOrder("code123", validInput, IDEM);
 
       expect(res.success).toBe(true);
+    });
+
+    it("does not call createPrintJob when the booth has print_enabled false", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [
+        { data: { vendor_id: "vendor-1" } }, // consumed by notifyVendorTelegram
+        { data: { vendor_id: "vendor-1", print_enabled: false } }, // consumed by notifyPrintkit
+      ];
+      orderQueue = [{ data: { total_cents: 700 } }]; // only notifyVendorTelegram's lookup
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
+      expect(createPrintJob).not.toHaveBeenCalled();
+      // The order lookup itself must be skipped once the gate fires — only
+      // notifyVendorTelegram's "orders" query should have run.
+      expect(
+        serviceFrom.mock.calls.filter(([table]) => table === "orders"),
+      ).toHaveLength(1);
     });
   });
 });

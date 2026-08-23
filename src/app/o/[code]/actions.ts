@@ -79,10 +79,8 @@ async function notifyVendorTelegram(
  * order_number/booth_id/access_token — see
  * supabase/migrations/0075_place_order_customer_phone.sql), and printkit's
  * print_jobs.source_ref needs the real id (globally unique), not
- * order_number (only unique per booth_id). v0.1 has no vendor-bridge-
- * configured gate on either side — every order fires this call; a vendor
- * without a printer configured just gets a job that never progresses past
- * 'queued' on printkit's side. A real gate is Plan 3/4 scope.
+ * order_number (only unique per booth_id). Gated on the booth's own
+ * print_enabled — a vendor who hasn't opted in never fires this call.
  *
  * On a successful job creation, also marks this order's own print_status
  * 'queued' — without this, print_status stays 'not_required' for the
@@ -100,7 +98,7 @@ async function notifyPrintkit(
     const service = await createServiceClient();
     const { data: booth, error: boothError } = await service
       .from("booths")
-      .select("vendor_id")
+      .select("vendor_id, print_enabled")
       .eq("id", boothId)
       .maybeSingle();
     if (!booth) {
@@ -111,6 +109,7 @@ async function notifyPrintkit(
       );
       return;
     }
+    if (!booth.print_enabled) return;
 
     const { data: order, error: orderError } = await service
       .from("orders")
@@ -131,6 +130,7 @@ async function notifyPrintkit(
     const result = await createPrintJob({
       vendorId: booth.vendor_id,
       orderId: order.id,
+      boothId,
       customerName,
       orderNumber,
     });

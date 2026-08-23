@@ -384,6 +384,8 @@ export const boothFormSchema = z.object({
   // Event-mode setup: makes the live board auto-open walk-up order entry
   // instead of the QR/menu-first presentation. See migration 0080.
   walkup_default: z.boolean().default(false),
+  // Per-booth opt-in for printkit label printing. See migration 0082.
+  print_enabled: z.boolean().default(false),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */
