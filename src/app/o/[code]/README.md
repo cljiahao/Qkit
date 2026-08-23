@@ -30,10 +30,14 @@ the current (non-legacy) customer ordering entry point.
   (Phase A2 — supersedes qkit's own retired bot, formerly
   `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`). Also
   fires `notifyPrintkit(boothId, orderNumber, customerName)` on success —
-  same best-effort, wrapped-in-its-own-try/catch contract. It resolves the
-  order's real `id` (the `place_order` RPC output carries none, only
+  same best-effort, wrapped-in-its-own-try/catch contract. It looks up the
+  booth's `vendor_id` and `print_enabled`, returning silently (no log) when
+  printing isn't enabled for that booth — before doing the order lookup, so
+  a disabled booth never pays for it. Otherwise it resolves the order's
+  real `id` (the `place_order` RPC output carries none, only
   `order_number`/`booth_id`/`access_token` — migration `0075`), calls
-  `@/lib/printkit/client`'s `createPrintJob` (logging on a non-ok result),
+  `@/lib/printkit/client`'s `createPrintJob` (which now also takes
+  `boothId`, logging on a non-ok result),
   and on a successful job creation marks `orders.print_status = 'queued'`
   (migration `0081`) — conditioned on `print_status = 'not_required'` so a
   terminal status from printkit's own callback route landing first can
@@ -55,11 +59,13 @@ the current (non-legacy) customer ordering entry point.
   skips silently when the booth can't be resolved, and a `notifyVendor`
   rejection doesn't change `placeOrder`'s own returned result; and a
   "printkit notify" block with the same shape: `createPrintJob` called with
-  the booth's `vendor_id`, the order's real `id`, and the order
+  the booth's `vendor_id`, the order's real `id`, `boothId`, and the order
   number/customer name, `orders.print_status` set to `'queued'` only on a
   successful job creation (not touched on failure), skipped silently when
-  the order id can't be resolved, and a `createPrintJob` rejection never
-  changing `placeOrder`'s own returned result.
+  the order id can't be resolved, a `createPrintJob` rejection never
+  changing `placeOrder`'s own returned result, and — the `print_enabled`
+  gate — `createPrintJob` never called (and the order lookup itself
+  skipped) when the booth's `print_enabled` is false.
 - `page.tsx` — `OrderEntryPage` (route entry, `revalidate=0`): resolves the
   booth via `get_booth_for_order(p_short_code)` (public-safe — omits
   `cost_cents`/`short_code`), distinguishes a real RPC error (shows a
@@ -85,9 +91,9 @@ own `notifyVendorTelegram` helper — merqo's shared bot resolves the vendor's
 linked chat itself; a vendor connects that link once via merqo's own
 `/profile` page, not through anything in this repo. It likewise calls
 `@/lib/printkit/client`'s `createPrintJob` via its own `notifyPrintkit`
-helper — v0.1 has no vendor-bridge-configured gate on either side; a vendor
-without a printer just gets a job that never progresses past `'queued'` on
-printkit's side.
+helper, gated on the booth's `print_enabled` flag (`booths.print_enabled`)
+— an order for a booth that hasn't opted into printing never fires this
+call at all.
 
 ## Parent
 
