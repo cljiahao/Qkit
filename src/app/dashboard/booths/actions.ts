@@ -33,12 +33,7 @@ async function removeBoothImages(
   if (error) console.error(`${context} image cleanup failed`, error.message);
 }
 
-/**
- * Tell printkit whether this booth's location is active for printing —
- * best-effort, same never-affects-the-result contract as notifyPrintkit
- * (src/app/o/[code]/actions.ts). A failure here must never turn a
- * successful booth save into an error.
- */
+// Best-effort, same never-affects-the-result contract as notifyPrintkit (o/[code]/actions.ts).
 async function syncPrintLocation(
   vendorId: string,
   boothId: string,
