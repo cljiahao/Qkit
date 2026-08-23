@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createPrintJob } from "./client";
+import { createPrintJob, registerPrintLocation } from "./client";
 
 const originalFetch = global.fetch;
 const originalEnv = { ...process.env };
@@ -21,6 +21,7 @@ describe("createPrintJob", () => {
     const result = await createPrintJob({
       vendorId: "vendor-1",
       orderId: "order-1",
+      boothId: "booth-1",
       customerName: "Ada",
       orderNumber: "0007",
     });
@@ -42,6 +43,7 @@ describe("createPrintJob", () => {
     const result = await createPrintJob({
       vendorId: "vendor-1",
       orderId: "order-1",
+      boothId: "booth-1",
       customerName: "Ada",
       orderNumber: "0007",
     });
@@ -67,6 +69,7 @@ describe("createPrintJob", () => {
     const result = await createPrintJob({
       vendorId: "vendor-1",
       orderId: "order-1",
+      boothId: "booth-1",
       customerName: "Ada",
       orderNumber: "0007",
     });
@@ -79,6 +82,7 @@ describe("createPrintJob", () => {
       vendor_id: "vendor-1",
       payload: { customer_name: "Ada", order_number: "0007" },
       source_ref: "order-1",
+      location_ref: "booth-1",
     });
   });
 
@@ -97,6 +101,7 @@ describe("createPrintJob", () => {
     const result = await createPrintJob({
       vendorId: "vendor-1",
       orderId: "order-1",
+      boothId: "booth-1",
       customerName: "Ada",
       orderNumber: "0007",
     });
@@ -116,11 +121,99 @@ describe("createPrintJob", () => {
     const result = await createPrintJob({
       vendorId: "vendor-1",
       orderId: "order-1",
+      boothId: "booth-1",
       customerName: "Ada",
       orderNumber: "0007",
     });
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toBe("network down");
+  });
+});
+
+describe("registerPrintLocation", () => {
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+    process.env = { ...originalEnv };
+  });
+
+  it("does nothing (no fetch) when PRINTKIT_KIT_SECRET is unset", async () => {
+    delete process.env.PRINTKIT_KIT_SECRET;
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await registerPrintLocation({
+      vendorId: "vendor-1",
+      sourceRef: "booth-1",
+      label: "Kopitiam Cart",
+      active: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does nothing (no fetch) when NEXT_PUBLIC_PRINTKIT_URL is unset", async () => {
+    process.env.PRINTKIT_KIT_SECRET = "secret";
+    delete process.env.NEXT_PUBLIC_PRINTKIT_URL;
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await registerPrintLocation({
+      vendorId: "vendor-1",
+      sourceRef: "booth-1",
+      label: "Kopitiam Cart",
+      active: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("POSTs to /api/v1/print-locations with the right body and bearer header", async () => {
+    process.env.PRINTKIT_KIT_SECRET = "secret";
+    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.example";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ id: "loc-1" }), { status: 201 }),
+      );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await registerPrintLocation({
+      vendorId: "vendor-1",
+      sourceRef: "booth-1",
+      label: "Kopitiam Cart",
+      active: true,
+    });
+
+    expect(result).toEqual({ ok: true, data: { id: "loc-1" } });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/api/v1/print-locations");
+    expect(init.headers.Authorization).toBe("Bearer qkit:secret");
+    expect(JSON.parse(init.body)).toEqual({
+      vendor_id: "vendor-1",
+      source_ref: "booth-1",
+      label: "Kopitiam Cart",
+      active: true,
+    });
+  });
+
+  it("never throws when the fetch itself rejects", async () => {
+    process.env.PRINTKIT_KIT_SECRET = "secret";
+    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.example";
+    global.fetch = vi.fn().mockRejectedValue(new Error("network down"));
+
+    const result = await registerPrintLocation({
+      vendorId: "vendor-1",
+      sourceRef: "booth-1",
+      label: "Kopitiam Cart",
+      active: true,
+    });
+
+    expect(result.ok).toBe(false);
   });
 });

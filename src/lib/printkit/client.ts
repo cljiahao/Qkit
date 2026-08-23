@@ -15,11 +15,13 @@ export type PrintkitResult<T> =
   | { ok: false; status: number | null; error: string };
 
 const createPrintJobResponseSchema = z.object({ id: z.string() });
+const registerLocationResponseSchema = z.object({ id: z.string() });
 const errorBodySchema = z.object({ error: z.string() });
 
 export async function createPrintJob(args: {
   vendorId: string;
   orderId: string;
+  boothId: string;
   customerName: string;
   orderNumber: string;
 }): Promise<PrintkitResult<{ id: string }>> {
@@ -64,6 +66,7 @@ export async function createPrintJob(args: {
           order_number: args.orderNumber,
         },
         source_ref: args.orderId,
+        location_ref: args.boothId,
       }),
     });
 
@@ -90,6 +93,90 @@ export async function createPrintJob(args: {
     }
 
     const parsed = createPrintJobResponseSchema.safeParse(body);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        status: res.status,
+        error: "printkit returned an unexpected response",
+      };
+    }
+    return { ok: true, data: { id: parsed.data.id } };
+  } catch (err) {
+    return {
+      ok: false,
+      status: null,
+      error: err instanceof Error ? err.message : "Could not reach printkit",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function registerPrintLocation(args: {
+  vendorId: string;
+  sourceRef: string;
+  label: string;
+  active: boolean;
+}): Promise<PrintkitResult<{ id: string }>> {
+  const secret = process.env.PRINTKIT_KIT_SECRET;
+  if (!secret) {
+    return {
+      ok: false,
+      status: null,
+      error: "Printing is not configured yet.",
+    };
+  }
+  const printkitUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
+  if (!printkitUrl) {
+    return {
+      ok: false,
+      status: null,
+      error: "Printing is not configured yet.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(new URL("/api/v1/print-locations", printkitUrl), {
+      method: "POST",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${KIT_SLUG}:${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        vendor_id: args.vendorId,
+        source_ref: args.sourceRef,
+        label: args.label,
+        active: args.active,
+      }),
+    });
+
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      return {
+        ok: false,
+        status: res.status,
+        error: "printkit returned an invalid response",
+      };
+    }
+
+    if (!res.ok) {
+      const parsedError = errorBodySchema.safeParse(body);
+      return {
+        ok: false,
+        status: res.status,
+        error: parsedError.success
+          ? parsedError.data.error
+          : `printkit request failed (${res.status})`,
+      };
+    }
+
+    const parsed = registerLocationResponseSchema.safeParse(body);
     if (!parsed.success) {
       return {
         ok: false,

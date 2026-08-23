@@ -131,6 +131,7 @@ async function notifyPrintkit(
     const result = await createPrintJob({
       vendorId: booth.vendor_id,
       orderId: order.id,
+      boothId,
       customerName,
       orderNumber,
     });
