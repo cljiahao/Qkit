@@ -2,11 +2,7 @@
 
 import { Switch } from "@/components/ui/switch";
 
-// Deep-links to printkit's bridge page, keyed by this booth's own id (which
-// printkit stores back as a print_location's source_ref) — printkit's
-// bridge page skips straight to that location's pairing panel instead of
-// making the vendor pick from a list. No fallback host, matching
-// src/lib/printkit/client.ts — an unset env var just hides the link.
+// Keyed by booth id, printkit's own source_ref — no fallback host, same as src/lib/printkit/client.ts.
 function printerLinkFor(boothId: string): string | null {
   const printkitUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
   if (!printkitUrl) return null;
@@ -28,8 +24,7 @@ export function PrintingSection({
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
-  // Only a saved booth is registered with printkit as a print location, so
-  // the "choose printer" link only makes sense once this exists.
+  // Unset until the booth is saved and registered with printkit.
   boothId?: string;
 }) {
   const printerLink = value && boothId ? printerLinkFor(boothId) : null;
