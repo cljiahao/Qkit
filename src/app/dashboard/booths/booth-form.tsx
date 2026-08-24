@@ -188,9 +188,7 @@ export function BoothForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
-      {/* Split into 3 grid items (not 2) so mobile's single-column stack can
-          put Menu between "hours" and "payment" while md+ still lays out as
-          two columns — Menu spans both rows on the right. */}
+      {/* 3 grid items, not 2 — mobile stacks Menu between Hours and Payment; md+ keeps the two-column split. */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start">
         <div className="md:col-start-1 md:row-start-1">
           <Section
