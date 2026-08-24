@@ -25,6 +25,12 @@ describe("tourSteps", () => {
     }
   });
 
+  it("renders the real OrderStatusBadge markup for the example order, not a hand-copied color", () => {
+    const description = tourSteps(false)[0].description;
+    expect(description).toContain("status-preparing");
+    expect(description).not.toContain('class="tour-example-pill"');
+  });
+
   it("covers the order lifecycle (accept/ready/pickup/payment), bump, and auto-clear before the walk-up-order step", () => {
     for (const mode of [false, true]) {
       const steps = tourSteps(mode);
