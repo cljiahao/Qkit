@@ -8,6 +8,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Booth settings: "Hold prep until the customer arrives" and "Default to
+  walk-up order entry" moved out of "Hours & availability" into their own
+  "Order flow" section (they're about how an order is entered/prepped, not
+  when the booth is open), the em dash in the walk-up copy is gone, and
+  Printing now shows a "Choose the printer for this booth →" link once
+  printing is on and the booth is saved, deep-linking into printkit's
+  bridge page for that specific booth. The single-column mobile layout now
+  stacks Menu right after Hours/Order flow instead of at the very bottom,
+  above Payment/Printing/Social links; the two-column tablet/desktop
+  layout is unchanged.
 - Bumped `@merqo/ui` to v0.19.0: the account menu's theme control now sits
   behind a collapsed "Theme · {current}" submenu instead of three
   always-expanded radio options.
