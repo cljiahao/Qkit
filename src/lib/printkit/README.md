@@ -47,7 +47,10 @@ itself, since `place_order`'s RPC output carries none, and marks
 (`syncPrintLocation`, best-effort from both `saveBooth`, matching
 `print_enabled`, and `deleteBooth`, always `active: false`).
 `PRINTKIT_KIT_SECRET` / `NEXT_PUBLIC_PRINTKIT_URL` are the two env vars this
-module reads.
+module reads. `NEXT_PUBLIC_PRINTKIT_URL` is also read directly (client-side,
+not through this module) by `src/app/dashboard/booths/printing-section.tsx`
+to build its "choose the printer for this booth" deep link — same
+no-fallback-host convention as here.
 
 ## Parent
 

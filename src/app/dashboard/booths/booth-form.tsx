@@ -11,6 +11,7 @@ import {
   Wallet,
   Share2,
   Printer,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -187,8 +188,11 @@ export function BoothForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <div>
+      {/* Split into 3 grid items (not 2) so mobile's single-column stack can
+          put Menu between "hours" and "payment" while md+ still lays out as
+          two columns — Menu spans both rows on the right. */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start">
+        <div className="md:col-start-1 md:row-start-1">
           <Section
             icon={<Store className="size-5" />}
             eyebrow="Shown to customers"
@@ -261,7 +265,14 @@ export function BoothForm({
               onChange={setHours}
               entitlement={entitlement}
             />
+          </Section>
 
+          <Section
+            icon={<ClipboardList className="size-5" />}
+            eyebrow="How orders come in"
+            title="Order flow"
+            description="Fine-tune arrival timing and walk-up entry."
+          >
             <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <Checkbox
                 checked={requiresArrivalConfirm}
@@ -292,7 +303,7 @@ export function BoothForm({
                   )}
                 </span>
                 <span className="block text-muted-foreground">
-                  Staff enter every order directly — for a one-off event where
+                  Staff enter every order directly. For a one-off event where
                   guests don&apos;t scan a QR to order themselves.
                 </span>
               </span>
@@ -303,7 +314,25 @@ export function BoothForm({
               />
             </div>
           </Section>
+        </div>
 
+        <div className="md:col-start-2 md:row-start-1 md:row-span-2">
+          <Section
+            icon={<UtensilsCrossed className="size-5" />}
+            eyebrow="What you sell"
+            title="Menu"
+            description="Add items customers can order."
+          >
+            <MenuEditor
+              vendorId={vendorId}
+              items={items}
+              onChange={setItems}
+              entitlement={entitlement}
+            />
+          </Section>
+        </div>
+
+        <div className="md:col-start-1 md:row-start-2">
           <Section
             icon={<Wallet className="size-5" />}
             eyebrow="How you get paid"
@@ -323,7 +352,11 @@ export function BoothForm({
             title="Printing"
             description="Optional. Print a label automatically via printkit."
           >
-            <PrintingSection value={printEnabled} onChange={setPrintEnabled} />
+            <PrintingSection
+              value={printEnabled}
+              onChange={setPrintEnabled}
+              boothId={initial?.boothId}
+            />
           </Section>
 
           <Section
@@ -336,22 +369,6 @@ export function BoothForm({
               value={socialLinks}
               onChange={setSocialLinks}
               vendorDefaults={vendorSocialLinks}
-            />
-          </Section>
-        </div>
-
-        <div>
-          <Section
-            icon={<UtensilsCrossed className="size-5" />}
-            eyebrow="What you sell"
-            title="Menu"
-            description="Add items customers can order."
-          >
-            <MenuEditor
-              vendorId={vendorId}
-              items={items}
-              onChange={setItems}
-              entitlement={entitlement}
             />
           </Section>
         </div>
