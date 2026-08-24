@@ -28,8 +28,8 @@ importers:
         specifier: ^13.13.0
         version: 13.13.0(react@19.2.7)
       '@merqo/ui':
-        specifier: github:cljiahao/merqo-ui#v0.18.0
-        version: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)
+        specifier: github:cljiahao/merqo-ui#v0.19.0
+        version: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/b2bbbf757444c4cffcb206ae118aba5e100407dd(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)
       '@supabase/ssr':
         specifier: ^0.10.3
         version: 0.10.3(@supabase/supabase-js@2.107.0)
@@ -965,14 +965,14 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8':
-    resolution: {gitHosted: true, integrity: sha512-zbxsc6mvgfPFISoB0me0gGR1EsSqS3iyTHeqZr2DeDhsQWez9AZm/cMSeiNSqNKUVma30FtlI/S0KE0LqYp7Ew==, tarball: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8}
-    version: 0.18.0
+  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/b2bbbf757444c4cffcb206ae118aba5e100407dd':
+    resolution: {gitHosted: true, integrity: sha512-ci4VEUu/ilx1oDBH1lz2qvJIeWG2pcpkFwWrym5kbNKQYhKiYbIByFqwS0VzH4p5PX1MEKEunkhlZOvySvudVQ==, tarball: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/b2bbbf757444c4cffcb206ae118aba5e100407dd}
+    version: 0.19.0
     engines: {node: '>=24'}
     peerDependencies:
-      react: ^19
-      react-dom: ^19
-      tailwindcss: ^4
+      react: ^19.2.7
+      react-dom: ^19.2.7
+      tailwindcss: ^4.0.0
 
   '@napi-rs/wasm-runtime@1.1.4':
     resolution: {integrity: sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==}
@@ -2982,6 +2982,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -5328,7 +5329,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/982ab522ae058d9a65a219ced82d25b115b820a8(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)':
+  '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/b2bbbf757444c4cffcb206ae118aba5e100407dd(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.0)':
     dependencies:
       '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@radix-ui/react-dropdown-menu': 2.1.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

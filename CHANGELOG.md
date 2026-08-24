@@ -8,6 +8,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Bumped `@merqo/ui` to v0.19.0: the account menu's theme control now sits
+  behind a collapsed "Theme · {current}" submenu instead of three
+  always-expanded radio options.
 - Cleaned up the dashboard onboarding tour copy (`src/components/tour-steps.ts`):
   removed em dashes and the trailing arrow from the desktop step text, and
   added a small inline "example order" preview card to the first step (new
