@@ -1,5 +1,8 @@
 // Pure step config for the dashboard onboarding tour. No driver.js import here
 // so it stays node-unit-testable; the controller maps these to driver's Config.
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { OrderStatusBadge } from "./order-status-badge";
 
 export type TourStep = {
   /** CSS selector for the element to spotlight. */
@@ -10,6 +13,11 @@ export type TourStep = {
 
 const sel = (tour: string) => `[data-tour="${tour}"]`;
 
+// Renders the real badge, not a hand-copied color, so the example can't drift.
+const examplePreparingBadge = renderToStaticMarkup(
+  createElement(OrderStatusBadge, { status: "preparing" }),
+);
+
 // Desktop: nav links are visible, so we can spotlight each landmark.
 const DESKTOP: TourStep[] = [
   {
@@ -17,7 +25,7 @@ const DESKTOP: TourStep[] = [
     title: "Your live order board",
     description:
       "Orders land here the moment a customer taps Order, no refresh needed. Tap Start now to accept one, Mark Ready when it's done, and Mark Picked Up once they collect it. If a customer pays you first, confirm it with Confirm payment received." +
-      '<div class="tour-example"><div class="tour-example-label">Example order</div><div class="tour-example-row" style="margin-top:0.35rem"><strong>#118 &middot; Oat Flat White &times;2</strong><span class="tour-example-pill">Preparing</span></div></div>',
+      `<div class="tour-example"><div class="tour-example-label">Example order</div><div class="tour-example-row" style="margin-top:0.35rem"><strong>#118 &middot; Oat Flat White &times;2</strong>${examplePreparingBadge}</div></div>`,
   },
   {
     element: sel("order-board"),

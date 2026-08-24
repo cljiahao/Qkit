@@ -26,6 +26,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   added a small inline "example order" preview card to the first step (new
   `.tour-example` CSS in `src/app/globals.css`) so a new vendor can see what
   a real order looks like before any orders exist.
+- That "example order" preview's status pill now renders the real
+  `OrderStatusBadge` component instead of a hand-copied color/label — the
+  hand copy had already drifted (it used the primary color, not the real
+  `status-preparing` token).
 
 ### Added
 
