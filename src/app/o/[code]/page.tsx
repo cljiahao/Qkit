@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import {
   parseMenuItems,
+  parseMenuCategories,
   parseBoothHours,
   parseSocialLinks,
 } from "@/lib/schemas";
@@ -28,6 +29,7 @@ const boothForOrder = z.object({
   is_active: z.boolean(),
   servable: z.boolean(),
   menu_items: z.unknown(),
+  menu_categories: z.unknown(),
   remaining: z.unknown(),
   social_links: z.unknown(),
 });
@@ -51,6 +53,7 @@ export default async function OrderEntryPage({ params }: Props) {
   const booth = parsed.data;
 
   const available = parseMenuItems(booth.menu_items);
+  const categories = parseMenuCategories(booth.menu_categories);
   const nowIso = new Date().toISOString();
   const hours = parseBoothHours(booth.hours);
   const open = isBoothOpen({ is_active: booth.is_active, hours }, nowIso);
@@ -110,6 +113,7 @@ export default async function OrderEntryPage({ params }: Props) {
         code={code}
         boothId={booth.booth_id}
         menuItems={available}
+        menuCategories={categories}
         closed={closed}
         remaining={remaining}
       />

@@ -29,12 +29,19 @@ import { takeReorder } from "@/lib/reorder-handoff";
 import { remainingFor, type Remaining } from "@/lib/stock";
 import { placeOrder } from "@/app/o/[code]/actions";
 import { logEvent } from "@/app/actions/events";
-import type { MenuItem, CartItem, SelectedOption } from "@/lib/types";
+import { groupByCategory } from "@/lib/menu-sections";
+import type {
+  MenuItem,
+  MenuCategory,
+  CartItem,
+  SelectedOption,
+} from "@/lib/types";
 
 interface Props {
   code: string;
   boothId: string;
   menuItems: MenuItem[];
+  menuCategories?: MenuCategory[];
   closed?: boolean;
   // Live remaining per capped item (id → count). Absent id = unlimited.
   remaining?: Remaining;
@@ -44,6 +51,7 @@ export function OrderForm({
   code,
   boothId,
   menuItems,
+  menuCategories = [],
   closed = false,
   remaining = {},
 }: Props) {
@@ -298,6 +306,109 @@ export function OrderForm({
 
   const hasItems = cartItems.length > 0;
   const cartPriced = orderHasPricing(cartItems);
+  const sections = groupByCategory(menuItems, menuCategories);
+  const grouped = sections.length > 1;
+
+  function renderItemCard(item: MenuItem) {
+    const hasOptions = !!item.option_groups && item.option_groups.length > 0;
+    // Inline +/- only for plain items (keyed by id). Option items are
+    // added via the sheet and managed in the cart summary.
+    const plainInCart = hasOptions ? undefined : cart.get(item.id);
+    const left = remainingFor(remaining, item.id);
+    const soldOut = left !== null && left <= 0;
+    let cardTone: string;
+    if (soldOut) cardTone = "border-border opacity-60";
+    else if (plainInCart) cardTone = "border-primary/40 bg-primary/[0.04]";
+    else cardTone = "border-border";
+    const addLabel = menuItemActionLabel(soldOut, hasOptions);
+    return (
+      <div
+        key={item.id}
+        className={`flex items-center justify-between gap-4 rounded-xl border bg-card p-3.5 transition-colors ${cardTone}`}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          {item.image_url && (
+            <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border">
+              <ZoomableImage
+                src={item.image_url}
+                alt={item.name}
+                sizes="3.5rem"
+              />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium">{item.name}</p>
+            {item.description && (
+              <p className="truncate text-sm text-muted-foreground">
+                {item.description}
+              </p>
+            )}
+            {item.price_cents != null && (
+              <p className="mt-1 font-mono text-sm font-semibold text-primary">
+                {formatPrice(item.price_cents)}
+              </p>
+            )}
+            {left !== null &&
+              (soldOut ? (
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
+                  Sold out
+                </p>
+              ) : (
+                <p
+                  className={cn(
+                    "mt-1 text-xs font-medium",
+                    left <= 5
+                      ? "font-semibold text-status-preparing"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {left} left
+                </p>
+              ))}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {plainInCart ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11 rounded-lg"
+                onClick={() => decrement(item.id)}
+                aria-label={`Remove one ${item.name}`}
+              >
+                <Minus className="size-3.5" />
+              </Button>
+              <span className="w-5 text-center font-mono text-sm font-bold">
+                {plainInCart.quantity}
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                className="size-11 rounded-lg"
+                onClick={() => increment(item.id)}
+                aria-label={`Add one ${item.name}`}
+              >
+                <Plus className="size-3.5" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-11 rounded-lg px-4"
+              onClick={() => onAddClick(item)}
+              disabled={closed || soldOut}
+            >
+              {addLabel}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   let submitLabel: string;
   if (closed) submitLabel = "Booth closed";
@@ -323,115 +434,36 @@ export function OrderForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {/* Menu items */}
-      <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Menu
-        </h2>
-        <div className="space-y-2.5">
-          {menuItems.map((item) => {
-            const hasOptions =
-              !!item.option_groups && item.option_groups.length > 0;
-            // Inline +/- only for plain items (keyed by id). Option items are
-            // added via the sheet and managed in the cart summary.
-            const plainInCart = hasOptions ? undefined : cart.get(item.id);
-            const left = remainingFor(remaining, item.id);
-            const soldOut = left !== null && left <= 0;
-            let cardTone: string;
-            if (soldOut) cardTone = "border-border opacity-60";
-            else if (plainInCart)
-              cardTone = "border-primary/40 bg-primary/[0.04]";
-            else cardTone = "border-border";
-            const addLabel = menuItemActionLabel(soldOut, hasOptions);
-            return (
-              <div
-                key={item.id}
-                className={`flex items-center justify-between gap-4 rounded-xl border bg-card p-3.5 transition-colors ${cardTone}`}
+      {grouped ? (
+        <>
+          <nav className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 text-sm">
+            {sections.map((s) => (
+              <a
+                key={s.id}
+                href={`#section-${s.id}`}
+                className="shrink-0 rounded-full border border-border px-3 py-1.5 font-medium text-muted-foreground"
               >
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  {item.image_url && (
-                    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-border">
-                      <ZoomableImage
-                        src={item.image_url}
-                        alt={item.name}
-                        sizes="3.5rem"
-                      />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{item.name}</p>
-                    {item.description && (
-                      <p className="truncate text-sm text-muted-foreground">
-                        {item.description}
-                      </p>
-                    )}
-                    {item.price_cents != null && (
-                      <p className="mt-1 font-mono text-sm font-semibold text-primary">
-                        {formatPrice(item.price_cents)}
-                      </p>
-                    )}
-                    {left !== null &&
-                      (soldOut ? (
-                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
-                          Sold out
-                        </p>
-                      ) : (
-                        <p
-                          className={cn(
-                            "mt-1 text-xs font-medium",
-                            left <= 5
-                              ? "font-semibold text-status-preparing"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {left} left
-                        </p>
-                      ))}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {plainInCart ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="size-11 rounded-lg"
-                        onClick={() => decrement(item.id)}
-                        aria-label={`Remove one ${item.name}`}
-                      >
-                        <Minus className="size-3.5" />
-                      </Button>
-                      <span className="w-5 text-center font-mono text-sm font-bold">
-                        {plainInCart.quantity}
-                      </span>
-                      <Button
-                        type="button"
-                        size="icon"
-                        className="size-11 rounded-lg"
-                        onClick={() => increment(item.id)}
-                        aria-label={`Add one ${item.name}`}
-                      >
-                        <Plus className="size-3.5" />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-11 rounded-lg px-4"
-                      onClick={() => onAddClick(item)}
-                      disabled={closed || soldOut}
-                    >
-                      {addLabel}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+                {s.label}
+              </a>
+            ))}
+          </nav>
+          {sections.map((s) => (
+            <section key={s.id} id={`section-${s.id}`}>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {s.label}
+              </h2>
+              <div className="space-y-2.5">{s.items.map(renderItemCard)}</div>
+            </section>
+          ))}
+        </>
+      ) : (
+        <section>
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Menu
+          </h2>
+          <div className="space-y-2.5">{menuItems.map(renderItemCard)}</div>
+        </section>
+      )}
 
       {/* Cart summary */}
       {hasItems && (

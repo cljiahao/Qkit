@@ -99,6 +99,13 @@ factories, respectively).
   time `onUpload` runs, so there's nothing left to close over.
 - `image-upload-adapter.test.ts` — tests a successful upload/public-URL
   round trip and that a storage error propagates as a rejection.
+- `menu-sections.ts` — `groupByCategory(items, categories)`: pure grouping
+  of a booth's `menu_items` under its `menu_categories` (booth's own order),
+  bucketing any missing/unmatched category id into "Other", always last, and
+  dropping empty sections — used by `OrderForm` to render the customer menu
+  grouped once a booth has 2+ non-empty sections.
+- `menu-sections.test.ts` — tests category-order grouping, the Other bucket,
+  empty-section dropping, and the no-categories-defined case.
 - `merqo-auth.ts` — `bearerOk`/`provisionBearerOk`: constant-time bearer-token
   checks against `MERQO_METRICS_SECRET`/`MERQO_PROVISION_SECRET` respectively
   — deliberately separate secrets, since leaking the routine metrics-polling

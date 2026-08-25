@@ -14,26 +14,31 @@ stale QR code.
   failure, "try again in a moment" — the code may still be valid, so telling
   the customer to rescan would be wrong).
 - `expired-code.dom.test.tsx` — RTL test covering both variants' copy.
-- `order-form.tsx` — `OrderForm({ code, boothId, menuItems, closed,
-remaining })`: the full menu + cart + checkout UI. Seeds the cart on mount
-  from either a `takeReorder` handoff (explicit reorder intent, wins) or a
-  persisted `loadCart` (in-progress cart from a prior visit), reconciling
-  either against the live menu/stock (`reconcileReorder`). Tracks a
-  `Map<string, CartItem>` cart keyed by `cartKey(menuItemId, options)`,
-  persists it on every change (`saveCart`), enforces per-item stock caps
-  (`remainingFor`/`blockedByStock`), opens `ItemCustomizer` for items with
-  option groups, and on submit calls `placeOrder`
+- `order-form.tsx` — `OrderForm({ code, boothId, menuItems, menuCategories,
+closed, remaining })`: the full menu + cart + checkout UI. Seeds the cart on
+  mount from either a `takeReorder` handoff (explicit reorder intent, wins)
+  or a persisted `loadCart` (in-progress cart from a prior visit),
+  reconciling either against the live menu/stock (`reconcileReorder`).
+  Tracks a `Map<string, CartItem>` cart keyed by `cartKey(menuItemId,
+options)`, persists it on every change (`saveCart`), enforces per-item
+  stock caps (`remainingFor`/`blockedByStock`), opens `ItemCustomizer` for
+  items with option groups, and on submit calls `placeOrder`
   (`@/app/o/[code]/actions`) with a stable per-submit idempotency key
   (retried once on a network error), then clears the cart, stashes an
   `addRecentOrder` entry, and navigates to the order-status page. Also
   collects an optional "Phone number (optional)" field next to the name
   field — a genuinely optional convenience (cross-kit customer identity,
   migration `0075`), never required to submit — passed through
-  `placeOrder`'s `customerPhone` input.
+  `placeOrder`'s `customerPhone` input. Menu items render grouped under
+  `menuCategories` (`@/lib/menu-sections`'s `groupByCategory`) with a jump
+  nav once there are 2+ non-empty sections; a booth with 0 or 1 category
+  falls back to the original flat "Menu" list, no chrome.
 - `order-form.dom.test.tsx` — RTL tests covering cart add/increment/decrement,
   stock-cap blocking, reorder seeding/reconciliation, the closed-booth submit
-  guard, the placeOrder retry-then-fail path, and the phone field (renders,
-  optional — submits with it blank, passes its value through when filled).
+  guard, the placeOrder retry-then-fail path, the phone field (renders,
+  optional — submits with it blank, passes its value through when filled),
+  and category sections (flat fallback for 0/1 category, grouped headings +
+  jump nav for 2+, unmatched/stale category ids bucketed into "Other" last).
 - `recent-orders.tsx` — `RecentOrders({ boothId })`: reads
   `getRecentOrdersForBooth` from localStorage post-mount (avoids an SSR
   hydration mismatch — there's no server-side customer identity), rendering
