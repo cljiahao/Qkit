@@ -25,6 +25,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   stacks Menu right after Hours/Order flow instead of at the very bottom,
   above Payment/Printing/Social links; the two-column tablet/desktop
   layout is unchanged.
+- Bumped `@merqo/ui` to v0.20.0: the stats strip's `StatTile` now wraps the
+  new shared `StatTile`/`DeltaPill` content instead of a fully local
+  implementation — no visible change, qkit's own card shell (border,
+  fade-rise animation, ember `primary` accent) is unchanged.
 - Bumped `@merqo/ui` to v0.19.0: the account menu's theme control now sits
   behind a collapsed "Theme · {current}" submenu instead of three
   always-expanded radio options.
