@@ -367,3 +367,61 @@ describe("OrderForm cart", () => {
     expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
   });
 });
+
+describe("OrderForm category sections", () => {
+  it("renders a flat Menu list with no category chrome when the booth has no categories", () => {
+    renderForm();
+    expect(screen.getByText("Menu")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it("groups items under their category headings with a jump nav", () => {
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[
+          { ...KOPI, category: "drinks" },
+          { ...TEH, category: "mains" },
+        ]}
+        menuCategories={[
+          { id: "drinks", label: "Drinks" },
+          { id: "mains", label: "Mains" },
+        ]}
+      />,
+    );
+    expect(screen.queryByText("Menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Drinks" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Mains" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation")).toBeInTheDocument();
+  });
+
+  it("shows a single-category booth as flat, no jump nav, matching the no-category case", () => {
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[{ ...KOPI, category: "drinks" }]}
+        menuCategories={[{ id: "drinks", label: "Drinks" }]}
+      />,
+    );
+    expect(screen.getByText("Menu")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it("puts an item with an unmatched/stale category id under Other, last", () => {
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[
+          { ...KOPI, category: "drinks" },
+          { ...TEH, category: "removed-category" },
+        ]}
+        menuCategories={[{ id: "drinks", label: "Drinks" }]}
+      />,
+    );
+    const headings = screen.getAllByRole("heading", { level: 2 });
+    expect(headings.map((h) => h.textContent)).toEqual(["Drinks", "Other"]);
+  });
+});

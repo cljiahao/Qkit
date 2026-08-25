@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Customer-facing menu now groups items under a booth's own category
+  sections with a jump nav, once a vendor has set up 2+ categories with
+  items in them — a booth with 0 or 1 category still renders as a single
+  flat "Menu" list, unchanged.
+
 ### Changed
 
 - Booth settings: "Hold prep until the customer arrives" and "Default to

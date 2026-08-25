@@ -75,7 +75,9 @@ the current (non-legacy) customer ordering entry point.
   banner when applicable (with the booth's resolved social links, so a
   stranded customer can still reach the vendor — `get_booth_for_order`
   resolves booth-override-vs-vendor-default, migration `0053`), and
-  `OrderForm`.
+  `OrderForm`. Also parses `menu_categories` (migration `0066`, previously
+  fetched by the RPC but dropped by this page's own Zod schema) via
+  `parseMenuCategories` and passes it through to `OrderForm`.
 - `loading.tsx` — animated skeleton (title bar + 5 placeholder menu rows)
   shown while `page.tsx`'s server fetch resolves — the QR-scan hot path,
   where event-site network can be slow.
