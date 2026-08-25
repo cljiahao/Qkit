@@ -43,9 +43,8 @@ export const MAX_MONEY_CENTS = 10_000_00;
 // Cart line cap — mirrors the DB guard inside place_order (jsonb_array_length).
 export const MAX_CART_LINES = 50;
 
-// Placeholder taxonomy for a coffee-cart context — extend if a real gap
-// shows up. Vendor-declared only; nothing in this codebase infers an
-// allergen from a label (e.g. "Oat Milk" does not imply dairy-free).
+// EU's 14-allergen list (Reg 1169/2011) plus caffeine. Additive only — never
+// rename/remove a value, it's a raw string in saved menu_items JSONB.
 export const ALLERGEN_TAGS = [
   "dairy",
   "nuts",
@@ -53,6 +52,15 @@ export const ALLERGEN_TAGS = [
   "soy",
   "egg",
   "caffeine",
+  "crustaceans",
+  "fish",
+  "peanuts",
+  "celery",
+  "mustard",
+  "sesame",
+  "sulphites",
+  "lupin",
+  "molluscs",
 ] as const;
 export type AllergenTag = (typeof ALLERGEN_TAGS)[number];
 

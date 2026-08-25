@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Menu editor: a "Duplicate" action per item, creating a fully independent
+  copy (own id, "(copy)" suffix, deep-cloned option groups/allergens) —
+  qkit has no shared/live-linked modifier groups yet, so this is always a
+  starting-point copy, never a reference.
+- Allergen tag list widened from 6 ad-hoc tags to cover the EU's 14-allergen
+  list (Regulation 1169/2011) plus caffeine — purely additive, every
+  pre-existing tag value is unchanged so a booth's already-saved menu items
+  keep validating.
 - Customer-facing menu now groups items under a booth's own category
   sections with a jump nav, once a vendor has set up 2+ categories with
   items in them — a booth with 0 or 1 category still renders as a single

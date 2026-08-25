@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Trash2, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Trash2, Plus, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -118,6 +118,21 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
     onChange(items.filter((_, i) => i !== index));
   }
 
+  // Deep-cloned (structuredClone) so editing the copy's nested option groups
+  // never mutates the original — qkit has no shared/live-linked modifier
+  // groups yet, so a duplicate is always a fully independent starting point,
+  // never a reference.
+  function duplicateItem(index: number) {
+    if (!canAddMenuItem(entitlement, items.length)) return;
+    const source = items[index];
+    const copy: MenuItemFormInput = {
+      ...structuredClone(source),
+      id: crypto.randomUUID(),
+      name: source.name ? `${source.name} (copy)` : "",
+    };
+    onChange([...items.slice(0, index + 1), copy, ...items.slice(index + 1)]);
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -180,6 +195,18 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                   className="rounded-lg"
                 />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
+                onClick={() => duplicateItem(i)}
+                disabled={atItemCap}
+                aria-label="Duplicate item"
+                title="Duplicate — creates an independent copy, not a linked one"
+              >
+                <Copy className="size-4" />
+              </Button>
               <Button
                 type="button"
                 variant="outline"

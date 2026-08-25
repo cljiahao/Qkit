@@ -20,6 +20,7 @@ import {
   socialLinksSchema,
   parseSocialLinks,
   resolveSocialLinks,
+  ALLERGEN_TAGS,
 } from "./schemas";
 
 const UUID_A = "11111111-1111-1111-1111-111111111111";
@@ -296,6 +297,49 @@ describe("menuItemSchema", () => {
         name: "Laksa",
         price_cents: 600,
         available: true,
+      }).success,
+    ).toBe(true);
+  });
+});
+
+describe("ALLERGEN_TAGS", () => {
+  it("covers the EU's 14-allergen list (Regulation 1169/2011)", () => {
+    const euAllergens = [
+      "gluten",
+      "crustaceans",
+      "egg",
+      "fish",
+      "peanuts",
+      "soy",
+      "dairy",
+      "nuts",
+      "celery",
+      "mustard",
+      "sesame",
+      "sulphites",
+      "lupin",
+      "molluscs",
+    ];
+    for (const allergen of euAllergens) {
+      expect(ALLERGEN_TAGS).toContain(allergen);
+    }
+  });
+
+  it("still validates every pre-existing tag value, unrenamed", () => {
+    const original = ["dairy", "nuts", "gluten", "soy", "egg", "caffeine"];
+    for (const tag of original) {
+      expect(ALLERGEN_TAGS).toContain(tag);
+    }
+  });
+
+  it("accepts a saved menu item using only pre-existing tags", () => {
+    expect(
+      menuItemFormSchema.safeParse({
+        id: "1",
+        name: "Latte",
+        description: "",
+        available: true,
+        allergens: ["dairy", "caffeine"],
       }).success,
     ).toBe(true);
   });
