@@ -116,13 +116,23 @@ export type SocialLinks = {
   tiktok?: string;
 };
 
+// Mirrors ALLERGEN_TAGS in src/lib/schemas.ts.
 export type AllergenTag =
   | "dairy"
   | "nuts"
   | "gluten"
   | "soy"
   | "egg"
-  | "caffeine";
+  | "caffeine"
+  | "crustaceans"
+  | "fish"
+  | "peanuts"
+  | "celery"
+  | "mustard"
+  | "sesame"
+  | "sulphites"
+  | "lupin"
+  | "molluscs";
 
 export type OptionChoice = {
   id: string;
