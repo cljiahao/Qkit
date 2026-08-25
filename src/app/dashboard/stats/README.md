@@ -35,8 +35,9 @@ passes that keep a permanent, ungated stats snapshot for that window.
 - `export-button.tsx` — `ExportButton({ summary, range, boothId })`: builds a
   `SalesSummaryV1` via `@/lib/sales-summary` and downloads it as a CSV blob
   named `qkit-sales-<range>.csv`.
-- `kpi-row.tsx` — `StatTile` (the shared metric-tile look: label + delta pill
-  - mono value + caption) and `KpiRow({ summary, deltas, pro, rangeLabel,
+- `kpi-row.tsx` — `StatTile` (qkit's bordered/fade-rise card shell wrapping
+  `@merqo/ui`'s shared `StatTile` content — label + delta pill + mono value
+  - caption) and `KpiRow({ summary, deltas, pro, rangeLabel,
 allTime })`: renders Revenue/Orders (as `StatBreakdownTile`s with a
     per-item hover/tap breakdown) + Avg order, and (Pro only) Fulfilled
     (completed/decided with a cancelled-count tooltip) and Refunds.

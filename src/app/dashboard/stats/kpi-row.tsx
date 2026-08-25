@@ -1,6 +1,6 @@
-import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import type { StatsSummary } from "@/lib/stats";
+import { StatTile as SharedStatTile, DeltaPill } from "@merqo/ui";
 import { StatBreakdownTile, type BreakdownRow } from "./stat-breakdown";
 
 type Deltas = {
@@ -10,33 +10,22 @@ type Deltas = {
 } | null;
 
 function Delta({ pct }: { pct: number | null }) {
-  if (pct === null) return null;
-  const up = pct >= 0;
-  const Icon = up ? ArrowUp : ArrowDown;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-[0.7rem] font-semibold tabular-nums",
-        up
-          ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
-          : "bg-status-cancelled/12 text-status-cancelled",
-      )}
-      title="vs the previous period"
-    >
-      <Icon className="size-3" />
-      {Math.abs(Math.round(pct))}%
-    </span>
+    <DeltaPill
+      pct={pct}
+      tooltip="vs the previous period"
+      downClassName="bg-status-cancelled/12 text-status-cancelled"
+    />
   );
 }
 
 /**
- * The one tile the whole stats strip is built from — every metric wears the same
- * clothes: a small uppercase label (with an optional delta pill), a large mono
- * tabular-nums value, and an optional caption underneath. Money KPIs, order
- * counts, and the qualitative context tiles (best seller, busiest hour, avg
- * wait) all render through this, so the strip reads as one grid instead of a
- * mix of styles. `primary` gives the lead metric a quiet ember frame — the only
- * accent, so nothing else competes.
+ * The one tile the whole stats strip is built from — wraps `@merqo/ui`'s shared
+ * `StatTile` (label/value/delta content) in qkit's own card shell (a bordered,
+ * fade-rise-animated frame with an ember `primary` accent) since that outer
+ * treatment doesn't match loopkit's/merqo's own. Money KPIs, order counts, and
+ * the qualitative context tiles (best seller, busiest hour, avg wait) all render
+ * through this, so the strip reads as one grid instead of a mix of styles.
  */
 export function StatTile({
   label,
@@ -58,33 +47,24 @@ export function StatTile({
 }) {
   return (
     <div
-      title={hint}
       className={cn(
-        "fade-rise flex flex-col gap-2 rounded-xl border bg-card p-4",
+        "fade-rise rounded-xl border bg-card p-4",
         primary ? "border-primary/30" : "border-border",
-        hint && "cursor-help",
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p
-          className={cn(
-            "text-[0.7rem] font-semibold uppercase tracking-wider",
-            primary ? "text-primary" : "text-muted-foreground",
-          )}
-        >
-          {label}
-        </p>
-        {delta !== undefined && <Delta pct={delta} />}
-      </div>
-      <p className="truncate font-mono text-2xl font-bold leading-none tabular-nums">
-        {value}
-      </p>
-      {caption && (
-        <p className="truncate font-mono text-xs text-muted-foreground tabular-nums">
-          {caption}
-        </p>
-      )}
+      <SharedStatTile
+        label={label}
+        value={value}
+        valueClassName="font-mono"
+        captionClassName="font-mono"
+        caption={caption}
+        hint={hint}
+        primary={primary}
+        delta={delta}
+        deltaTooltip="vs the previous period"
+        deltaDownClassName="bg-status-cancelled/12 text-status-cancelled"
+      />
     </div>
   );
 }
