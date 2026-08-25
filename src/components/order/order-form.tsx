@@ -311,8 +311,8 @@ export function OrderForm({
 
   function renderItemCard(item: MenuItem) {
     const hasOptions = !!item.option_groups && item.option_groups.length > 0;
-    // Inline +/- only for plain items (keyed by id). Option items are
-    // added via the sheet and managed in the cart summary.
+    // Inline +/- only for plain items (keyed by id). Items with option
+    // groups instead go through the sheet, managed in the cart summary.
     const plainInCart = hasOptions ? undefined : cart.get(item.id);
     const left = remainingFor(remaining, item.id);
     const soldOut = left !== null && left <= 0;
