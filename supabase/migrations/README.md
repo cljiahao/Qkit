@@ -10,7 +10,7 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-82 files, `0000` through `0081`. Read in full: `0000`, `0001`, `0010`, `0030`,
+84 files, `0000` through `0083`. Read in full: `0000`, `0001`, `0010`, `0030`,
 and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
@@ -318,6 +318,8 @@ realtime-order-board.tsx`; changes neither `place_order` nor
   `place_walkup_order`'s own behavior, and every existing booth defaults to
   `false` (QR ordering unaffected).
 - `0081_orders_print_status.sql` — `orders.print_status` (enum: not_required/queued/sent/printed/failed) + `print_status_updated_at`, mirroring `payment_status`'s shape. Mirrored/pushed by printkit's callback on a job's status change (see `printkit/client.ts`, `api/printkit/print-status/route.ts`).
+- `0082_booth_print_enabled.sql` — `booths.print_enabled` (bool, default `false`) — per-booth opt-in for printkit label printing; before this column every order on every booth unconditionally fired a print-job-creation call to printkit regardless of whether the vendor had an account or a paired bridge.
+- `0083_booth_paykit_booking_id.sql` — `booths.paykit_booking_id` (nullable text) — a vendor-pasted link to a paykit booking, event-mode booths only (see `walkup_default`, `0080`). Unvalidated at write time (no lookup/matching by name or phone — a prior fuzzy-matching design was rejected as a cross-tenant financial-data leak risk); the vendor already owns both sides, same trust level as the existing "quick add PayNow" config section. Read back via paykit's `GET /api/v1/bookings/{booking_id}` (`getBookingStatus`, `src/lib/paykit/client.ts`) to show live deposit/balance status on the booth edit page.
 
 ## Connectivity
 

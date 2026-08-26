@@ -492,6 +492,7 @@ export interface Database {
           requires_arrival_confirm: boolean;
           walkup_default: boolean;
           print_enabled: boolean;
+          paykit_booking_id: string | null;
         };
         Insert: {
           id?: string;
@@ -510,6 +511,7 @@ export interface Database {
           requires_arrival_confirm?: boolean;
           walkup_default?: boolean;
           print_enabled?: boolean;
+          paykit_booking_id?: string | null;
         };
         Update: {
           id?: string;
@@ -528,6 +530,7 @@ export interface Database {
           requires_arrival_confirm?: boolean;
           walkup_default?: boolean;
           print_enabled?: boolean;
+          paykit_booking_id?: string | null;
         };
         Relationships: [
           {
