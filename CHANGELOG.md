@@ -8,6 +8,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Menu editor: each allergen checkbox in the "Advanced" picker now shows a
+  small emoji icon next to its label, and any item with allergens set shows
+  a compact icon-only summary next to the "Advanced" toggle — a vendor
+  scanning the list can see allergen info without expanding every item.
 - Event-mode booths can now link a paykit booking: a vendor-pasted
   `paykit_booking_id` on the booth (`booths.paykit_booking_id`, shown only
   while "Default to walk-up order entry" is on) surfaces that booking's
