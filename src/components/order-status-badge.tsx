@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { StatusBadge } from "@merqo/ui";
 import type { OrderStatus } from "@/lib/types";
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; className: string }> =
@@ -35,16 +35,5 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; className: string }> =
   };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const config = STATUS_CONFIG[status];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-[0.12em]",
-        config.className,
-      )}
-    >
-      <span className="size-1.5 rounded-full bg-current" />
-      {config.label}
-    </span>
-  );
+  return <StatusBadge status={status} config={STATUS_CONFIG} />;
 }

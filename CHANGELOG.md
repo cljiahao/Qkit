@@ -35,6 +35,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Bumped `@merqo/ui` to v0.21.0: `OrderStatusBadge` now renders through the
+  new shared `StatusBadge` component (extracted from this file, chosen as
+  the design target over other kits' plain shadcn `Badge` uses) instead of
+  its own hand-rolled markup — qkit's `STATUS_CONFIG` label/colour map is
+  unchanged and passed through as the `config` prop, so rendered output is
+  identical.
 - Admin console: the audit-trail viewer and pricing form now render through
   the shared `@merqo/ui` `AuditLogTable`/`PricingForm` components instead of
   hand-rolled JSX, matching loopkit/paykit/stockkit's admin consoles (same

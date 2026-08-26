@@ -143,6 +143,10 @@ selected, onToggleSelect })`: the
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
   pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
   cancelled), shared by the dashboard board and the customer status page.
+  Thin wrapper around `@merqo/ui`'s shared `StatusBadge` (extracted from this
+  file, the chosen design target over other kits' plain shadcn `Badge` uses)
+  — keeps qkit's own `STATUS_CONFIG` label/colour map, passed through as the
+  `config` prop; same rendered markup as before.
 - `paginated.tsx` — `Paginated({ children, pageSize, variant, label,
 alwaysShowCount })`: client-side pager over pre-rendered rows —
   `variant="pager"` (prev/next + "x–y of N", for admin tables) or `"more"`
