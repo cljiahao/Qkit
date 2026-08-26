@@ -122,6 +122,7 @@ describe("BoothForm walk-up-default toggle", () => {
           requires_arrival_confirm: false,
           walkup_default: true,
           print_enabled: false,
+          paykit_booking_id: null,
         }}
       />,
     );
@@ -150,6 +151,7 @@ describe("BoothForm walk-up-default toggle", () => {
           requires_arrival_confirm: false,
           walkup_default: true,
           print_enabled: false,
+          paykit_booking_id: null,
         }}
       />,
     );
@@ -160,5 +162,79 @@ describe("BoothForm walk-up-default toggle", () => {
       expect.objectContaining({ boothId: BOOTH_ID, walkup_default: false }),
     );
     expect(toastError).not.toHaveBeenCalled();
+  });
+});
+
+describe("BoothForm paykit booking id", () => {
+  it("is hidden while walk-up default is off, and appears once toggled on", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    expect(
+      screen.queryByLabelText("Paykit booking ID"),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("switch", { name: TOGGLE_LABEL }));
+    expect(screen.getByLabelText("Paykit booking ID")).toBeInTheDocument();
+  });
+
+  it("submits the typed booking id alongside the rest of the form", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.click(screen.getByRole("switch", { name: TOGGLE_LABEL }));
+    await user.type(screen.getByLabelText("Paykit booking ID"), "book-42");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    expect(saveBooth).toHaveBeenCalledWith(
+      expect.objectContaining({ paykit_booking_id: "book-42" }),
+    );
+  });
+
+  it("prefills from an existing booth and shows its fetched status", () => {
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+        initial={{
+          boothId: BOOTH_ID,
+          name: "Ice Cream Cart",
+          image_url: null,
+          is_active: true,
+          hours: null,
+          menu_items: [],
+          payment: null,
+          social_links: null,
+          requires_arrival_confirm: false,
+          walkup_default: true,
+          print_enabled: false,
+          paykit_booking_id: "book-42",
+          bookingStatus: {
+            bookingId: "book-42",
+            status: "fully_paid",
+            eventDate: "2026-09-01",
+            depositAmountCents: 20000,
+            balanceAmountCents: 30000,
+            totalAmountCents: 50000,
+            depositConfirmed: true,
+            balanceConfirmed: true,
+          },
+        }}
+      />,
+    );
+    expect(screen.getByLabelText("Paykit booking ID")).toHaveValue("book-42");
+    expect(screen.getByText("Fully paid")).toBeInTheDocument();
   });
 });

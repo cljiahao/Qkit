@@ -49,6 +49,46 @@ describe("MenuEditor item-level allergens", () => {
     await user.click(screen.getByRole("button", { name: /advanced/i }));
     expect(screen.getByText(/dairy/i)).toBeInTheDocument();
   });
+
+  it("renders an icon next to each allergen checkbox label", async () => {
+    const user = userEvent.setup();
+    render(<Host />);
+    await user.click(screen.getByRole("button", { name: /advanced/i }));
+    expect(screen.getByText("🥛")).toBeInTheDocument();
+    expect(screen.getByText("🥜")).toBeInTheDocument();
+  });
+});
+
+describe("MenuEditor allergen summary badges", () => {
+  it("shows no icon summary when the item has no allergens set", () => {
+    render(<Host />);
+    expect(
+      screen.queryByLabelText(/contains allergens/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an icon-only summary next to the item header when allergens are set", () => {
+    function HostWithAllergen() {
+      const [items, setItems] = useState<MenuItemFormInput[]>([
+        { ...ITEM, allergens: ["dairy", "nuts"] },
+      ]);
+      return (
+        <MenuEditor
+          vendorId="v1"
+          items={items}
+          onChange={setItems}
+          entitlement={ENTITLEMENT}
+        />
+      );
+    }
+    render(<HostWithAllergen />);
+    const summary = screen.getByLabelText(/contains allergens: dairy, nuts/i);
+    expect(summary).toBeInTheDocument();
+    expect(summary).toHaveTextContent("🥛");
+    expect(summary).toHaveTextContent("🌰");
+    // Collapsed by default — the summary is visible without expanding Advanced.
+    expect(screen.queryByText(/dairy/i)).not.toBeInTheDocument();
+  });
 });
 
 const ITEM_WITH_GROUPS: MenuItemFormInput = {

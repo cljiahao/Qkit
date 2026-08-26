@@ -14,8 +14,31 @@ import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
 import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
-import { ALLERGEN_TAGS, type MenuItemFormInput } from "@/lib/schemas";
+import {
+  ALLERGEN_TAGS,
+  type AllergenTag,
+  type MenuItemFormInput,
+} from "@/lib/schemas";
 import type { OptionGroup } from "@/lib/types";
+
+// Rendering-only — no effect on the stored tag values (ALLERGEN_TAGS).
+const ALLERGEN_ICONS: Record<AllergenTag, string> = {
+  dairy: "🥛",
+  nuts: "🌰",
+  gluten: "🌾",
+  soy: "🌱",
+  egg: "🥚",
+  caffeine: "☕",
+  crustaceans: "🦐",
+  fish: "🐟",
+  peanuts: "🥜",
+  celery: "🥬",
+  mustard: "🟡",
+  sesame: "⚫",
+  sulphites: "🧪",
+  lupin: "🫘",
+  molluscs: "🐚",
+};
 
 interface Props {
   vendorId: string;
@@ -288,18 +311,34 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                 most items need none. Anything that varies by customization
                 choice is tagged on the choice itself (OptionGroupsEditor). */}
             <div>
-              <button
-                type="button"
-                onClick={() => toggleAdvanced(item.id)}
-                className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-              >
-                {expandedAdvanced.has(item.id) ? (
-                  <ChevronDown className="size-3" />
-                ) : (
-                  <ChevronRight className="size-3" />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleAdvanced(item.id)}
+                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  {expandedAdvanced.has(item.id) ? (
+                    <ChevronDown className="size-3" />
+                  ) : (
+                    <ChevronRight className="size-3" />
+                  )}
+                  Advanced
+                </button>
+                {/* At-a-glance allergen summary so a vendor scanning the list
+                    doesn't need to expand every item — icon-only, only when set. */}
+                {(item.allergens ?? []).length > 0 && (
+                  <span
+                    className="flex items-center gap-0.5"
+                    aria-label={`Contains allergens: ${(item.allergens ?? []).join(", ")}`}
+                  >
+                    {(item.allergens ?? []).map((tag) => (
+                      <span key={tag} aria-hidden="true">
+                        {ALLERGEN_ICONS[tag]}
+                      </span>
+                    ))}
+                  </span>
                 )}
-                Advanced
-              </button>
+              </div>
               {expandedAdvanced.has(item.id) && (
                 <div className="mt-2 space-y-1.5">
                   <p className="text-xs text-muted-foreground">
@@ -318,6 +357,7 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                             toggleItemAllergen(i, tag, checked === true)
                           }
                         />
+                        <span aria-hidden="true">{ALLERGEN_ICONS[tag]}</span>
                         {tag}
                       </label>
                     ))}

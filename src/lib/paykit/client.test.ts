@@ -7,10 +7,12 @@ import {
   unclaimCheckout,
   confirmCheckout,
   getCheckoutStatus,
+  getBookingStatus,
 } from "./client";
 
 const VENDOR = "00000000-0000-4000-8000-000000000001";
 const TX = "00000000-0000-4000-8000-000000000002";
+const BOOKING = "00000000-0000-4000-8000-000000000003";
 
 function jsonResponse(status: number, body: unknown) {
   return {
@@ -187,6 +189,62 @@ describe("getVendorConfig", () => {
   it("reports a network failure without throwing", async () => {
     fetchMock.mockRejectedValue(new Error("fetch failed"));
     const res = await getVendorConfig(VENDOR);
+    expect(res).toEqual({ ok: false, status: null, error: "fetch failed" });
+  });
+});
+
+describe("getBookingStatus", () => {
+  it("GETs the booking route and maps a full response to camelCase", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        booking_id: BOOKING,
+        status: "deposit_paid",
+        event_date: "2026-09-01",
+        deposit_amount_cents: 20000,
+        balance_amount_cents: 30000,
+        total_amount_cents: 50000,
+        deposit_confirmed: true,
+        balance_confirmed: false,
+      }),
+    );
+    const res = await getBookingStatus(BOOKING);
+    expect(res).toEqual({
+      ok: true,
+      data: {
+        bookingId: BOOKING,
+        status: "deposit_paid",
+        eventDate: "2026-09-01",
+        depositAmountCents: 20000,
+        balanceAmountCents: 30000,
+        totalAmountCents: 50000,
+        depositConfirmed: true,
+        balanceConfirmed: false,
+      },
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe(
+      `https://paykit.example/api/v1/bookings/${BOOKING}`,
+    );
+    expect(init.method).toBe("GET");
+  });
+
+  it("rejects a malformed success body instead of returning garbage", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { booking_id: BOOKING }));
+    const res = await getBookingStatus(BOOKING);
+    expect(res.ok).toBe(false);
+  });
+
+  it("surfaces a 404 (unknown booking id) as ok:false", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(404, { error: "Booking not found" }),
+    );
+    const res = await getBookingStatus(BOOKING);
+    expect(res).toEqual({ ok: false, status: 404, error: "Booking not found" });
+  });
+
+  it("reports a network failure without throwing", async () => {
+    fetchMock.mockRejectedValue(new Error("fetch failed"));
+    const res = await getBookingStatus(BOOKING);
     expect(res).toEqual({ ok: false, status: null, error: "fetch failed" });
   });
 });
@@ -412,6 +470,25 @@ describe("path-segment encoding", () => {
     await getCheckoutStatus(evilId);
     expect(String(fetchMock.mock.calls[3][0])).toBe(
       `https://paykit.example/api/v1/checkout/${encoded}`,
+    );
+  });
+
+  it("encodes bookingId in getBookingStatus", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        booking_id: BOOKING,
+        status: "pending_deposit",
+        event_date: "2026-09-01",
+        deposit_amount_cents: 20000,
+        balance_amount_cents: 30000,
+        total_amount_cents: 50000,
+        deposit_confirmed: false,
+        balance_confirmed: false,
+      }),
+    );
+    await getBookingStatus(evilId);
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      `https://paykit.example/api/v1/bookings/${encoded}`,
     );
   });
 });
