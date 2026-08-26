@@ -86,6 +86,15 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   PayNow/pointer config lives in paykit's `vendor_payment_config`, vendor-
   scoped) and `orders.payment_status` is a local mirror of paykit's
   transaction state, not the primary record.
+- **`booths.paykit_booking_id`** (migration 0083, 2026-08-26): nullable
+  text, event-mode booths only (see `walkup_default`, `0080`) — a vendor-
+  pasted link to a booking they created in paykit's own `bookings` table
+  (`paykit/AGENTS.md`'s Data model section). Unvalidated at write time,
+  same trust level as the "quick add PayNow" config section — no lookup or
+  matching by name/phone (qkit stores no customer phone on orders at all).
+  Read back read-only via paykit's `GET /api/v1/bookings/{booking_id}`
+  (`getBookingStatus`, `src/lib/paykit/client.ts`) to show live deposit/
+  balance status on the booth edit page (`BookingStatusSection`).
 - **Vendor Telegram alerts, Phase A → A2** (2026-08-16): Phase A shipped
   qkit's own per-kit Telegram bot (`vendor_telegram`/`telegram_link_tokens`
   tables, a webhook route, a dashboard settings section) for vendor

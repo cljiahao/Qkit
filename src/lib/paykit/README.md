@@ -23,8 +23,13 @@ amountCents, orderRef})` (idempotent on `orderRef` — safe to call again for
   (customer "Tapped by mistake? Undo" — reverts `claimed` back to `pending`;
   idempotent on `pending`, and paykit itself refuses to revert a `confirmed`
   transaction, echoing that status back unchanged), `confirmCheckout(id)`
-  (vendor "Confirm payment"), and `getCheckoutStatus(id)` (read-only poll,
-  not currently used by qkit's own polling — see its doc comment). Every
+  (vendor "Confirm payment"), `getCheckoutStatus(id)` (read-only poll,
+  not currently used by qkit's own polling — see its doc comment), and
+  `getBookingStatus(bookingId)` (read-only booking status — deposit/balance
+  amounts, event date, and whether each is confirmed — for the "booking
+  status" section on an event-mode booth's dashboard; the vendor pastes
+  their own `paykit_booking_id` into the booth, this never looks a booking
+  up by name/phone/date). Every
   function returns a `PaykitResult<T>` (`{ok:true,data}` |
   `{ok:false,status,error}`) and never throws; the shared `paykitRequest`
   helper reads `PAYKIT_KIT_SECRET` at request time (not import time, since
@@ -44,7 +49,8 @@ amountCents, orderRef})` (idempotent on `orderRef` — safe to call again for
 
 Called from: `src/app/dashboard/booths/actions.ts` (`saveBooth`, via
 `upsertVendorConfig`), `src/app/dashboard/booths/[boothId]/page.tsx` (via
-`getVendorConfig`, prefilling the edit form), `src/app/order/[boothId]/
+`getVendorConfig`, prefilling the edit form, and `getBookingStatus`,
+prefilling `BookingStatusSection`), `src/app/order/[boothId]/
 [orderNumber]/page.tsx` and `payment-actions.ts`
 (`createCheckout`/`claimCheckout`/`unclaimCheckout`, customer side), and
 `src/app/dashboard/order-actions.ts` (`confirmOrderPayment`, vendor side).

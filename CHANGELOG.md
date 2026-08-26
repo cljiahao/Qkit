@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Event-mode booths can now link a paykit booking: a vendor-pasted
+  `paykit_booking_id` on the booth (`booths.paykit_booking_id`, shown only
+  while "Default to walk-up order entry" is on) surfaces that booking's
+  live deposit/balance status inline on the booth edit page, via paykit's
+  new `GET /api/v1/bookings/{booking_id}` (`getBookingStatus`) — no more
+  checking two separate dashboards for one event's order vs. payment
+  status. No lookup/matching by name or phone; the vendor already owns
+  both sides.
 - Menu editor: a "Duplicate" action per item, creating a fully independent
   copy (own id, "(copy)" suffix, deep-cloned option groups/allergens) —
   qkit has no shared/live-linked modifier groups yet, so this is always a

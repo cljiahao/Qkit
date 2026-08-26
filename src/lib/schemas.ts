@@ -394,6 +394,9 @@ export const boothFormSchema = z.object({
   walkup_default: z.boolean().default(false),
   // Per-booth opt-in for printkit label printing. See migration 0082.
   print_enabled: z.boolean().default(false),
+  // Vendor-pasted paykit booking id, event-mode booths only. Unvalidated
+  // against paykit at write time — just stored. See migration 0083.
+  paykit_booking_id: z.string().trim().max(200).nullable().default(null),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */
