@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { provisionBearerOk } from "@/lib/merqo-auth";
 import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+import { recordAudit } from "@/lib/audit";
 
 export const revalidate = 0;
 
@@ -69,6 +70,19 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  // No signed-in admin here — admin_id is the vendor's own id (satisfies
+  // the FK) and detail.actor marks this as merqo-, not vendor-, initiated.
+  await recordAudit({
+    admin_id: user_id,
+    action: "merqo_vendor_provision",
+    target_id: user_id,
+    detail: {
+      actor: "merqo_system",
+      already_existed: alreadyExisted,
+      plan: vendorRow.plan,
+    },
+  });
 
   return NextResponse.json({
     ok: true,
