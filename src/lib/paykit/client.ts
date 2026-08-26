@@ -96,6 +96,33 @@ const transactionStatusResponseSchema = z.object({
   confirmed_at: z.string().nullable(),
 });
 
+export type BookingStatus = {
+  bookingId: string;
+  status: "pending_deposit" | "deposit_paid" | "fully_paid" | "cancelled";
+  eventDate: string;
+  depositAmountCents: number;
+  balanceAmountCents: number;
+  totalAmountCents: number;
+  depositConfirmed: boolean;
+  balanceConfirmed: boolean;
+};
+
+const bookingStatusResponseSchema = z.object({
+  booking_id: z.string(),
+  status: z.enum([
+    "pending_deposit",
+    "deposit_paid",
+    "fully_paid",
+    "cancelled",
+  ]),
+  event_date: z.string(),
+  deposit_amount_cents: z.number(),
+  balance_amount_cents: z.number(),
+  total_amount_cents: z.number(),
+  deposit_confirmed: z.boolean(),
+  balance_confirmed: z.boolean(),
+});
+
 const errorBodySchema = z.object({ error: z.string() });
 
 /**
@@ -232,6 +259,38 @@ export async function getVendorConfig(
       label: result.data.label,
       url: result.data.url,
       qrImageUrl: result.data.qr_image_url,
+    },
+  };
+}
+
+/** Read-only status for one paykit booking — powers the "booking status"
+ *  section on an event-mode booth's dashboard (see `[boothId]/page.tsx`).
+ *  The vendor pastes their own `paykit_booking_id` into the booth (they
+ *  created the booking in paykit's own dashboard); this never looks a
+ *  booking up by name/phone/date. Degrades the same way every other call
+ *  here does (`ok:false`) — the caller shows nothing rather than an error,
+ *  never blocking the rest of the dashboard. */
+export async function getBookingStatus(
+  bookingId: string,
+): Promise<PaykitResult<BookingStatus>> {
+  const result = await paykitRequest(
+    `/api/v1/bookings/${encodeURIComponent(bookingId)}`,
+    bookingStatusResponseSchema,
+    { method: "GET" },
+  );
+  if (!result.ok) return result;
+  const d = result.data;
+  return {
+    ok: true,
+    data: {
+      bookingId: d.booking_id,
+      status: d.status,
+      eventDate: d.event_date,
+      depositAmountCents: d.deposit_amount_cents,
+      balanceAmountCents: d.balance_amount_cents,
+      totalAmountCents: d.total_amount_cents,
+      depositConfirmed: d.deposit_confirmed,
+      balanceConfirmed: d.balance_confirmed,
     },
   };
 }

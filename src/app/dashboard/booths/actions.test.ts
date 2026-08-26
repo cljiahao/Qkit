@@ -153,6 +153,7 @@ function makeBooth(over: Partial<BoothFormInput> = {}): BoothFormInput {
     requires_arrival_confirm: false,
     walkup_default: false,
     print_enabled: false,
+    paykit_booking_id: null,
     ...over,
   };
 }
