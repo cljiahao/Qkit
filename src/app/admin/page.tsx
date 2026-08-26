@@ -1,6 +1,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { AuditLogTable, type AuditLogEntry } from "@merqo/ui";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { vendorStallNames } from "@/lib/admin-vendor-names";
@@ -16,7 +17,7 @@ import type { Plan } from "@/lib/types";
 import { DEFAULT_PRICING } from "@/lib/pricing";
 import { DEFAULT_PLATFORM_SETTINGS } from "@/lib/platform-settings";
 import { type AdminVendorRow } from "./vendor-manage";
-import { PricingForm } from "./pricing-form";
+import { PricingSection } from "./pricing-section";
 import { BannerForm } from "./banner-form";
 import { ActivationFunnelView } from "./activation-funnel";
 import { Paginated } from "@/components/paginated";
@@ -124,7 +125,7 @@ export default async function AdminPage() {
     supabase.from("events").select("type, created_at"),
     supabase
       .from("admin_audit")
-      .select("id, action, target_id, detail, created_at")
+      .select("id, admin_id, action, target_id, detail, created_at")
       .order("created_at", { ascending: false })
       .limit(60),
     supabase
@@ -237,6 +238,15 @@ export default async function AdminPage() {
 
   const landingClicks = estat.byType["landing_cta"] ?? 0;
   const upgradeClicks = estat.byType["upgrade_cta"] ?? 0;
+
+  const auditEntries: AuditLogEntry[] = (auditRows ?? []).map((row) => ({
+    id: row.id,
+    actor: row.admin_id,
+    action: row.action,
+    target: row.target_id,
+    detail: humanizeDetail(row.detail) || null,
+    createdAt: row.created_at,
+  }));
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-5 py-7">
@@ -364,7 +374,7 @@ export default async function AdminPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Pricing
         </h2>
-        <PricingForm initial={pricing} />
+        <PricingSection initial={pricing} />
       </section>
 
       <section className="space-y-3">
@@ -378,32 +388,11 @@ export default async function AdminPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Recent admin activity
         </h2>
-        {(auditRows ?? []).length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            No admin actions yet.
-          </p>
-        ) : (
-          <Paginated pageSize={10} className="space-y-1.5">
-            {(auditRows ?? []).map((row) => (
-              <div
-                key={row.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-sm"
-              >
-                <span className="font-medium">
-                  {humanizeAction(row.action)}
-                  {humanizeDetail(row.detail) && (
-                    <span className="ml-2 font-normal text-muted-foreground">
-                      {humanizeDetail(row.detail)}
-                    </span>
-                  )}
-                </span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {row.created_at.slice(0, 16).replace("T", " ")}
-                </span>
-              </div>
-            ))}
-          </Paginated>
-        )}
+        <AuditLogTable
+          entries={auditEntries}
+          formatAction={humanizeAction}
+          emptyState="No admin actions yet."
+        />
       </section>
     </div>
   );

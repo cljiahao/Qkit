@@ -23,6 +23,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Admin console: the audit-trail viewer and pricing form now render through
+  the shared `@merqo/ui` `AuditLogTable`/`PricingForm` components instead of
+  hand-rolled JSX, matching loopkit/paykit/stockkit's admin consoles (same
+  underlying data and actions, rendering only); `pricing-form.tsx` is
+  renamed to `pricing-section.tsx` (`PricingSection`) to match paykit's
+  naming, and the audit log no longer paginates client-side (the shared
+  component renders every fetched row, same as its sibling-kit usage).
 - Booth settings: "Hold prep until the customer arrives" and "Default to
   walk-up order entry" moved out of "Hours & availability" into their own
   "Order flow" section (they're about how an order is entered/prepped, not
