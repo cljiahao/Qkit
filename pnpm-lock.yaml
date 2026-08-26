@@ -966,7 +966,7 @@ packages:
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
   '@merqo/ui@https://codeload.github.com/cljiahao/merqo-ui/tar.gz/5be3e7c7bd0a8d938fd8281946ecd9a36785726e':
-    resolution: {gitHosted: true, integrity: sha512-hoDaAak6NLoyfkeQ1oSgqleRu4UjfdnYs9iTfNmbIMZjIQ2OqsHFhYtyTWWQVJ5VZ+J1zMTTx6vSUdWVJ7U/SQ==, tarball: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/5be3e7c7bd0a8d938fd8281946ecd9a36785726e}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/cljiahao/merqo-ui/tar.gz/5be3e7c7bd0a8d938fd8281946ecd9a36785726e}
     version: 0.22.1
     engines: {node: '>=24'}
     peerDependencies:
