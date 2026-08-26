@@ -12,6 +12,13 @@ vi.mock("@/lib/merqo-vendor-profile", () => ({
   getOrCreateVendorProfile: getOrCreateVendorProfileMock,
 }));
 
+const { recordAuditMock } = vi.hoisted(() => ({
+  recordAuditMock: vi.fn(),
+}));
+vi.mock("@/lib/audit", () => ({
+  recordAudit: recordAuditMock,
+}));
+
 import { POST } from "@/app/api/merqo/vendor-provision/route";
 
 const USER_ID = "11111111-1111-1111-1111-111111111111";
@@ -53,6 +60,7 @@ describe("POST /api/merqo/vendor-provision", () => {
     vi.clearAllMocks();
     process.env.MERQO_PROVISION_SECRET = "test-secret";
     getOrCreateVendorProfileMock.mockResolvedValue({});
+    recordAuditMock.mockResolvedValue(undefined);
   });
 
   it("401 when the bearer is missing", async () => {
@@ -97,9 +105,19 @@ describe("POST /api/merqo/vendor-provision", () => {
       USER_ID,
       null,
     );
+    expect(recordAuditMock).toHaveBeenCalledWith({
+      admin_id: USER_ID,
+      action: "merqo_vendor_provision",
+      target_id: USER_ID,
+      detail: {
+        actor: "merqo_system",
+        already_existed: false,
+        plan: "free",
+      },
+    });
   });
 
-  it("second call (already exists) is a no-op — does not re-seed the profile", async () => {
+  it("second call (already exists) is a no-op — does not re-seed the profile, still audits", async () => {
     fromMock.mockReturnValue(
       vendorsTable({
         insertError: { code: "23505", message: "duplicate key" },
@@ -114,6 +132,16 @@ describe("POST /api/merqo/vendor-provision", () => {
       plan: "free",
     });
     expect(getOrCreateVendorProfileMock).not.toHaveBeenCalled();
+    expect(recordAuditMock).toHaveBeenCalledWith({
+      admin_id: USER_ID,
+      action: "merqo_vendor_provision",
+      target_id: USER_ID,
+      detail: {
+        actor: "merqo_system",
+        already_existed: true,
+        plan: "free",
+      },
+    });
   });
 
   it("re-provisioning an already-Pro vendor reports plan pro, not free", async () => {
@@ -178,5 +206,16 @@ describe("POST /api/merqo/vendor-provision", () => {
     );
     const res = await POST(req({ user_id: USER_ID }, "Bearer test-secret"));
     expect(res.status).toBe(500);
+  });
+
+  it("never audits when the route fails before a successful provision", async () => {
+    fromMock.mockReturnValue(
+      vendorsTable({
+        insertError: { code: "23503", message: "fk violation" },
+      }),
+    );
+    const res = await POST(req({ user_id: USER_ID }, "Bearer test-secret"));
+    expect(res.status).toBe(400);
+    expect(recordAuditMock).not.toHaveBeenCalled();
   });
 });
