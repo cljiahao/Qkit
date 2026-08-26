@@ -1,5 +1,30 @@
+import { DataTable, type DataTableColumn } from "@merqo/ui";
 import { formatPrice } from "@/lib/utils";
-import type { StatsSummary } from "@/lib/stats";
+import type { StatsSummary, TopItem } from "@/lib/stats";
+
+const columns: DataTableColumn<TopItem>[] = [
+  { header: "Item", cell: (i) => i.label },
+  {
+    header: "Sold",
+    cell: (i) => i.quantity,
+    className: "text-right font-mono tabular-nums text-muted-foreground",
+  },
+  {
+    header: "Profit",
+    cell: (i) => formatPrice(i.profit_cents),
+    className: "text-right font-mono tabular-nums",
+  },
+  {
+    header: "Margin",
+    cell: (i) => {
+      const marginPct = i.revenue_cents
+        ? (i.profit_cents / i.revenue_cents) * 100
+        : 0;
+      return `${Math.round(marginPct)}%`;
+    },
+    className: "text-right font-mono tabular-nums",
+  },
+];
 
 /**
  * Profitability view (Pro). Renders only when the vendor has entered at least
@@ -33,39 +58,7 @@ export function MarginTable({ summary }: { summary: StatsSummary }) {
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
-              <th className="pb-2 font-semibold">Item</th>
-              <th className="pb-2 text-right font-semibold">Sold</th>
-              <th className="pb-2 text-right font-semibold">Profit</th>
-              <th className="pb-2 text-right font-semibold">Margin</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranked.map((i) => {
-              const marginPct = i.revenue_cents
-                ? (i.profit_cents / i.revenue_cents) * 100
-                : 0;
-              return (
-                <tr key={i.label} className="border-b border-border/50">
-                  <td className="py-2 pr-2">{i.label}</td>
-                  <td className="py-2 text-right font-mono tabular-nums text-muted-foreground">
-                    {i.quantity}
-                  </td>
-                  <td className="py-2 text-right font-mono tabular-nums">
-                    {formatPrice(i.profit_cents)}
-                  </td>
-                  <td className="py-2 text-right font-mono tabular-nums">
-                    {Math.round(marginPct)}%
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <DataTable rows={ranked} columns={columns} getRowKey={(i) => i.label} />
     </section>
   );
 }

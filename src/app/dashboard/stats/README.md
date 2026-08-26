@@ -43,7 +43,8 @@ allTime })`: renders Revenue/Orders (as `StatBreakdownTile`s with a
     (completed/decided with a cancelled-count tooltip) and Refunds.
 - `margin-table.tsx` — `MarginTable({ summary })` (Pro): ranks
   `summary.topItems` by `profit_cents` (only where `cost_cents > 0`), shown
-  only when the vendor has entered at least one item cost.
+  only when the vendor has entered at least one item cost; renders via
+  `@merqo/ui`'s shared `DataTable`.
 - `options-breakdown.tsx` — `OptionsBreakdown({ options })`: horizontal bar
   list of the most-picked customization choices (e.g. "Iced", "Less sugar"),
   hidden when no item has options.
