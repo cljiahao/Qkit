@@ -40,6 +40,7 @@ import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
 import { PrintingSection } from "./printing-section";
 import { SocialLinksSection } from "./social-links-section";
+import { BookingStatusSection } from "./booking-status-section";
 import { CloseBoothControl } from "./close-booth-control";
 import { saveBooth, deleteBooth } from "./actions";
 import {
@@ -50,6 +51,7 @@ import {
 import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
 import type { PaymentConfig, SocialLinks } from "@/lib/types";
+import type { BookingStatus } from "@/lib/paykit/client";
 
 interface Props {
   vendorId: string;
@@ -72,6 +74,11 @@ interface Props {
     requires_arrival_confirm: boolean;
     walkup_default: boolean;
     print_enabled: boolean;
+    paykit_booking_id: string | null;
+    // Fetched server-side (paykit's GET /api/v1/bookings/{id}) — see
+    // BookingStatusSection's own doc comment for what null vs. undefined
+    // mean here.
+    bookingStatus?: BookingStatus | null;
   };
 }
 
@@ -106,6 +113,9 @@ export function BoothForm({
   );
   const [printEnabled, setPrintEnabled] = useState(
     initial?.print_enabled ?? false,
+  );
+  const [paykitBookingId, setPaykitBookingId] = useState<string | null>(
+    initial?.paykit_booking_id ?? null,
   );
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
@@ -143,6 +153,7 @@ export function BoothForm({
       requires_arrival_confirm: requiresArrivalConfirm,
       walkup_default: walkupDefault,
       print_enabled: printEnabled,
+      paykit_booking_id: paykitBookingId,
     };
     const parsed = boothFormSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -311,6 +322,14 @@ export function BoothForm({
                 aria-label="Default to walk-up order entry"
               />
             </div>
+
+            {walkupDefault && (
+              <BookingStatusSection
+                value={paykitBookingId}
+                onChange={setPaykitBookingId}
+                status={initial?.bookingStatus}
+              />
+            )}
           </Section>
         </div>
 

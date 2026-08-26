@@ -6,7 +6,11 @@ import {
   parseBoothHours,
   parseSocialLinks,
 } from "@/lib/schemas";
-import { getVendorConfig } from "@/lib/paykit/client";
+import {
+  getVendorConfig,
+  getBookingStatus,
+  type BookingStatus,
+} from "@/lib/paykit/client";
 import { BoothForm } from "../booth-form";
 import type { PaymentConfig } from "@/lib/types";
 
@@ -55,6 +59,21 @@ async function initialPayment(
   return initialPaymentFromMarker(boothPayment);
 }
 
+/**
+ * Read-only booking-status prefill for `BookingStatusSection`. `null` when
+ * no `paykit_booking_id` is set (nothing to fetch — the section then shows
+ * only the input field) or when paykit's read fails/degrades (unreachable,
+ * `PAYKIT_KIT_SECRET` unset) — a degrade here never blocks the rest of the
+ * page from rendering.
+ */
+async function initialBookingStatus(
+  paykitBookingId: string | null,
+): Promise<BookingStatus | null> {
+  if (!paykitBookingId) return null;
+  const result = await getBookingStatus(paykitBookingId);
+  return result.ok ? result.data : null;
+}
+
 export const revalidate = 0;
 
 interface Props {
@@ -70,7 +89,7 @@ export default async function EditBoothPage({ params }: Props) {
   const { data: booth } = await supabase
     .from("booths")
     .select(
-      "id, name, image_url, is_active, hours, menu_items, payment, social_links, requires_arrival_confirm, walkup_default, print_enabled",
+      "id, name, image_url, is_active, hours, menu_items, payment, social_links, requires_arrival_confirm, walkup_default, print_enabled, paykit_booking_id",
     )
     .eq("id", boothId)
     .maybeSingle();
@@ -90,6 +109,7 @@ export default async function EditBoothPage({ params }: Props) {
   }));
 
   const payment = await initialPayment(vendor.id, booth.payment);
+  const bookingStatus = await initialBookingStatus(booth.paykit_booking_id);
 
   return (
     <div className="mx-auto max-w-lg md:max-w-4xl">
@@ -112,6 +132,8 @@ export default async function EditBoothPage({ params }: Props) {
           requires_arrival_confirm: booth.requires_arrival_confirm,
           walkup_default: booth.walkup_default,
           print_enabled: booth.print_enabled,
+          paykit_booking_id: booth.paykit_booking_id,
+          bookingStatus,
         }}
       />
     </div>

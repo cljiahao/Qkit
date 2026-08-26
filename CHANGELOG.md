@@ -12,6 +12,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   small emoji icon next to its label, and any item with allergens set shows
   a compact icon-only summary next to the "Advanced" toggle — a vendor
   scanning the list can see allergen info without expanding every item.
+- Event-mode booths can now link a paykit booking: a vendor-pasted
+  `paykit_booking_id` on the booth (`booths.paykit_booking_id`, shown only
+  while "Default to walk-up order entry" is on) surfaces that booking's
+  live deposit/balance status inline on the booth edit page, via paykit's
+  new `GET /api/v1/bookings/{booking_id}` (`getBookingStatus`) — no more
+  checking two separate dashboards for one event's order vs. payment
+  status. No lookup/matching by name or phone; the vendor already owns
+  both sides.
 - Menu editor: a "Duplicate" action per item, creating a fully independent
   copy (own id, "(copy)" suffix, deep-cloned option groups/allergens) —
   qkit has no shared/live-linked modifier groups yet, so this is always a
@@ -27,6 +35,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Admin console: the audit-trail viewer and pricing form now render through
+  the shared `@merqo/ui` `AuditLogTable`/`PricingForm` components instead of
+  hand-rolled JSX, matching loopkit/paykit/stockkit's admin consoles (same
+  underlying data and actions, rendering only); `pricing-form.tsx` is
+  renamed to `pricing-section.tsx` (`PricingSection`) to match paykit's
+  naming, and the audit log no longer paginates client-side (the shared
+  component renders every fetched row, same as its sibling-kit usage).
 - Booth settings: "Hold prep until the customer arrives" and "Default to
   walk-up order entry" moved out of "Hours & availability" into their own
   "Order flow" section (they're about how an order is entered/prepped, not

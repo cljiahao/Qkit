@@ -322,6 +322,7 @@ export async function saveBooth(
     requires_arrival_confirm: data.requires_arrival_confirm,
     walkup_default: data.walkup_default,
     print_enabled: data.print_enabled,
+    paykit_booking_id: data.paykit_booking_id,
   };
 
   const result = await upsertBoothRow(supabase, row, data.boothId, user.id);
