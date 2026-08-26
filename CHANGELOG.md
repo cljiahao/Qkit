@@ -8,6 +8,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Admin overview now surfaces stuck orders: a "Stuck orders" stat tile plus
+  a booth/status/elapsed-time list flagging orders sitting in a
+  non-terminal status (pending/confirmed/preparing/ready) for more than 30
+  minutes, derived from `order_status_events` (`src/lib/stuck-orders.ts`).
+
 - Menu editor: each allergen checkbox in the "Advanced" picker now shows a
   small emoji icon next to its label, and any item with allergens set shows
   a compact icon-only summary next to the "Advanced" toggle — a vendor

@@ -24,6 +24,9 @@ import { Paginated } from "@/components/paginated";
 import { Stat } from "./stat";
 import { ResolveRequestButton } from "./resolve-request-button";
 import { ResolveMessageButton } from "./resolve-message-button";
+import { StuckOrdersSection } from "./stuck-orders-section";
+import { isTerminal } from "@/lib/orders";
+import { findStuckOrders, statusSinceByOrder } from "@/lib/stuck-orders";
 
 // Lazy-loaded: pulls in recharts, code-split out of the initial admin bundle.
 const TrendChart = dynamic(() =>
@@ -120,8 +123,10 @@ export default async function AdminPage() {
       .from("vendors")
       .select("id, plan, created_at")
       .order("created_at", { ascending: false }),
-    supabase.from("booths").select("id, vendor_id, is_active"),
-    supabase.from("orders").select("booth_id, status, total_cents, created_at"),
+    supabase.from("booths").select("id, name, vendor_id, is_active"),
+    supabase
+      .from("orders")
+      .select("id, booth_id, status, total_cents, created_at"),
     supabase.from("events").select("type, created_at"),
     supabase
       .from("admin_audit")
@@ -187,6 +192,34 @@ export default async function AdminPage() {
   const booths = boothRows ?? [];
   const orders = orderRows ?? [];
   const events = eventRows ?? [];
+
+  // Stuck orders: non-terminal orders sitting past a same-day queue's normal
+  // window. Only queried for the orders that could possibly qualify — a
+  // terminal order's history is never read. See @/lib/stuck-orders.
+  const nonTerminalOrders = orders.filter((o) => !isTerminal(o.status));
+  const { data: statusEventRows } = nonTerminalOrders.length
+    ? await supabase
+        .from("order_status_events")
+        .select("order_id, to_status, created_at")
+        .in(
+          "order_id",
+          nonTerminalOrders.map((o) => o.id),
+        )
+    : { data: [] };
+  const boothNameById = new Map(booths.map((b) => [b.id, b.name]));
+  const statusSince = statusSinceByOrder(
+    nonTerminalOrders,
+    statusEventRows ?? [],
+  );
+  const stuckOrders = findStuckOrders(
+    nonTerminalOrders.map((o) => ({
+      id: o.id,
+      booth_id: o.booth_id,
+      status: o.status,
+      status_since: statusSince.get(o.id) ?? o.created_at,
+    })),
+    now,
+  );
 
   const vstat = summarizeVendors(vendors, now);
   const estat = summarizeEvents(events, now);
@@ -322,6 +355,11 @@ export default async function AdminPage() {
         </section>
       )}
 
+      <StuckOrdersSection
+        stuckOrders={stuckOrders}
+        boothNameById={boothNameById}
+      />
+
       {/* North-star band — qkit revenue leads; active vendors is the leading
           indicator behind it. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -358,6 +396,7 @@ export default async function AdminPage() {
           value={booths.filter((b) => b.is_active).length}
           delay={480}
         />
+        <Stat label="Stuck orders" value={stuckOrders.length} delay={540} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">

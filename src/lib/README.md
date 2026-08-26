@@ -323,6 +323,20 @@ hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   `booth_remaining_stock` JSONB RPC result into a typed per-item remaining-
   count map (Postgres is authoritative; this just reports it to the cart UI).
 - `stock.test.ts` — tests parsing of malformed/partial remaining-stock data.
+- `stuck-orders.ts` — `statusSinceByOrder(orders, events)`: maps each order to
+  when it entered its CURRENT status — the latest matching
+  `order_status_events` row's `created_at` (migration 0078), or the order's
+  own `created_at` when there's no event yet (an order that's never
+  advanced past its initial placement, or a stale/mismatched latest event —
+  `recordOrderStatusEvent`, `src/lib/audit.ts`, is best-effort and can
+  silently fail). `findStuckOrders(orders, nowMs)`: non-terminal orders
+  (`@/lib/orders`'s `isTerminal`) sitting past `STUCK_THRESHOLD_MS` (30 min)
+  in their current status, longest-stuck first — the `/admin` overview's
+  "Stuck orders" stat + list (`admin/stuck-orders-section.tsx`).
+- `stuck-orders.test.ts` — tests the events-vs-created_at fallback
+  (no events, a matching latest event, a mismatched/stale latest event, and
+  events belonging to other orders) and threshold/terminal-status flagging
+  across all four non-terminal statuses plus sort order.
 - `supabase/` — the three Supabase client factories (browser/server/service-
   role) plus entitlement/user/vendor read helpers; see its own README.
 - `types.ts` — the hand-maintained mirror of the `qkit` Postgres schema: core
@@ -385,7 +399,8 @@ payloads via `orderRowSchema`) and `reorder-handoff.ts`/`cart-storage.ts`
 `BOARD_ORDER_COLUMNS` is shared between the dashboard's server query and
 `src/hooks/use-realtime-orders.ts`'s resync query so both stay in sync.
 `stats.ts` feeds `sales-summary.ts` (the frozen `/api/v1/sales/summary`
-contract) and the admin/vendor stats dashboards. `plan.ts`'s `Entitlement`
+contract) and the admin/vendor stats dashboards. `stuck-orders.ts` feeds the
+`/admin` overview's "Stuck orders" stat + `StuckOrdersSection` list. `plan.ts`'s `Entitlement`
 feeds `booth-access.ts`'s serveability calculation, mirroring the
 `booth_servable` SQL function in `supabase/migrations/`.
 
