@@ -71,14 +71,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // merqo push-provisions this vendor over a bearer secret, not a signed-in
-  // admin — there's no real admin (or merqo-team user) id to attribute this
-  // to. Sentinel convention (see recordAudit's docstring, @/lib/audit):
-  // admin_id is the vendor's own auth.users id (the only id guaranteed to
-  // satisfy admin_id's FK here — it's the row that was just provisioned),
-  // and detail.actor = "merqo_system" documents that this action was taken
-  // BY merqo ON this vendor, not something the vendor did to themselves.
-  // Best-effort — never fails the response the caller is waiting on.
+  // No signed-in admin here — admin_id is the vendor's own id (satisfies
+  // the FK) and detail.actor marks this as merqo-, not vendor-, initiated.
   await recordAudit({
     admin_id: user_id,
     action: "merqo_vendor_provision",
