@@ -149,6 +149,14 @@ currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
 hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   for the admin/vendor upgrade-to-Pro request flow.
 - `merqo-upgrade-request.test.ts` — tests the three outcome branches.
+- `merqo-vendor-activity.ts` — `computeVendorActivity(vendor, booths, orders,
+passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
+/api/merqo/vendor-activity` — orders/revenue (30d) and booth counts, plus a
+  `status` delegated to `admin-vendor-health.ts`'s `buildVendorHealth` so it
+  matches the admin console's own triage rather than re-deriving it.
+- `merqo-vendor-activity.test.ts` — tests the 30d order/revenue rollup, the
+  zeroed-fresh-vendor case, and that an open message/expiring pass surface
+  the same `attention`/`expiring` statuses the admin console shows.
 - `merqo-vendor-profile.ts` — `getOrCreateVendorProfile`/`upsertVendorProfile`:
   cross-schema helper calling merqo's `get_or_create_vendor_profile`/
   `upsert_vendor_profile` RPCs (`supabase.schema("merqo").rpc(...)`) so

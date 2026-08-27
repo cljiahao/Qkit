@@ -670,6 +670,24 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
   `src/proxy.ts` (`export proxy`); switched the `check` script from `next lint`
   (removed in 16) to the ESLint CLI with `eslint-config-next`'s flat config.
 
+## [0.1.1] - 2026-08-27
+
+### Added
+
+- New cross-kit endpoint `GET /api/merqo/vendor-activity?email=` for merqo's
+  admin vendor-detail page: bearer-authed (`MERQO_METRICS_SECRET`, same
+  secret as `/api/merqo/metrics`), resolves the vendor by email and returns
+  `{active, plan, status, metrics, lastActivityAt}` — `status` reuses
+  `admin-vendor-health.ts`'s exact `VendorStatus` triage (the same one the
+  admin console renders), `metrics` is `"Orders (30d)"`/`"Revenue (30d)"`/
+  `"Booths"`. 404s when the vendor has no `vendors` row at all (never
+  touched qkit); a known-but-inactive vendor isn't a case qkit's data model
+  produces past that point, so `active` is always `true` once past the 404
+  gate. Pure aggregation lives in `computeVendorActivity`
+  (`src/lib/merqo-vendor-activity.ts`); see
+  `docs/business/2026-08-26-cross-kit-vendor-activity-design.md` (outside
+  this repo) for the shared cross-kit contract.
+
 ## [0.1.0] - 2026-06-05
 
 ### Added
