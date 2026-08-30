@@ -1,7 +1,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AuditLogTable, type AuditLogEntry } from "@merqo/ui";
+import type { AuditLogEntry } from "@merqo/ui";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { vendorStallNames } from "@/lib/admin-vendor-names";
@@ -25,6 +25,7 @@ import { Stat } from "./stat";
 import { ResolveRequestButton } from "./resolve-request-button";
 import { ResolveMessageButton } from "./resolve-message-button";
 import { StuckOrdersSection } from "./stuck-orders-section";
+import { AdminAuditLog } from "./audit-log";
 import { isTerminal } from "@/lib/orders";
 import { findStuckOrders, statusSinceByOrder } from "@/lib/stuck-orders";
 
@@ -72,11 +73,6 @@ type MerqoSupportMessagesSchema = {
 };
 
 export const revalidate = 0;
-
-function humanizeAction(action: string): string {
-  const s = action.replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 function humanizeDetail(detail: unknown): string {
   if (!detail || typeof detail !== "object") return "";
@@ -427,11 +423,7 @@ export default async function AdminPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Recent admin activity
         </h2>
-        <AuditLogTable
-          entries={auditEntries}
-          formatAction={humanizeAction}
-          emptyState="No admin actions yet."
-        />
+        <AdminAuditLog entries={auditEntries} />
       </section>
     </div>
   );

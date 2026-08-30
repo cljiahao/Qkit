@@ -85,6 +85,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   hand copy had already drifted (it used the primary color, not the real
   `status-preparing` token).
 
+### Fixed
+
+- `/admin` (the admin overview) returned a 500 for every admin: `page.tsx`
+  is a Server Component and passed `formatAction={humanizeAction}` — a
+  function — straight to `@merqo/ui`'s `AuditLogTable`, which is a Client
+  Component (the package ships as one all-`"use client"` bundle), and React
+  cannot serialize a function across the server→client boundary. The
+  callback now lives in a small `"use client"` wrapper
+  (`src/app/admin/audit-log.tsx`, `AdminAuditLog`); the page hands over only
+  the serializable `entries` array. Broken since the `AuditLogTable`
+  adoption; not caught earlier because `/admin` is dynamic, so the build
+  never renders it.
+- `/dashboard/stats` had the same latent crash from the `MarginTable` →
+  `@merqo/ui` `DataTable` adoption — `columns` (with `cell`/`getRowKey`
+  functions) was passed from a Server Component. `margin-table.tsx` is now
+  `"use client"`. It only surfaced for a Pro vendor who had entered per-item
+  costs, so it had not yet been hit in production.
+
 ### Added
 
 - printkit print-job integration: a new `orders.print_status` enum column

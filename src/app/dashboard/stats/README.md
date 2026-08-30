@@ -44,7 +44,10 @@ allTime })`: renders Revenue/Orders (as `StatBreakdownTile`s with a
 - `margin-table.tsx` — `MarginTable({ summary })` (Pro): ranks
   `summary.topItems` by `profit_cents` (only where `cost_cents > 0`), shown
   only when the vendor has entered at least one item cost; renders via
-  `@merqo/ui`'s shared `DataTable`.
+  `@merqo/ui`'s shared `DataTable`. `"use client"` — its `columns`
+  (`cell`/`getRowKey` functions) can't cross the server→client boundary into
+  `DataTable`, which is a Client Component because `@merqo/ui` ships as one
+  all-`"use client"` bundle.
 - `options-breakdown.tsx` — `OptionsBreakdown({ options })`: horizontal bar
   list of the most-picked customization choices (e.g. "Iced", "Less sugar"),
   hidden when no item has options.
