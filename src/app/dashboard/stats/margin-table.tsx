@@ -1,3 +1,10 @@
+"use client";
+
+// Client component: @merqo/ui ships as an all-"use client" bundle, so its
+// DataTable is a Client Component. `columns` here holds `cell`/`getRowKey`
+// functions — non-serializable props that would throw if this stayed a Server
+// Component and passed them across the server→client boundary.
+
 import { DataTable, type DataTableColumn } from "@merqo/ui";
 import { formatPrice } from "@/lib/utils";
 import type { StatsSummary, TopItem } from "@/lib/stats";
