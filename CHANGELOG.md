@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `docs/OPS-RUNBOOK.md`: symptom-level operational triage doc for live-event
+  issues, separating what's self-serve (a vendor's own board fixes a stuck
+  order, Vercel's Promote-to-Production for a bad deploy) from the
+  fail-closed integrations whose missing env var looks identical to a bug,
+  from what genuinely needs a dev.
+
 - Admin overview now surfaces stuck orders: a "Stuck orders" stat tile plus
   a booth/status/elapsed-time list flagging orders sitting in a
   non-terminal status (pending/confirmed/preparing/ready) for more than 30
