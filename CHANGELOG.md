@@ -14,6 +14,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   fail-closed integrations whose missing env var looks identical to a bug,
   from what genuinely needs a dev.
 
+- `docs/meta/2026-08-15-master-task-registry.md`: recorded a deferred idea
+  (read-only admin order lookup) and why an admin order-write override was
+  explicitly rejected before the first live event.
+
 - Admin overview now surfaces stuck orders: a "Stuck orders" stat tile plus
   a booth/status/elapsed-time list flagging orders sitting in a
   non-terminal status (pending/confirmed/preparing/ready) for more than 30
