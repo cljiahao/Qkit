@@ -265,3 +265,25 @@ registry's D/R items track, so it neither closed nor obsoleted anything here.
 (Counts are by distinct ID as enumerated in the 2026-07-02 doc; aliased pairs
 like T25/R2 or T4/R4 are counted once each, matching how the original doc
 presented them as separate bullets.)
+
+---
+
+## Deferred (2026-09-01) — admin read-only order lookup
+
+Raised during a production-wiring check ahead of the first live event
+(qkit.merqo.io, ~200 customers testing): admin (`src/app/admin/actions.ts`)
+has no order-level lever at all today — only vendor plan/pass/pricing/
+banner/support-message actions. A stuck order can only be advanced/
+cancelled by the owning vendor from their own dashboard board; this is the
+intended RLS boundary (vendor owns their orders, admin owns the vendor
+relationship), not an oversight.
+
+Explicitly decided **not** to build an admin order-override capability
+before the event — new service-role write access into another vendor's
+orders is real security surface, wrong thing to rush the night before a
+live event. If a genuine recurring need shows up afterward, worth
+reconsidering, but scope any future work to a **read-only** order lookup
+(search by order #/vendor, view status) — no write path, no RLS risk —
+rather than a write override. Today's "Stuck Orders" tile + each vendor's
+"Last order" timestamp on `/admin` already cover the realistic failure
+signal.
