@@ -1,9 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Plus, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ProLock } from "@/components/pro-lock";
@@ -26,6 +36,10 @@ function centsToDollars(cents?: number): string {
   return cents == null ? "" : centsToDollarString(cents);
 }
 
+function hasAdvancedSet(choice: OptionChoice): boolean {
+  return choice.cost_delta_cents != null || (choice.allergens?.length ?? 0) > 0;
+}
+
 // Same union logic as item-customizer.tsx's live customer-facing badge.
 function effectiveAllergens(
   itemAllergens: AllergenTag[],
@@ -45,20 +59,10 @@ export function OptionGroupsEditor({
   entitlement,
   itemAllergens,
 }: Props) {
-  // Advanced (cost + allergens) is collapsed by default per choice — most
-  // choices need neither, price is the only thing every vendor cares about.
-  const [expandedChoices, setExpandedChoices] = useState<Set<string>>(
-    new Set(),
-  );
-
-  function toggleAdvanced(choiceId: string) {
-    setExpandedChoices((prev) => {
-      const next = new Set(prev);
-      if (next.has(choiceId)) next.delete(choiceId);
-      else next.add(choiceId);
-      return next;
-    });
-  }
+  // Advanced (cost + allergens) opens in a modal, one at a time — an
+  // accordion here left every previously-opened choice's panel expanded
+  // underneath the next, which got unreadable fast.
+  const [openAdvancedFor, setOpenAdvancedFor] = useState<string | null>(null);
 
   // canHaveOptionGroups(count) asks "may an item carry `count` groups?" — so the
   // cap is hit when adding one more (groups.length + 1) is not allowed.
@@ -146,16 +150,15 @@ export function OptionGroupsEditor({
           key={group.id}
           className="space-y-3 rounded-lg border border-border bg-background p-3"
         >
-          {/* Group identity + type, one compact row (was two full-width rows)
-              — a one-time-per-group setting, kept visually lighter than the
-              repeated choice rows below so it reads as a header, not another
-              item in the list. */}
+          {/* Group identity + type, one compact row — a one-time-per-group
+              setting, kept visually heavier (font-medium) than the choices
+              below so it reads as a header, not another row in the list. */}
           <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Group name (e.g. Size, Spice, Add-ons)"
               value={group.label}
               onChange={(e) => updateGroup(gi, { label: e.target.value })}
-              className="min-w-[10rem] flex-1 rounded-lg"
+              className="min-w-[10rem] flex-1 rounded-lg font-medium"
             />
             <ToggleGroup
               type="single"
@@ -191,71 +194,65 @@ export function OptionGroupsEditor({
             </Button>
           </div>
 
-          {/* choices */}
-          <div className="space-y-2">
-            {group.choices.map((choice, ci) => {
-              const advancedOpen = expandedChoices.has(choice.id);
-              return (
-                <div
-                  key={choice.id}
-                  className="space-y-1.5 rounded-lg border border-transparent"
+          {/* Choices, visually nested under the header via a distinct
+              background and indent rather than a decorative border. */}
+          <div className="space-y-1.5 rounded-lg bg-muted/40 p-2 pl-3">
+            {group.choices.map((choice, ci) => (
+              <div key={choice.id} className="flex gap-2">
+                <Input
+                  placeholder="Choice (e.g. Small)"
+                  value={choice.label}
+                  onChange={(e) => updateChoiceLabel(gi, ci, e.target.value)}
+                  className="rounded-lg bg-background"
+                />
+                {/* Price matters to every vendor — always visible, not
+                    behind the Advanced dialog. */}
+                <div className="relative w-28 shrink-0">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="Price (opt.)"
+                    value={centsToDollars(choice.price_delta_cents)}
+                    onChange={(e) => setChoicePrice(gi, ci, e.target.value)}
+                    className="rounded-lg bg-background pl-6"
+                  />
+                </div>
+                <Dialog
+                  open={openAdvancedFor === choice.id}
+                  onOpenChange={(open) =>
+                    setOpenAdvancedFor(open ? choice.id : null)
+                  }
                 >
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Choice (e.g. Small)"
-                      value={choice.label}
-                      onChange={(e) =>
-                        updateChoiceLabel(gi, ci, e.target.value)
-                      }
-                      className="rounded-lg"
-                    />
-                    {/* Price matters to every vendor — always visible, not
-                        behind the Advanced accordion below. */}
-                    <div className="relative w-28 shrink-0">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        inputMode="decimal"
-                        placeholder="Price (opt.)"
-                        value={centsToDollars(choice.price_delta_cents)}
-                        onChange={(e) => setChoicePrice(gi, ci, e.target.value)}
-                        className="rounded-lg pl-6"
-                      />
-                    </div>
+                  <DialogTrigger asChild>
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
-                      onClick={() => removeChoice(gi, ci)}
-                      aria-label="Remove choice"
-                      disabled={group.choices.length <= 1}
+                      className="relative shrink-0 rounded-lg bg-background text-muted-foreground"
+                      aria-label={`Advanced options for ${choice.label || "this choice"}`}
                     >
-                      <Trash2 className="size-4" />
+                      <Settings2 className="size-4" />
+                      {hasAdvancedSet(choice) && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary"
+                        />
+                      )}
                     </Button>
-                  </div>
-
-                  {/* Advanced: extra cost + allergens — collapsed by default,
-                      most choices need neither. */}
-                  <button
-                    type="button"
-                    onClick={() => toggleAdvanced(choice.id)}
-                    className="flex items-center gap-1 pl-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                  >
-                    {advancedOpen ? (
-                      <ChevronDown className="size-3" />
-                    ) : (
-                      <ChevronRight className="size-3" />
-                    )}
-                    Advanced
-                  </button>
-                  {advancedOpen && (
-                    <div className="mt-1 space-y-2 pb-2 pl-1">
-                      <p className="text-xs text-muted-foreground">
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>
+                        Advanced: {choice.label || "Choice"}
+                      </DialogTitle>
+                      <DialogDescription>
                         Extra cost and allergens only when this choice is
                         picked.
-                      </p>
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
                       <div className="relative w-32">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                           $
@@ -302,7 +299,7 @@ export function OptionGroupsEditor({
                         );
                         return (
                           effective.length > 0 && (
-                            <div className="space-y-1 border-t border-border/60 pt-2">
+                            <div className="space-y-1 border-t border-border/60 pt-3">
                               <p className="text-xs font-medium text-muted-foreground">
                                 Customer sees when picked:
                               </p>
@@ -328,10 +325,26 @@ export function OptionGroupsEditor({
                         );
                       })()}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button type="button">Done</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 rounded-lg bg-background text-muted-foreground hover:text-destructive"
+                  onClick={() => removeChoice(gi, ci)}
+                  aria-label="Remove choice"
+                  disabled={group.choices.length <= 1}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
             <Button
               type="button"
               variant="ghost"

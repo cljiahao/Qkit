@@ -152,6 +152,14 @@ available`, matching each item by exact name to update in place rather
   booth →" deep link, and a general "Manage printers in printkit ↗" link
   right under it, doing the same job worse (no auto-selected booth). The
   general link now only shows when the booth-scoped one isn't available.
+- `OptionGroupsEditor`'s per-choice "Advanced" (cost + allergens) moved from
+  an inline accordion to a `Dialog` — leaving several choices' panels open
+  at once (easy to do, nothing auto-closed them) turned the editor unreadable
+  fast. The trigger grows a small dot once a choice has a cost or an
+  allergen set, so that's still visible without opening every dialog. Group
+  headers and their choices were also hard to tell apart (same input size,
+  no separation) — the header row is now weighted `font-medium` and the
+  choices sit indented in their own tinted sub-panel underneath it.
 
 ### Changed
 

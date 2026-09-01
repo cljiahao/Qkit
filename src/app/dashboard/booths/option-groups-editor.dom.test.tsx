@@ -95,6 +95,50 @@ describe("OptionGroupsEditor advanced section", () => {
   });
 });
 
+describe("OptionGroupsEditor advanced modal", () => {
+  it("opens exactly one choice's Advanced dialog, scoped to that choice", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    const triggers = screen.getAllByRole("button", { name: /advanced/i });
+
+    await user.click(triggers[0]!);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { name: /Regular/i }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    await user.click(triggers[1]!);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { name: /Oat Milk/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("closes the dialog via Done", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("marks the trigger once a choice has cost or an allergen set", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    const trigger = screen.getAllByRole("button", { name: /advanced/i })[0]!;
+    expect(trigger.querySelector('[aria-hidden="true"].bg-primary')).toBeNull();
+
+    await user.click(trigger);
+    await user.click(screen.getAllByLabelText(/dairy/i)[0]!);
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    expect(
+      trigger.querySelector('[aria-hidden="true"].bg-primary'),
+    ).not.toBeNull();
+  });
+});
+
 describe("OptionGroupsEditor customer-sees preview", () => {
   it("shows nothing when neither the item nor the choice has allergens", async () => {
     const user = userEvent.setup();
