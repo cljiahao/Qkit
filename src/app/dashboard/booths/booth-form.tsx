@@ -194,8 +194,12 @@ export function BoothForm({
           Social right after Hours/Order flow; md+ keeps the two-column split.
           Both columns are natural-height (no row-span), each sized to its own
           content — the old row-span-2 balancing act assumed Menu was the tall
-          side, which stopped being true once it became a one-line summary. */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start">
+          side, which stopped being true once it became a one-line summary.
+          gap-x only, no gap-y: every Section card already carries its own
+          trailing mb-5 (ticket-section.tsx) — a row-gap here would double up
+          with that at the div1→div2 boundary specifically (the only place a
+          grid *row* gap is visible once mobile stacks the two columns). */}
+      <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 md:items-start">
         <div>
           <Section
             icon={<Store className="size-5" />}
@@ -277,13 +281,7 @@ export function BoothForm({
             title="Order flow"
             description="Fine-tune arrival timing and walk-up entry."
           >
-            <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-              <Checkbox
-                checked={requiresArrivalConfirm}
-                onCheckedChange={(checked) =>
-                  setRequiresArrivalConfirm(checked === true)
-                }
-              />
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <span className="text-sm">
                 <span className="font-medium">
                   Hold prep until the customer arrives
@@ -294,7 +292,12 @@ export function BoothForm({
                   their status page.
                 </span>
               </span>
-            </label>
+              <Switch
+                checked={requiresArrivalConfirm}
+                onCheckedChange={setRequiresArrivalConfirm}
+                aria-label="Hold prep until the customer arrives"
+              />
+            </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <span className="text-sm">

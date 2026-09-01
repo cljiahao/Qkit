@@ -19,9 +19,12 @@ available`, matching each item by exact name to update in place rather
   between the two pages. `booth-form.tsx`'s Menu section is now a read-only
   item-count link into the new page — its layout is 2 natural-height grid
   columns now, not the old `row-span-2` sized around the full menu editor
-  that used to live there. A vendor with zero items can now download a CSV
-  template (`menuCsvTemplate()`) showing the expected columns instead of
-  Export CSV being simply disabled with nothing to give them.
+  that used to live there, and the grid gap is horizontal-only (a row-gap
+  on top of every `Section` card's own trailing margin was doubling the
+  visible gap where the two columns stack on mobile). A vendor with zero
+  items can now download a CSV template (`menuCsvTemplate()`) showing the
+  expected columns instead of Export CSV being simply disabled with nothing
+  to give them.
 
 - `docs/OPS-RUNBOOK.md`: symptom-level operational triage doc for live-event
   issues, separating what's self-serve (a vendor's own board fixes a stuck
@@ -65,6 +68,10 @@ available`, matching each item by exact name to update in place rather
 
 ### Changed
 
+- `booth-form.tsx`'s "Order flow" section: both controls are now `Switch`
+  ("Hold prep until the customer arrives" was a `Checkbox`, inconsistent
+  with its neighbor "Default to walk-up order entry") — standardized to
+  match every other standalone on/off feature toggle in the app.
 - Stats dashboard's margin table (`MarginTable`, `/dashboard/stats`) now
   renders through the shared `@merqo/ui` `DataTable` component instead of
   hand-rolled JSX, matching the `AuditLogTable` adoption pattern already
