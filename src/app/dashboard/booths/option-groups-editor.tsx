@@ -11,7 +11,7 @@ import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
 import { ALLERGEN_TAGS, type AllergenTag } from "@/lib/schemas";
 import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import type { OptionChoice, OptionGroup } from "@/lib/types";
-import { ALLERGEN_ICONS } from "./allergen-icons";
+import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
 
 interface Props {
   groups: OptionGroup[];

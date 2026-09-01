@@ -40,7 +40,7 @@ import { canAddMenuItem, type Entitlement } from "@/lib/plan";
 import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import { ALLERGEN_TAGS, type MenuItemFormInput } from "@/lib/schemas";
 import type { OptionGroup } from "@/lib/types";
-import { ALLERGEN_ICONS } from "./allergen-icons";
+import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
 
 interface Props {
   vendorId: string;

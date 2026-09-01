@@ -36,6 +36,13 @@ factories, respectively).
   table) and `requireAdmin()`, the `/admin` route/action gate that 404s (not
   403s, to avoid revealing the route) signed-out or non-admin users.
 - `admin.test.ts` — tests the admin gate's 404-on-unauthorized behavior.
+- `allergen-icons.ts` — `ALLERGEN_ICONS: Record<AllergenTag, string>`, an
+  emoji per `ALLERGEN_TAGS` value. Moved here 2026-09-01 (was
+  `dashboard/booths/allergen-icons.ts`) once the customer-facing
+  `components/allergen-badges.tsx`/`item-customizer.tsx` needed the same
+  icon set — a shared `lib/` module rather than a dashboard-scoped one
+  reaching across into `components/`. Rendering-only, no schema/data-model
+  change.
 - `booth-access.ts` — `servableBoothIds`/`isBoothPaused`: which of a vendor's
   active booths are customer-servable under their entitlement (unlimited plans
   serve all; free serves only the oldest `maxBooths`), mirroring the

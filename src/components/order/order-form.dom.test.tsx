@@ -45,6 +45,11 @@ const KOPI: MenuItem = {
   price_cents: 350,
   available: true,
 };
+const KOPI_WITH_ALLERGENS: MenuItem = {
+  ...KOPI,
+  id: "kopi-allergens",
+  allergens: ["caffeine", "dairy"],
+};
 const TEH: MenuItem = {
   id: "teh",
   name: "Teh",
@@ -60,12 +65,12 @@ const TEH: MenuItem = {
   ],
 };
 
-function renderForm(closed = false) {
+function renderForm(closed = false, menuItems: MenuItem[] = [KOPI, TEH]) {
   return render(
     <OrderForm
       code="code123"
       boothId="b1"
-      menuItems={[KOPI, TEH]}
+      menuItems={menuItems}
       closed={closed}
     />,
   );
@@ -365,6 +370,32 @@ describe("OrderForm cart", () => {
     renderForm(true);
     expect(screen.getByRole("button", { name: "Booth closed" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+  });
+});
+
+describe("OrderForm allergen badges", () => {
+  it("shows an icon badge for each of the item's allergens, tappable while browsing closed", () => {
+    renderForm(true, [KOPI_WITH_ALLERGENS]);
+    expect(
+      screen.getByRole("button", { name: "Contains caffeine" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Contains dairy" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows nothing for an item with no allergens", () => {
+    renderForm(false, [KOPI]);
+    expect(
+      screen.queryByRole("button", { name: /^Contains /i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reveals the allergen name on tap", async () => {
+    const user = userEvent.setup();
+    renderForm(false, [KOPI_WITH_ALLERGENS]);
+    await user.click(screen.getByRole("button", { name: "Contains dairy" }));
+    expect(await screen.findByText("Dairy")).toBeInTheDocument();
   });
 });
 

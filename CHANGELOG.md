@@ -119,6 +119,17 @@ available`, matching each item by exact name to update in place rather
   items in them — a booth with 0 or 1 category still renders as a single
   flat "Menu" list, unchanged.
 
+- Customer-facing menu cards now show a tappable icon-only badge per
+  allergen (`AllergenBadges`, `@/components/allergen-badges`) — previously
+  allergen info only ever surfaced inside the Customize sheet, invisible
+  for an item with no option groups (no Customize button to open) and
+  whenever the booth is closed and browse-only (the sheet can't open at
+  all). Tap or hover reveals the name via `InfoTooltip`'s `trigger="tap"`
+  mode. The Customize sheet's own allergen badges now pair each one with
+  its icon too, matching the vendor-side pickers instead of text-only.
+  `ALLERGEN_ICONS` moved from `dashboard/booths/allergen-icons.ts` to
+  `lib/allergen-icons.ts` so both surfaces share one icon set.
+
 ### Fixed
 
 - A handful of leftover em dashes in user-facing copy across the booths
@@ -127,6 +138,11 @@ available`, matching each item by exact name to update in place rather
 - Menu CSV import preview silently omitted each row's description (the
   import itself always carried it through correctly — the preview list
   just under-displayed it) — now shows `Name (description) $price`.
+- Menu-manager's CSV-format explanation was a permanent 4-line paragraph
+  under the "Menu" heading — moved into an `InfoTooltip` (same one-sentence-
+  behind-`(i)` pattern `payment-section.tsx`/`settings-form.tsx` already
+  use), wrapped to a fixed width so it reads as short lines instead of one
+  unbroken one.
 
 ### Changed
 
