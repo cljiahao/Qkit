@@ -1,8 +1,6 @@
 import type { MenuItemFormInput } from "./schemas";
 
-// Hand-rolled rather than a dependency — the shape is 4 fixed columns.
-// Handles quoted fields with embedded commas/quotes; does not handle a
-// literal newline inside a quoted field (row-per-line parsing).
+// Hand-rolled, not a dependency — 4 fixed columns. No embedded-newline support.
 
 function csvField(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
@@ -22,9 +20,7 @@ export function menuItemsToCsv(items: MenuItemFormInput[]): string {
   return [CSV_HEADER, ...rows].join("\n");
 }
 
-/** Blank starting point for a vendor with no items yet — same shape
- * menuItemsToCsv writes, with two example rows showing the expected format
- * (including a blank price, since price is optional). */
+/** Example rows for a vendor with no items yet, showing the expected format. */
 export function menuCsvTemplate(): string {
   return [
     CSV_HEADER,
@@ -71,10 +67,8 @@ export interface CsvMenuRow {
   error?: string;
 }
 
-/** Parses the same `name,description,price,available` shape menuItemsToCsv
- * writes. The first non-empty line is always treated as the header and
- * skipped. A row with no name, or an unparseable price, comes back with
- * `error` set instead of being dropped — the import preview surfaces it. */
+/** First line is always the header, skipped. A bad row gets `error` set,
+ * not dropped. */
 export function csvToMenuItems(text: string): CsvMenuRow[] {
   const lines = text.split(/\r\n|\r|\n/).filter((l) => l.trim() !== "");
   const [, ...dataLines] = lines;

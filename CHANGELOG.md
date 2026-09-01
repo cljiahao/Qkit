@@ -24,7 +24,17 @@ available`, matching each item by exact name to update in place rather
   visible gap where the two columns stack on mobile). A vendor with zero
   items can now download a CSV template (`menuCsvTemplate()`) showing the
   expected columns instead of Export CSV being simply disabled with nothing
-  to give them.
+  to give them. A brand-new, unsaved booth still adds items inline on
+  `booth-form.tsx` itself (the dedicated page needs a real `boothId`) —
+  those items are sent through `saveMenuItems` right after the booth's own
+  `saveBooth` insert succeeds, same as the old single-form flow from the
+  vendor's perspective.
+
+- `printing-section.tsx`: a general "Manage printers in printkit ↗" link,
+  independent of the print-enabled switch or a saved booth — the existing
+  "Choose the printer for this booth →" link only ever showed once printing
+  was already turned on, so a vendor setting up printkit first had nowhere
+  to go. Matches `payment-section.tsx`'s always-shown paykit link.
 
 - `docs/OPS-RUNBOOK.md`: symptom-level operational triage doc for live-event
   issues, separating what's self-serve (a vendor's own board fixes a stuck

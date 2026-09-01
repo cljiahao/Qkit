@@ -330,12 +330,7 @@ export async function saveBooth(
   return result;
 }
 
-/**
- * Save a booth's menu items — the menu-manager page's own write path,
- * scoped to a single existing booth. Owns `menu_items` exclusively (see the
- * comment on boothFormSchema): saveBooth never reads or writes this column,
- * so there's no clobber risk between the two pages/actions.
- */
+/** Menu-manager page's own write path. Owns `menu_items` exclusively. */
 export async function saveMenuItems(
   boothId: string,
   items: MenuItemFormInput[],
@@ -351,17 +346,14 @@ export async function saveMenuItems(
   const menuCapError = validateMenuCaps(parsed.data, entitlement);
   if (menuCapError) return { success: false, error: menuCapError };
 
-  // Per-item stock caps are Pro/pass — strip for free so a stored value
-  // can't keep enforcing after a pass expires (same rule saveBooth applied).
+  // Same stock-cap stripping rule saveBooth used to apply.
   const menu_items = entitlement.stockCaps
     ? parsed.data
     : parsed.data.map(({ stock: _stock, ...rest }) => rest);
 
   const supabase = await createServerClient();
 
-  // RLS (booths_vendor_all) scopes both reads and the update below to this
-  // vendor's own booths — a foreign/nonexistent id reads null, or updates
-  // zero rows, either way surfaced as "not found", no cross-vendor leak.
+  // RLS scopes this to the vendor's own booths; a foreign id reads null.
   const { data: prev } = await supabase
     .from("booths")
     .select("menu_items")

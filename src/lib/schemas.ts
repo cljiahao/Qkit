@@ -379,10 +379,7 @@ export const boothFormSchema = z.object({
   image_url: imageUrlString.nullable(),
   is_active: z.boolean(),
   hours: boothHoursSchema.default(null),
-  // Not menu_items — that column is owned exclusively by saveMenuItems now
-  // (the dedicated menu-manager page), so saveBooth never reads or writes
-  // it. Two actions writing the same column risks one clobbering the other
-  // with stale client state.
+  // Not menu_items — saveMenuItems owns that column exclusively now.
   menu_categories: menuCategoriesSchema.default([]),
   // Optional BYO payment method; null = queue-only. Reuses paymentConfigSchema.
   payment: paymentConfigSchema.nullable().default(null),
@@ -554,8 +551,7 @@ export type VendorInput = z.infer<typeof vendorSchema>;
 export type MenuItemFormInput = z.infer<typeof menuItemFormSchema>;
 export type BoothFormInput = z.infer<typeof boothFormSchema>;
 
-// Input schema for saveMenuItems — the menu-manager page's own save,
-// separate from boothFormSchema since it no longer carries menu_items.
+// Input schema for saveMenuItems.
 export const menuItemsInputSchema = z.array(menuItemFormSchema);
 
 // ── Stored-JSONB read schemas ────────────────────────────────────────────────

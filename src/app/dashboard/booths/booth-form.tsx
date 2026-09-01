@@ -37,14 +37,19 @@ import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
+import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
 import { PrintingSection } from "./printing-section";
 import { SocialLinksSection } from "./social-links-section";
 import { BookingStatusSection } from "./booking-status-section";
 import { CloseBoothControl } from "./close-booth-control";
-import { saveBooth, deleteBooth } from "./actions";
-import { boothFormSchema } from "@/lib/schemas";
+import { saveBooth, saveMenuItems, deleteBooth } from "./actions";
+import {
+  boothFormSchema,
+  sanitizeOptionGroups,
+  type MenuItemFormInput,
+} from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
 import type { PaymentConfig, SocialLinks } from "@/lib/types";
@@ -65,9 +70,7 @@ interface Props {
     image_url: string | null;
     is_active: boolean;
     hours: BoothHours;
-    // Display-only count for the "Manage menu" link below — the items
-    // themselves are owned and edited on the dedicated menu-manager page
-    // (saveMenuItems), not here. See boothFormSchema's own comment.
+    // Display-only; items are edited on the dedicated menu-manager page.
     menuItemCount: number;
     payment: PaymentConfig | null;
     social_links: SocialLinks | null;
@@ -114,6 +117,8 @@ export function BoothForm({
   const [paykitBookingId, setPaykitBookingId] = useState<string | null>(
     initial?.paykit_booking_id ?? null,
   );
+  // Only for a brand-new booth; an existing booth's items live on menu-manager.
+  const [newItems, setNewItems] = useState<MenuItemFormInput[]>([]);
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
 
@@ -152,12 +157,31 @@ export function BoothForm({
       return;
     }
 
+    const isCreate = !initial?.boothId;
+
     return runSave(async () => {
       const result = await saveBooth(parsed.data);
       if (!result.success) {
         toast.error(result.error);
         return;
       }
+
+      if (isCreate && newItems.length > 0) {
+        const sanitized = newItems.map((it) => ({
+          ...it,
+          option_groups: sanitizeOptionGroups(it.option_groups),
+        }));
+        const menuResult = await saveMenuItems(result.boothId, sanitized);
+        if (!menuResult.success) {
+          toast.error(
+            `Booth saved, but menu items failed: ${menuResult.error}`,
+          );
+          router.replace(`/dashboard/booths/${result.boothId}/menu`);
+          await navigatingAway();
+          return;
+        }
+      }
+
       toast.success("Booth saved");
       // replace + no refresh: a refresh here races and cancels the navigation
       // (same bug as onboarding). The list is revalidate=0 so it refetches on nav.
@@ -190,15 +214,7 @@ export function BoothForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
-      {/* 2 grid items — mobile stacks the right column's Menu/Payment/Printing/
-          Social right after Hours/Order flow; md+ keeps the two-column split.
-          Both columns are natural-height (no row-span), each sized to its own
-          content — the old row-span-2 balancing act assumed Menu was the tall
-          side, which stopped being true once it became a one-line summary.
-          gap-x only, no gap-y: every Section card already carries its own
-          trailing mb-5 (ticket-section.tsx) — a row-gap here would double up
-          with that at the div1→div2 boundary specifically (the only place a
-          grid *row* gap is visible once mobile stacks the two columns). */}
+      {/* Natural-height columns; gap-x only since Section already has mb-5. */}
       <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 md:items-start">
         <div>
           <Section
@@ -356,9 +372,12 @@ export function BoothForm({
                 <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
               </Link>
             ) : (
-              <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                Save this booth first, then add menu items.
-              </p>
+              <MenuEditor
+                vendorId={vendorId}
+                items={newItems}
+                onChange={setNewItems}
+                entitlement={entitlement}
+              />
             )}
           </Section>
 

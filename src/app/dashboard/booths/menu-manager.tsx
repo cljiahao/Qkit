@@ -30,7 +30,7 @@ function formatImportRow(row: CsvMenuRow, index: number): string {
   if (row.error) return `Row ${index + 1}: ${row.error}`;
   if (row.price_cents == null) return row.name;
   const price = (row.price_cents / 100).toFixed(2);
-  return `${row.name} — $${price}`;
+  return `${row.name}: $${price}`;
 }
 
 function downloadCsv(filename: string, text: string) {
@@ -77,13 +77,12 @@ export function MenuManager({
     setImportPreview(rows);
   }
 
-  // New rows append; a row whose name exactly matches an existing item
-  // updates that item in place instead of duplicating it.
+  // A name-matching row updates in place instead of duplicating.
   function commitImport() {
     if (!importPreview) return;
     const valid = importPreview.filter((r) => !r.error);
     if (valid.length === 0) {
-      toast.error("Every row had an error — nothing to import");
+      toast.error("No valid rows to import");
       return;
     }
 
@@ -174,7 +173,7 @@ export function MenuManager({
         </div>
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
-        CSV columns: name, description, price, available — one row per item,
+        CSV columns: name, description, price, available. One row per item;
         leave price blank for a queue-only item. No template yet? Export CSV
         downloads one for you.
       </p>

@@ -75,8 +75,7 @@ function centsToDollars(cents?: number): string {
   return cents == null ? "" : centsToDollarString(cents);
 }
 
-/** Pure reorder step behind the drag handle — same array instance back when
- * there's nothing to do, so callers can skip onChange with a `!==` check. */
+/** Same array instance back when there's nothing to reorder. */
 export function reorderMenuItems(
   items: MenuItemFormInput[],
   activeId: string,
@@ -518,10 +517,7 @@ type SortableRenderProps = ReturnType<typeof useSortable> & {
   style: React.CSSProperties;
 };
 
-// Thin wrapper so useSortable's per-item hook state lives in its own
-// component (hooks can't be called directly inside items.map) without
-// pulling the large per-item card JSX out of MenuEditor's own closure —
-// render-prop hands back exactly what the card needs to become draggable.
+// useSortable can't be called directly inside items.map.
 function SortableItemCard({
   id,
   children,

@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BoothForm } from "./booth-form";
 import type { Entitlement } from "@/lib/plan";
 
-const { saveBooth, deleteBooth } = vi.hoisted(() => ({
+const { saveBooth, saveMenuItems, deleteBooth } = vi.hoisted(() => ({
   saveBooth: vi.fn(),
+  saveMenuItems: vi.fn(),
   deleteBooth: vi.fn(),
 }));
-vi.mock("./actions", () => ({ saveBooth, deleteBooth }));
+vi.mock("./actions", () => ({ saveBooth, saveMenuItems, deleteBooth }));
 
 // Every subcomponent below has its own dom test file — stub them out here so
 // this file is isolated to booth-form's own state wiring (in particular the
@@ -239,7 +240,7 @@ describe("BoothForm paykit booking id", () => {
 });
 
 describe("BoothForm menu section", () => {
-  it("shows a hint instead of a link for a brand-new, unsaved booth", () => {
+  it("renders the menu editor inline for a brand-new, unsaved booth", () => {
     render(
       <BoothForm
         vendorId="v1"
@@ -248,9 +249,35 @@ describe("BoothForm menu section", () => {
       />,
     );
     expect(
-      screen.getByText("Save this booth first, then add menu items."),
+      screen.getByRole("button", { name: /add item/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/save this booth first/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("persists items added inline once the booth is saved", async () => {
+    saveBooth.mockResolvedValue({ success: true, boothId: "b-new" });
+    saveMenuItems.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.click(screen.getAllByRole("button", { name: /add item/i })[0]!);
+    await user.type(screen.getByPlaceholderText("Item name"), "Vanilla");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    await waitFor(() =>
+      expect(saveMenuItems).toHaveBeenCalledWith(
+        "b-new",
+        expect.arrayContaining([expect.objectContaining({ name: "Vanilla" })]),
+      ),
+    );
   });
 
   it("links to the menu-manager page with the item count, for an existing booth", () => {
