@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { MenuEditor, reorderMenuItems } from "./menu-editor";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
+import type { MenuCategory } from "@/lib/types";
 
 const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
 vi.mock("sonner", () => ({ toast }));
@@ -167,6 +168,45 @@ function HostWithGroups() {
     />
   );
 }
+
+const CATEGORIES: MenuCategory[] = [
+  { id: "drinks", label: "Drinks" },
+  { id: "snacks", label: "Snacks" },
+];
+
+function HostWithCategories() {
+  const [items, setItems] = useState<MenuItemFormInput[]>([ITEM]);
+  return (
+    <MenuEditor
+      vendorId="v1"
+      items={items}
+      onChange={setItems}
+      entitlement={ENTITLEMENT}
+      categories={CATEGORIES}
+    />
+  );
+}
+
+describe("MenuEditor category picker", () => {
+  it("shows nothing when there are no categories", () => {
+    render(<Host />);
+    expect(screen.queryByText("Section")).not.toBeInTheDocument();
+  });
+
+  it("shows a section picker, defaulting to No section", () => {
+    render(<HostWithCategories />);
+    expect(screen.getByText("Section")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toHaveTextContent("No section");
+  });
+
+  it("picking a section updates the item's category", async () => {
+    const user = userEvent.setup();
+    render(<HostWithCategories />);
+    await user.click(screen.getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "Snacks" }));
+    expect(screen.getByRole("combobox")).toHaveTextContent("Snacks");
+  });
+});
 
 describe("MenuEditor availability toggle", () => {
   it("renders Available as a switch, checked by default", () => {

@@ -3,6 +3,7 @@ import { ENTITLEMENTS } from "@/lib/plan";
 import type { BoothFormInput, MenuItemFormInput } from "@/lib/schemas";
 import {
   saveBooth,
+  saveMenuCategories,
   saveMenuItems,
   toggleBoothActive,
   deleteBooth,
@@ -325,6 +326,47 @@ describe("saveMenuItems", () => {
     h.state.updateResult = { data: null, error: null };
     const res = await saveMenuItems(BOOTH_ID, [makeItem()]);
     expect(res).toEqual({ success: false, error: "Could not save menu" });
+  });
+});
+
+describe("saveMenuCategories", () => {
+  it("rejects an invalid booth id without any DB calls", async () => {
+    const res = await saveMenuCategories("not-a-uuid", [
+      { id: "c1", label: "Drinks" },
+    ]);
+    expect(res).toEqual({ success: false, error: "Invalid booth" });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed category data before any DB write", async () => {
+    const res = await saveMenuCategories(BOOTH_ID, [
+      { id: "c1", label: "" } as { id: string; label: string },
+    ]);
+    expect(res).toEqual({ success: false, error: "Invalid categories" });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("writes the category list to booths.menu_categories", async () => {
+    const categories = [
+      { id: "c1", label: "Drinks" },
+      { id: "c2", label: "Snacks" },
+    ];
+    const res = await saveMenuCategories(BOOTH_ID, categories);
+
+    expect(res).toEqual({ success: true });
+    expect(h.updateSpy).toHaveBeenCalledTimes(1);
+    expect(h.updateSpy).toHaveBeenCalledWith({ menu_categories: categories });
+  });
+
+  it("returns an error when the update matches no row", async () => {
+    h.state.updateResult = { data: null, error: null };
+    const res = await saveMenuCategories(BOOTH_ID, [
+      { id: "c1", label: "Drinks" },
+    ]);
+    expect(res).toEqual({
+      success: false,
+      error: "Could not save categories",
+    });
   });
 });
 

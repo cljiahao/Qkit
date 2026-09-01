@@ -31,6 +31,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ImageUploader } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
@@ -41,14 +48,19 @@ import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
 import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import { ALLERGEN_TAGS, type MenuItemFormInput } from "@/lib/schemas";
-import type { OptionGroup } from "@/lib/types";
+import type { MenuCategory, OptionGroup } from "@/lib/types";
 import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
+
+// Radix Select reserves "" for "no selection" — a real sentinel stands in
+// for "no section" instead.
+const NO_CATEGORY = "__none__";
 
 interface Props {
   vendorId: string;
   items: MenuItemFormInput[];
   onChange: (items: MenuItemFormInput[]) => void;
   entitlement: Entitlement;
+  categories?: MenuCategory[];
 }
 
 const REMOVE_UNDO_MS = 60_000;
@@ -70,7 +82,13 @@ export function reorderMenuItems(
   return arrayMove(items, oldIndex, newIndex);
 }
 
-export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
+export function MenuEditor({
+  vendorId,
+  items,
+  onChange,
+  entitlement,
+  categories = [],
+}: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // Separate collapse state from "Customization" — allergens are a distinct
   // concept (fixed ingredients, not option groups), collapsed by default
@@ -366,6 +384,36 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                       Cost is private, used only for your profit/margin stats,
                       never shown to customers.
                     </p>
+
+                    {categories.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Label className="shrink-0 text-xs font-medium text-muted-foreground">
+                          Section
+                        </Label>
+                        <Select
+                          value={item.category ?? NO_CATEGORY}
+                          onValueChange={(v) =>
+                            update(i, {
+                              category: v === NO_CATEGORY ? null : v,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-9 w-full rounded-lg sm:w-56">
+                            <SelectValue placeholder="No section" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_CATEGORY}>
+                              No section
+                            </SelectItem>
+                            {categories.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.label || "Untitled"}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     {/* Sold-out cap (Pro/pass). Remaining auto-counts from live orders. */}
                     {entitlement.stockCaps ? (

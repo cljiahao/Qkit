@@ -6,8 +6,11 @@ import { MenuManager } from "./menu-manager";
 import type { Entitlement } from "@/lib/plan";
 import type { MenuItemFormInput } from "@/lib/schemas";
 
-const { saveMenuItems } = vi.hoisted(() => ({ saveMenuItems: vi.fn() }));
-vi.mock("./actions", () => ({ saveMenuItems }));
+const { saveMenuItems, saveMenuCategories } = vi.hoisted(() => ({
+  saveMenuItems: vi.fn(),
+  saveMenuCategories: vi.fn(),
+}));
+vi.mock("./actions", () => ({ saveMenuItems, saveMenuCategories }));
 
 // MenuEditor's own add/edit/remove/reorder behavior is covered by
 // menu-editor.dom.test.tsx — stub it here to a plain list so this file stays
@@ -63,6 +66,7 @@ function makeItem(over: Partial<MenuItemFormInput> = {}): MenuItemFormInput {
 beforeEach(() => {
   vi.clearAllMocks();
   saveMenuItems.mockResolvedValue({ success: true });
+  saveMenuCategories.mockResolvedValue({ success: true });
   // jsdom has no object-URL support.
   URL.createObjectURL = vi.fn(() => "blob:mock");
   URL.revokeObjectURL = vi.fn();
@@ -90,6 +94,50 @@ describe("MenuManager save", () => {
     );
     expect(toastSuccess).toHaveBeenCalledWith("Menu saved");
     expect(routerReplace).toHaveBeenCalledWith(`/dashboard/booths/${BOOTH_ID}`);
+  });
+
+  it("also saves the category list alongside the items", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[makeItem()]}
+        initialCategories={[{ id: "c1", label: "Drinks" }]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Save menu" }));
+
+    await waitFor(() =>
+      expect(saveMenuCategories).toHaveBeenCalledWith(BOOTH_ID, [
+        { id: "c1", label: "Drinks" },
+      ]),
+    );
+  });
+
+  it("shows a toast and does not navigate when the category save fails", async () => {
+    saveMenuCategories.mockResolvedValue({
+      success: false,
+      error: "Invalid categories",
+    });
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[makeItem()]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Save menu" }));
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith("Invalid categories"),
+    );
+    expect(routerReplace).not.toHaveBeenCalled();
   });
 
   it("shows a toast and does not navigate when the save fails", async () => {

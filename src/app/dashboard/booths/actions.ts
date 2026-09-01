@@ -7,10 +7,12 @@ import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import type { Entitlement } from "@/lib/plan";
 import {
   boothFormSchema,
+  menuCategoriesSchema,
   menuItemsInputSchema,
   type BoothFormInput,
   type MenuItemFormInput,
 } from "@/lib/schemas";
+import type { MenuCategory } from "@/lib/types";
 import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
 import { registerPrintLocation } from "@/lib/printkit/client";
@@ -375,6 +377,33 @@ export async function saveMenuItems(
     orphanedImagePaths(prev, { menu_items }),
     "saveMenuItems",
   );
+  return { success: true };
+}
+
+/** Exclusive write path for `booths.menu_categories`, `saveBooth`'s row
+ * never touches it. No cascade-clear on delete — `groupByCategory` already
+ * buckets a dangling `category` id into "Other". */
+export async function saveMenuCategories(
+  boothId: string,
+  categories: MenuCategory[],
+): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+  const parsed = menuCategoriesSchema.safeParse(categories);
+  if (!parsed.success) return { success: false, error: "Invalid categories" };
+
+  const { user } = await loadEntitlement();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const supabase = await createServerClient();
+  const { data: updated, error } = await supabase
+    .from("booths")
+    .update({ menu_categories: parsed.data })
+    .eq("id", boothId)
+    .select("id")
+    .maybeSingle();
+  if (error || !updated)
+    return { success: false, error: "Could not save categories" };
   return { success: true };
 }
 

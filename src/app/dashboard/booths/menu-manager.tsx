@@ -9,7 +9,8 @@ import { InfoTooltip } from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
-import { saveMenuItems } from "./actions";
+import { MenuCategoriesEditor } from "./menu-categories-editor";
+import { saveMenuCategories, saveMenuItems } from "./actions";
 import { sanitizeOptionGroups, type MenuItemFormInput } from "@/lib/schemas";
 import {
   menuItemsToCsv,
@@ -20,6 +21,7 @@ import {
   type CsvChoiceRow,
 } from "@/lib/menu-csv";
 import type { Entitlement } from "@/lib/plan";
+import type { MenuCategory } from "@/lib/types";
 
 interface Props {
   vendorId: string;
@@ -27,6 +29,7 @@ interface Props {
   boothName: string;
   entitlement: Entitlement;
   initialItems: MenuItemFormInput[];
+  initialCategories?: MenuCategory[];
 }
 
 function formatImportRow(row: CsvMenuRow): string {
@@ -65,9 +68,12 @@ export function MenuManager({
   boothName,
   entitlement,
   initialItems,
+  initialCategories = [],
 }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<MenuItemFormInput[]>(initialItems);
+  const [categories, setCategories] =
+    useState<MenuCategory[]>(initialCategories);
   const [importPreview, setImportPreview] = useState<CsvMenuRow[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { pending: saving, run: runSave } = useAsyncAction();
@@ -143,9 +149,16 @@ export function MenuManager({
       option_groups: sanitizeOptionGroups(it.option_groups),
     }));
     return runSave(async () => {
-      const result = await saveMenuItems(boothId, sanitized);
-      if (!result.success) {
-        toast.error(result.error);
+      const [itemsResult, categoriesResult] = await Promise.all([
+        saveMenuItems(boothId, sanitized),
+        saveMenuCategories(boothId, categories),
+      ]);
+      if (!itemsResult.success) {
+        toast.error(itemsResult.error);
+        return;
+      }
+      if (!categoriesResult.success) {
+        toast.error(categoriesResult.error);
         return;
       }
       toast.success("Menu saved");
@@ -263,11 +276,14 @@ export function MenuManager({
         </div>
       )}
 
+      <MenuCategoriesEditor categories={categories} onChange={setCategories} />
+
       <MenuEditor
         vendorId={vendorId}
         items={items}
         onChange={setItems}
         entitlement={entitlement}
+        categories={categories}
       />
 
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-6 py-6">

@@ -155,7 +155,10 @@ factories, respectively).
   of a booth's `menu_items` under its `menu_categories` (booth's own order),
   bucketing any missing/unmatched category id into "Other", always last, and
   dropping empty sections — used by `OrderForm` to render the customer menu
-  grouped once a booth has 2+ non-empty sections.
+  grouped once a booth has 2+ non-empty sections. Both inputs were schema/
+  type-only with no vendor UI to actually populate them until
+  `dashboard/booths/menu-categories-editor.tsx`/`menu-editor.tsx`'s section
+  picker shipped (2026-09-02) — this function itself is unchanged.
 - `menu-sections.test.ts` — tests category-order grouping, the Other bucket,
   empty-section dropping, and the no-categories-defined case.
 - `merqo-auth.ts` — `bearerOk`/`provisionBearerOk`: constant-time bearer-token

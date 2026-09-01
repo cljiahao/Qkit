@@ -142,6 +142,19 @@ available`, matching each item by exact name to update in place rather
   the choice-name placeholder against the fixed-width price/Advanced/
   delete controls.
 
+- Menu categorization: a booth can now define ordered menu sections
+  (`MenuCategoriesEditor`, `dashboard/booths/menu-categories-editor.tsx`,
+  new "Menu sections" list above the item editor on the menu-manager page —
+  add/rename/reorder/delete, capped at 40) and assign each item to one via
+  a "Section" picker in the item editor. The data model
+  (`menu_categories`/`item.category`, migration 0066) and the customer-
+  facing grouping (`groupByCategory`) already existed; only the vendor-
+  facing UI to populate either field was missing. New
+  `saveMenuCategories` action, its own write path for `booths.menu_categories`
+  (same column-ownership split as `saveMenuItems`/`saveBooth`). Deleting a
+  section never touches items that referenced it — a dangling id already
+  buckets into "Other" on the customer menu.
+
 ### Fixed
 
 - A handful of leftover em dashes in user-facing copy across the booths
