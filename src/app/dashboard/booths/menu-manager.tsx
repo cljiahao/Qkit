@@ -167,7 +167,14 @@ export function MenuManager({
         <div className="flex items-center gap-1.5">
           <h1 className="font-display text-2xl font-semibold">Menu</h1>
           <InfoTooltip
-            content="CSV columns: name, description, price, cost, available. One row per item — leave price or cost blank if not tracked. Add group_name, group_type (one/any), choice_label, choice_price rows right after an item to import its customization too."
+            content={
+              <span className="block max-w-64">
+                CSV columns: name, description, price, cost, available — one row
+                per item, price/cost optional. Add group_name, group_type
+                (one/any), choice_label, choice_price rows right after an item
+                for its customization.
+              </span>
+            }
             ariaLabel="CSV column format"
           />
         </div>
