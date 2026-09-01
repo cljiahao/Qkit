@@ -143,6 +143,10 @@ available`, matching each item by exact name to update in place rather
   behind-`(i)` pattern `payment-section.tsx`/`settings-form.tsx` already
   use), wrapped to a fixed width so it reads as short lines instead of one
   unbroken one.
+- 5 leftover em dashes in user-facing copy (the platform-banner placeholder
+  and its helper text, a settings tooltip, the customer Telegram-connect
+  blurb) — replaced with plain punctuation, now caught for good by a new
+  ESLint gate (see AGENTS.md's "No-em-dash hard gate" note).
 
 ### Changed
 

@@ -169,7 +169,7 @@ export function MenuManager({
           <InfoTooltip
             content={
               <span className="block max-w-64">
-                CSV columns: name, description, price, cost, available — one row
+                CSV columns: name, description, price, cost, available. One row
                 per item, price/cost optional. Add group_name, group_type
                 (one/any), choice_label, choice_price rows right after an item
                 for its customization.
