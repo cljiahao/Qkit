@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -12,6 +13,7 @@ import {
   Share2,
   Printer,
   ClipboardList,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,7 +37,6 @@ import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
-import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
 import { PrintingSection } from "./printing-section";
@@ -43,11 +44,7 @@ import { SocialLinksSection } from "./social-links-section";
 import { BookingStatusSection } from "./booking-status-section";
 import { CloseBoothControl } from "./close-booth-control";
 import { saveBooth, deleteBooth } from "./actions";
-import {
-  boothFormSchema,
-  sanitizeOptionGroups,
-  type MenuItemFormInput,
-} from "@/lib/schemas";
+import { boothFormSchema } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
 import type { PaymentConfig, SocialLinks } from "@/lib/types";
@@ -68,7 +65,10 @@ interface Props {
     image_url: string | null;
     is_active: boolean;
     hours: BoothHours;
-    menu_items: MenuItemFormInput[];
+    // Display-only count for the "Manage menu" link below — the items
+    // themselves are owned and edited on the dedicated menu-manager page
+    // (saveMenuItems), not here. See boothFormSchema's own comment.
+    menuItemCount: number;
     payment: PaymentConfig | null;
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
@@ -96,9 +96,6 @@ export function BoothForm({
   );
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [hours, setHours] = useState<BoothHours>(initial?.hours ?? null);
-  const [items, setItems] = useState<MenuItemFormInput[]>(
-    initial?.menu_items ?? [],
-  );
   const [payment, setPayment] = useState<PaymentConfig | null>(
     initial?.payment ?? null,
   );
@@ -142,12 +139,6 @@ export function BoothForm({
       image_url: imageUrl,
       is_active: isActive,
       hours,
-      // Strip half-filled option groups so a blank group/choice never fails
-      // optionGroupSchema (choices.min(1)) and blocks the whole save.
-      menu_items: items.map((it) => ({
-        ...it,
-        option_groups: sanitizeOptionGroups(it.option_groups),
-      })),
       payment,
       social_links: socialLinks,
       requires_arrival_confirm: requiresArrivalConfirm,
@@ -340,12 +331,28 @@ export function BoothForm({
             title="Menu"
             description="Add items customers can order."
           >
-            <MenuEditor
-              vendorId={vendorId}
-              items={items}
-              onChange={setItems}
-              entitlement={entitlement}
-            />
+            {initial?.boothId ? (
+              <Link
+                href={`/dashboard/booths/${initial.boothId}/menu`}
+                className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3.5 text-sm hover:border-primary/40"
+              >
+                <span>
+                  <span className="font-medium">
+                    {initial.menuItemCount === 1
+                      ? "1 item"
+                      : `${initial.menuItemCount} items`}
+                  </span>
+                  <span className="block text-muted-foreground">
+                    Add, edit, reorder, or bulk-import via CSV.
+                  </span>
+                </span>
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ) : (
+              <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                Save this booth first, then add menu items.
+              </p>
+            )}
           </Section>
         </div>
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MenuEditor } from "./menu-editor";
+import { MenuEditor, reorderMenuItems } from "./menu-editor";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 
@@ -36,6 +36,50 @@ function Host() {
     />
   );
 }
+
+describe("reorderMenuItems", () => {
+  const items: MenuItemFormInput[] = [
+    { ...ITEM, id: "a", name: "A" },
+    { ...ITEM, id: "b", name: "B" },
+    { ...ITEM, id: "c", name: "C" },
+  ];
+
+  it("moves the active item to the dropped-on item's position", () => {
+    const result = reorderMenuItems(items, "a", "c");
+    expect(result.map((it) => it.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("returns the same array instance when dropped on itself", () => {
+    expect(reorderMenuItems(items, "b", "b")).toBe(items);
+  });
+
+  it("returns the same array instance for an unknown id", () => {
+    expect(reorderMenuItems(items, "a", "missing")).toBe(items);
+  });
+});
+
+describe("MenuEditor drag handle", () => {
+  it("renders one reorder handle per item", () => {
+    function HostWithTwo() {
+      const [items, setItems] = useState<MenuItemFormInput[]>([
+        { ...ITEM, id: "a", name: "A" },
+        { ...ITEM, id: "b", name: "B" },
+      ]);
+      return (
+        <MenuEditor
+          vendorId="v1"
+          items={items}
+          onChange={setItems}
+          entitlement={ENTITLEMENT}
+        />
+      );
+    }
+    render(<HostWithTwo />);
+    expect(
+      screen.getAllByRole("button", { name: "Reorder item" }),
+    ).toHaveLength(2);
+  });
+});
 
 describe("MenuEditor item-level allergens", () => {
   it("hides the allergen checkboxes behind a collapsed Advanced toggle by default", () => {

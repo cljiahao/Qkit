@@ -8,6 +8,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Dedicated menu-manager page (`/dashboard/booths/{boothId}/menu`), split out
+  of the main booth-edit form: CSV export/import (`name,description,price,
+available`, matching each item by exact name to update in place rather
+  than duplicate) and drag-to-reorder items (`@dnd-kit/core`/`sortable`/
+  `utilities`, new pinned dependencies) — booth order is just JSONB array
+  order, so no schema change. A new `saveMenuItems` action is now the
+  exclusive write path for `booths.menu_items`; `saveBooth` no longer reads
+  or writes that column at all, closing off a stale-state clobber risk
+  between the two pages. `booth-form.tsx`'s Menu section is now a read-only
+  item-count link into the new page.
+
 - `docs/OPS-RUNBOOK.md`: symptom-level operational triage doc for live-event
   issues, separating what's self-serve (a vendor's own board fixes a stuck
   order, Vercel's Promote-to-Production for a bad deploy) from the

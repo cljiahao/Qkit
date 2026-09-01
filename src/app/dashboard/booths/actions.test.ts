@@ -1,7 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ENTITLEMENTS } from "@/lib/plan";
-import type { BoothFormInput } from "@/lib/schemas";
-import { saveBooth, toggleBoothActive, deleteBooth } from "./actions";
+import type { BoothFormInput, MenuItemFormInput } from "@/lib/schemas";
+import {
+  saveBooth,
+  saveMenuItems,
+  toggleBoothActive,
+  deleteBooth,
+} from "./actions";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -128,9 +133,7 @@ vi.mock("@/lib/supabase/server", () => ({
 
 const BOOTH_ID = "00000000-0000-4000-8000-000000000001";
 
-type MenuItem = BoothFormInput["menu_items"][number];
-
-function makeItem(over: Partial<MenuItem> = {}): MenuItem {
+function makeItem(over: Partial<MenuItemFormInput> = {}): MenuItemFormInput {
   return {
     id: "i1",
     name: "Coffee",
@@ -146,7 +149,6 @@ function makeBooth(over: Partial<BoothFormInput> = {}): BoothFormInput {
     image_url: null,
     is_active: false,
     hours: null,
-    menu_items: [makeItem()],
     menu_categories: [],
     payment: null,
     social_links: null,
@@ -184,47 +186,12 @@ beforeEach(() => {
 });
 
 describe("saveBooth entitlement enforcement", () => {
-  it("(a) rejects a menu over the item cap before any DB write", async () => {
-    const menu_items = Array.from({ length: 7 }, (_, i) =>
-      makeItem({ id: `i${i}`, name: `Item ${i}` }),
-    );
-    const res = await saveBooth(makeBooth({ menu_items }));
-
-    expect(res).toEqual({
-      success: false,
-      error: "Your plan allows up to 6 menu items. Remove some or upgrade.",
-    });
-    expect(h.insertSpy).not.toHaveBeenCalled();
-    expect(h.updateSpy).not.toHaveBeenCalled();
-  });
-
-  it("(b) rejects an item over the option-group cap before any DB write", async () => {
-    const option_groups = Array.from({ length: 4 }, (_, i) => ({
-      id: `g${i}`,
-      label: `Group ${i}`,
-      choices: [{ id: "c", label: "Choice" }],
-    }));
-    const res = await saveBooth(
-      makeBooth({ menu_items: [makeItem({ option_groups })] }),
-    );
-
-    expect(res).toEqual({
-      success: false,
-      error:
-        "Your plan allows up to 3 customization groups per item. Upgrade for more.",
-    });
-    expect(h.insertSpy).not.toHaveBeenCalled();
-    expect(h.updateSpy).not.toHaveBeenCalled();
-  });
-
-  it("(c) silently strips hours and per-item stock on a free-plan save", async () => {
+  it("(c) silently strips hours on a free-plan save", async () => {
     const input = makeBooth({
       hours: { mode: "daily", open: "09:00", close: "17:00" },
-      menu_items: [makeItem({ stock: 10 })],
     });
-    // Sanity: the input really did carry the fields we expect to be dropped.
+    // Sanity: the input really did carry the field we expect to be dropped.
     expect(input.hours).not.toBeNull();
-    expect(input.menu_items[0]).toHaveProperty("stock", 10);
 
     const res = await saveBooth(input);
 
@@ -232,11 +199,9 @@ describe("saveBooth entitlement enforcement", () => {
     expect(h.insertSpy).toHaveBeenCalledTimes(1);
     const row = h.insertSpy.mock.calls[0][0] as {
       hours: unknown;
-      menu_items: Array<Record<string, unknown>>;
       vendor_id: string;
     };
     expect(row.hours).toBeNull();
-    expect(row.menu_items[0]).not.toHaveProperty("stock");
     expect(row.vendor_id).toBe("v1");
   });
 
@@ -273,6 +238,93 @@ describe("saveBooth entitlement enforcement", () => {
     expect(res).toEqual({ success: true, boothId: "b-new" });
     const row = h.insertSpy.mock.calls[0][0] as { social_links: unknown };
     expect(row.social_links).toEqual(socialLinks);
+  });
+});
+
+describe("saveMenuItems", () => {
+  beforeEach(() => {
+    h.state.prevResult = { data: { menu_items: [] } };
+  });
+
+  it("rejects an invalid booth id without any DB calls", async () => {
+    const res = await saveMenuItems("not-a-uuid", [makeItem()]);
+    expect(res).toEqual({ success: false, error: "Invalid booth" });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed item data before any DB write", async () => {
+    const res = await saveMenuItems(BOOTH_ID, [
+      { id: "i1", name: "", description: "", available: true },
+    ]);
+    expect(res).toEqual({ success: false, error: "Invalid menu items" });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a menu over the item cap before any DB write", async () => {
+    const items = Array.from({ length: 7 }, (_, i) =>
+      makeItem({ id: `i${i}`, name: `Item ${i}` }),
+    );
+    const res = await saveMenuItems(BOOTH_ID, items);
+
+    expect(res).toEqual({
+      success: false,
+      error: "Your plan allows up to 6 menu items. Remove some or upgrade.",
+    });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects an item over the option-group cap before any DB write", async () => {
+    const option_groups = Array.from({ length: 4 }, (_, i) => ({
+      id: `g${i}`,
+      label: `Group ${i}`,
+      choices: [{ id: "c", label: "Choice" }],
+    }));
+    const res = await saveMenuItems(BOOTH_ID, [makeItem({ option_groups })]);
+
+    expect(res).toEqual({
+      success: false,
+      error:
+        "Your plan allows up to 3 customization groups per item. Upgrade for more.",
+    });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("strips per-item stock on a free-plan save", async () => {
+    const res = await saveMenuItems(BOOTH_ID, [makeItem({ stock: 10 })]);
+
+    expect(res).toEqual({ success: true });
+    expect(h.updateSpy).toHaveBeenCalledTimes(1);
+    const row = h.updateSpy.mock.calls[0]![0] as {
+      menu_items: Array<Record<string, unknown>>;
+    };
+    expect(row.menu_items[0]).not.toHaveProperty("stock");
+  });
+
+  it("keeps per-item stock on a plan with stock-cap entitlement", async () => {
+    h.loadEntitlementMock.mockResolvedValue({
+      user: { id: "v1" },
+      entitlement: ENTITLEMENTS.pro,
+    });
+    const res = await saveMenuItems(BOOTH_ID, [makeItem({ stock: 10 })]);
+
+    expect(res).toEqual({ success: true });
+    const row = h.updateSpy.mock.calls[0]![0] as {
+      menu_items: Array<Record<string, unknown>>;
+    };
+    expect(row.menu_items[0]).toHaveProperty("stock", 10);
+  });
+
+  it("returns 'Booth not found' when the booth doesn't exist or isn't owned", async () => {
+    h.state.prevResult = { data: null };
+    const res = await saveMenuItems(BOOTH_ID, [makeItem()]);
+    expect(res).toEqual({ success: false, error: "Booth not found" });
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns an error when the update matches no row", async () => {
+    h.state.updateResult = { data: null, error: null };
+    const res = await saveMenuItems(BOOTH_ID, [makeItem()]);
+    expect(res).toEqual({ success: false, error: "Could not save menu" });
   });
 });
 

@@ -96,17 +96,7 @@ export default async function EditBoothPage({ params }: Props) {
 
   if (!booth) notFound();
 
-  const menuItems = parseMenuItems(booth.menu_items).map((m) => ({
-    id: m.id,
-    name: m.name,
-    description: m.description,
-    price_cents: m.price_cents,
-    cost_cents: m.cost_cents,
-    image_url: m.image_url ?? null,
-    option_groups: m.option_groups,
-    available: m.available,
-    stock: m.stock,
-  }));
+  const menuItemCount = parseMenuItems(booth.menu_items).length;
 
   const payment = await initialPayment(vendor.id, booth.payment);
   const bookingStatus = await initialBookingStatus(booth.paykit_booking_id);
@@ -124,7 +114,7 @@ export default async function EditBoothPage({ params }: Props) {
           image_url: booth.image_url,
           is_active: booth.is_active,
           hours: parseBoothHours(booth.hours),
-          menu_items: menuItems,
+          menuItemCount,
           payment,
           social_links: booth.social_links
             ? parseSocialLinks(booth.social_links)

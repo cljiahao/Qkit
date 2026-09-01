@@ -99,6 +99,21 @@ factories, respectively).
   time `onUpload` runs, so there's nothing left to close over.
 - `image-upload-adapter.test.ts` — tests a successful upload/public-URL
   round trip and that a storage error propagates as a rejection.
+- `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`: the
+  qkit-side of the menu-manager's CSV bulk export/import (`name,description,
+price,available`, dollars not cents for spreadsheet readability). A
+  hand-rolled RFC4180-shaped encode/decode (quoted fields, embedded
+  commas/quotes) rather than a new dependency — 4 fixed columns didn't
+  justify one; does not handle a literal newline inside a quoted field.
+  `csvToMenuItems` always treats the first line as the header (skipped) and
+  returns one `CsvMenuRow` per remaining line — a row with no name or an
+  unparseable/negative price comes back with `error` set instead of being
+  silently dropped, so `menu-manager.tsx`'s import preview can surface it.
+- `menu-csv.test.ts` — round-trip encode/decode (including a
+  comma-containing description through the quoting path), header skipping,
+  missing-name/invalid-price/negative-price row errors, blank-price-is-not-
+  an-error, the `available` default (true unless the cell is exactly
+  `false`), and empty/header-only input.
 - `menu-sections.ts` — `groupByCategory(items, categories)`: pure grouping
   of a booth's `menu_items` under its `menu_categories` (booth's own order),
   bucketing any missing/unmatched category id into "Other", always last, and
@@ -301,7 +316,12 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   yet). `boothFormSchema` also carries `walkup_default: z.boolean()
 .default(false)` (migration 0080, event-mode setup — makes the live board
   auto-open walk-up order entry for that booth) alongside
-  `requires_arrival_confirm`.
+  `requires_arrival_confirm`. `boothFormSchema` no longer carries
+  `menu_items` (2026-09-01, the menu-manager split) — that column is now
+  owned exclusively by `menuItemsInputSchema` (`z.array(menuItemFormSchema)`),
+  the input schema for `dashboard/booths/actions.ts`'s new `saveMenuItems`,
+  so `saveBooth` never reads or writes it and the two actions can't clobber
+  each other with stale client state.
 - `schemas.test.ts` — the largest test file in `lib/`: validates every schema
   above, including the payment-config cross-field rules (xor of UEN/mobile,
   pointer requiring a link or QR) and the tolerant vs. strict read/write

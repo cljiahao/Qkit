@@ -7,6 +7,7 @@ import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import type { Entitlement } from "@/lib/plan";
 import {
   boothFormSchema,
+  menuItemsInputSchema,
   type BoothFormInput,
   type MenuItemFormInput,
 } from "@/lib/schemas";
@@ -269,16 +270,9 @@ export async function saveBooth(
   const { user, entitlement } = await loadEntitlement();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  // Feature caps (hours/stock, below) degrade quietly instead of rejecting.
-  const menuCapError = validateMenuCaps(data.menu_items, entitlement);
-  if (menuCapError) return { success: false, error: menuCapError };
-
-  // Auto-close hours and per-item stock caps are Pro/pass — strip for free so a
-  // stored value can't keep enforcing after a pass expires.
+  // Auto-close hours is Pro/pass — strip for free so a stored value can't
+  // keep enforcing after a pass expires.
   const hours = entitlement.autoCloseHours ? data.hours : null;
-  const menu_items = entitlement.stockCaps
-    ? data.menu_items
-    : data.menu_items.map(({ stock: _stock, ...rest }) => rest);
 
   const supabase = await createServerClient();
 
@@ -316,7 +310,6 @@ export async function saveBooth(
     image_url: data.image_url,
     is_active: data.is_active,
     hours,
-    menu_items,
     payment: paymentMarker(data.payment?.kind),
     social_links: data.social_links,
     requires_arrival_confirm: data.requires_arrival_confirm,
@@ -335,6 +328,62 @@ export async function saveBooth(
       "saveBooth",
     );
   return result;
+}
+
+/**
+ * Save a booth's menu items — the menu-manager page's own write path,
+ * scoped to a single existing booth. Owns `menu_items` exclusively (see the
+ * comment on boothFormSchema): saveBooth never reads or writes this column,
+ * so there's no clobber risk between the two pages/actions.
+ */
+export async function saveMenuItems(
+  boothId: string,
+  items: MenuItemFormInput[],
+): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+  const parsed = menuItemsInputSchema.safeParse(items);
+  if (!parsed.success) return { success: false, error: "Invalid menu items" };
+
+  const { user, entitlement } = await loadEntitlement();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const menuCapError = validateMenuCaps(parsed.data, entitlement);
+  if (menuCapError) return { success: false, error: menuCapError };
+
+  // Per-item stock caps are Pro/pass — strip for free so a stored value
+  // can't keep enforcing after a pass expires (same rule saveBooth applied).
+  const menu_items = entitlement.stockCaps
+    ? parsed.data
+    : parsed.data.map(({ stock: _stock, ...rest }) => rest);
+
+  const supabase = await createServerClient();
+
+  // RLS (booths_vendor_all) scopes both reads and the update below to this
+  // vendor's own booths — a foreign/nonexistent id reads null, or updates
+  // zero rows, either way surfaced as "not found", no cross-vendor leak.
+  const { data: prev } = await supabase
+    .from("booths")
+    .select("menu_items")
+    .eq("id", boothId)
+    .maybeSingle();
+  if (!prev) return { success: false, error: "Booth not found" };
+
+  const { data: updated, error } = await supabase
+    .from("booths")
+    .update({ menu_items })
+    .eq("id", boothId)
+    .select("id")
+    .maybeSingle();
+  if (error || !updated)
+    return { success: false, error: "Could not save menu" };
+
+  await removeBoothImages(
+    supabase,
+    orphanedImagePaths(prev, { menu_items }),
+    "saveMenuItems",
+  );
+  return { success: true };
 }
 
 /**
