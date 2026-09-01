@@ -38,31 +38,9 @@ import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
 import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
-import {
-  ALLERGEN_TAGS,
-  type AllergenTag,
-  type MenuItemFormInput,
-} from "@/lib/schemas";
+import { ALLERGEN_TAGS, type MenuItemFormInput } from "@/lib/schemas";
 import type { OptionGroup } from "@/lib/types";
-
-// Rendering-only — no effect on the stored tag values (ALLERGEN_TAGS).
-const ALLERGEN_ICONS: Record<AllergenTag, string> = {
-  dairy: "🥛",
-  nuts: "🌰",
-  gluten: "🌾",
-  soy: "🌱",
-  egg: "🥚",
-  caffeine: "☕",
-  crustaceans: "🦐",
-  fish: "🐟",
-  peanuts: "🥜",
-  celery: "🥬",
-  mustard: "🟡",
-  sesame: "⚫",
-  sulphites: "🧪",
-  lupin: "🫘",
-  molluscs: "🐚",
-};
+import { ALLERGEN_ICONS } from "./allergen-icons";
 
 interface Props {
   vendorId: string;

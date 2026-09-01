@@ -74,4 +74,15 @@ describe("OptionGroupsEditor advanced section", () => {
     expect(screen.getAllByPlaceholderText(/cost/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/dairy/i)).toBeInTheDocument();
   });
+
+  it("shows an icon next to each allergen, and a scope caption", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    expect(screen.getByText("🥛")).toBeInTheDocument();
+    expect(screen.getByText("🥜")).toBeInTheDocument();
+    expect(
+      screen.getByText(/only when this choice is picked/i),
+    ).toBeInTheDocument();
+  });
 });

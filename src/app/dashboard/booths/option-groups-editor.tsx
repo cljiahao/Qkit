@@ -11,6 +11,7 @@ import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
 import { ALLERGEN_TAGS, type AllergenTag } from "@/lib/schemas";
 import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import type { OptionChoice, OptionGroup } from "@/lib/types";
+import { ALLERGEN_ICONS } from "./allergen-icons";
 
 interface Props {
   groups: OptionGroup[];
@@ -232,7 +233,11 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
                     Advanced
                   </button>
                   {advancedOpen && (
-                    <div className="ml-1 space-y-2 border-l border-border pl-3">
+                    <div className="mt-1 space-y-2 pl-1">
+                      <p className="text-xs text-muted-foreground">
+                        Extra cost and allergens only when this choice is
+                        picked.
+                      </p>
                       <div className="relative w-32">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                           $
@@ -244,7 +249,7 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
                           onChange={(e) =>
                             setChoiceCost(gi, ci, e.target.value)
                           }
-                          className="rounded-lg pl-6 text-sm"
+                          className="rounded-lg pl-6"
                         />
                       </div>
                       <div className="flex flex-wrap gap-3">
@@ -265,6 +270,9 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
                                 )
                               }
                             />
+                            <span aria-hidden="true">
+                              {ALLERGEN_ICONS[tag]}
+                            </span>
                             {tag}
                           </label>
                         ))}

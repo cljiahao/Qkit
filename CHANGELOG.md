@@ -8,6 +8,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `OptionGroupsEditor`'s per-choice "Advanced" panel (cost + allergens) now
+  matches the item-level allergen picker right above it in the UI: each
+  allergen gets its icon (a new shared `ALLERGEN_ICONS`, `allergen-icons.ts`,
+  extracted from what was a `menu-editor.tsx`-local const), the decorative
+  `border-l` box is gone in favor of the same flat spacing the item-level
+  picker already used, and a caption now names the scope ("Extra cost and
+  allergens only when this choice is picked") — it isn't a duplicate of the
+  item-level allergens, but nothing said so before.
+
 - Dedicated menu-manager page (`/dashboard/booths/{boothId}/menu`), split out
   of the main booth-edit form: CSV export/import (`name,description,price,
 available`, matching each item by exact name to update in place rather
