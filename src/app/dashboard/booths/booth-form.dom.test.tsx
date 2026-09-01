@@ -5,12 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { BoothForm } from "./booth-form";
 import type { Entitlement } from "@/lib/plan";
 
-const { saveBooth, saveMenuItems, deleteBooth } = vi.hoisted(() => ({
+const { saveBooth, deleteBooth } = vi.hoisted(() => ({
   saveBooth: vi.fn(),
-  saveMenuItems: vi.fn(),
   deleteBooth: vi.fn(),
 }));
-vi.mock("./actions", () => ({ saveBooth, saveMenuItems, deleteBooth }));
+vi.mock("./actions", () => ({ saveBooth, deleteBooth }));
 
 // Every subcomponent below has its own dom test file — stub them out here so
 // this file is isolated to booth-form's own state wiring (in particular the
@@ -240,7 +239,7 @@ describe("BoothForm paykit booking id", () => {
 });
 
 describe("BoothForm menu section", () => {
-  it("renders the menu editor inline for a brand-new, unsaved booth", () => {
+  it("shows a hint instead of a link for a brand-new, unsaved booth", () => {
     render(
       <BoothForm
         vendorId="v1"
@@ -249,16 +248,13 @@ describe("BoothForm menu section", () => {
       />,
     );
     expect(
-      screen.getByRole("button", { name: /add item/i }),
+      screen.getByText("Save this booth to start building its menu."),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/save this booth first/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("persists items added inline once the booth is saved", async () => {
+  it("redirects straight to the menu page after creating a new booth", async () => {
     saveBooth.mockResolvedValue({ success: true, boothId: "b-new" });
-    saveMenuItems.mockResolvedValue({ success: true });
     const user = userEvent.setup();
     render(
       <BoothForm
@@ -268,15 +264,43 @@ describe("BoothForm menu section", () => {
       />,
     );
     await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
-    await user.click(screen.getAllByRole("button", { name: /add item/i })[0]!);
-    await user.type(screen.getByPlaceholderText("Item name"), "Vanilla");
     await user.click(screen.getByRole("button", { name: /save booth/i }));
 
     await waitFor(() =>
-      expect(saveMenuItems).toHaveBeenCalledWith(
-        "b-new",
-        expect.arrayContaining([expect.objectContaining({ name: "Vanilla" })]),
+      expect(routerReplace).toHaveBeenCalledWith(
+        "/dashboard/booths/b-new/menu",
       ),
+    );
+  });
+
+  it("redirects to the booth list after saving an existing booth", async () => {
+    saveBooth.mockResolvedValue({ success: true, boothId: BOOTH_ID });
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+        initial={{
+          boothId: BOOTH_ID,
+          name: "Ice Cream Cart",
+          image_url: null,
+          is_active: true,
+          hours: null,
+          menuItemCount: 3,
+          payment: null,
+          social_links: null,
+          requires_arrival_confirm: false,
+          walkup_default: false,
+          print_enabled: false,
+          paykit_booking_id: null,
+        }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    await waitFor(() =>
+      expect(routerReplace).toHaveBeenCalledWith("/dashboard/booths"),
     );
   });
 

@@ -24,11 +24,11 @@ available`, matching each item by exact name to update in place rather
   visible gap where the two columns stack on mobile). A vendor with zero
   items can now download a CSV template (`menuCsvTemplate()`) showing the
   expected columns instead of Export CSV being simply disabled with nothing
-  to give them. A brand-new, unsaved booth still adds items inline on
-  `booth-form.tsx` itself (the dedicated page needs a real `boothId`) —
-  those items are sent through `saveMenuItems` right after the booth's own
-  `saveBooth` insert succeeds, same as the old single-form flow from the
-  vendor's perspective.
+  to give them. Creating a brand-new booth now redirects straight to its
+  menu page right after the first save (instead of the booth list) —
+  `saveMenuItems` needs a real `boothId`, which only exists post-save, so
+  one save gets a vendor straight to the same CSV/reorder/image menu
+  surface every booth uses, rather than a separate inline-editing path.
 
 - `printing-section.tsx`: a general "Manage printers in printkit ↗" link,
   independent of the print-enabled switch or a saved booth — the existing

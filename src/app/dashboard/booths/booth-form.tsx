@@ -37,19 +37,14 @@ import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
-import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
 import { PrintingSection } from "./printing-section";
 import { SocialLinksSection } from "./social-links-section";
 import { BookingStatusSection } from "./booking-status-section";
 import { CloseBoothControl } from "./close-booth-control";
-import { saveBooth, saveMenuItems, deleteBooth } from "./actions";
-import {
-  boothFormSchema,
-  sanitizeOptionGroups,
-  type MenuItemFormInput,
-} from "@/lib/schemas";
+import { saveBooth, deleteBooth } from "./actions";
+import { boothFormSchema } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
 import type { PaymentConfig, SocialLinks } from "@/lib/types";
@@ -117,8 +112,6 @@ export function BoothForm({
   const [paykitBookingId, setPaykitBookingId] = useState<string | null>(
     initial?.paykit_booking_id ?? null,
   );
-  // Only for a brand-new booth; an existing booth's items live on menu-manager.
-  const [newItems, setNewItems] = useState<MenuItemFormInput[]>([]);
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
 
@@ -165,27 +158,16 @@ export function BoothForm({
         toast.error(result.error);
         return;
       }
-
-      if (isCreate && newItems.length > 0) {
-        const sanitized = newItems.map((it) => ({
-          ...it,
-          option_groups: sanitizeOptionGroups(it.option_groups),
-        }));
-        const menuResult = await saveMenuItems(result.boothId, sanitized);
-        if (!menuResult.success) {
-          toast.error(
-            `Booth saved, but menu items failed: ${menuResult.error}`,
-          );
-          router.replace(`/dashboard/booths/${result.boothId}/menu`);
-          await navigatingAway();
-          return;
-        }
-      }
-
       toast.success("Booth saved");
       // replace + no refresh: a refresh here races and cancels the navigation
       // (same bug as onboarding). The list is revalidate=0 so it refetches on nav.
-      router.replace("/dashboard/booths");
+      // A fresh create goes straight to the menu page — saveMenuItems needs a
+      // real boothId, which only exists after this first save.
+      router.replace(
+        isCreate
+          ? `/dashboard/booths/${result.boothId}/menu`
+          : "/dashboard/booths",
+      );
       await navigatingAway();
     });
   }
@@ -372,12 +354,9 @@ export function BoothForm({
                 <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
               </Link>
             ) : (
-              <MenuEditor
-                vendorId={vendorId}
-                items={newItems}
-                onChange={setNewItems}
-                entitlement={entitlement}
-              />
+              <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                Save this booth to start building its menu.
+              </p>
             )}
           </Section>
 
