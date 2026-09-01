@@ -147,6 +147,11 @@ available`, matching each item by exact name to update in place rather
   and its helper text, a settings tooltip, the customer Telegram-connect
   blurb) — replaced with plain punctuation, now caught for good by a new
   ESLint gate (see AGENTS.md's "No-em-dash hard gate" note).
+- Printing section showed two printkit links stacked once a booth had
+  printing on and was saved: the booth-scoped "Choose the printer for this
+  booth →" deep link, and a general "Manage printers in printkit ↗" link
+  right under it, doing the same job worse (no auto-selected booth). The
+  general link now only shows when the booth-scoped one isn't available.
 
 ### Changed
 

@@ -79,4 +79,19 @@ describe("PrintingSection", () => {
       screen.queryByRole("link", { name: /manage printers/i }),
     ).not.toBeInTheDocument();
   });
+
+  it("hides the dashboard link once the booth-scoped link is available", () => {
+    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.test";
+    render(
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
+    );
+    expect(
+      screen.getByRole("link", {
+        name: "Choose the printer for this booth →",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /manage printers/i }),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -68,7 +68,9 @@ export function PrintingSection({
           )}
         </p>
       )}
-      {dashboardLink && (
+      {/* Redundant once the booth-scoped deep link above is available — it
+          already does more (skips the picker). Only the general fallback. */}
+      {!printerLink && dashboardLink && (
         <p className="px-1 text-sm text-muted-foreground">
           <a
             href={dashboardLink}
