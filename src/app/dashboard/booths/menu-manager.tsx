@@ -32,6 +32,8 @@ function formatImportRow(row: CsvMenuRow, index: number): string {
   if (row.description) parts.push(`(${row.description})`);
   if (row.price_cents != null)
     parts.push(`$${(row.price_cents / 100).toFixed(2)}`);
+  if (row.cost_cents != null)
+    parts.push(`(cost $${(row.cost_cents / 100).toFixed(2)})`);
   return parts.join(" ");
 }
 
@@ -96,6 +98,7 @@ export function MenuManager({
           name: row.name,
           description: row.description,
           price_cents: row.price_cents,
+          cost_cents: row.cost_cents,
           available: row.available,
         };
         if (existingIndex === -1) {
@@ -175,9 +178,9 @@ export function MenuManager({
         </div>
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
-        CSV columns: name, description, price, available. One row per item;
-        leave price blank for a queue-only item. No template yet? Export CSV
-        downloads one for you.
+        CSV columns: name, description, price, cost, available. One row per
+        item; leave price or cost blank if not tracked. No template yet? Export
+        CSV downloads one for you.
       </p>
 
       {importPreview && (

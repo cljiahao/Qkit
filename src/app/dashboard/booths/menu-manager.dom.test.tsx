@@ -170,7 +170,7 @@ describe("MenuManager CSV import", () => {
     );
 
     const csv =
-      "name,description,price,available\nTeh O,,1.20,true\n,,1.00,true";
+      "name,description,price,cost,available\nTeh O,,1.20,,true\n,,1.00,,true";
     await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
 
     expect(await screen.findByText(/1 of 2 rows ready/)).toBeInTheDocument();
@@ -195,11 +195,31 @@ describe("MenuManager CSV import", () => {
     );
 
     const csv =
-      "name,description,price,available\nKopi O,Local black coffee,1.80,true";
+      "name,description,price,cost,available\nKopi O,Local black coffee,1.80,,true";
     await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
 
     expect(
       await screen.findByText("Kopi O (Local black coffee) $1.80"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows cost in the preview when set", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[]}
+      />,
+    );
+
+    const csv = "name,description,price,cost,available\nKopi O,,1.80,0.60,true";
+    await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
+
+    expect(
+      await screen.findByText("Kopi O $1.80 (cost $0.60)"),
     ).toBeInTheDocument();
   });
 
@@ -215,7 +235,7 @@ describe("MenuManager CSV import", () => {
       />,
     );
 
-    const csv = "name,description,price,available\nKopi O,,2.00,true";
+    const csv = "name,description,price,cost,available\nKopi O,,2.00,,true";
     await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
     await user.click(
       await screen.findByRole("button", { name: "Add to menu" }),
@@ -238,7 +258,7 @@ describe("MenuManager CSV import", () => {
     );
     await user.upload(
       screen.getByLabelText("Import CSV"),
-      csvFile("name,description,price,available"),
+      csvFile("name,description,price,cost,available"),
     );
     await waitFor(() =>
       expect(toastError).toHaveBeenCalledWith("No rows found in that file"),

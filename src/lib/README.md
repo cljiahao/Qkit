@@ -100,22 +100,26 @@ factories, respectively).
 - `image-upload-adapter.test.ts` — tests a successful upload/public-URL
   round trip and that a storage error propagates as a rejection.
 - `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`: the
-  qkit-side of the menu-manager's CSV bulk export/import (`name,description,
-price,available`, dollars not cents for spreadsheet readability). A
-  hand-rolled RFC4180-shaped encode/decode (quoted fields, embedded
-  commas/quotes) rather than a new dependency — 4 fixed columns didn't
-  justify one; does not handle a literal newline inside a quoted field.
-  `csvToMenuItems` always treats the first line as the header (skipped) and
-  returns one `CsvMenuRow` per remaining line — a row with no name or an
-  unparseable/negative price comes back with `error` set instead of being
-  silently dropped, so `menu-manager.tsx`'s import preview can surface it.
-  `menuCsvTemplate()` (2026-09-01) returns the same header plus two example
-  rows (one with a blank price, showing that's valid) — a vendor with no
-  items yet had no way to see the expected column format before this, since
-  `menuItemsToCsv([])` is just a bare header line with nothing to copy from.
+  qkit-side of the menu-manager's CSV bulk export/import
+  (`name,description,price,cost,available` — `cost` added 2026-09-01, the
+  item's own private `cost_cents`; dollars not cents for spreadsheet
+  readability). A hand-rolled RFC4180-shaped encode/decode (quoted fields,
+  embedded commas/quotes) rather than a new dependency — 5 fixed columns
+  didn't justify one; does not handle a literal newline inside a quoted
+  field. `csvToMenuItems` always treats the first line as the header
+  (skipped) and returns one `CsvMenuRow` per remaining line via the shared
+  `parseDollarField` helper (blank is valid/unset, negative or non-numeric
+  is a per-row `error` instead of a silent drop) for both `price` and
+  `cost` — a bad row surfaces in `menu-manager.tsx`'s import preview rather
+  than disappearing. `menuCsvTemplate()` returns the same header plus two
+  example rows (one with a blank price and cost, one with both set) — a
+  vendor with no items yet had no way to see the expected column format
+  before this, since `menuItemsToCsv([])` is just a bare header line with
+  nothing to copy from.
 - `menu-csv.test.ts` — round-trip encode/decode (including a
-  comma-containing description through the quoting path), header skipping,
-  missing-name/invalid-price/negative-price row errors, blank-price-is-not-
+  comma-containing description through the quoting path, and cost
+  alongside price), header skipping, missing-name/invalid-or-negative-
+  price/invalid-or-negative-cost row errors, blank-price-or-cost-is-not-
   an-error, the `available` default (true unless the cell is exactly
   `false`), empty/header-only input, and that `menuCsvTemplate()`'s own
   output round-trips through `csvToMenuItems` with no error rows.

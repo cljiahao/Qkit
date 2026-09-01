@@ -8,6 +8,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Menu CSV export/import gains a `cost` column (`name,description,price,
+cost,available`) — the item's own private `cost_cents`, an always-visible
+  field next to Price in the UI, not an Advanced one, so it belonged in the
+  plain CSV alongside price rather than staying UI-only. Blank means unset,
+  same as price; a negative or non-numeric cost is a per-row import error.
+  `docs/superpowers/specs/2026-09-01-menu-csv-customization-design.md`
+  records the design for the next step — importing per-item customization
+  (option groups/choices) via continuation rows.
+
 - `OptionGroupsEditor`'s per-choice "Advanced" panel (cost + allergens) now
   matches the item-level allergen picker right above it in the UI: each
   allergen gets its icon (a new shared `ALLERGEN_ICONS`, `allergen-icons.ts`,
