@@ -109,11 +109,16 @@ price,available`, dollars not cents for spreadsheet readability). A
   returns one `CsvMenuRow` per remaining line — a row with no name or an
   unparseable/negative price comes back with `error` set instead of being
   silently dropped, so `menu-manager.tsx`'s import preview can surface it.
+  `menuCsvTemplate()` (2026-09-01) returns the same header plus two example
+  rows (one with a blank price, showing that's valid) — a vendor with no
+  items yet had no way to see the expected column format before this, since
+  `menuItemsToCsv([])` is just a bare header line with nothing to copy from.
 - `menu-csv.test.ts` — round-trip encode/decode (including a
   comma-containing description through the quoting path), header skipping,
   missing-name/invalid-price/negative-price row errors, blank-price-is-not-
   an-error, the `available` default (true unless the cell is exactly
-  `false`), and empty/header-only input.
+  `false`), empty/header-only input, and that `menuCsvTemplate()`'s own
+  output round-trips through `csvToMenuItems` with no error rows.
 - `menu-sections.ts` — `groupByCategory(items, categories)`: pure grouping
   of a booth's `menu_items` under its `menu_categories` (booth's own order),
   bucketing any missing/unmatched category id into "Other", always last, and

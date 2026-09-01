@@ -119,7 +119,8 @@ describe("MenuManager save", () => {
 });
 
 describe("MenuManager CSV export", () => {
-  it("is disabled with no items", () => {
+  it("offers a template download instead of Export CSV with no items", async () => {
+    const user = userEvent.setup();
     render(
       <MenuManager
         vendorId="v1"
@@ -129,7 +130,10 @@ describe("MenuManager CSV export", () => {
         initialItems={[]}
       />,
     );
-    expect(screen.getByRole("button", { name: /Export CSV/ })).toBeDisabled();
+    const button = screen.getByRole("button", { name: /Download template/ });
+    expect(button).not.toBeDisabled();
+    await user.click(button);
+    expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
   });
 
   it("builds a CSV blob from the current items", async () => {

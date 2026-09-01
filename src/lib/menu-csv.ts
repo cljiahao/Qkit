@@ -8,8 +8,9 @@ function csvField(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+const CSV_HEADER = "name,description,price,available";
+
 export function menuItemsToCsv(items: MenuItemFormInput[]): string {
-  const header = "name,description,price,available";
   const rows = items.map((it) =>
     [
       csvField(it.name),
@@ -18,7 +19,18 @@ export function menuItemsToCsv(items: MenuItemFormInput[]): string {
       it.available ? "true" : "false",
     ].join(","),
   );
-  return [header, ...rows].join("\n");
+  return [CSV_HEADER, ...rows].join("\n");
+}
+
+/** Blank starting point for a vendor with no items yet — same shape
+ * menuItemsToCsv writes, with two example rows showing the expected format
+ * (including a blank price, since price is optional). */
+export function menuCsvTemplate(): string {
+  return [
+    CSV_HEADER,
+    "Kopi O,Local black coffee,1.80,true",
+    "Roti Prata,,,true",
+  ].join("\n");
 }
 
 function parseCsvLine(line: string): string[] {

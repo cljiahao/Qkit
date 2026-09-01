@@ -12,6 +12,7 @@ import { saveMenuItems } from "./actions";
 import { sanitizeOptionGroups, type MenuItemFormInput } from "@/lib/schemas";
 import {
   menuItemsToCsv,
+  menuCsvTemplate,
   csvToMenuItems,
   type CsvMenuRow,
 } from "@/lib/menu-csv";
@@ -56,9 +57,10 @@ export function MenuManager({
   const { pending: saving, run: runSave } = useAsyncAction();
 
   function onExport() {
-    const csv = menuItemsToCsv(items);
+    const csv = items.length === 0 ? menuCsvTemplate() : menuItemsToCsv(items);
     const safeName = boothName.trim().replace(/[^\w-]+/g, "-") || "menu";
-    downloadCsv(`${safeName}-menu.csv`, csv);
+    const suffix = items.length === 0 ? "menu-template" : "menu";
+    downloadCsv(`${safeName}-${suffix}.csv`, csv);
   }
 
   async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -148,9 +150,9 @@ export function MenuManager({
             size="sm"
             className="rounded-lg"
             onClick={onExport}
-            disabled={items.length === 0}
           >
-            <Download className="size-3.5" /> Export CSV
+            <Download className="size-3.5" />
+            {items.length === 0 ? "Download template" : "Export CSV"}
           </Button>
           <Button
             type="button"
@@ -171,6 +173,11 @@ export function MenuManager({
           />
         </div>
       </div>
+      <p className="-mt-3 text-xs text-muted-foreground">
+        CSV columns: name, description, price, available — one row per item,
+        leave price blank for a queue-only item. No template yet? Export CSV
+        downloads one for you.
+      </p>
 
       {importPreview && (
         <div className="space-y-3 rounded-xl border border-border bg-card p-4">

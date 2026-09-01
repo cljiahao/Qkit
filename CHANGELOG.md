@@ -17,7 +17,11 @@ available`, matching each item by exact name to update in place rather
   exclusive write path for `booths.menu_items`; `saveBooth` no longer reads
   or writes that column at all, closing off a stale-state clobber risk
   between the two pages. `booth-form.tsx`'s Menu section is now a read-only
-  item-count link into the new page.
+  item-count link into the new page — its layout is 2 natural-height grid
+  columns now, not the old `row-span-2` sized around the full menu editor
+  that used to live there. A vendor with zero items can now download a CSV
+  template (`menuCsvTemplate()`) showing the expected columns instead of
+  Export CSV being simply disabled with nothing to give them.
 
 - `docs/OPS-RUNBOOK.md`: symptom-level operational triage doc for live-event
   issues, separating what's self-serve (a vendor's own board fixes a stuck

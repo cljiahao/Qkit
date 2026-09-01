@@ -190,9 +190,13 @@ export function BoothForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
-      {/* 3 grid items, not 2 — mobile stacks Menu between Hours and Payment; md+ keeps the two-column split. */}
+      {/* 2 grid items — mobile stacks the right column's Menu/Payment/Printing/
+          Social right after Hours/Order flow; md+ keeps the two-column split.
+          Both columns are natural-height (no row-span), each sized to its own
+          content — the old row-span-2 balancing act assumed Menu was the tall
+          side, which stopped being true once it became a one-line summary. */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start">
-        <div className="md:col-start-1 md:row-start-1">
+        <div>
           <Section
             icon={<Store className="size-5" />}
             eyebrow="Shown to customers"
@@ -324,7 +328,7 @@ export function BoothForm({
           </Section>
         </div>
 
-        <div className="md:col-start-2 md:row-start-1 md:row-span-2">
+        <div>
           <Section
             icon={<UtensilsCrossed className="size-5" />}
             eyebrow="What you sell"
@@ -354,9 +358,7 @@ export function BoothForm({
               </p>
             )}
           </Section>
-        </div>
 
-        <div className="md:col-start-1 md:row-start-2">
           <Section
             icon={<Wallet className="size-5" />}
             eyebrow="How you get paid"

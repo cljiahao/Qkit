@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { menuItemsToCsv, csvToMenuItems } from "./menu-csv";
+import { menuItemsToCsv, menuCsvTemplate, csvToMenuItems } from "./menu-csv";
 import type { MenuItemFormInput } from "./schemas";
 
 const item = (patch: Partial<MenuItemFormInput> = {}): MenuItemFormInput => ({
@@ -28,6 +28,19 @@ describe("menuItemsToCsv", () => {
       item({ description: "Hot, strong, no sugar" }),
     ]);
     expect(csv).toContain('"Hot, strong, no sugar"');
+  });
+});
+
+describe("menuCsvTemplate", () => {
+  it("parses clean, with no error rows", () => {
+    const rows = csvToMenuItems(menuCsvTemplate());
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row.error).toBeUndefined();
+  });
+
+  it("demonstrates a blank price is valid", () => {
+    const rows = csvToMenuItems(menuCsvTemplate());
+    expect(rows.some((r) => r.price_cents == null)).toBe(true);
   });
 });
 
