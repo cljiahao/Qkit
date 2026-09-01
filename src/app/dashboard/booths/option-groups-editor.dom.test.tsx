@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import type { OptionGroup } from "@/lib/types";
 import type { Entitlement } from "@/lib/plan";
+import type { AllergenTag } from "@/lib/schemas";
 
 const ENTITLEMENT: Entitlement = {
   tier: "pro",
@@ -17,13 +18,20 @@ const ENTITLEMENT: Entitlement = {
   statsRanges: ["24h", "7d", "30d"],
 };
 
-function Host({ initial }: { initial: OptionGroup[] }) {
+function Host({
+  initial,
+  itemAllergens = [],
+}: {
+  initial: OptionGroup[];
+  itemAllergens?: AllergenTag[];
+}) {
   const [groups, setGroups] = useState(initial);
   return (
     <OptionGroupsEditor
       groups={groups}
       onChange={setGroups}
       entitlement={ENTITLEMENT}
+      itemAllergens={itemAllergens}
     />
   );
 }
@@ -84,5 +92,35 @@ describe("OptionGroupsEditor advanced section", () => {
     expect(
       screen.getByText(/only when this choice is picked/i),
     ).toBeInTheDocument();
+  });
+});
+
+describe("OptionGroupsEditor customer-sees preview", () => {
+  it("shows nothing when neither the item nor the choice has allergens", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    expect(screen.queryByText(/customer sees/i)).not.toBeInTheDocument();
+  });
+
+  it("appears once a choice allergen is checked, with its icon", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    await user.click(screen.getAllByLabelText(/dairy/i)[0]!);
+
+    expect(screen.getByText(/customer sees/i)).toBeInTheDocument();
+    const preview = screen.getByRole("status", { name: /contains allergens/i });
+    expect(preview).toHaveTextContent("dairy");
+    expect(preview).toHaveTextContent("🥛");
+  });
+
+  it("unions the item's own allergens into the preview, even with no choice allergens checked", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} itemAllergens={["gluten"]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+
+    const preview = screen.getByRole("status", { name: /contains allergens/i });
+    expect(preview).toHaveTextContent("gluten");
   });
 });

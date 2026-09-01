@@ -17,10 +17,21 @@ interface Props {
   groups: OptionGroup[];
   onChange: (groups: OptionGroup[]) => void;
   entitlement: Entitlement;
+  // The item's own fixed allergens — for the "customer sees" preview below,
+  // same union item-customizer.tsx computes at order time.
+  itemAllergens: AllergenTag[];
 }
 
 function centsToDollars(cents?: number): string {
   return cents == null ? "" : centsToDollarString(cents);
+}
+
+// Same union logic as item-customizer.tsx's live customer-facing badge.
+function effectiveAllergens(
+  itemAllergens: AllergenTag[],
+  choiceAllergens: AllergenTag[] | undefined,
+): AllergenTag[] {
+  return Array.from(new Set([...itemAllergens, ...(choiceAllergens ?? [])]));
 }
 
 /**
@@ -28,7 +39,12 @@ function centsToDollars(cents?: number): string {
  * number of groups (Size, Spice, Add-ons, …), each single- or multi-select,
  * with any number of choices. Not coffee-specific.
  */
-export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
+export function OptionGroupsEditor({
+  groups,
+  onChange,
+  entitlement,
+  itemAllergens,
+}: Props) {
   // Advanced (cost + allergens) is collapsed by default per choice — most
   // choices need neither, price is the only thing every vendor cares about.
   const [expandedChoices, setExpandedChoices] = useState<Set<string>>(
@@ -277,6 +293,38 @@ export function OptionGroupsEditor({ groups, onChange, entitlement }: Props) {
                           </label>
                         ))}
                       </div>
+                      {(() => {
+                        const effective = effectiveAllergens(
+                          itemAllergens,
+                          choice.allergens,
+                        );
+                        return (
+                          effective.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Customer sees when picked:
+                              </p>
+                              <div
+                                role="status"
+                                aria-label="Contains allergens"
+                                className="flex flex-wrap gap-1.5 pt-1"
+                              >
+                                {effective.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
+                                  >
+                                    <span aria-hidden="true">
+                                      {ALLERGEN_ICONS[tag]}
+                                    </span>{" "}
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

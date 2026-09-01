@@ -15,7 +15,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `border-l` box is gone in favor of the same flat spacing the item-level
   picker already used, and a caption now names the scope ("Extra cost and
   allergens only when this choice is picked") — it isn't a duplicate of the
-  item-level allergens, but nothing said so before.
+  item-level allergens, but nothing said so before. A new "Customer sees
+  when picked" live preview makes that connection concrete: it renders the
+  same item + choice allergen union `item-customizer.tsx` already computes
+  for the customer at order time, with the same pill styling, so a vendor
+  can see their per-choice tag actually merges with the item's own rather
+  than feeling like separate, disconnected busywork. No data-model change —
+  confirmed against DoorDash's own per-modifier allergen support and the
+  EU 1169/2011 / California ADDE Act's documented substitution-labelling
+  risk that per-choice tagging exists specifically to avoid; item-only
+  tagging was considered and rejected as the wrong direction for a menu
+  with real customization, not merely more effort.
 
 - Dedicated menu-manager page (`/dashboard/booths/{boothId}/menu`), split out
   of the main booth-edit form: CSV export/import (`name,description,price,

@@ -455,6 +455,7 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                                   update(i, { option_groups: g })
                                 }
                                 entitlement={entitlement}
+                                itemAllergens={item.allergens ?? []}
                               />
                             </div>
                           )}
