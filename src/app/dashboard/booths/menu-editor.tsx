@@ -282,7 +282,7 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                         onClick={() => duplicateItem(i)}
                         disabled={atItemCap}
                         aria-label="Duplicate item"
-                        title="Duplicate — creates an independent copy, not a linked one"
+                        title="Duplicate: creates an independent copy, not a linked one"
                       >
                         <Copy className="size-4" />
                       </Button>

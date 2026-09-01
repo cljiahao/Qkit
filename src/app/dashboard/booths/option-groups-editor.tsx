@@ -146,13 +146,39 @@ export function OptionGroupsEditor({
           key={group.id}
           className="space-y-3 rounded-lg border border-border bg-background p-3"
         >
-          <div className="flex gap-2">
+          {/* Group identity + type, one compact row (was two full-width rows)
+              — a one-time-per-group setting, kept visually lighter than the
+              repeated choice rows below so it reads as a header, not another
+              item in the list. */}
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Group name (e.g. Size, Spice, Add-ons)"
               value={group.label}
               onChange={(e) => updateGroup(gi, { label: e.target.value })}
-              className="rounded-lg"
+              className="min-w-[10rem] flex-1 rounded-lg"
             />
+            <ToggleGroup
+              type="single"
+              value={group.multiple ? "any" : "one"}
+              onValueChange={(v) =>
+                v && updateGroup(gi, { multiple: v === "any" })
+              }
+              aria-label="How many options a customer can pick"
+              className="inline-flex shrink-0 rounded-lg border border-border p-0.5 text-sm"
+            >
+              <ToggleGroupItem
+                value="one"
+                className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+              >
+                Pick one
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="any"
+                className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+              >
+                Pick any
+              </ToggleGroupItem>
+            </ToggleGroup>
             <Button
               type="button"
               variant="outline"
@@ -164,30 +190,6 @@ export function OptionGroupsEditor({
               <Trash2 className="size-4" />
             </Button>
           </div>
-
-          {/* single / multi toggle */}
-          <ToggleGroup
-            type="single"
-            value={group.multiple ? "any" : "one"}
-            onValueChange={(v) =>
-              v && updateGroup(gi, { multiple: v === "any" })
-            }
-            aria-label="How many options a customer can pick"
-            className="inline-flex rounded-lg border border-border p-0.5 text-sm"
-          >
-            <ToggleGroupItem
-              value="one"
-              className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-            >
-              Pick one
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="any"
-              className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-            >
-              Pick any
-            </ToggleGroupItem>
-          </ToggleGroup>
 
           {/* choices */}
           <div className="space-y-2">
@@ -249,7 +251,7 @@ export function OptionGroupsEditor({
                     Advanced
                   </button>
                   {advancedOpen && (
-                    <div className="mt-1 space-y-2 pl-1">
+                    <div className="mt-1 space-y-2 pb-2 pl-1">
                       <p className="text-xs text-muted-foreground">
                         Extra cost and allergens only when this choice is
                         picked.
@@ -300,14 +302,14 @@ export function OptionGroupsEditor({
                         );
                         return (
                           effective.length > 0 && (
-                            <div>
+                            <div className="space-y-1 border-t border-border/60 pt-2">
                               <p className="text-xs font-medium text-muted-foreground">
                                 Customer sees when picked:
                               </p>
                               <div
                                 role="status"
                                 aria-label="Contains allergens"
-                                className="flex flex-wrap gap-1.5 pt-1"
+                                className="flex flex-wrap gap-1.5"
                               >
                                 {effective.map((tag) => (
                                   <span

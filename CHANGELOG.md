@@ -25,7 +25,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   EU 1169/2011 / California ADDE Act's documented substitution-labelling
   risk that per-choice tagging exists specifically to avoid; item-only
   tagging was considered and rejected as the wrong direction for a menu
-  with real customization, not merely more effort.
+  with real customization, not merely more effort. The group header (name +
+  Pick one/Pick any + delete) is now one compact row instead of two stacked
+  full-width ones, reading as a lighter one-time setting rather than
+  competing with the repeated choice rows below it; the preview now sits
+  behind its own divider with real bottom spacing, fixing a real layout
+  bug where its pills rendered flush against the next choice's own border.
 
 - Dedicated menu-manager page (`/dashboard/booths/{boothId}/menu`), split out
   of the main booth-edit form: CSV export/import (`name,description,price,
@@ -94,6 +99,12 @@ available`, matching each item by exact name to update in place rather
   sections with a jump nav, once a vendor has set up 2+ categories with
   items in them — a booth with 0 or 1 category still renders as a single
   flat "Menu" list, unchanged.
+
+### Fixed
+
+- A handful of leftover em dashes in user-facing copy across the booths
+  dashboard (the "Duplicate" button's tooltip, the event-mode create page's
+  description) — replaced with plain punctuation.
 
 ### Changed
 
