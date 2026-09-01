@@ -95,6 +95,40 @@ describe("OptionGroupsEditor advanced section", () => {
   });
 });
 
+describe("OptionGroupsEditor group collapse", () => {
+  it("starts expanded, with no choice-count badge shown", () => {
+    render(<Host initial={[MILK_GROUP]} />);
+    expect(screen.getAllByPlaceholderText("Choice (e.g. Small)")).toHaveLength(
+      2,
+    );
+    expect(screen.queryByText(/2 choices/i)).not.toBeInTheDocument();
+  });
+
+  it("collapsing hides the choices and shows a choice-count badge", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getByRole("button", { name: /collapse group/i }));
+
+    expect(
+      screen.queryByPlaceholderText("Choice (e.g. Small)"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("2 choices")).toBeInTheDocument();
+    // The group's own identity stays interactive while collapsed.
+    expect(screen.getByPlaceholderText(/group name/i)).toBeInTheDocument();
+  });
+
+  it("expanding again restores the choices", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getByRole("button", { name: /collapse group/i }));
+    await user.click(screen.getByRole("button", { name: /expand group/i }));
+
+    expect(screen.getAllByPlaceholderText("Choice (e.g. Small)")).toHaveLength(
+      2,
+    );
+  });
+});
+
 describe("OptionGroupsEditor advanced modal", () => {
   it("opens exactly one choice's Advanced dialog, scoped to that choice", async () => {
     const user = userEvent.setup();

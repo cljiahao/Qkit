@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -26,10 +26,12 @@ import {
   Copy,
   GripVertical,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ImageUploader } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
@@ -48,6 +50,8 @@ interface Props {
   onChange: (items: MenuItemFormInput[]) => void;
   entitlement: Entitlement;
 }
+
+const REMOVE_UNDO_MS = 60_000;
 
 function centsToDollars(cents?: number): string {
   return cents == null ? "" : centsToDollarString(cents);
@@ -76,6 +80,13 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
   );
 
   const atItemCap = !canAddMenuItem(entitlement, items.length);
+  // Undo needs the latest items at click time, not the array closed over
+  // when the toast was created — a stale closure would clobber any edit
+  // made in between.
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -171,7 +182,19 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
   }
 
   function removeItem(index: number) {
+    const removed = items[index];
     onChange(items.filter((_, i) => i !== index));
+    toast(`${removed.name || "Item"} removed`, {
+      duration: REMOVE_UNDO_MS,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const current = itemsRef.current;
+          const at = Math.min(index, current.length);
+          onChange([...current.slice(0, at), removed, ...current.slice(at)]);
+        },
+      },
+    });
   }
 
   // Deep-cloned (structuredClone) so editing the copy's nested option groups
@@ -274,28 +297,44 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                           className="rounded-lg"
                         />
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
-                        onClick={() => duplicateItem(i)}
-                        disabled={atItemCap}
-                        aria-label="Duplicate item"
-                        title="Duplicate: creates an independent copy, not a linked one"
-                      >
-                        <Copy className="size-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
-                        onClick={() => removeItem(i)}
-                        aria-label="Remove item"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      <div className="flex shrink-0 flex-col gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="rounded-lg text-muted-foreground hover:text-foreground"
+                          onClick={() => duplicateItem(i)}
+                          disabled={atItemCap}
+                          aria-label="Duplicate item"
+                          title="Duplicate: creates an independent copy, not a linked one"
+                        >
+                          <Copy className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="rounded-lg text-muted-foreground hover:text-destructive"
+                          onClick={() => removeItem(i)}
+                          aria-label="Remove item"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                      <span className="text-sm">
+                        <span className="font-medium">Available</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Hide to pull this item off the menu without deleting
+                          it.
+                        </span>
+                      </span>
+                      <Switch
+                        checked={item.available}
+                        onCheckedChange={(v) => update(i, { available: v })}
+                        aria-label="Available"
+                      />
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="relative min-w-[9rem] flex-1">
@@ -322,15 +361,6 @@ export function MenuEditor({ vendorId, items, onChange, entitlement }: Props) {
                           className="rounded-lg pl-7"
                         />
                       </div>
-                      <label className="flex shrink-0 items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={item.available}
-                          onCheckedChange={(checked) =>
-                            update(i, { available: checked === true })
-                          }
-                        />
-                        Available
-                      </label>
                     </div>
                     <p className="-mt-1 text-xs text-muted-foreground">
                       Cost is private, used only for your profit/margin stats,

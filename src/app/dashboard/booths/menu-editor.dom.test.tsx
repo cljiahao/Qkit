@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MenuEditor, reorderMenuItems } from "./menu-editor";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
+
+const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
+beforeEach(() => toast.mockClear());
 
 const ENTITLEMENT: Entitlement = {
   tier: "pro",
@@ -58,22 +62,23 @@ describe("reorderMenuItems", () => {
   });
 });
 
+function HostWithTwo() {
+  const [items, setItems] = useState<MenuItemFormInput[]>([
+    { ...ITEM, id: "a", name: "A" },
+    { ...ITEM, id: "b", name: "B" },
+  ]);
+  return (
+    <MenuEditor
+      vendorId="v1"
+      items={items}
+      onChange={setItems}
+      entitlement={ENTITLEMENT}
+    />
+  );
+}
+
 describe("MenuEditor drag handle", () => {
   it("renders one reorder handle per item", () => {
-    function HostWithTwo() {
-      const [items, setItems] = useState<MenuItemFormInput[]>([
-        { ...ITEM, id: "a", name: "A" },
-        { ...ITEM, id: "b", name: "B" },
-      ]);
-      return (
-        <MenuEditor
-          vendorId="v1"
-          items={items}
-          onChange={setItems}
-          entitlement={ENTITLEMENT}
-        />
-      );
-    }
     render(<HostWithTwo />);
     expect(
       screen.getAllByRole("button", { name: "Reorder item" }),
@@ -162,6 +167,56 @@ function HostWithGroups() {
     />
   );
 }
+
+describe("MenuEditor availability toggle", () => {
+  it("renders Available as a switch, checked by default", () => {
+    render(<Host />);
+    expect(screen.getByRole("switch", { name: "Available" })).toBeChecked();
+  });
+
+  it("toggling it flips the item's available flag", async () => {
+    const user = userEvent.setup();
+    render(<Host />);
+    await user.click(screen.getByRole("switch", { name: "Available" }));
+    expect(screen.getByRole("switch", { name: "Available" })).not.toBeChecked();
+  });
+});
+
+describe("MenuEditor remove item", () => {
+  it("removes the item and offers an Undo toast", async () => {
+    const user = userEvent.setup();
+    render(<Host />);
+    await user.click(screen.getByRole("button", { name: "Remove item" }));
+
+    expect(screen.queryByPlaceholderText("Item name")).not.toBeInTheDocument();
+    expect(toast).toHaveBeenCalledWith(
+      "Latte removed",
+      expect.objectContaining({
+        action: expect.objectContaining({ label: "Undo" }),
+      }),
+    );
+  });
+
+  it("Undo restores the item without clobbering an edit made in between", async () => {
+    const user = userEvent.setup();
+    render(<HostWithTwo />);
+    await user.click(
+      screen.getAllByRole("button", { name: "Remove item" })[0]!,
+    );
+    // Edit the surviving item after the removal, before clicking Undo.
+    const remainingName = screen.getByPlaceholderText("Item name");
+    await user.clear(remainingName);
+    await user.type(remainingName, "B edited");
+
+    const restore = toast.mock.calls[0]![1].action.onClick;
+    act(() => restore());
+
+    const names = screen
+      .getAllByPlaceholderText("Item name")
+      .map((el) => (el as HTMLInputElement).value);
+    expect(names).toEqual(["A", "B edited"]);
+  });
+});
 
 describe("MenuEditor duplicate item", () => {
   it("creates an independent copy with a distinct name and id", async () => {

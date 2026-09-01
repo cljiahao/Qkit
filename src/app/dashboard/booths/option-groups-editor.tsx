@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Settings2, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -63,6 +69,20 @@ export function OptionGroupsEditor({
   // accordion here left every previously-opened choice's panel expanded
   // underneath the next, which got unreadable fast.
   const [openAdvancedFor, setOpenAdvancedFor] = useState<string | null>(null);
+  // Tracks collapsed, not expanded, so a freshly-added group defaults open
+  // without needing its id added anywhere first.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
+
+  function toggleGroupCollapsed(groupId: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }
 
   // canHaveOptionGroups(count) asks "may an item carry `count` groups?" — so the
   // cap is hit when adding one more (groups.length + 1) is not allowed.
@@ -145,218 +165,255 @@ export function OptionGroupsEditor({
 
   return (
     <div className="space-y-3">
-      {groups.map((group, gi) => (
-        <div
-          key={group.id}
-          className="space-y-3 rounded-lg border border-border bg-background p-3"
-        >
-          {/* Group identity + type, one compact row — a one-time-per-group
+      {groups.map((group, gi) => {
+        const isCollapsed = collapsedGroups.has(group.id);
+        return (
+          <div
+            key={group.id}
+            className="space-y-3 rounded-lg border border-border bg-background p-3"
+          >
+            {/* Group identity + type, one compact row — a one-time-per-group
               setting, kept visually heavier (font-medium) than the choices
               below so it reads as a header, not another row in the list. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Group name (e.g. Size, Spice, Add-ons)"
-              value={group.label}
-              onChange={(e) => updateGroup(gi, { label: e.target.value })}
-              className="min-w-[10rem] flex-1 rounded-lg font-medium"
-            />
-            <ToggleGroup
-              type="single"
-              value={group.multiple ? "any" : "one"}
-              onValueChange={(v) =>
-                v && updateGroup(gi, { multiple: v === "any" })
-              }
-              aria-label="How many options a customer can pick"
-              className="inline-flex shrink-0 rounded-lg border border-border p-0.5 text-sm"
-            >
-              <ToggleGroupItem
-                value="one"
-                className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-muted-foreground"
+                onClick={() => toggleGroupCollapsed(group.id)}
+                aria-label={isCollapsed ? "Expand group" : "Collapse group"}
+                aria-expanded={!isCollapsed}
               >
-                Pick one
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="any"
-                className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                {isCollapsed ? (
+                  <ChevronRight className="size-4" />
+                ) : (
+                  <ChevronDown className="size-4" />
+                )}
+              </Button>
+              <Input
+                placeholder="Group name (e.g. Size, Spice, Add-ons)"
+                value={group.label}
+                onChange={(e) => updateGroup(gi, { label: e.target.value })}
+                className="min-w-[10rem] flex-1 rounded-lg font-medium"
+              />
+              <ToggleGroup
+                type="single"
+                value={group.multiple ? "any" : "one"}
+                onValueChange={(v) =>
+                  v && updateGroup(gi, { multiple: v === "any" })
+                }
+                aria-label="How many options a customer can pick"
+                className="inline-flex shrink-0 rounded-lg border border-border p-0.5 text-sm"
               >
-                Pick any
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
-              onClick={() => removeGroup(gi)}
-              aria-label="Remove group"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-
-          {/* Choices, visually nested under the header via a distinct
-              background and indent rather than a decorative border. */}
-          <div className="space-y-1.5 rounded-lg bg-muted/40 p-2 pl-3">
-            {group.choices.map((choice, ci) => (
-              <div key={choice.id} className="flex gap-2">
-                <Input
-                  placeholder="Choice (e.g. Small)"
-                  value={choice.label}
-                  onChange={(e) => updateChoiceLabel(gi, ci, e.target.value)}
-                  className="rounded-lg bg-background"
-                />
-                {/* Price matters to every vendor — always visible, not
-                    behind the Advanced dialog. */}
-                <div className="relative w-28 shrink-0">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    $
-                  </span>
-                  <Input
-                    inputMode="decimal"
-                    placeholder="Price (opt.)"
-                    value={centsToDollars(choice.price_delta_cents)}
-                    onChange={(e) => setChoicePrice(gi, ci, e.target.value)}
-                    className="rounded-lg bg-background pl-6"
-                  />
-                </div>
-                <Dialog
-                  open={openAdvancedFor === choice.id}
-                  onOpenChange={(open) =>
-                    setOpenAdvancedFor(open ? choice.id : null)
-                  }
+                <ToggleGroupItem
+                  value="one"
+                  className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
                 >
-                  <DialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="relative shrink-0 rounded-lg bg-background text-muted-foreground"
-                      aria-label={`Advanced options for ${choice.label || "this choice"}`}
-                    >
-                      <Settings2 className="size-4" />
-                      {hasAdvancedSet(choice) && (
-                        <span
-                          aria-hidden="true"
-                          className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary"
-                        />
-                      )}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>
-                        Advanced: {choice.label || "Choice"}
-                      </DialogTitle>
-                      <DialogDescription>
-                        Extra cost and allergens only when this choice is
-                        picked.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="relative w-32">
+                  Pick one
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="any"
+                  className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                >
+                  Pick any
+                </ToggleGroupItem>
+              </ToggleGroup>
+              {isCollapsed && (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {group.choices.length}{" "}
+                  {group.choices.length === 1 ? "choice" : "choices"}
+                </span>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
+                onClick={() => removeGroup(gi)}
+                aria-label="Remove group"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+
+            {/* Choices, visually nested under the header via a distinct
+              background and indent rather than a decorative border. */}
+            {!isCollapsed && (
+              <div className="space-y-1.5 rounded-lg bg-muted/40 p-2 pl-3">
+                {group.choices.map((choice, ci) => (
+                  <div
+                    key={choice.id}
+                    className="flex flex-col gap-2 sm:flex-row"
+                  >
+                    <Input
+                      placeholder="Choice (e.g. Small)"
+                      value={choice.label}
+                      onChange={(e) =>
+                        updateChoiceLabel(gi, ci, e.target.value)
+                      }
+                      className="rounded-lg bg-background"
+                    />
+                    <div className="flex gap-2">
+                      {/* Price matters to every vendor — always visible, not
+                    behind the Advanced dialog. */}
+                      <div className="relative w-28 shrink-0">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                           $
                         </span>
                         <Input
                           inputMode="decimal"
-                          placeholder="Cost (opt.)"
-                          value={centsToDollars(choice.cost_delta_cents)}
+                          placeholder="Price (opt.)"
+                          value={centsToDollars(choice.price_delta_cents)}
                           onChange={(e) =>
-                            setChoiceCost(gi, ci, e.target.value)
+                            setChoicePrice(gi, ci, e.target.value)
                           }
-                          className="rounded-lg pl-6"
+                          className="rounded-lg bg-background pl-6"
                         />
                       </div>
-                      <div className="flex flex-wrap gap-3">
-                        {ALLERGEN_TAGS.map((tag) => (
-                          <label
-                            key={tag}
-                            className="flex items-center gap-1.5 text-xs capitalize"
+                      <Dialog
+                        open={openAdvancedFor === choice.id}
+                        onOpenChange={(open) =>
+                          setOpenAdvancedFor(open ? choice.id : null)
+                        }
+                      >
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="relative shrink-0 rounded-lg bg-background text-muted-foreground"
+                            aria-label={`Advanced options for ${choice.label || "this choice"}`}
                           >
-                            <Checkbox
-                              checked={(choice.allergens ?? []).includes(tag)}
-                              onCheckedChange={(checked) =>
-                                toggleChoiceAllergen(
-                                  gi,
-                                  ci,
-                                  choice,
-                                  tag,
-                                  checked === true,
-                                )
-                              }
-                            />
-                            <span aria-hidden="true">
-                              {ALLERGEN_ICONS[tag]}
-                            </span>
-                            {tag}
-                          </label>
-                        ))}
-                      </div>
-                      {(() => {
-                        const effective = effectiveAllergens(
-                          itemAllergens,
-                          choice.allergens,
-                        );
-                        return (
-                          effective.length > 0 && (
-                            <div className="space-y-1 border-t border-border/60 pt-3">
-                              <p className="text-xs font-medium text-muted-foreground">
-                                Customer sees when picked:
-                              </p>
-                              <div
-                                role="status"
-                                aria-label="Contains allergens"
-                                className="flex flex-wrap gap-1.5"
-                              >
-                                {effective.map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
-                                  >
-                                    <span aria-hidden="true">
-                                      {ALLERGEN_ICONS[tag]}
-                                    </span>{" "}
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
+                            <Settings2 className="size-4" />
+                            {hasAdvancedSet(choice) && (
+                              <span
+                                aria-hidden="true"
+                                className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary"
+                              />
+                            )}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>
+                              Advanced: {choice.label || "Choice"}
+                            </DialogTitle>
+                            <DialogDescription>
+                              Extra cost and allergens only when this choice is
+                              picked.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="relative w-32">
+                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                $
+                              </span>
+                              <Input
+                                inputMode="decimal"
+                                placeholder="Cost (opt.)"
+                                value={centsToDollars(choice.cost_delta_cents)}
+                                onChange={(e) =>
+                                  setChoiceCost(gi, ci, e.target.value)
+                                }
+                                className="rounded-lg pl-6"
+                              />
                             </div>
-                          )
-                        );
-                      })()}
+                            <div className="flex flex-wrap gap-3">
+                              {ALLERGEN_TAGS.map((tag) => (
+                                <label
+                                  key={tag}
+                                  className="flex items-center gap-1.5 text-xs capitalize"
+                                >
+                                  <Checkbox
+                                    checked={(choice.allergens ?? []).includes(
+                                      tag,
+                                    )}
+                                    onCheckedChange={(checked) =>
+                                      toggleChoiceAllergen(
+                                        gi,
+                                        ci,
+                                        choice,
+                                        tag,
+                                        checked === true,
+                                      )
+                                    }
+                                  />
+                                  <span aria-hidden="true">
+                                    {ALLERGEN_ICONS[tag]}
+                                  </span>
+                                  {tag}
+                                </label>
+                              ))}
+                            </div>
+                            {(() => {
+                              const effective = effectiveAllergens(
+                                itemAllergens,
+                                choice.allergens,
+                              );
+                              return (
+                                effective.length > 0 && (
+                                  <div className="space-y-1 border-t border-border/60 pt-3">
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                      Customer sees when picked:
+                                    </p>
+                                    <div
+                                      role="status"
+                                      aria-label="Contains allergens"
+                                      className="flex flex-wrap gap-1.5"
+                                    >
+                                      {effective.map((tag) => (
+                                        <span
+                                          key={tag}
+                                          className="rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
+                                        >
+                                          <span aria-hidden="true">
+                                            {ALLERGEN_ICONS[tag]}
+                                          </span>{" "}
+                                          {tag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              );
+                            })()}
+                          </div>
+                          <DialogFooter>
+                            <DialogClose asChild>
+                              <Button type="button">Done</Button>
+                            </DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0 rounded-lg bg-background text-muted-foreground hover:text-destructive"
+                        onClick={() => removeChoice(gi, ci)}
+                        aria-label="Remove choice"
+                        disabled={group.choices.length <= 1}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                     </div>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button type="button">Done</Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                  </div>
+                ))}
                 <Button
                   type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0 rounded-lg bg-background text-muted-foreground hover:text-destructive"
-                  onClick={() => removeChoice(gi, ci)}
-                  aria-label="Remove choice"
-                  disabled={group.choices.length <= 1}
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-lg text-muted-foreground"
+                  onClick={() => addChoice(gi)}
                 >
-                  <Trash2 className="size-4" />
+                  <Plus className="size-3.5" /> Add choice
                 </Button>
               </div>
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="rounded-lg text-muted-foreground"
-              onClick={() => addChoice(gi)}
-            >
-              <Plus className="size-3.5" /> Add choice
-            </Button>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {atGroupCap ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

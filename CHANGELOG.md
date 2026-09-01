@@ -130,6 +130,18 @@ available`, matching each item by exact name to update in place rather
   `ALLERGEN_ICONS` moved from `dashboard/booths/allergen-icons.ts` to
   `lib/allergen-icons.ts` so both surfaces share one icon set.
 
+- Menu editor mobile/UX pass: `Duplicate`/`Remove` buttons on a menu item
+  now stack vertically instead of side by side (was leaving an empty gap
+  under them next to the two-line name/description); "Available" is now
+  its own labeled `Switch` row instead of a small `Checkbox` squeezed into
+  the price/cost row; removing an item is still instant (no blocking
+  confirmation, which would slow down bulk edits) but now offers a 60s
+  "Undo" toast; each option-group's choices can now be collapsed to a
+  "N choices" badge, for vendors with many customization groups per item;
+  a choice row now stacks its inputs on narrow screens instead of clipping
+  the choice-name placeholder against the fixed-width price/Advanced/
+  delete controls.
+
 ### Fixed
 
 - A handful of leftover em dashes in user-facing copy across the booths
