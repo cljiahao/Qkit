@@ -28,9 +28,11 @@ interface Props {
 
 function formatImportRow(row: CsvMenuRow, index: number): string {
   if (row.error) return `Row ${index + 1}: ${row.error}`;
-  if (row.price_cents == null) return row.name;
-  const price = (row.price_cents / 100).toFixed(2);
-  return `${row.name}: $${price}`;
+  const parts = [row.name];
+  if (row.description) parts.push(`(${row.description})`);
+  if (row.price_cents != null)
+    parts.push(`$${(row.price_cents / 100).toFixed(2)}`);
+  return parts.join(" ");
 }
 
 function downloadCsv(filename: string, text: string) {

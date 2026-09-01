@@ -182,6 +182,27 @@ describe("MenuManager CSV import", () => {
     expect(toastSuccess).toHaveBeenCalledWith("Imported 1 item");
   });
 
+  it("shows the description in the preview, not just name and price", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[]}
+      />,
+    );
+
+    const csv =
+      "name,description,price,available\nKopi O,Local black coffee,1.80,true";
+    await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
+
+    expect(
+      await screen.findByText("Kopi O (Local black coffee) $1.80"),
+    ).toBeInTheDocument();
+  });
+
   it("updates an existing item in place when the CSV name matches exactly", async () => {
     const user = userEvent.setup();
     render(
