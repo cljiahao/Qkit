@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Upload } from "lucide-react";
+import { InfoTooltip } from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
@@ -163,7 +164,13 @@ export function MenuManager({
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-semibold">Menu</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="font-display text-2xl font-semibold">Menu</h1>
+          <InfoTooltip
+            content="CSV columns: name, description, price, cost, available. One row per item — leave price or cost blank if not tracked. Add group_name, group_type (one/any), choice_label, choice_price rows right after an item to import its customization too."
+            ariaLabel="CSV column format"
+          />
+        </div>
         <div className="flex gap-2">
           <Button
             type="button"
@@ -194,14 +201,6 @@ export function MenuManager({
           />
         </div>
       </div>
-      <p className="-mt-3 text-xs text-muted-foreground">
-        CSV columns: name, description, price, cost, available. One row per
-        item; leave price or cost blank if not tracked. Add group_name,
-        group_type (one/any), choice_label, choice_price rows right after an
-        item to import its customization too. No template yet? Export CSV
-        downloads one for you.
-      </p>
-
       {importPreview && (
         <div className="space-y-3 rounded-xl border border-border bg-card p-4">
           <p className="text-sm font-medium">
