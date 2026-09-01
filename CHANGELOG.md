@@ -105,6 +105,9 @@ available`, matching each item by exact name to update in place rather
 - A handful of leftover em dashes in user-facing copy across the booths
   dashboard (the "Duplicate" button's tooltip, the event-mode create page's
   description) — replaced with plain punctuation.
+- Menu CSV import preview silently omitted each row's description (the
+  import itself always carried it through correctly — the preview list
+  just under-displayed it) — now shows `Name (description) $price`.
 
 ### Changed
 

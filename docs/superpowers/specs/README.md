@@ -55,6 +55,9 @@ Approved design docs, one per feature, each with a matching implementation plan 
 - `2026-08-16-vendor-telegram-connect-design.md` — "Vendor Telegram Connect (Phase A2) — Design": retires qkit's own Telegram bot (Phase A) in favor of merqo's shared one — a vendor connects once from merqo's profile page instead of per-kit; `notifyVendorTelegram` now calls merqo's `notify-vendor` endpoint. Deletion-heavy spec; no data carries over, already-linked vendors must reconnect.
 - `2026-08-16-shared-plan-comparison-table-design.md` — "Shared Plan Comparison Table — Design": extracts the near-identical feature-comparison grid duplicated across qkit's and loopkit's `/dashboard/plan` pages into a new `@merqo/ui` `PlanComparisonTable` component (tier count and boolean/string cells both dynamic). paykit/stockkit explicitly excluded — confirmed via code read to use a different, simpler single-plan bullet-list pattern, not this grid.
 
+- `2026-09-01-menu-manager-design.md` — "Menu Manager — dedicated page, CSV import/export, drag reorder": splits menu editing out of the booth-edit form into its own page, CSV bulk export/import (name-matched update-in-place, not duplicate), and drag reorder via `@dnd-kit` — no schema change, `booths.menu_items` is already a plain JSONB array.
+- `2026-09-01-menu-csv-customization-design.md` — "CSV import: per-item customization (option groups/choices)": extends the menu CSV to cover option groups/choices via multi-row continuation records, scoped to group name/type and choice label/price only — cost delta and allergens stay UI-only, matching the same fatigue-driven scope cut as the item-level CSV.
+
 ## Parent
 
 [superpowers](../README.md)
