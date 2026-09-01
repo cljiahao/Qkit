@@ -55,10 +55,18 @@ built here either, pre-existing gap.
 
 - `src/app/dashboard/booths/[boothId]/menu/page.tsx` — new page: loads the
   booth (same query `booth-form.tsx`'s page already does), renders
-  `MenuEditor` + the new export/import controls + a Save button wired to
-  `actions.ts`'s existing `saveBooth` (menu-items-only payload — the booth's
-  other fields are unchanged by this action so it can safely omit them; see
-  Data flow below).
+  `MenuEditor` + the new export/import controls + a Save button wired to a
+  **new** `saveMenuItems(boothId, menu_items)` action (`actions.ts`) — not
+  `saveBooth`, whose `boothFormSchema` requires the full booth shape (name,
+  image_url, is_active, ...) and would reject a menu-items-only payload.
+  `saveMenuItems` validates `z.array(menuItemFormSchema)`, reuses
+  `validateMenuCaps` for plan-limit checks and the stock-cap stripping
+  `saveBooth` already does, then does `.update({ menu_items })` scoped by
+  `boothId` (RLS `booths_vendor_all`, same as `saveBooth`'s update) — a
+  partial Supabase `.update()` touches only the given column, no other booth
+  field is read or written. Reuses `orphanedImagePaths`/`removeBoothImages`
+  for per-item photo cleanup, same as `saveBooth`'s existing image-orphan
+  logic (fetch the previous `menu_items` before the update, diff after).
 - `src/lib/menu-csv.ts` — new pure module, `menuItemsToCsv(items)` /
   `csvToMenuItems(text)`. Hand-rolled RFC4180-shaped encode/decode (quoted
   fields, embedded commas/quotes handled) rather than a new dependency — the
@@ -75,11 +83,11 @@ built here either, pre-existing gap.
 
 CSV import never writes to the DB directly — it only produces
 `MenuItemFormInput[]` rows in the same client-side state `MenuEditor` already
-manages, through the same add/update functions. The only persistence path
-stays the existing `saveBooth` server action + its existing Zod validation
-(`menuItemFormSchema`) — CSV-imported rows get no special trust, a malformed
-row (unparseable price, empty name) is rejected at Save exactly like a
-manually-typed bad row would be, surfaced the same way.
+manages, through the same add/update functions. The only persistence path is
+the new `saveMenuItems` action, validated by the same `menuItemFormSchema`
+`saveBooth` already uses — CSV-imported rows get no special trust, a
+malformed row (unparseable price, empty name) is rejected at Save exactly
+like a manually-typed bad row would be, surfaced the same way.
 
 ## Error handling
 
