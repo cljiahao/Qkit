@@ -266,3 +266,169 @@ describe("MenuManager CSV import", () => {
     expect(screen.queryByText(/rows ready/)).not.toBeInTheDocument();
   });
 });
+
+describe("MenuManager CSV customization import", () => {
+  function csvFile(text: string) {
+    return new File([text], "menu.csv", { type: "text/csv" });
+  }
+
+  const HEADER =
+    "name,description,price,cost,available,group_name,group_type,choice_label,choice_price";
+
+  it("shows a choice row nested under its item in the preview", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[]}
+      />,
+    );
+    const csv = `${HEADER}\nKopi,,1.40,,true,,,,\n,,,,,Style,one,O (black),`;
+    await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
+
+    expect(await screen.findByText("Style: O (black)")).toBeInTheDocument();
+  });
+
+  it("builds option groups on a new item from its choice rows", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[]}
+      />,
+    );
+    const csv = `${HEADER}\nKopi,,1.40,,true,,,,\n,,,,,Style,one,O (black),`;
+    await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
+    await user.click(
+      await screen.findByRole("button", { name: "Add to menu" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Save menu" })),
+    );
+    await user.click(screen.getByRole("button", { name: "Save menu" }));
+    await waitFor(() =>
+      expect(saveMenuItems).toHaveBeenCalledWith(
+        BOOTH_ID,
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "Kopi",
+            option_groups: [
+              expect.objectContaining({
+                label: "Style",
+                multiple: false,
+                choices: [expect.objectContaining({ label: "O (black)" })],
+              }),
+            ],
+          }),
+        ]),
+      ),
+    );
+  });
+
+  it("replaces an existing item's option groups when the file carries choice rows for it", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[
+          makeItem({
+            name: "Kopi",
+            option_groups: [
+              {
+                id: "old",
+                label: "Old group",
+                choices: [{ id: "old-c", label: "Old choice" }],
+              },
+            ],
+          }),
+        ]}
+      />,
+    );
+    const csv = `${HEADER}\nKopi,,,,true,,,,\n,,,,,Style,one,O (black),`;
+    await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
+    await user.click(
+      await screen.findByRole("button", { name: "Add to menu" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save menu" }));
+
+    await waitFor(() =>
+      expect(saveMenuItems).toHaveBeenCalledWith(
+        BOOTH_ID,
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "Kopi",
+            option_groups: [expect.objectContaining({ label: "Style" })],
+          }),
+        ]),
+      ),
+    );
+  });
+
+  it("leaves an existing item's option groups untouched when the file has no choice rows for it", async () => {
+    const user = userEvent.setup();
+    const existingGroups = [
+      { id: "old", label: "Old group", choices: [{ id: "c", label: "X" }] },
+    ];
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[
+          makeItem({ name: "Kopi", option_groups: existingGroups }),
+        ]}
+      />,
+    );
+    const csv = `${HEADER}\nKopi,,2.00,,true,,,,`;
+    await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
+    await user.click(
+      await screen.findByRole("button", { name: "Add to menu" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save menu" }));
+
+    await waitFor(() =>
+      expect(saveMenuItems).toHaveBeenCalledWith(
+        BOOTH_ID,
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "Kopi",
+            price_cents: 200,
+            option_groups: existingGroups,
+          }),
+        ]),
+      ),
+    );
+  });
+
+  it("flags a bad choice row without blocking its item's own import", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[]}
+      />,
+    );
+    const csv = `${HEADER}\nKopi,,1.40,,true,,,,\n,,,,,Style,one,O (black),free`;
+    await user.upload(screen.getByLabelText("Import CSV"), csvFile(csv));
+
+    expect(await screen.findByText(/Invalid choice price/)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 1 rows ready/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add to menu" }));
+    expect(await screen.findByText("Kopi")).toBeInTheDocument();
+  });
+});

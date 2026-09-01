@@ -1,7 +1,7 @@
 # CSV import: per-item customization (option groups/choices)
 
 **Date:** 2026-09-01
-**Status:** design, pending user review
+**Status:** built, on `menu-manager` (PR #127)
 **Depends on:** `2026-09-01-menu-manager-design.md` (the CSV import/export it
 extends) — read that first for `menu-csv.ts`'s existing shape and the
 menu-manager page it powers.

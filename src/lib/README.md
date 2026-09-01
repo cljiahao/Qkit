@@ -99,30 +99,51 @@ factories, respectively).
   time `onUpload` runs, so there's nothing left to close over.
 - `image-upload-adapter.test.ts` — tests a successful upload/public-URL
   round trip and that a storage error propagates as a rejection.
-- `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`: the
-  qkit-side of the menu-manager's CSV bulk export/import
-  (`name,description,price,cost,available` — `cost` added 2026-09-01, the
-  item's own private `cost_cents`; dollars not cents for spreadsheet
-  readability). A hand-rolled RFC4180-shaped encode/decode (quoted fields,
-  embedded commas/quotes) rather than a new dependency — 5 fixed columns
-  didn't justify one; does not handle a literal newline inside a quoted
-  field. `csvToMenuItems` always treats the first line as the header
-  (skipped) and returns one `CsvMenuRow` per remaining line via the shared
-  `parseDollarField` helper (blank is valid/unset, negative or non-numeric
-  is a per-row `error` instead of a silent drop) for both `price` and
-  `cost` — a bad row surfaces in `menu-manager.tsx`'s import preview rather
-  than disappearing. `menuCsvTemplate()` returns the same header plus two
-  example rows (one with a blank price and cost, one with both set) — a
-  vendor with no items yet had no way to see the expected column format
-  before this, since `menuItemsToCsv([])` is just a bare header line with
-  nothing to copy from.
+- `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`/
+  `optionGroupsFromCsvChoices(choices)`: the qkit-side of the menu-manager's
+  CSV bulk export/import, 9 fixed columns —
+  `name,description,price,cost,available,group_name,group_type,choice_label,choice_price`
+  (`cost` added 2026-09-01, the item's own private `cost_cents`; the last 4
+  customization columns added the same day; dollars not cents for
+  spreadsheet readability; choice-level cost delta and allergens are
+  deliberately excluded — both live behind "Advanced" in
+  `option-groups-editor.tsx`, out of CSV scope per the design doc). A hand-
+  rolled RFC4180-shaped encode/decode (quoted fields, embedded commas/
+  quotes) rather than a new dependency; does not handle a literal newline
+  inside a quoted field. An item row has `name` filled; a choice row has
+  `name` blank and `group_name`/`choice_label` filled, attached to the item
+  row immediately above it (continuation rows) — consecutive choice rows
+  sharing a `group_name` form one group, a `group_name` change starts a
+  new group under the same item. `csvToMenuItems` always treats the first
+  line as the header (skipped) and returns one `CsvMenuRow` (with a nested
+  `choices: CsvChoiceRow[]`) per item row, via the shared `parseDollarField`
+  helper (blank is valid/unset, negative or non-numeric is an error instead
+  of a silent drop) for `price`/`cost`/`choice_price`. Every error string
+  embeds its own real spreadsheet row number (header = row 1), computed
+  once here rather than by the UI, so nesting choice rows under their item
+  doesn't break a flat array-index-based row number. `optionGroupsFromCsvChoices`
+  turns a flat `CsvChoiceRow[]` (errored rows skipped) into `OptionGroup[]`
+  with fresh ids — `menu-manager.tsx`'s `commitImport` calls it only when a
+  row has at least one valid choice, otherwise leaving a name-matched
+  existing item's `option_groups` untouched. `menuCsvTemplate()` returns
+  the same header plus two example item rows (one with a blank price and
+  cost, one with both set), no example customization rows — a vendor with
+  no items yet had no way to see the expected column format before this,
+  since `menuItemsToCsv([])` is just a bare header line with nothing to
+  copy from.
 - `menu-csv.test.ts` — round-trip encode/decode (including a
-  comma-containing description through the quoting path, and cost
-  alongside price), header skipping, missing-name/invalid-or-negative-
-  price/invalid-or-negative-cost row errors, blank-price-or-cost-is-not-
-  an-error, the `available` default (true unless the cell is exactly
-  `false`), empty/header-only input, and that `menuCsvTemplate()`'s own
-  output round-trips through `csvToMenuItems` with no error rows.
+  comma-containing description through the quoting path, cost alongside
+  price, and continuation rows for a group's choices), header skipping,
+  missing-name/invalid-or-negative-price/invalid-or-negative-cost row
+  errors, blank-price-or-cost-is-not-an-error, the `available` default
+  (true unless the cell is exactly `false`), empty/header-only input,
+  choice-row attachment/grouping (consecutive same-`group_name` rows,
+  a `group_name` change starting a new group, `group_type` any/one,
+  missing-group-or-item-above errors, invalid choice price), and
+  `optionGroupsFromCsvChoices`'s grouping/multiple-mapping/errored-row-
+  skipping/fresh-id behavior. Confirms `menuCsvTemplate()`'s own output
+  round-trips through `csvToMenuItems` with no error rows and no example
+  customization rows.
 - `menu-sections.ts` — `groupByCategory(items, categories)`: pure grouping
   of a booth's `menu_items` under its `menu_categories` (booth's own order),
   bucketing any missing/unmatched category id into "Other", always last, and

@@ -13,9 +13,19 @@ cost,available`) — the item's own private `cost_cents`, an always-visible
   field next to Price in the UI, not an Advanced one, so it belonged in the
   plain CSV alongside price rather than staying UI-only. Blank means unset,
   same as price; a negative or non-numeric cost is a per-row import error.
-  `docs/superpowers/specs/2026-09-01-menu-csv-customization-design.md`
-  records the design for the next step — importing per-item customization
-  (option groups/choices) via continuation rows.
+
+- Menu CSV export/import now round-trips per-item customization (option
+  groups/choices) — 4 new columns, `group_name,group_type,choice_label,
+choice_price`. An item row has `name` filled; any choice rows immediately
+  below it (blank `name`) attach to it, consecutive same-`group_name` rows
+  forming one group. Export emits a continuation row per existing choice;
+  import replaces a name-matched item's `option_groups` entirely when its
+  row carries valid choice rows, and leaves them untouched otherwise. Every
+  parser error now names its real spreadsheet row number (`Row N: ...`)
+  rather than a flat array index, since choice rows nest under their item.
+  Choice-level cost delta and allergens stay UI-only (behind "Advanced"),
+  out of CSV scope. See
+  `docs/superpowers/specs/2026-09-01-menu-csv-customization-design.md`.
 
 - `OptionGroupsEditor`'s per-choice "Advanced" panel (cost + allergens) now
   matches the item-level allergen picker right above it in the UI: each

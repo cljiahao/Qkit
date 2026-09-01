@@ -14,7 +14,9 @@ import {
   menuItemsToCsv,
   menuCsvTemplate,
   csvToMenuItems,
+  optionGroupsFromCsvChoices,
   type CsvMenuRow,
+  type CsvChoiceRow,
 } from "@/lib/menu-csv";
 import type { Entitlement } from "@/lib/plan";
 
@@ -26,14 +28,23 @@ interface Props {
   initialItems: MenuItemFormInput[];
 }
 
-function formatImportRow(row: CsvMenuRow, index: number): string {
-  if (row.error) return `Row ${index + 1}: ${row.error}`;
+function formatImportRow(row: CsvMenuRow): string {
+  if (row.error) return row.error;
   const parts = [row.name];
   if (row.description) parts.push(`(${row.description})`);
   if (row.price_cents != null)
     parts.push(`$${(row.price_cents / 100).toFixed(2)}`);
   if (row.cost_cents != null)
     parts.push(`(cost $${(row.cost_cents / 100).toFixed(2)})`);
+  return parts.join(" ");
+}
+
+function formatChoiceRow(choice: CsvChoiceRow): string {
+  if (choice.error) return choice.error;
+  const parts = [`${choice.groupName}: ${choice.choiceLabel}`];
+  if (choice.groupType === "any") parts.push("(pick any)");
+  if (choice.choicePrice_cents != null)
+    parts.push(`+$${(choice.choicePrice_cents / 100).toFixed(2)}`);
   return parts.join(" ");
 }
 
@@ -94,12 +105,18 @@ export function MenuManager({
       const next = [...prev];
       for (const row of valid) {
         const existingIndex = next.findIndex((it) => it.name === row.name);
+        // No choice rows for this item leaves its existing customization
+        // untouched; any valid choice row replaces it entirely.
+        const optionGroups = row.choices.some((c) => !c.error)
+          ? { option_groups: optionGroupsFromCsvChoices(row.choices) }
+          : {};
         const patch = {
           name: row.name,
           description: row.description,
           price_cents: row.price_cents,
           cost_cents: row.cost_cents,
           available: row.available,
+          ...optionGroups,
         };
         if (existingIndex === -1) {
           next.push({
@@ -179,8 +196,10 @@ export function MenuManager({
       </div>
       <p className="-mt-3 text-xs text-muted-foreground">
         CSV columns: name, description, price, cost, available. One row per
-        item; leave price or cost blank if not tracked. No template yet? Export
-        CSV downloads one for you.
+        item; leave price or cost blank if not tracked. Add group_name,
+        group_type (one/any), choice_label, choice_price rows right after an
+        item to import its customization too. No template yet? Export CSV
+        downloads one for you.
       </p>
 
       {importPreview && (
@@ -191,11 +210,28 @@ export function MenuManager({
           </p>
           <ul className="max-h-56 space-y-1 overflow-y-auto text-sm">
             {importPreview.map((row, i) => (
-              <li
-                key={i}
-                className={row.error ? "text-destructive" : "text-foreground"}
-              >
-                {formatImportRow(row, i)}
+              <li key={i}>
+                <div
+                  className={row.error ? "text-destructive" : "text-foreground"}
+                >
+                  {formatImportRow(row)}
+                </div>
+                {row.choices.length > 0 && (
+                  <ul className="ml-4 space-y-0.5">
+                    {row.choices.map((choice, ci) => (
+                      <li
+                        key={ci}
+                        className={
+                          choice.error
+                            ? "text-destructive"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {formatChoiceRow(choice)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
