@@ -172,69 +172,78 @@ export function OptionGroupsEditor({
             key={group.id}
             className="space-y-3 rounded-lg border border-border bg-background p-3"
           >
-            {/* Group identity + type, one compact row — a one-time-per-group
-              setting, kept visually heavier (font-medium) than the choices
-              below so it reads as a header, not another row in the list. */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0 text-muted-foreground"
-                onClick={() => toggleGroupCollapsed(group.id)}
-                aria-label={isCollapsed ? "Expand group" : "Collapse group"}
-                aria-expanded={!isCollapsed}
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="size-4" />
-                ) : (
-                  <ChevronDown className="size-4" />
+            {/* Group identity + type — a one-time-per-group setting, kept
+              visually heavier (font-medium) than the choices below so it
+              reads as a header, not another row in the list. Two rows on
+              mobile (name always paired with its collapse chevron; type +
+              count + remove below, indented to align under the name) since
+              cramming all five controls onto one uncontrolled flex-wrap
+              line let any one of them drop to its own line unpredictably;
+              back to a single row once there's room at sm:+. */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground"
+                  onClick={() => toggleGroupCollapsed(group.id)}
+                  aria-label={isCollapsed ? "Expand group" : "Collapse group"}
+                  aria-expanded={!isCollapsed}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="size-4" />
+                  ) : (
+                    <ChevronDown className="size-4" />
+                  )}
+                </Button>
+                <Input
+                  placeholder="Group name (e.g. Size, Spice, Add-ons)"
+                  value={group.label}
+                  onChange={(e) => updateGroup(gi, { label: e.target.value })}
+                  className="min-w-[8rem] flex-1 rounded-lg font-medium"
+                />
+              </div>
+              <div className="flex shrink-0 items-center gap-2 pl-8 sm:pl-0">
+                <ToggleGroup
+                  type="single"
+                  value={group.multiple ? "any" : "one"}
+                  onValueChange={(v) =>
+                    v && updateGroup(gi, { multiple: v === "any" })
+                  }
+                  aria-label="How many options a customer can pick"
+                  className="inline-flex shrink-0 rounded-lg border border-border p-0.5 text-sm"
+                >
+                  <ToggleGroupItem
+                    value="one"
+                    className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                  >
+                    Pick one
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="any"
+                    className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                  >
+                    Pick any
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                {isCollapsed && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {group.choices.length}{" "}
+                    {group.choices.length === 1 ? "choice" : "choices"}
+                  </span>
                 )}
-              </Button>
-              <Input
-                placeholder="Group name (e.g. Size, Spice, Add-ons)"
-                value={group.label}
-                onChange={(e) => updateGroup(gi, { label: e.target.value })}
-                className="min-w-[10rem] flex-1 rounded-lg font-medium"
-              />
-              <ToggleGroup
-                type="single"
-                value={group.multiple ? "any" : "one"}
-                onValueChange={(v) =>
-                  v && updateGroup(gi, { multiple: v === "any" })
-                }
-                aria-label="How many options a customer can pick"
-                className="inline-flex shrink-0 rounded-lg border border-border p-0.5 text-sm"
-              >
-                <ToggleGroupItem
-                  value="one"
-                  className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
+                  onClick={() => removeGroup(gi)}
+                  aria-label="Remove group"
                 >
-                  Pick one
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="any"
-                  className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-                >
-                  Pick any
-                </ToggleGroupItem>
-              </ToggleGroup>
-              {isCollapsed && (
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {group.choices.length}{" "}
-                  {group.choices.length === 1 ? "choice" : "choices"}
-                </span>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="shrink-0 rounded-lg text-muted-foreground hover:text-destructive"
-                onClick={() => removeGroup(gi)}
-                aria-label="Remove group"
-              >
-                <Trash2 className="size-4" />
-              </Button>
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Choices, visually nested under the header via a distinct

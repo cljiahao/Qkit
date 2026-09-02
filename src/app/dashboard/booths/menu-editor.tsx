@@ -564,7 +564,7 @@ export function MenuEditor({
                     })
                   }
                 >
-                  <SelectTrigger className="h-9 w-full rounded-lg sm:w-56">
+                  <SelectTrigger className="h-9 w-full rounded-lg">
                     <SelectValue placeholder="No section" />
                   </SelectTrigger>
                   <SelectContent>
