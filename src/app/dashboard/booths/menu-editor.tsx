@@ -498,7 +498,7 @@ export function MenuEditor({
                   className="rounded-lg"
                 />
               </div>
-              <div className="flex shrink-0 items-start gap-2">
+              <div className="flex shrink-0 flex-col gap-2">
                 <Button
                   type="button"
                   variant="outline"
