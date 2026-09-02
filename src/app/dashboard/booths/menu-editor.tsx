@@ -499,28 +499,6 @@ export function MenuEditor({
                 />
               </div>
               <div className="flex shrink-0 flex-col gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  role="switch"
-                  aria-checked={item.available}
-                  aria-label="Available"
-                  title={
-                    item.available
-                      ? "Available, tap to hide from the menu"
-                      : "Hidden, tap to make available again"
-                  }
-                  onClick={() => update(index, { available: !item.available })}
-                  className="rounded-lg text-muted-foreground hover:text-foreground data-[unavailable=true]:border-dashed data-[unavailable=true]:text-muted-foreground/60"
-                  data-unavailable={!item.available}
-                >
-                  {item.available ? (
-                    <Eye className="size-4" />
-                  ) : (
-                    <EyeOff className="size-4" />
-                  )}
-                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -548,6 +526,28 @@ export function MenuEditor({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  role="switch"
+                  aria-checked={item.available}
+                  aria-label="Available"
+                  title={
+                    item.available
+                      ? "Available, tap to hide from the menu"
+                      : "Hidden, tap to make available again"
+                  }
+                  onClick={() => update(index, { available: !item.available })}
+                  className="rounded-lg text-muted-foreground hover:text-foreground data-[unavailable=true]:border-dashed data-[unavailable=true]:text-muted-foreground/60"
+                  data-unavailable={!item.available}
+                >
+                  {item.available ? (
+                    <Eye className="size-4" />
+                  ) : (
+                    <EyeOff className="size-4" />
+                  )}
+                </Button>
               </div>
             </div>
 
