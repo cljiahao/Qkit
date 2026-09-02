@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   PointerSensor,
   KeyboardSensor,
@@ -10,6 +11,7 @@ import {
   useSensors,
   useDroppable,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -48,7 +50,7 @@ import { resizeToWebp } from "@/lib/image-resize";
 import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
-import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
+import { centsToDollarString, cn, parseDollarsToCents } from "@/lib/utils";
 import { ALLERGEN_TAGS, type MenuItemFormInput } from "@/lib/schemas";
 import type { MenuCategory, OptionGroup } from "@/lib/types";
 import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
@@ -185,6 +187,15 @@ export function MenuEditor({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set(),
   );
+  // Drives the DragOverlay preview. Without it, a cross-container drag
+  // snaps the item back to its slot mid-drag — useSortable's own transform
+  // only knows how to reposition within its own list, so it resets outside
+  // one; the overlay is a free-floating clone that actually follows the
+  // pointer, and the original row just dims in place while it's dragging.
+  const [activeDrag, setActiveDrag] = useState<{
+    label: string;
+    kind: "item" | "section";
+  } | null>(null);
 
   const atItemCap = !canAddMenuItem(entitlement, items.length);
   const atCategoryCap = categories.length >= MAX_CATEGORIES;
@@ -227,7 +238,22 @@ export function MenuEditor({
     return { named, restEntries };
   }, [items, categories]);
 
+  function handleDragStart(event: DragStartEvent) {
+    const data = event.active.data.current as
+      | { type: "section" }
+      | { type: "item"; groupId: string }
+      | undefined;
+    if (data?.type === "section") {
+      const category = categories.find((c) => c.id === event.active.id);
+      setActiveDrag({ kind: "section", label: category?.label || "Section" });
+    } else if (data?.type === "item") {
+      const item = items.find((it) => it.id === event.active.id);
+      setActiveDrag({ kind: "item", label: item?.name || "Item" });
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveDrag(null);
     const { active, over } = event;
     if (!over) return;
     const activeData = active.data.current as
@@ -418,15 +444,16 @@ export function MenuEditor({
         id={item.id}
         data={{ type: "item", groupId }}
       >
-        {({ setNodeRef, style, attributes, listeners }) => (
+        {({ setNodeRef, style, attributes, listeners, isDragging }) => (
           <div
             ref={setNodeRef}
             style={style}
-            className={
+            className={cn(
               standalone
                 ? "space-y-3 rounded-xl border border-border bg-card p-3.5"
-                : "space-y-3 p-3.5"
-            }
+                : "space-y-3 p-3.5",
+              isDragging && "opacity-40",
+            )}
           >
             <div className="flex gap-2">
               <button
@@ -740,7 +767,9 @@ export function MenuEditor({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveDrag(null)}
       >
         {!hasSections && items.length > 0 && (
           <SortableContext
@@ -763,11 +792,20 @@ export function MenuEditor({
                 const collapsed = collapsedSections.has(group.id);
                 return (
                   <SortableSectionGroup key={group.id} id={group.id}>
-                    {({ setNodeRef, style, attributes, listeners }) => (
+                    {({
+                      setNodeRef,
+                      style,
+                      attributes,
+                      listeners,
+                      isDragging,
+                    }) => (
                       <div
                         ref={setNodeRef}
                         style={style}
-                        className="rounded-xl border border-border bg-card"
+                        className={cn(
+                          "rounded-xl border border-border bg-card",
+                          isDragging && "opacity-40",
+                        )}
                       >
                         <GroupDropZone
                           id={`dropzone-${group.id}`}
@@ -908,6 +946,15 @@ export function MenuEditor({
             )}
           </GroupDropZone>
         )}
+
+        <DragOverlay>
+          {activeDrag && (
+            <div className="flex items-center gap-2 rounded-lg border border-primary bg-card px-3 py-2 text-sm font-medium shadow-lg">
+              <GripVertical className="size-4 text-muted-foreground" />
+              {activeDrag.label}
+            </div>
+          )}
+        </DragOverlay>
       </DndContext>
 
       {/* Bottom add button — reachable without scrolling back up on long menus. */}
