@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MenuEditor, reorderCategories, reorderMenuItems } from "./menu-editor";
+import {
+  MenuEditor,
+  moveItemToGroup,
+  reorderCategories,
+  reorderMenuItems,
+} from "./menu-editor";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { MenuCategory } from "@/lib/types";
@@ -60,6 +65,52 @@ describe("reorderMenuItems", () => {
 
   it("returns the same array instance for an unknown id", () => {
     expect(reorderMenuItems(items, "a", "missing")).toBe(items);
+  });
+});
+
+describe("moveItemToGroup", () => {
+  const categories: MenuCategory[] = [
+    { id: "drinks", label: "Drinks" },
+    { id: "snacks", label: "Snacks" },
+  ];
+  const items: MenuItemFormInput[] = [
+    { ...ITEM, id: "a", name: "A", category: "drinks" },
+    { ...ITEM, id: "b", name: "B", category: "snacks" },
+    { ...ITEM, id: "c", name: "C", category: "drinks" },
+    { ...ITEM, id: "d", name: "D" },
+  ];
+
+  it("moves an item to sit after the target group's last member", () => {
+    const result = moveItemToGroup(items, categories, "d", "drinks");
+    expect(result.map((it) => it.id)).toEqual(["a", "b", "c", "d"]);
+    expect(result.find((it) => it.id === "d")?.category).toBe("drinks");
+  });
+
+  it("moves an item to the end when the target group is empty", () => {
+    const emptyTargetCats: MenuCategory[] = [
+      ...categories,
+      { id: "combos", label: "Combos" },
+    ];
+    const result = moveItemToGroup(items, emptyTargetCats, "a", "combos");
+    expect(result.map((it) => it.id)).toEqual(["b", "c", "d", "a"]);
+  });
+
+  it("inserts mid-array, right after the target group's last member", () => {
+    const result = moveItemToGroup(items, categories, "b", "drinks");
+    expect(result.map((it) => it.id)).toEqual(["a", "c", "b", "d"]);
+  });
+
+  it("moves an item to no-section (null) when dropped on that bucket", () => {
+    const result = moveItemToGroup(items, categories, "a", null);
+    expect(result.find((it) => it.id === "a")?.category).toBeNull();
+  });
+
+  it("returns the same array instance when already in the target group", () => {
+    expect(moveItemToGroup(items, categories, "a", "drinks")).toBe(items);
+  });
+
+  it("returns the same array instance for an unknown id", () => {
+    expect(moveItemToGroup(items, categories, "missing", "drinks")).toBe(items);
   });
 });
 

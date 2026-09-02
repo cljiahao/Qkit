@@ -152,17 +152,22 @@ available`, matching each item by exact name to update in place rather
 
   Section management is built into `MenuEditor` itself, not a separate
   block (a first pass used a standalone `MenuCategoriesEditor` list above
-  the item editor — replaced same-day: a vendor with hundreds of items
-  can't practically drag a card across a long list to assign it, and both
-  general drag-UX research and comparable F&B menu builders (Toast, Oddle)
-  converge on the same answer — drag reorders in place, a field assigns).
-  Once a booth has sections, items render grouped into collapsible
-  per-section cards (rename/reorder/delete/collapse inline in each card's
-  header, plus a trailing "No section" bucket for anything unassigned);
-  with zero sections, the item list stays the plain flat view it always
-  was. The "Available" toggle is now an icon-only `Eye`/`EyeOff` button in
-  the item's action row instead of a full-width `Switch` block, which read
-  as disproportionately heavy for a boolean most vendors never touch.
+  the item editor — replaced same-day). Once a booth has sections, items
+  render grouped into collapsible per-section cards, each with a tinted
+  header band (rename/reorder/delete/collapse inline in it) so a section
+  reads clearly against its items, plus a trailing "No section" card,
+  always present once sections exist, for anything unassigned; with zero
+  sections, the item list stays the plain flat view it always was. Section
+  reassignment works both ways — the per-item "Section" dropdown, and
+  cross-group drag: drop an item on one in another section to reassign +
+  land at its position, or on a section's own drop zone (its header or
+  empty-state text both work, so an empty section is still a valid target)
+  to reassign to the end of that group. The "Available" toggle is an
+  icon-only `Eye`/`EyeOff` button in the item's action row instead of a
+  full-width `Switch` block, which read as disproportionately heavy for a
+  boolean most vendors never touch — now built on the same `Button`
+  primitive as its Duplicate/Remove neighbors (was a hand-rolled `button`
+  with its own near-but-not-quite-matching hover/focus styling).
 
 ### Fixed
 

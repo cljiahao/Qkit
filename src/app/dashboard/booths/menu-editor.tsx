@@ -8,6 +8,7 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -87,6 +88,72 @@ export function reorderMenuItems(
   return arrayMove(items, oldIndex, newIndex);
 }
 
+/**
+ * Reassigns one item to a different section (or `null` for "no section")
+ * and moves it to sit right after that section's current last item — same
+ * array instance back if the item is already there with nothing to move.
+ */
+export function moveItemToGroup(
+  items: MenuItemFormInput[],
+  categories: MenuCategory[],
+  activeId: string,
+  targetCategory: string | null,
+): MenuItemFormInput[] {
+  const activeIndex = items.findIndex((it) => it.id === activeId);
+  if (activeIndex === -1) return items;
+  const active = items[activeIndex]!;
+  if ((active.category ?? null) === targetCategory) return items;
+
+  const known = new Set(categories.map((c) => c.id));
+  const inTargetGroup = (it: MenuItemFormInput) =>
+    targetCategory == null
+      ? !it.category || !known.has(it.category)
+      : it.category === targetCategory;
+
+  const without = items.filter((it) => it.id !== activeId);
+  let insertAt = without.length;
+  for (let i = without.length - 1; i >= 0; i--) {
+    if (inTargetGroup(without[i]!)) {
+      insertAt = i + 1;
+      break;
+    }
+  }
+  const patched = { ...active, category: targetCategory };
+  return [...without.slice(0, insertAt), patched, ...without.slice(insertAt)];
+}
+
+type ItemDropTarget =
+  | { type: "item"; groupId: string }
+  | { type: "section-drop"; groupId: string };
+
+/**
+ * Routes one item drag-end to reorder-within-group, cross-group reassign
+ * (dropped on another item), or cross-group reassign-to-end (dropped on a
+ * group's drop zone) — same array instance back when `overData` is missing.
+ */
+export function resolveItemDrop(
+  items: MenuItemFormInput[],
+  categories: MenuCategory[],
+  activeGroupId: string,
+  activeId: string,
+  overData: ItemDropTarget | undefined,
+  overId: string,
+): MenuItemFormInput[] {
+  if (!overData) return items;
+  const targetCategory =
+    overData.groupId === NO_SECTION_GROUP ? null : overData.groupId;
+  if (overData.type === "section-drop") {
+    return moveItemToGroup(items, categories, activeId, targetCategory);
+  }
+  if (activeGroupId === overData.groupId) {
+    return reorderMenuItems(items, activeId, overId);
+  }
+  const patched = items.map((it) =>
+    it.id === activeId ? { ...it, category: targetCategory } : it,
+  );
+  return reorderMenuItems(patched, activeId, overId);
+}
+
 /** Same array instance back when there's nothing to reorder. */
 export function reorderCategories(
   categories: MenuCategory[],
@@ -141,11 +208,11 @@ export function MenuEditor({
     }),
   );
 
-  // Grouped view (by section) once the vendor has sections; reassignment is
-  // dropdown-only (below), never cross-group drag — F&B menu builders
-  // (Toast, Oddle) and general drag-UX research both converge on "drag
-  // reorders in place, a field assigns" once a list can run to hundreds of
-  // rows. Drag still reorders items within a group, and sections themselves.
+  // Grouped view (by section) once the vendor has sections. Drag reorders
+  // within a group, reorders sections themselves, AND reassigns an item's
+  // section (dropped on another group's item or its header/empty-state
+  // drop zone) — the dropdown stays as the precise/keyboard-reachable path
+  // for a menu too long to comfortably drag across.
   const sections = useMemo(() => {
     const known = new Set(categories.map((c) => c.id));
     const indexed = items.map((it, i) => ({ it, i }));
@@ -178,14 +245,13 @@ export function MenuEditor({
       return;
     }
     if (activeData?.type === "item") {
-      const overData = over.data.current as
-        | { type: "item"; groupId: string }
-        | undefined;
-      if (overData?.type !== "item") return;
-      if (activeData.groupId !== overData.groupId) return;
-      const reordered = reorderMenuItems(
+      const overData = over.data.current as ItemDropTarget | undefined;
+      const reordered = resolveItemDrop(
         items,
+        categories,
+        activeData.groupId,
         String(active.id),
+        overData,
         String(over.id),
       );
       if (reordered !== items) onChange(reordered);
@@ -399,8 +465,10 @@ export function MenuEditor({
                 />
               </div>
               <div className="flex shrink-0 flex-col gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="icon"
                   role="switch"
                   aria-checked={item.available}
                   aria-label="Available"
@@ -410,7 +478,7 @@ export function MenuEditor({
                       : "Hidden — tap to make available again"
                   }
                   onClick={() => update(index, { available: !item.available })}
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground data-[unavailable=true]:border-dashed data-[unavailable=true]:text-muted-foreground/60"
+                  className="rounded-lg text-muted-foreground hover:text-foreground data-[unavailable=true]:border-dashed data-[unavailable=true]:text-muted-foreground/60"
                   data-unavailable={!item.available}
                 >
                   {item.available ? (
@@ -418,7 +486,7 @@ export function MenuEditor({
                   ) : (
                     <EyeOff className="size-4" />
                   )}
-                </button>
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -701,76 +769,97 @@ export function MenuEditor({
                         style={style}
                         className="rounded-xl border border-border bg-card"
                       >
-                        <div
-                          className={
-                            collapsed
-                              ? "flex items-center gap-1.5 rounded-xl bg-primary/10 px-2 py-2"
-                              : "flex items-center gap-1.5 rounded-t-xl border-b border-border bg-primary/10 px-2 py-2"
-                          }
+                        <GroupDropZone
+                          id={`dropzone-${group.id}`}
+                          groupId={group.id}
                         >
-                          <button
-                            type="button"
-                            onClick={() => toggleSectionCollapsed(group.id)}
-                            aria-label={
-                              collapsed ? "Expand section" : "Collapse section"
-                            }
-                            className="shrink-0 text-muted-foreground hover:text-foreground"
-                          >
-                            {collapsed ? (
-                              <ChevronRight className="size-4" />
-                            ) : (
-                              <ChevronDown className="size-4" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-                            aria-label="Reorder section"
-                            {...attributes}
-                            {...listeners}
-                          >
-                            <GripVertical className="size-4" />
-                          </button>
-                          <Input
-                            value={group.label}
-                            onChange={(e) =>
-                              renameCategory(group.id, e.target.value)
-                            }
-                            placeholder="Section name"
-                            className="h-8 flex-1 rounded-md border-transparent bg-transparent px-1.5 font-medium shadow-none hover:border-border focus-visible:border-border"
-                          />
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            {group.entries.length}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => removeCategory(group.id)}
-                            aria-label="Remove section"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                        {!collapsed &&
-                          (group.entries.length === 0 ? (
-                            <p className="px-3.5 py-4 text-center text-xs text-muted-foreground">
-                              No items yet. Add one below, then set its section
-                              to {group.label || "this one"}.
-                            </p>
-                          ) : (
-                            <SortableContext
-                              items={group.entries.map(({ it }) => it.id)}
-                              strategy={verticalListSortingStrategy}
+                          {({ setNodeRef: setDropRef, isOver }) => (
+                            <div
+                              ref={setDropRef}
+                              className={
+                                isOver
+                                  ? "rounded-xl ring-2 ring-primary"
+                                  : undefined
+                              }
                             >
-                              <div className="divide-y divide-border">
-                                {group.entries.map(({ i }) =>
-                                  renderItem(i, group.id, false),
-                                )}
+                              <div
+                                className={
+                                  collapsed
+                                    ? "flex items-center gap-1.5 rounded-xl bg-primary/15 px-2 py-2"
+                                    : "flex items-center gap-1.5 rounded-t-xl border-b border-border bg-primary/15 px-2 py-2"
+                                }
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleSectionCollapsed(group.id)
+                                  }
+                                  aria-label={
+                                    collapsed
+                                      ? "Expand section"
+                                      : "Collapse section"
+                                  }
+                                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                                >
+                                  {collapsed ? (
+                                    <ChevronRight className="size-4" />
+                                  ) : (
+                                    <ChevronDown className="size-4" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                                  aria-label="Reorder section"
+                                  {...attributes}
+                                  {...listeners}
+                                >
+                                  <GripVertical className="size-4" />
+                                </button>
+                                <Input
+                                  value={group.label}
+                                  onChange={(e) =>
+                                    renameCategory(group.id, e.target.value)
+                                  }
+                                  placeholder="Section name"
+                                  className="h-8 flex-1 rounded-md border-transparent bg-transparent px-1.5 font-medium shadow-none hover:border-border focus-visible:border-border"
+                                />
+                                <span className="shrink-0 text-xs text-muted-foreground">
+                                  {group.entries.length}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                                  onClick={() => removeCategory(group.id)}
+                                  aria-label="Remove section"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
                               </div>
-                            </SortableContext>
-                          ))}
+                              {!collapsed &&
+                                (group.entries.length === 0 ? (
+                                  <p className="px-3.5 py-4 text-center text-xs text-muted-foreground">
+                                    No items yet. Add one below, or drag an item
+                                    here to set its section to{" "}
+                                    {group.label || "this one"}.
+                                  </p>
+                                ) : (
+                                  <SortableContext
+                                    items={group.entries.map(({ it }) => it.id)}
+                                    strategy={verticalListSortingStrategy}
+                                  >
+                                    <div className="divide-y divide-border">
+                                      {group.entries.map(({ i }) =>
+                                        renderItem(i, group.id, false),
+                                      )}
+                                    </div>
+                                  </SortableContext>
+                                ))}
+                            </div>
+                          )}
+                        </GroupDropZone>
                       </div>
                     )}
                   </SortableSectionGroup>
@@ -780,27 +869,44 @@ export function MenuEditor({
           </SortableContext>
         )}
 
-        {hasSections && sections.restEntries.length > 0 && (
-          <div className="mt-3 rounded-xl border border-border bg-card">
-            <div className="flex items-center gap-2 rounded-t-xl border-b border-border bg-muted px-3 py-2">
-              <span className="text-sm font-medium text-muted-foreground">
-                No section
-              </span>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {sections.restEntries.length}
-              </span>
-            </div>
-            <SortableContext
-              items={sections.restEntries.map(({ it }) => it.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="divide-y divide-border">
-                {sections.restEntries.map(({ i }) =>
-                  renderItem(i, NO_SECTION_GROUP, false),
+        {hasSections && (
+          <GroupDropZone id="dropzone-no-section" groupId={NO_SECTION_GROUP}>
+            {({ setNodeRef: setDropRef, isOver }) => (
+              <div
+                ref={setDropRef}
+                className={
+                  isOver
+                    ? "mt-3 rounded-xl border border-border bg-card ring-2 ring-primary"
+                    : "mt-3 rounded-xl border border-border bg-card"
+                }
+              >
+                <div className="flex items-center gap-2 rounded-t-xl border-b border-border bg-muted px-3 py-2">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    No section
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {sections.restEntries.length}
+                  </span>
+                </div>
+                {sections.restEntries.length === 0 ? (
+                  <p className="px-3.5 py-4 text-center text-xs text-muted-foreground">
+                    Drag an item here to take it out of its section.
+                  </p>
+                ) : (
+                  <SortableContext
+                    items={sections.restEntries.map(({ it }) => it.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="divide-y divide-border">
+                      {sections.restEntries.map(({ i }) =>
+                        renderItem(i, NO_SECTION_GROUP, false),
+                      )}
+                    </div>
+                  </SortableContext>
                 )}
               </div>
-            </SortableContext>
-          </div>
+            )}
+          </GroupDropZone>
         )}
       </DndContext>
 
@@ -865,4 +971,26 @@ function SortableSectionGroup({
       transition: sortable.transition,
     },
   });
+}
+
+// Makes an entire group (header + body, including its empty state) a valid
+// drop target for reassigning an item into it — not just its individual
+// item rows, which don't exist yet on an empty section.
+function GroupDropZone({
+  id,
+  groupId,
+  children,
+}: {
+  id: string;
+  groupId: string;
+  children: (d: {
+    setNodeRef: (el: HTMLElement | null) => void;
+    isOver: boolean;
+  }) => React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+    data: { type: "section-drop", groupId },
+  });
+  return children({ setNodeRef, isOver });
 }
