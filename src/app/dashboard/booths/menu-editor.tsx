@@ -551,39 +551,14 @@ export function MenuEditor({
               </div>
             </div>
 
-            {categories.length > 0 && (
-              <div className="space-y-1">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  Section
-                </Label>
-                <Select
-                  value={item.category ?? NO_CATEGORY}
-                  onValueChange={(v) =>
-                    update(index, {
-                      category: v === NO_CATEGORY ? null : v,
-                    })
-                  }
-                >
-                  <SelectTrigger className="h-9 w-full rounded-lg">
-                    <SelectValue placeholder="No section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_CATEGORY}>No section</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.label || "Untitled"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Price/cost/sold-out cap as one compact row — each field keeps
-                a persistent label (not just a placeholder, which disappears
-                once filled) with its longer explanation behind a tap-tooltip
-                instead of a permanent caption line, so the row doesn't grow
-                with every item on a long menu. */}
+            {/* Price/cost/sold-out limit/section as one compact row, each
+                field with a persistent label (not just a placeholder, which
+                disappears once filled) and its longer explanation behind a
+                tap-tooltip instead of a permanent caption line, so the row
+                doesn't grow with every item on a long menu. Section wraps
+                onto its own line below Sold-out limit on narrow screens,
+                and just doesn't render as a 4th column when the booth has
+                no sections yet. */}
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[8rem] flex-1 space-y-1">
                 <Label className="text-xs font-medium text-muted-foreground">
@@ -652,6 +627,33 @@ export function MenuEditor({
                   <span className="text-xs text-muted-foreground">
                     Sold-out limit
                   </span>
+                </div>
+              )}
+              {categories.length > 0 && (
+                <div className="min-w-[8rem] flex-1 space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Section
+                  </Label>
+                  <Select
+                    value={item.category ?? NO_CATEGORY}
+                    onValueChange={(v) =>
+                      update(index, {
+                        category: v === NO_CATEGORY ? null : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-9 w-full rounded-lg">
+                      <SelectValue placeholder="No section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_CATEGORY}>No section</SelectItem>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.label || "Untitled"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>

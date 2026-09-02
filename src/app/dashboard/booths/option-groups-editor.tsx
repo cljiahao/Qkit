@@ -204,7 +204,7 @@ export function OptionGroupsEditor({
                   className="min-w-[8rem] flex-1 rounded-lg font-medium"
                 />
               </div>
-              <div className="flex shrink-0 items-center gap-2 pl-8 sm:pl-0">
+              <div className="flex shrink-0 items-center gap-2 pl-11 sm:pl-0">
                 <ToggleGroup
                   type="single"
                   value={group.multiple ? "any" : "one"}
@@ -264,9 +264,12 @@ export function OptionGroupsEditor({
                       className="rounded-lg bg-background"
                     />
                     <div className="flex gap-2">
-                      {/* Price matters to every vendor — always visible, not
-                    behind the Advanced dialog. */}
-                      <div className="relative w-28 shrink-0">
+                      {/* Price matters to every vendor, always visible, not
+                    behind the Advanced dialog. Grows on mobile (fills the
+                    row beside the two fixed icon buttons instead of
+                    cramping into a fixed 7rem); pinned back to that width
+                    at sm:+, where it sits after the choice-name input. */}
+                      <div className="relative min-w-[6rem] flex-1 sm:w-28 sm:flex-none">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                           $
                         </span>
