@@ -208,6 +208,11 @@ available`, matching each item by exact name to update in place rather
 
 ### Changed
 
+- Menu item card's Available/Duplicate/Delete cluster: Available stays its
+  own standalone toggle, Duplicate and Remove now live behind a "More
+  actions" kebab menu instead of two more equal-weight icon buttons next to
+  it. Grouping a state (Available) with two actions as three identical
+  icons was the actual issue, not their individual styling.
 - Menu item card field order and layout, grounded in Deliveroo/Square/Toast's
   own item-form conventions: "Section" now sits right after name/description
   (was below Price/Cost); Price, Cost, and Sold-out limit collapse into one

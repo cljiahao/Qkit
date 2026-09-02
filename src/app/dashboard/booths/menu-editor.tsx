@@ -30,10 +30,17 @@ import {
   GripVertical,
   Eye,
   EyeOff,
+  MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -491,7 +498,7 @@ export function MenuEditor({
                   className="rounded-lg"
                 />
               </div>
-              <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
+              <div className="flex shrink-0 items-start gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -501,8 +508,8 @@ export function MenuEditor({
                   aria-label="Available"
                   title={
                     item.available
-                      ? "Available — tap to hide from the menu"
-                      : "Hidden — tap to make available again"
+                      ? "Available, tap to hide from the menu"
+                      : "Hidden, tap to make available again"
                   }
                   onClick={() => update(index, { available: !item.available })}
                   className="rounded-lg text-muted-foreground hover:text-foreground data-[unavailable=true]:border-dashed data-[unavailable=true]:text-muted-foreground/60"
@@ -514,29 +521,33 @@ export function MenuEditor({
                     <EyeOff className="size-4" />
                   )}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="rounded-lg text-muted-foreground hover:text-foreground"
-                  onClick={() => duplicateItem(index)}
-                  disabled={atItemCap}
-                  aria-label="Duplicate item"
-                  title="Duplicate: creates an independent copy, not a linked one"
-                >
-                  <Copy className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="rounded-lg text-muted-foreground hover:text-destructive"
-                  onClick={() => removeItem(index)}
-                  aria-label="Remove item"
-                  title="Remove: offers a 60s Undo after"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="rounded-lg text-muted-foreground hover:text-foreground"
+                      aria-label="More actions"
+                    >
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      disabled={atItemCap}
+                      onSelect={() => duplicateItem(index)}
+                    >
+                      <Copy /> Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => removeItem(index)}
+                    >
+                      <Trash2 /> Remove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 

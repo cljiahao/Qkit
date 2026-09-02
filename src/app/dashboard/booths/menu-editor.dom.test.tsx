@@ -294,11 +294,19 @@ describe("MenuEditor availability toggle", () => {
   });
 });
 
+// Duplicate/Remove live behind a per-item "More actions" kebab menu.
+async function openItemMenu(user: ReturnType<typeof userEvent.setup>, at = 0) {
+  await user.click(
+    screen.getAllByRole("button", { name: "More actions" })[at]!,
+  );
+}
+
 describe("MenuEditor remove item", () => {
   it("removes the item and offers an Undo toast", async () => {
     const user = userEvent.setup();
     render(<Host />);
-    await user.click(screen.getByRole("button", { name: "Remove item" }));
+    await openItemMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: /remove/i }));
 
     expect(screen.queryByPlaceholderText("Item name")).not.toBeInTheDocument();
     expect(toast).toHaveBeenCalledWith(
@@ -312,9 +320,8 @@ describe("MenuEditor remove item", () => {
   it("Undo restores the item without clobbering an edit made in between", async () => {
     const user = userEvent.setup();
     render(<HostWithTwo />);
-    await user.click(
-      screen.getAllByRole("button", { name: "Remove item" })[0]!,
-    );
+    await openItemMenu(user, 0);
+    await user.click(screen.getByRole("menuitem", { name: /remove/i }));
     // Edit the surviving item after the removal, before clicking Undo.
     const remainingName = screen.getByPlaceholderText("Item name");
     await user.clear(remainingName);
@@ -334,7 +341,8 @@ describe("MenuEditor duplicate item", () => {
   it("creates an independent copy with a distinct name and id", async () => {
     const user = userEvent.setup();
     render(<HostWithGroups />);
-    await user.click(screen.getByRole("button", { name: /duplicate item/i }));
+    await openItemMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: /duplicate/i }));
     const names = screen.getAllByPlaceholderText("Item name");
     expect(names).toHaveLength(2);
     expect((names[1] as HTMLInputElement).value).toBe("Latte (copy)");
@@ -343,7 +351,8 @@ describe("MenuEditor duplicate item", () => {
   it("editing the copy's name never mutates the original", async () => {
     const user = userEvent.setup();
     render(<HostWithGroups />);
-    await user.click(screen.getByRole("button", { name: /duplicate item/i }));
+    await openItemMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: /duplicate/i }));
     const names = screen.getAllByPlaceholderText("Item name");
     await user.clear(names[1]);
     await user.type(names[1], "Cappuccino");
@@ -353,7 +362,8 @@ describe("MenuEditor duplicate item", () => {
   it("carries over option groups and allergens as independent data", async () => {
     const user = userEvent.setup();
     render(<HostWithGroups />);
-    await user.click(screen.getByRole("button", { name: /duplicate item/i }));
+    await openItemMenu(user);
+    await user.click(screen.getByRole("menuitem", { name: /duplicate/i }));
     const advancedButtons = screen.getAllByRole("button", {
       name: /advanced/i,
     });
@@ -365,7 +375,8 @@ describe("MenuEditor duplicate item", () => {
     expect(customizationButtons[1]).toHaveTextContent("1");
   });
 
-  it("disables duplication once the menu-item cap is reached", () => {
+  it("disables duplication once the menu-item cap is reached", async () => {
+    const user = userEvent.setup();
     render(
       <MenuEditor
         vendorId="v1"
@@ -374,9 +385,10 @@ describe("MenuEditor duplicate item", () => {
         entitlement={{ ...ENTITLEMENT, maxMenuItems: 1 }}
       />,
     );
+    await openItemMenu(user);
     expect(
-      screen.getByRole("button", { name: /duplicate item/i }),
-    ).toBeDisabled();
+      screen.getByRole("menuitem", { name: /duplicate/i }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 });
 
