@@ -132,28 +132,37 @@ available`, matching each item by exact name to update in place rather
 
 - Menu editor mobile/UX pass: `Duplicate`/`Remove` buttons on a menu item
   now stack vertically instead of side by side (was leaving an empty gap
-  under them next to the two-line name/description); "Available" is now
-  its own labeled `Switch` row instead of a small `Checkbox` squeezed into
-  the price/cost row; removing an item is still instant (no blocking
-  confirmation, which would slow down bulk edits) but now offers a 60s
-  "Undo" toast; each option-group's choices can now be collapsed to a
-  "N choices" badge, for vendors with many customization groups per item;
-  a choice row now stacks its inputs on narrow screens instead of clipping
-  the choice-name placeholder against the fixed-width price/Advanced/
-  delete controls.
+  under them next to the two-line name/description); removing an item is
+  still instant (no blocking confirmation, which would slow down bulk
+  edits) but now offers a 60s "Undo" toast; each option-group's choices can
+  now be collapsed to a "N choices" badge, for vendors with many
+  customization groups per item; a choice row now stacks its inputs on
+  narrow screens instead of clipping the choice-name placeholder against
+  the fixed-width price/Advanced/delete controls.
 
-- Menu categorization: a booth can now define ordered menu sections
-  (`MenuCategoriesEditor`, `dashboard/booths/menu-categories-editor.tsx`,
-  new "Menu sections" list above the item editor on the menu-manager page —
-  add/rename/reorder/delete, capped at 40) and assign each item to one via
-  a "Section" picker in the item editor. The data model
-  (`menu_categories`/`item.category`, migration 0066) and the customer-
-  facing grouping (`groupByCategory`) already existed; only the vendor-
-  facing UI to populate either field was missing. New
-  `saveMenuCategories` action, its own write path for `booths.menu_categories`
-  (same column-ownership split as `saveMenuItems`/`saveBooth`). Deleting a
-  section never touches items that referenced it — a dangling id already
-  buckets into "Other" on the customer menu.
+- Menu categorization: a booth can now define ordered menu sections and
+  assign each item to one. The data model (`menu_categories`/
+  `item.category`, migration 0066) and the customer-facing grouping
+  (`groupByCategory`) already existed; only the vendor-facing UI to
+  populate either field was missing. New `saveMenuCategories` action, its
+  own write path for `booths.menu_categories` (same column-ownership split
+  as `saveMenuItems`/`saveBooth`). Deleting a section never touches items
+  that referenced it — a dangling id already buckets into "Other" on the
+  customer menu.
+
+  Section management is built into `MenuEditor` itself, not a separate
+  block (a first pass used a standalone `MenuCategoriesEditor` list above
+  the item editor — replaced same-day: a vendor with hundreds of items
+  can't practically drag a card across a long list to assign it, and both
+  general drag-UX research and comparable F&B menu builders (Toast, Oddle)
+  converge on the same answer — drag reorders in place, a field assigns).
+  Once a booth has sections, items render grouped into collapsible
+  per-section cards (rename/reorder/delete/collapse inline in each card's
+  header, plus a trailing "No section" bucket for anything unassigned);
+  with zero sections, the item list stays the plain flat view it always
+  was. The "Available" toggle is now an icon-only `Eye`/`EyeOff` button in
+  the item's action row instead of a full-width `Switch` block, which read
+  as disproportionately heavy for a boolean most vendors never touch.
 
 ### Fixed
 

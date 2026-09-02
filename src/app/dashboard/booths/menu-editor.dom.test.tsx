@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MenuEditor, reorderMenuItems } from "./menu-editor";
+import { MenuEditor, reorderCategories, reorderMenuItems } from "./menu-editor";
 import type { MenuItemFormInput } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { MenuCategory } from "@/lib/types";
@@ -60,6 +60,27 @@ describe("reorderMenuItems", () => {
 
   it("returns the same array instance for an unknown id", () => {
     expect(reorderMenuItems(items, "a", "missing")).toBe(items);
+  });
+});
+
+describe("reorderCategories", () => {
+  const categories: MenuCategory[] = [
+    { id: "a", label: "A" },
+    { id: "b", label: "B" },
+    { id: "c", label: "C" },
+  ];
+
+  it("moves the active section to the dropped-on section's position", () => {
+    const result = reorderCategories(categories, "a", "c");
+    expect(result.map((c) => c.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("returns the same array instance when dropped on itself", () => {
+    expect(reorderCategories(categories, "b", "b")).toBe(categories);
+  });
+
+  it("returns the same array instance for an unknown id", () => {
+    expect(reorderCategories(categories, "a", "missing")).toBe(categories);
   });
 });
 
@@ -305,5 +326,115 @@ describe("MenuEditor duplicate item", () => {
     expect(
       screen.getByRole("button", { name: /duplicate item/i }),
     ).toBeDisabled();
+  });
+});
+
+function HostSections({
+  initialCategories = [],
+}: {
+  initialCategories?: MenuCategory[];
+}) {
+  const [items, setItems] = useState<MenuItemFormInput[]>([ITEM]);
+  const [categories, setCategories] =
+    useState<MenuCategory[]>(initialCategories);
+  return (
+    <MenuEditor
+      vendorId="v1"
+      items={items}
+      onChange={setItems}
+      entitlement={ENTITLEMENT}
+      categories={categories}
+      onCategoriesChange={setCategories}
+    />
+  );
+}
+
+describe("MenuEditor sections", () => {
+  it("renders no section chrome when there are no sections", () => {
+    render(<HostSections />);
+    expect(screen.queryByText("No section")).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("Section name"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("adding a section shows an empty, renameable group", async () => {
+    const user = userEvent.setup();
+    render(<HostSections />);
+    await user.click(screen.getByRole("button", { name: "Add section" }));
+    expect(screen.getByPlaceholderText("Section name")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reorder section" }),
+    ).toBeInTheDocument();
+    // The one existing item has no section, so it sits in a "No section"
+    // group — its own Section picker also defaults to that same label.
+    expect(screen.getAllByText("No section").length).toBeGreaterThan(0);
+  });
+
+  it("renaming a section updates its label", async () => {
+    const user = userEvent.setup();
+    render(<HostSections initialCategories={CATEGORIES} />);
+    const drinksInput = screen.getByDisplayValue("Drinks");
+    await user.clear(drinksInput);
+    await user.type(drinksInput, "Coffee");
+    expect(screen.getByDisplayValue("Coffee")).toBeInTheDocument();
+  });
+
+  it("removing a section drops its chrome and offers an Undo toast, items stay put", async () => {
+    const user = userEvent.setup();
+    render(<HostSections initialCategories={CATEGORIES} />);
+    const removeButtons = screen.getAllByRole("button", {
+      name: "Remove section",
+    });
+    await user.click(removeButtons[0]!);
+
+    expect(screen.queryByDisplayValue("Drinks")).not.toBeInTheDocument();
+    expect(toast).toHaveBeenCalledWith(
+      "Drinks removed",
+      expect.objectContaining({
+        action: expect.objectContaining({ label: "Undo" }),
+      }),
+    );
+    // The lone item was already unassigned — still visible, untouched.
+    expect(screen.getByPlaceholderText("Item name")).toBeInTheDocument();
+  });
+
+  it("collapsing a section hides its items behind a count, expanding restores them", async () => {
+    const user = userEvent.setup();
+    function HostSectionsWithItem() {
+      const [items, setItems] = useState<MenuItemFormInput[]>([
+        { ...ITEM, category: "drinks" },
+      ]);
+      const [categories, setCategories] = useState<MenuCategory[]>([
+        { id: "drinks", label: "Drinks" },
+      ]);
+      return (
+        <MenuEditor
+          vendorId="v1"
+          items={items}
+          onChange={setItems}
+          entitlement={ENTITLEMENT}
+          categories={categories}
+          onCategoriesChange={setCategories}
+        />
+      );
+    }
+    render(<HostSectionsWithItem />);
+    expect(screen.getByPlaceholderText("Item name")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Collapse section" }));
+    expect(screen.queryByPlaceholderText("Item name")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Expand section" }));
+    expect(screen.getByPlaceholderText("Item name")).toBeInTheDocument();
+  });
+
+  it("disables Add section once the section cap is reached", () => {
+    const atCap: MenuCategory[] = Array.from({ length: 40 }, (_, i) => ({
+      id: `c${i}`,
+      label: `Section ${i}`,
+    }));
+    render(<HostSections initialCategories={atCap} />);
+    expect(screen.getByRole("button", { name: "Add section" })).toBeDisabled();
   });
 });

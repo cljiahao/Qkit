@@ -9,7 +9,6 @@ import { InfoTooltip } from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
-import { MenuCategoriesEditor } from "./menu-categories-editor";
 import { saveMenuCategories, saveMenuItems } from "./actions";
 import { sanitizeOptionGroups, type MenuItemFormInput } from "@/lib/schemas";
 import {
@@ -276,14 +275,13 @@ export function MenuManager({
         </div>
       )}
 
-      <MenuCategoriesEditor categories={categories} onChange={setCategories} />
-
       <MenuEditor
         vendorId={vendorId}
         items={items}
         onChange={setItems}
         entitlement={entitlement}
         categories={categories}
+        onCategoriesChange={setCategories}
       />
 
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-6 py-6">

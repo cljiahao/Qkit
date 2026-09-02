@@ -11,7 +11,7 @@ bulk export/import, split out of the main booth-edit form.
   `requireEntitledVendor()`, loads the booth (`id, name, menu_items,
 menu_categories`) RLS-scoped (foreign id → `null` → `notFound()`), parses
   stored JSON via `parseMenuItems`/`parseMenuCategories` (2026-09-02, the
-  latter added alongside `MenuCategoriesEditor`), and renders `MenuManager`
+  latter added alongside `menu-editor.tsx`'s section management), and renders `MenuManager`
   (from `../../menu-manager`) pre-filled with the booth's items and category
   sections.
 
