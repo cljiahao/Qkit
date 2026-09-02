@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImageUploader } from "@merqo/ui";
+import { ImageUploader, InfoTooltip } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
@@ -491,7 +491,7 @@ export function MenuEditor({
                   className="rounded-lg"
                 />
               </div>
-              <div className="flex shrink-0 flex-col gap-2">
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start">
                 <Button
                   type="button"
                   variant="outline"
@@ -533,46 +533,16 @@ export function MenuEditor({
                   className="rounded-lg text-muted-foreground hover:text-destructive"
                   onClick={() => removeItem(index)}
                   aria-label="Remove item"
+                  title="Remove: offers a 60s Undo after"
                 >
                   <Trash2 className="size-4" />
                 </Button>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-[9rem] flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  $
-                </span>
-                <Input
-                  inputMode="decimal"
-                  placeholder="Price (opt.)"
-                  value={centsToDollars(item.price_cents)}
-                  onChange={(e) => setPrice(index, e.target.value)}
-                  className="rounded-lg pl-7"
-                />
-              </div>
-              <div className="relative min-w-[9rem] flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  $
-                </span>
-                <Input
-                  inputMode="decimal"
-                  placeholder="Cost (opt.)"
-                  value={centsToDollars(item.cost_cents)}
-                  onChange={(e) => setCost(index, e.target.value)}
-                  className="rounded-lg pl-7"
-                />
-              </div>
-            </div>
-            <p className="-mt-1 text-xs text-muted-foreground">
-              Cost is private, used only for your profit/margin stats, never
-              shown to customers.
-            </p>
-
             {categories.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Label className="shrink-0 text-xs font-medium text-muted-foreground">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground">
                   Section
                 </Label>
                 <Select
@@ -598,31 +568,82 @@ export function MenuEditor({
               </div>
             )}
 
-            {/* Sold-out cap (Pro/pass). Remaining auto-counts from live orders. */}
-            {entitlement.stockCaps ? (
-              <div className="flex flex-wrap items-center gap-2">
+            {/* Price/cost/sold-out cap as one compact row — each field keeps
+                a persistent label (not just a placeholder, which disappears
+                once filled) with its longer explanation behind a tap-tooltip
+                instead of a permanent caption line, so the row doesn't grow
+                with every item on a long menu. */}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[8rem] flex-1 space-y-1">
                 <Label className="text-xs font-medium text-muted-foreground">
-                  Sold-out limit
+                  Price
                 </Label>
-                <Input
-                  inputMode="numeric"
-                  placeholder="Unlimited"
-                  value={item.stock == null ? "" : String(item.stock)}
-                  onChange={(e) => setStock(index, e.target.value)}
-                  className="h-9 w-28 rounded-lg"
-                />
-                <span className="text-xs text-muted-foreground">
-                  Orders stop when sold out. Leave blank for unlimited.
-                </span>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="Optional"
+                    value={centsToDollars(item.price_cents)}
+                    onChange={(e) => setPrice(index, e.target.value)}
+                    className="rounded-lg pl-7"
+                  />
+                </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <ProLock feature="stock_cap" label="Pro" />
-                <span className="text-xs text-muted-foreground">
-                  Auto-stop orders when an item sells out.
-                </span>
+              <div className="min-w-[8rem] flex-1 space-y-1">
+                <div className="flex items-center gap-1">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Cost
+                  </Label>
+                  <InfoTooltip
+                    content="Private, used only for your profit/margin stats, never shown to customers."
+                    ariaLabel="About cost"
+                    trigger="tap"
+                  />
+                </div>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="Optional"
+                    value={centsToDollars(item.cost_cents)}
+                    onChange={(e) => setCost(index, e.target.value)}
+                    className="rounded-lg pl-7"
+                  />
+                </div>
               </div>
-            )}
+              {entitlement.stockCaps ? (
+                <div className="min-w-[8rem] flex-1 space-y-1">
+                  <div className="flex items-center gap-1">
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      Sold-out limit
+                    </Label>
+                    <InfoTooltip
+                      content="Orders stop once this many are sold. Leave blank for unlimited."
+                      ariaLabel="About sold-out limit"
+                      trigger="tap"
+                    />
+                  </div>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="Unlimited"
+                    value={item.stock == null ? "" : String(item.stock)}
+                    onChange={(e) => setStock(index, e.target.value)}
+                    className="h-9 w-full rounded-lg"
+                  />
+                </div>
+              ) : (
+                <div className="flex min-w-[8rem] flex-1 items-center gap-2">
+                  <ProLock feature="stock_cap" label="Pro" />
+                  <span className="text-xs text-muted-foreground">
+                    Sold-out limit
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Advanced: fixed/inherent allergens — collapsed by default,
                 most items need none. Anything that varies by customization
