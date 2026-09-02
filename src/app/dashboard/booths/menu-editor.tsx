@@ -701,7 +701,13 @@ export function MenuEditor({
                         style={style}
                         className="rounded-xl border border-border bg-card"
                       >
-                        <div className="flex items-center gap-1.5 px-2 py-2">
+                        <div
+                          className={
+                            collapsed
+                              ? "flex items-center gap-1.5 rounded-xl bg-primary/10 px-2 py-2"
+                              : "flex items-center gap-1.5 rounded-t-xl border-b border-border bg-primary/10 px-2 py-2"
+                          }
+                        >
                           <button
                             type="button"
                             onClick={() => toggleSectionCollapsed(group.id)}
@@ -749,7 +755,7 @@ export function MenuEditor({
                         </div>
                         {!collapsed &&
                           (group.entries.length === 0 ? (
-                            <p className="border-t border-border px-3.5 py-4 text-center text-xs text-muted-foreground">
+                            <p className="px-3.5 py-4 text-center text-xs text-muted-foreground">
                               No items yet. Add one below, then set its section
                               to {group.label || "this one"}.
                             </p>
@@ -758,7 +764,7 @@ export function MenuEditor({
                               items={group.entries.map(({ it }) => it.id)}
                               strategy={verticalListSortingStrategy}
                             >
-                              <div className="divide-y divide-border border-t border-border">
+                              <div className="divide-y divide-border">
                                 {group.entries.map(({ i }) =>
                                   renderItem(i, group.id, false),
                                 )}
@@ -776,7 +782,7 @@ export function MenuEditor({
 
         {hasSections && sections.restEntries.length > 0 && (
           <div className="mt-3 rounded-xl border border-border bg-card">
-            <div className="flex items-center gap-2 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-t-xl border-b border-border bg-muted px-3 py-2">
               <span className="text-sm font-medium text-muted-foreground">
                 No section
               </span>
@@ -788,7 +794,7 @@ export function MenuEditor({
               items={sections.restEntries.map(({ it }) => it.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="divide-y divide-border border-t border-border">
+              <div className="divide-y divide-border">
                 {sections.restEntries.map(({ i }) =>
                   renderItem(i, NO_SECTION_GROUP, false),
                 )}
