@@ -208,6 +208,15 @@ available`, matching each item by exact name to update in place rather
 
 ### Changed
 
+- Menu item card field order and layout, grounded in Deliveroo/Square/Toast's
+  own item-form conventions: "Section" now sits right after name/description
+  (was below Price/Cost); Price, Cost, and Sold-out limit collapse into one
+  compact three-column row, each with a real persistent label instead of
+  placeholder-only text (which disappears once filled in, leaving a bare
+  number) and its longer explanation behind a tap `InfoTooltip` instead of a
+  permanent caption paragraph repeated on every item. The Available/
+  Duplicate/Delete action column goes horizontal at tablet+ width instead of
+  always stacking three icons tall.
 - `booth-form.tsx`'s "Order flow" section: both controls are now `Switch`
   ("Hold prep until the customer arrives" was a `Checkbox`, inconsistent
   with its neighbor "Default to walk-up order entry") — standardized to
