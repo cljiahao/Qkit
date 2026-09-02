@@ -171,6 +171,12 @@ available`, matching each item by exact name to update in place rather
 
 ### Fixed
 
+- Dragging a menu item toward a different section snapped it back to its
+  original slot mid-drag (the drop itself still worked, but it looked
+  broken) — `useSortable`'s own transform only repositions within its own
+  list, so it reset outside one. Added a `DragOverlay`: a floating clone
+  that actually follows the pointer across sections, with the original
+  row dimmed in place instead.
 - A handful of leftover em dashes in user-facing copy across the booths
   dashboard (the "Duplicate" button's tooltip, the event-mode create page's
   description) — replaced with plain punctuation.
