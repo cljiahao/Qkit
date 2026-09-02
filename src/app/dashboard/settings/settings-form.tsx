@@ -549,7 +549,7 @@ export function SettingsForm({
                 <span className="flex items-center gap-1.5 text-sm font-medium">
                   Notify customers on Telegram when their order is ready
                   <InfoTooltip
-                    content="Fires the same Telegram ping a customer opted into on the order-status page. Turning this off doesn't touch their connection — it just stops this booth from using it."
+                    content="Fires the same Telegram ping a customer opted into on the order-status page. Turning this off doesn't touch their connection, it just stops this booth from using it."
                     ariaLabel="More about this setting"
                   />
                 </span>

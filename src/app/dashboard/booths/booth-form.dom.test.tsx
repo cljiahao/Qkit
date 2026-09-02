@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BoothForm } from "./booth-form";
 import type { Entitlement } from "@/lib/plan";
@@ -14,7 +14,6 @@ vi.mock("./actions", () => ({ saveBooth, deleteBooth }));
 // Every subcomponent below has its own dom test file — stub them out here so
 // this file is isolated to booth-form's own state wiring (in particular the
 // walk-up-default toggle), not their internals.
-vi.mock("./menu-editor", () => ({ MenuEditor: () => null }));
 vi.mock("./working-hours-editor", () => ({ WorkingHoursEditor: () => null }));
 vi.mock("./payment-section", () => ({ PaymentSection: () => null }));
 vi.mock("./social-links-section", () => ({ SocialLinksSection: () => null }));
@@ -116,7 +115,7 @@ describe("BoothForm walk-up-default toggle", () => {
           image_url: null,
           is_active: true,
           hours: null,
-          menu_items: [],
+          menuItemCount: 0,
           payment: null,
           social_links: null,
           requires_arrival_confirm: false,
@@ -145,7 +144,7 @@ describe("BoothForm walk-up-default toggle", () => {
           image_url: null,
           is_active: true,
           hours: null,
-          menu_items: [],
+          menuItemCount: 0,
           payment: null,
           social_links: null,
           requires_arrival_confirm: false,
@@ -214,7 +213,7 @@ describe("BoothForm paykit booking id", () => {
           image_url: null,
           is_active: true,
           hours: null,
-          menu_items: [],
+          menuItemCount: 0,
           payment: null,
           social_links: null,
           requires_arrival_confirm: false,
@@ -236,5 +235,98 @@ describe("BoothForm paykit booking id", () => {
     );
     expect(screen.getByLabelText("Paykit booking ID")).toHaveValue("book-42");
     expect(screen.getByText("Fully paid")).toBeInTheDocument();
+  });
+});
+
+describe("BoothForm menu section", () => {
+  it("shows a hint instead of a link for a brand-new, unsaved booth", () => {
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    expect(
+      screen.getByText("Save this booth to start building its menu."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("redirects straight to the menu page after creating a new booth", async () => {
+    saveBooth.mockResolvedValue({ success: true, boothId: "b-new" });
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    await waitFor(() =>
+      expect(routerReplace).toHaveBeenCalledWith(
+        "/dashboard/booths/b-new/menu",
+      ),
+    );
+  });
+
+  it("redirects to the booth list after saving an existing booth", async () => {
+    saveBooth.mockResolvedValue({ success: true, boothId: BOOTH_ID });
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+        initial={{
+          boothId: BOOTH_ID,
+          name: "Ice Cream Cart",
+          image_url: null,
+          is_active: true,
+          hours: null,
+          menuItemCount: 3,
+          payment: null,
+          social_links: null,
+          requires_arrival_confirm: false,
+          walkup_default: false,
+          print_enabled: false,
+          paykit_booking_id: null,
+        }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    await waitFor(() =>
+      expect(routerReplace).toHaveBeenCalledWith("/dashboard/booths"),
+    );
+  });
+
+  it("links to the menu-manager page with the item count, for an existing booth", () => {
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+        initial={{
+          boothId: BOOTH_ID,
+          name: "Ice Cream Cart",
+          image_url: null,
+          is_active: true,
+          hours: null,
+          menuItemCount: 4,
+          payment: null,
+          social_links: null,
+          requires_arrival_confirm: false,
+          walkup_default: false,
+          print_enabled: false,
+          paykit_booking_id: null,
+        }}
+      />,
+    );
+    const link = screen.getByRole("link", { name: /4 items/ });
+    expect(link).toHaveAttribute("href", `/dashboard/booths/${BOOTH_ID}/menu`);
   });
 });

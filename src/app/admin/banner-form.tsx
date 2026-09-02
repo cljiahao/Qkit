@@ -53,7 +53,7 @@ export function BannerForm({ initial }: { initial: PlatformSettingsConfig }) {
           maxLength={280}
           onChange={(e) => setMessage(e.target.value)}
           className="rounded-lg"
-          placeholder="e.g. Scheduled maintenance 10pm-11pm SGT — some things may be slow."
+          placeholder="e.g. Scheduled maintenance 10pm-11pm SGT, some things may be slow."
         />
       </div>
       <Button
@@ -65,7 +65,7 @@ export function BannerForm({ initial }: { initial: PlatformSettingsConfig }) {
         {pending ? "Saving…" : "Save banner"}
       </Button>
       <p className="text-xs text-muted-foreground">
-        Informational only — never blocks ordering or the dashboard. Shown to
+        Informational only. Never blocks ordering or the dashboard. Shown to
         every visitor, including anonymous customers.
       </p>
     </div>

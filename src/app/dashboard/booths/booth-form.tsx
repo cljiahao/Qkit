@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -12,6 +13,7 @@ import {
   Share2,
   Printer,
   ClipboardList,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,7 +37,6 @@ import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
-import { MenuEditor } from "./menu-editor";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";
 import { PrintingSection } from "./printing-section";
@@ -43,11 +44,7 @@ import { SocialLinksSection } from "./social-links-section";
 import { BookingStatusSection } from "./booking-status-section";
 import { CloseBoothControl } from "./close-booth-control";
 import { saveBooth, deleteBooth } from "./actions";
-import {
-  boothFormSchema,
-  sanitizeOptionGroups,
-  type MenuItemFormInput,
-} from "@/lib/schemas";
+import { boothFormSchema } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
 import type { BoothHours } from "@/lib/hours";
 import type { PaymentConfig, SocialLinks } from "@/lib/types";
@@ -68,7 +65,8 @@ interface Props {
     image_url: string | null;
     is_active: boolean;
     hours: BoothHours;
-    menu_items: MenuItemFormInput[];
+    // Display-only; items are edited on the dedicated menu-manager page.
+    menuItemCount: number;
     payment: PaymentConfig | null;
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
@@ -96,9 +94,6 @@ export function BoothForm({
   );
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [hours, setHours] = useState<BoothHours>(initial?.hours ?? null);
-  const [items, setItems] = useState<MenuItemFormInput[]>(
-    initial?.menu_items ?? [],
-  );
   const [payment, setPayment] = useState<PaymentConfig | null>(
     initial?.payment ?? null,
   );
@@ -142,12 +137,6 @@ export function BoothForm({
       image_url: imageUrl,
       is_active: isActive,
       hours,
-      // Strip half-filled option groups so a blank group/choice never fails
-      // optionGroupSchema (choices.min(1)) and blocks the whole save.
-      menu_items: items.map((it) => ({
-        ...it,
-        option_groups: sanitizeOptionGroups(it.option_groups),
-      })),
       payment,
       social_links: socialLinks,
       requires_arrival_confirm: requiresArrivalConfirm,
@@ -161,6 +150,8 @@ export function BoothForm({
       return;
     }
 
+    const isCreate = !initial?.boothId;
+
     return runSave(async () => {
       const result = await saveBooth(parsed.data);
       if (!result.success) {
@@ -170,7 +161,13 @@ export function BoothForm({
       toast.success("Booth saved");
       // replace + no refresh: a refresh here races and cancels the navigation
       // (same bug as onboarding). The list is revalidate=0 so it refetches on nav.
-      router.replace("/dashboard/booths");
+      // A fresh create goes straight to the menu page — saveMenuItems needs a
+      // real boothId, which only exists after this first save.
+      router.replace(
+        isCreate
+          ? `/dashboard/booths/${result.boothId}/menu`
+          : "/dashboard/booths",
+      );
       await navigatingAway();
     });
   }
@@ -199,9 +196,9 @@ export function BoothForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
-      {/* 3 grid items, not 2 — mobile stacks Menu between Hours and Payment; md+ keeps the two-column split. */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:items-start">
-        <div className="md:col-start-1 md:row-start-1">
+      {/* Natural-height columns; gap-x only since Section already has mb-5. */}
+      <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2 md:items-start">
+        <div>
           <Section
             icon={<Store className="size-5" />}
             eyebrow="Shown to customers"
@@ -282,13 +279,7 @@ export function BoothForm({
             title="Order flow"
             description="Fine-tune arrival timing and walk-up entry."
           >
-            <label className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-              <Checkbox
-                checked={requiresArrivalConfirm}
-                onCheckedChange={(checked) =>
-                  setRequiresArrivalConfirm(checked === true)
-                }
-              />
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <span className="text-sm">
                 <span className="font-medium">
                   Hold prep until the customer arrives
@@ -299,7 +290,12 @@ export function BoothForm({
                   their status page.
                 </span>
               </span>
-            </label>
+              <Switch
+                checked={requiresArrivalConfirm}
+                onCheckedChange={setRequiresArrivalConfirm}
+                aria-label="Hold prep until the customer arrives"
+              />
+            </div>
 
             <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
               <span className="text-sm">
@@ -333,23 +329,37 @@ export function BoothForm({
           </Section>
         </div>
 
-        <div className="md:col-start-2 md:row-start-1 md:row-span-2">
+        <div>
           <Section
             icon={<UtensilsCrossed className="size-5" />}
             eyebrow="What you sell"
             title="Menu"
             description="Add items customers can order."
           >
-            <MenuEditor
-              vendorId={vendorId}
-              items={items}
-              onChange={setItems}
-              entitlement={entitlement}
-            />
+            {initial?.boothId ? (
+              <Link
+                href={`/dashboard/booths/${initial.boothId}/menu`}
+                className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3.5 text-sm hover:border-primary/40"
+              >
+                <span>
+                  <span className="font-medium">
+                    {initial.menuItemCount === 1
+                      ? "1 item"
+                      : `${initial.menuItemCount} items`}
+                  </span>
+                  <span className="block text-muted-foreground">
+                    Add, edit, reorder, or bulk-import via CSV.
+                  </span>
+                </span>
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ) : (
+              <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                Save this booth to start building its menu.
+              </p>
+            )}
           </Section>
-        </div>
 
-        <div className="md:col-start-1 md:row-start-2">
           <Section
             icon={<Wallet className="size-5" />}
             eyebrow="How you get paid"

@@ -31,7 +31,7 @@ export async function TelegramConnect({
         Get notified on Telegram when it&apos;s ready →
       </a>
       <p className="mt-1 text-xs text-muted-foreground">
-        Connects you to Merqo on Telegram — we&apos;ll message you here about
+        Connects you to Merqo on Telegram, we&apos;ll message you here about
         your order, and about any Merqo kit you use going forward (never
         marketing, see merqo&apos;s disclosure page). You can block the bot any
         time.

@@ -8,6 +8,77 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Menu CSV export/import gains a `cost` column (`name,description,price,
+cost,available`) — the item's own private `cost_cents`, an always-visible
+  field next to Price in the UI, not an Advanced one, so it belonged in the
+  plain CSV alongside price rather than staying UI-only. Blank means unset,
+  same as price; a negative or non-numeric cost is a per-row import error.
+
+- Menu CSV export/import now round-trips per-item customization (option
+  groups/choices) — 4 new columns, `group_name,group_type,choice_label,
+choice_price`. An item row has `name` filled; any choice rows immediately
+  below it (blank `name`) attach to it, consecutive same-`group_name` rows
+  forming one group. Export emits a continuation row per existing choice;
+  import replaces a name-matched item's `option_groups` entirely when its
+  row carries valid choice rows, and leaves them untouched otherwise. Every
+  parser error now names its real spreadsheet row number (`Row N: ...`)
+  rather than a flat array index, since choice rows nest under their item.
+  Choice-level cost delta and allergens stay UI-only (behind "Advanced"),
+  out of CSV scope. See
+  `docs/superpowers/specs/2026-09-01-menu-csv-customization-design.md`.
+
+- `OptionGroupsEditor`'s per-choice "Advanced" panel (cost + allergens) now
+  matches the item-level allergen picker right above it in the UI: each
+  allergen gets its icon (a new shared `ALLERGEN_ICONS`, `allergen-icons.ts`,
+  extracted from what was a `menu-editor.tsx`-local const), the decorative
+  `border-l` box is gone in favor of the same flat spacing the item-level
+  picker already used, and a caption now names the scope ("Extra cost and
+  allergens only when this choice is picked") — it isn't a duplicate of the
+  item-level allergens, but nothing said so before. A new "Customer sees
+  when picked" live preview makes that connection concrete: it renders the
+  same item + choice allergen union `item-customizer.tsx` already computes
+  for the customer at order time, with the same pill styling, so a vendor
+  can see their per-choice tag actually merges with the item's own rather
+  than feeling like separate, disconnected busywork. No data-model change —
+  confirmed against DoorDash's own per-modifier allergen support and the
+  EU 1169/2011 / California ADDE Act's documented substitution-labelling
+  risk that per-choice tagging exists specifically to avoid; item-only
+  tagging was considered and rejected as the wrong direction for a menu
+  with real customization, not merely more effort. The group header (name +
+  Pick one/Pick any + delete) is now one compact row instead of two stacked
+  full-width ones, reading as a lighter one-time setting rather than
+  competing with the repeated choice rows below it; the preview now sits
+  behind its own divider with real bottom spacing, fixing a real layout
+  bug where its pills rendered flush against the next choice's own border.
+
+- Dedicated menu-manager page (`/dashboard/booths/{boothId}/menu`), split out
+  of the main booth-edit form: CSV export/import (`name,description,price,
+available`, matching each item by exact name to update in place rather
+  than duplicate) and drag-to-reorder items (`@dnd-kit/core`/`sortable`/
+  `utilities`, new pinned dependencies) — booth order is just JSONB array
+  order, so no schema change. A new `saveMenuItems` action is now the
+  exclusive write path for `booths.menu_items`; `saveBooth` no longer reads
+  or writes that column at all, closing off a stale-state clobber risk
+  between the two pages. `booth-form.tsx`'s Menu section is now a read-only
+  item-count link into the new page — its layout is 2 natural-height grid
+  columns now, not the old `row-span-2` sized around the full menu editor
+  that used to live there, and the grid gap is horizontal-only (a row-gap
+  on top of every `Section` card's own trailing margin was doubling the
+  visible gap where the two columns stack on mobile). A vendor with zero
+  items can now download a CSV template (`menuCsvTemplate()`) showing the
+  expected columns instead of Export CSV being simply disabled with nothing
+  to give them. Creating a brand-new booth now redirects straight to its
+  menu page right after the first save (instead of the booth list) —
+  `saveMenuItems` needs a real `boothId`, which only exists post-save, so
+  one save gets a vendor straight to the same CSV/reorder/image menu
+  surface every booth uses, rather than a separate inline-editing path.
+
+- `printing-section.tsx`: a general "Manage printers in printkit ↗" link,
+  independent of the print-enabled switch or a saved booth — the existing
+  "Choose the printer for this booth →" link only ever showed once printing
+  was already turned on, so a vendor setting up printkit first had nowhere
+  to go. Matches `payment-section.tsx`'s always-shown paykit link.
+
 - `docs/OPS-RUNBOOK.md`: symptom-level operational triage doc for live-event
   issues, separating what's self-serve (a vendor's own board fixes a stuck
   order, Vercel's Promote-to-Production for a bad deploy) from the
@@ -48,8 +119,113 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   items in them — a booth with 0 or 1 category still renders as a single
   flat "Menu" list, unchanged.
 
+- Customer-facing menu cards now show a tappable icon-only badge per
+  allergen (`AllergenBadges`, `@/components/allergen-badges`) — previously
+  allergen info only ever surfaced inside the Customize sheet, invisible
+  for an item with no option groups (no Customize button to open) and
+  whenever the booth is closed and browse-only (the sheet can't open at
+  all). Tap or hover reveals the name via `InfoTooltip`'s `trigger="tap"`
+  mode. The Customize sheet's own allergen badges now pair each one with
+  its icon too, matching the vendor-side pickers instead of text-only.
+  `ALLERGEN_ICONS` moved from `dashboard/booths/allergen-icons.ts` to
+  `lib/allergen-icons.ts` so both surfaces share one icon set.
+
+- Menu editor mobile/UX pass: `Duplicate`/`Remove` buttons on a menu item
+  now stack vertically instead of side by side (was leaving an empty gap
+  under them next to the two-line name/description); removing an item is
+  still instant (no blocking confirmation, which would slow down bulk
+  edits) but now offers a 60s "Undo" toast; each option-group's choices can
+  now be collapsed to a "N choices" badge, for vendors with many
+  customization groups per item; a choice row now stacks its inputs on
+  narrow screens instead of clipping the choice-name placeholder against
+  the fixed-width price/Advanced/delete controls.
+
+- Menu categorization: a booth can now define ordered menu sections and
+  assign each item to one. The data model (`menu_categories`/
+  `item.category`, migration 0066) and the customer-facing grouping
+  (`groupByCategory`) already existed; only the vendor-facing UI to
+  populate either field was missing. New `saveMenuCategories` action, its
+  own write path for `booths.menu_categories` (same column-ownership split
+  as `saveMenuItems`/`saveBooth`). Deleting a section never touches items
+  that referenced it — a dangling id already buckets into "Other" on the
+  customer menu.
+
+  Section management is built into `MenuEditor` itself, not a separate
+  block (a first pass used a standalone `MenuCategoriesEditor` list above
+  the item editor — replaced same-day). Once a booth has sections, items
+  render grouped into collapsible per-section cards, each with a tinted
+  header band (rename/reorder/delete/collapse inline in it) so a section
+  reads clearly against its items, plus a trailing "No section" card,
+  always present once sections exist, for anything unassigned; with zero
+  sections, the item list stays the plain flat view it always was. Section
+  reassignment works both ways — the per-item "Section" dropdown, and
+  cross-group drag: drop an item on one in another section to reassign +
+  land at its position, or on a section's own drop zone (its header or
+  empty-state text both work, so an empty section is still a valid target)
+  to reassign to the end of that group. The "Available" toggle is an
+  icon-only `Eye`/`EyeOff` button in the item's action row instead of a
+  full-width `Switch` block, which read as disproportionately heavy for a
+  boolean most vendors never touch — now built on the same `Button`
+  primitive as its Duplicate/Remove neighbors (was a hand-rolled `button`
+  with its own near-but-not-quite-matching hover/focus styling).
+
+### Fixed
+
+- Dragging a menu item toward a different section snapped it back to its
+  original slot mid-drag (the drop itself still worked, but it looked
+  broken) — `useSortable`'s own transform only repositions within its own
+  list, so it reset outside one. Added a `DragOverlay`: a floating clone
+  that actually follows the pointer across sections, with the original
+  row dimmed in place instead.
+- A handful of leftover em dashes in user-facing copy across the booths
+  dashboard (the "Duplicate" button's tooltip, the event-mode create page's
+  description) — replaced with plain punctuation.
+- Menu CSV import preview silently omitted each row's description (the
+  import itself always carried it through correctly — the preview list
+  just under-displayed it) — now shows `Name (description) $price`.
+- Menu-manager's CSV-format explanation was a permanent 4-line paragraph
+  under the "Menu" heading — moved into an `InfoTooltip` (same one-sentence-
+  behind-`(i)` pattern `payment-section.tsx`/`settings-form.tsx` already
+  use), wrapped to a fixed width so it reads as short lines instead of one
+  unbroken one.
+- 5 leftover em dashes in user-facing copy (the platform-banner placeholder
+  and its helper text, a settings tooltip, the customer Telegram-connect
+  blurb) — replaced with plain punctuation, now caught for good by a new
+  ESLint gate (see AGENTS.md's "No-em-dash hard gate" note).
+- Printing section showed two printkit links stacked once a booth had
+  printing on and was saved: the booth-scoped "Choose the printer for this
+  booth →" deep link, and a general "Manage printers in printkit ↗" link
+  right under it, doing the same job worse (no auto-selected booth). The
+  general link now only shows when the booth-scoped one isn't available.
+- `OptionGroupsEditor`'s per-choice "Advanced" (cost + allergens) moved from
+  an inline accordion to a `Dialog` — leaving several choices' panels open
+  at once (easy to do, nothing auto-closed them) turned the editor unreadable
+  fast. The trigger grows a small dot once a choice has a cost or an
+  allergen set, so that's still visible without opening every dialog. Group
+  headers and their choices were also hard to tell apart (same input size,
+  no separation) — the header row is now weighted `font-medium` and the
+  choices sit indented in their own tinted sub-panel underneath it.
+
 ### Changed
 
+- Menu item card's Available/Duplicate/Delete cluster: Available stays its
+  own standalone toggle, Duplicate and Remove now live behind a "More
+  actions" kebab menu instead of two more equal-weight icon buttons next to
+  it. Grouping a state (Available) with two actions as three identical
+  icons was the actual issue, not their individual styling.
+- Menu item card field order and layout, grounded in Deliveroo/Square/Toast's
+  own item-form conventions: "Section" now sits right after name/description
+  (was below Price/Cost); Price, Cost, and Sold-out limit collapse into one
+  compact three-column row, each with a real persistent label instead of
+  placeholder-only text (which disappears once filled in, leaving a bare
+  number) and its longer explanation behind a tap `InfoTooltip` instead of a
+  permanent caption paragraph repeated on every item. The Available/
+  Duplicate/Delete action column goes horizontal at tablet+ width instead of
+  always stacking three icons tall.
+- `booth-form.tsx`'s "Order flow" section: both controls are now `Switch`
+  ("Hold prep until the customer arrives" was a `Checkbox`, inconsistent
+  with its neighbor "Default to walk-up order entry") — standardized to
+  match every other standalone on/off feature toggle in the app.
 - Stats dashboard's margin table (`MarginTable`, `/dashboard/stats`) now
   renders through the shared `@merqo/ui` `DataTable` component instead of
   hand-rolled JSX, matching the `AuditLogTable` adoption pattern already

@@ -7,9 +7,12 @@ import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import type { Entitlement } from "@/lib/plan";
 import {
   boothFormSchema,
+  menuCategoriesSchema,
+  menuItemsInputSchema,
   type BoothFormInput,
   type MenuItemFormInput,
 } from "@/lib/schemas";
+import type { MenuCategory } from "@/lib/types";
 import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
 import { registerPrintLocation } from "@/lib/printkit/client";
@@ -269,16 +272,9 @@ export async function saveBooth(
   const { user, entitlement } = await loadEntitlement();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  // Feature caps (hours/stock, below) degrade quietly instead of rejecting.
-  const menuCapError = validateMenuCaps(data.menu_items, entitlement);
-  if (menuCapError) return { success: false, error: menuCapError };
-
-  // Auto-close hours and per-item stock caps are Pro/pass — strip for free so a
-  // stored value can't keep enforcing after a pass expires.
+  // Auto-close hours is Pro/pass — strip for free so a stored value can't
+  // keep enforcing after a pass expires.
   const hours = entitlement.autoCloseHours ? data.hours : null;
-  const menu_items = entitlement.stockCaps
-    ? data.menu_items
-    : data.menu_items.map(({ stock: _stock, ...rest }) => rest);
 
   const supabase = await createServerClient();
 
@@ -316,7 +312,6 @@ export async function saveBooth(
     image_url: data.image_url,
     is_active: data.is_active,
     hours,
-    menu_items,
     payment: paymentMarker(data.payment?.kind),
     social_links: data.social_links,
     requires_arrival_confirm: data.requires_arrival_confirm,
@@ -335,6 +330,81 @@ export async function saveBooth(
       "saveBooth",
     );
   return result;
+}
+
+/** Menu-manager page's own write path. Owns `menu_items` exclusively. */
+export async function saveMenuItems(
+  boothId: string,
+  items: MenuItemFormInput[],
+): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+  const parsed = menuItemsInputSchema.safeParse(items);
+  if (!parsed.success) return { success: false, error: "Invalid menu items" };
+
+  const { user, entitlement } = await loadEntitlement();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const menuCapError = validateMenuCaps(parsed.data, entitlement);
+  if (menuCapError) return { success: false, error: menuCapError };
+
+  // Same stock-cap stripping rule saveBooth used to apply.
+  const menu_items = entitlement.stockCaps
+    ? parsed.data
+    : parsed.data.map(({ stock: _stock, ...rest }) => rest);
+
+  const supabase = await createServerClient();
+
+  // RLS scopes this to the vendor's own booths; a foreign id reads null.
+  const { data: prev } = await supabase
+    .from("booths")
+    .select("menu_items")
+    .eq("id", boothId)
+    .maybeSingle();
+  if (!prev) return { success: false, error: "Booth not found" };
+
+  const { data: updated, error } = await supabase
+    .from("booths")
+    .update({ menu_items })
+    .eq("id", boothId)
+    .select("id")
+    .maybeSingle();
+  if (error || !updated)
+    return { success: false, error: "Could not save menu" };
+
+  await removeBoothImages(
+    supabase,
+    orphanedImagePaths(prev, { menu_items }),
+    "saveMenuItems",
+  );
+  return { success: true };
+}
+
+/** Exclusive write path for `booths.menu_categories`, `saveBooth`'s row
+ * never touches it. No cascade-clear on delete — `groupByCategory` already
+ * buckets a dangling `category` id into "Other". */
+export async function saveMenuCategories(
+  boothId: string,
+  categories: MenuCategory[],
+): Promise<ActionResult> {
+  if (!z.string().uuid().safeParse(boothId).success)
+    return { success: false, error: "Invalid booth" };
+  const parsed = menuCategoriesSchema.safeParse(categories);
+  if (!parsed.success) return { success: false, error: "Invalid categories" };
+
+  const { user } = await loadEntitlement();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const supabase = await createServerClient();
+  const { data: updated, error } = await supabase
+    .from("booths")
+    .update({ menu_categories: parsed.data })
+    .eq("id", boothId)
+    .select("id")
+    .maybeSingle();
+  if (error || !updated)
+    return { success: false, error: "Could not save categories" };
+  return { success: true };
 }
 
 /**

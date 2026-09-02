@@ -287,3 +287,26 @@ reconsidering, but scope any future work to a **read-only** order lookup
 rather than a write override. Today's "Stuck Orders" tile + each vendor's
 "Last order" timestamp on `/admin` already cover the realistic failure
 signal.
+
+## Deferred (2026-09-01) — shared/floater menu across a vendor's booths
+
+Raised during the menu-manager work (CSV import, drag reorder): a vendor
+running multiple booths with an overlapping product line (a food-empire
+vendor at one big event, or a hawker with a seasonal pop-up alongside their
+main stall) has to re-enter the same items on every booth today — no way to
+build an item once and assign it to several booths.
+
+Not a UI change — `booths.menu_items` is a JSONB column _on_ `booths`,
+strictly 1:1, and `qkit.place_order`, RLS, and the customer-facing menu
+render (`order/[boothId]/page.tsx`) all read it directly assuming that
+shape. Whatever the eventual data model (a vendor-level item catalog table,
+booths referencing/selecting from it, a join table, etc.), those three
+consumers need rewiring regardless — the schema itself can always grow
+incrementally (a join table added later is a normal migration), so that's
+not the real cost. Worth designing the target shape deliberately when this
+gets picked up, rather than bolting a join table onto the current
+per-booth JSONB after the fact and having to migrate existing booths' items
+into it.
+
+Explicitly deferred — needs its own brainstorm/spec, not scoped into the
+menu-manager work that raised it.

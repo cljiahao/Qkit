@@ -36,6 +36,13 @@ factories, respectively).
   table) and `requireAdmin()`, the `/admin` route/action gate that 404s (not
   403s, to avoid revealing the route) signed-out or non-admin users.
 - `admin.test.ts` — tests the admin gate's 404-on-unauthorized behavior.
+- `allergen-icons.ts` — `ALLERGEN_ICONS: Record<AllergenTag, string>`, an
+  emoji per `ALLERGEN_TAGS` value. Moved here 2026-09-01 (was
+  `dashboard/booths/allergen-icons.ts`) once the customer-facing
+  `components/allergen-badges.tsx`/`item-customizer.tsx` needed the same
+  icon set — a shared `lib/` module rather than a dashboard-scoped one
+  reaching across into `components/`. Rendering-only, no schema/data-model
+  change.
 - `booth-access.ts` — `servableBoothIds`/`isBoothPaused`: which of a vendor's
   active booths are customer-servable under their entitlement (unlimited plans
   serve all; free serves only the oldest `maxBooths`), mirroring the
@@ -99,11 +106,59 @@ factories, respectively).
   time `onUpload` runs, so there's nothing left to close over.
 - `image-upload-adapter.test.ts` — tests a successful upload/public-URL
   round trip and that a storage error propagates as a rejection.
+- `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`/
+  `optionGroupsFromCsvChoices(choices)`: the qkit-side of the menu-manager's
+  CSV bulk export/import, 9 fixed columns —
+  `name,description,price,cost,available,group_name,group_type,choice_label,choice_price`
+  (`cost` added 2026-09-01, the item's own private `cost_cents`; the last 4
+  customization columns added the same day; dollars not cents for
+  spreadsheet readability; choice-level cost delta and allergens are
+  deliberately excluded — both live behind "Advanced" in
+  `option-groups-editor.tsx`, out of CSV scope per the design doc). A hand-
+  rolled RFC4180-shaped encode/decode (quoted fields, embedded commas/
+  quotes) rather than a new dependency; does not handle a literal newline
+  inside a quoted field. An item row has `name` filled; a choice row has
+  `name` blank and `group_name`/`choice_label` filled, attached to the item
+  row immediately above it (continuation rows) — consecutive choice rows
+  sharing a `group_name` form one group, a `group_name` change starts a
+  new group under the same item. `csvToMenuItems` always treats the first
+  line as the header (skipped) and returns one `CsvMenuRow` (with a nested
+  `choices: CsvChoiceRow[]`) per item row, via the shared `parseDollarField`
+  helper (blank is valid/unset, negative or non-numeric is an error instead
+  of a silent drop) for `price`/`cost`/`choice_price`. Every error string
+  embeds its own real spreadsheet row number (header = row 1), computed
+  once here rather than by the UI, so nesting choice rows under their item
+  doesn't break a flat array-index-based row number. `optionGroupsFromCsvChoices`
+  turns a flat `CsvChoiceRow[]` (errored rows skipped) into `OptionGroup[]`
+  with fresh ids — `menu-manager.tsx`'s `commitImport` calls it only when a
+  row has at least one valid choice, otherwise leaving a name-matched
+  existing item's `option_groups` untouched. `menuCsvTemplate()` returns
+  the same header plus two example item rows (one with a blank price and
+  cost, one with both set), no example customization rows — a vendor with
+  no items yet had no way to see the expected column format before this,
+  since `menuItemsToCsv([])` is just a bare header line with nothing to
+  copy from.
+- `menu-csv.test.ts` — round-trip encode/decode (including a
+  comma-containing description through the quoting path, cost alongside
+  price, and continuation rows for a group's choices), header skipping,
+  missing-name/invalid-or-negative-price/invalid-or-negative-cost row
+  errors, blank-price-or-cost-is-not-an-error, the `available` default
+  (true unless the cell is exactly `false`), empty/header-only input,
+  choice-row attachment/grouping (consecutive same-`group_name` rows,
+  a `group_name` change starting a new group, `group_type` any/one,
+  missing-group-or-item-above errors, invalid choice price), and
+  `optionGroupsFromCsvChoices`'s grouping/multiple-mapping/errored-row-
+  skipping/fresh-id behavior. Confirms `menuCsvTemplate()`'s own output
+  round-trips through `csvToMenuItems` with no error rows and no example
+  customization rows.
 - `menu-sections.ts` — `groupByCategory(items, categories)`: pure grouping
   of a booth's `menu_items` under its `menu_categories` (booth's own order),
   bucketing any missing/unmatched category id into "Other", always last, and
   dropping empty sections — used by `OrderForm` to render the customer menu
-  grouped once a booth has 2+ non-empty sections.
+  grouped once a booth has 2+ non-empty sections. Both inputs were schema/
+  type-only with no vendor UI to actually populate them until
+  `dashboard/booths/menu-editor.tsx`'s section management/picker shipped
+  (2026-09-02) — this function itself is unchanged.
 - `menu-sections.test.ts` — tests category-order grouping, the Other bucket,
   empty-section dropping, and the no-categories-defined case.
 - `merqo-auth.ts` — `bearerOk`/`provisionBearerOk`: constant-time bearer-token
@@ -301,7 +356,12 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   yet). `boothFormSchema` also carries `walkup_default: z.boolean()
 .default(false)` (migration 0080, event-mode setup — makes the live board
   auto-open walk-up order entry for that booth) alongside
-  `requires_arrival_confirm`.
+  `requires_arrival_confirm`. `boothFormSchema` no longer carries
+  `menu_items` (2026-09-01, the menu-manager split) — that column is now
+  owned exclusively by `menuItemsInputSchema` (`z.array(menuItemFormSchema)`),
+  the input schema for `dashboard/booths/actions.ts`'s new `saveMenuItems`,
+  so `saveBooth` never reads or writes it and the two actions can't clobber
+  each other with stale client state.
 - `schemas.test.ts` — the largest test file in `lib/`: validates every schema
   above, including the payment-config cross-field rules (xor of UEN/mobile,
   pointer requiring a link or QR) and the tolerant vs. strict read/write

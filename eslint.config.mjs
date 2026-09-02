@@ -92,6 +92,32 @@ const eslintConfig = [
     },
   },
   {
+    // House convention: no em dash in user-facing copy. Scoped to JSXText,
+    // copy-carrying JSX attrs, and toast calls — not every string literal,
+    // which would flag internal log/error text out of scope here.
+    files: ["**/*.tsx"],
+    ignores: ["**/*.test.{ts,tsx}", "**/*.stories.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXText[value=/\\u2014/]",
+          message: "No em dash in user-facing text — use a period or comma.",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name=/^(aria-label|title|placeholder|label|content|description)$/] > Literal[value=/\\u2014/]",
+          message: "No em dash in user-facing text — use a period or comma.",
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='toast'] Literal[value=/\\u2014/]",
+          message: "No em dash in user-facing text — use a period or comma.",
+        },
+      ],
+    },
+  },
+  {
     // Tests and one-off scripts routinely label table-driven cases and
     // fixtures with short trailing notes; that reads better inline, so the
     // gate would be pure noise there.

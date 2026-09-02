@@ -263,6 +263,20 @@ lefthook→husky call, not a qkit-local one) — see the workspace-level design
 doc at `../docs/superpowers/specs/2026-08-01-lefthook-to-husky-migration-design.md`,
 outside this repo's own git tree, alongside the other cross-kit specs.
 
+**No-em-dash hard gate (2026-09-01):** the house "no em dash in user-facing
+copy" convention (already a standing rule, e.g. `[[project_tour_guide_retrigger_fix]]`'s
+walk-up-copy fix) kept recurring because nothing actually enforced it — a
+memory note isn't a gate. `eslint.config.mjs` now hard-blocks the literal
+character (`—`) in `.tsx` `JSXText`, in the handful of JSX attrs that
+routinely carry copy (`aria-label`/`title`/`placeholder`/`label`/`content`/
+`description`), and in `toast.*` call arguments — scoped narrowly so it
+can't false-positive on internal log/error strings or non-UI constants,
+and it doesn't touch `.md` files at all (READMEs/CHANGELOG/specs keep
+their own em-dash-heavy prose style, unaffected). Test files are excluded,
+same as the other UI-only lint gates. Found and fixed 5 pre-existing
+violations on first run (`banner-form.tsx` x2, `menu-manager.tsx`,
+`settings-form.tsx`, `telegram-connect.tsx`).
+
 ## AI Harness
 
 PreToolUse: `protect-files.sh` hard-blocks (exit 2) writes to `.env*` (except

@@ -13,6 +13,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MediaImage } from "@/components/media-image";
 import { cn, formatPrice } from "@/lib/utils";
+import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
 import type { MenuItem, SelectedOption } from "@/lib/types";
 
 const CHOICE_ITEM_CLASS = cn(
@@ -146,9 +147,9 @@ function CustomizerBody({
             {allergens.map((a) => (
               <span
                 key={a}
-                className="rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
+                className="inline-flex items-center gap-1 rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
               >
-                {a}
+                {ALLERGEN_ICONS[a]} {a}
               </span>
             ))}
           </div>

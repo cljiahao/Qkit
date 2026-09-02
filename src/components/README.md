@@ -8,6 +8,15 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
 
 ## Contents
 
+- `allergen-badges.tsx` — `AllergenBadges({ tags })`: icon-only allergen row
+  for a menu card (2026-09-01) — one `InfoTooltip` (`@merqo/ui`, `trigger="tap"`
+  since this is a mobile-first customer surface where hover never fires) per
+  tag, icon from `@/lib/allergen-icons`, tap/hover reveals the capitalized
+  name. Card-level, so it only reads `item.allergens` (fixed allergens) —
+  no selection has happened yet at list level, unlike `item-customizer.tsx`'s
+  live choice-derived union. Renders nothing for an empty/`undefined` list.
+  Used by `order/order-form.tsx`'s menu card row; the dedicated Customize
+  sheet keeps its own icon+word badges (see `item-customizer.tsx` below).
 - `back-button.tsx` — `BackButton({ href, label })`: a ghost `Button` wrapping
   a `Link` with a leading arrow icon, used as consistent page-leave nav.
 - `back-to-top.tsx` — `BackToTop()`: fixed bottom-right scroll-to-top button
@@ -44,7 +53,10 @@ prompt, metric })`: compact rating widget posting to
   only — `place_order` re-derives the authoritative total server-side from
   the stored menu) and an always-visible allergen badge list (the item's
   fixed allergens unioned with every currently-selected choice's allergens,
-  never behind an accordion — a safety signal, not optional complexity).
+  never behind an accordion — a safety signal, not optional complexity),
+  each badge pairing its `@/lib/allergen-icons` icon with the tag's name
+  (2026-09-01 — was text-only; the card-level `AllergenBadges` above stays
+  icon-only, this dialog keeps the fuller icon+word treatment).
 - `item-customizer.dom.test.tsx` — RTL tests for the running-total math
   (single-select replace vs. multi-select sum across groups) and the
   allergen badges (fixed vs. selection-derived, added/dropped on choice

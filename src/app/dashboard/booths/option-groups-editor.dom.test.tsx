@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import type { OptionGroup } from "@/lib/types";
 import type { Entitlement } from "@/lib/plan";
+import type { AllergenTag } from "@/lib/schemas";
 
 const ENTITLEMENT: Entitlement = {
   tier: "pro",
@@ -17,13 +18,20 @@ const ENTITLEMENT: Entitlement = {
   statsRanges: ["24h", "7d", "30d"],
 };
 
-function Host({ initial }: { initial: OptionGroup[] }) {
+function Host({
+  initial,
+  itemAllergens = [],
+}: {
+  initial: OptionGroup[];
+  itemAllergens?: AllergenTag[];
+}) {
   const [groups, setGroups] = useState(initial);
   return (
     <OptionGroupsEditor
       groups={groups}
       onChange={setGroups}
       entitlement={ENTITLEMENT}
+      itemAllergens={itemAllergens}
     />
   );
 }
@@ -73,5 +81,124 @@ describe("OptionGroupsEditor advanced section", () => {
     await user.click(advancedToggles[0]);
     expect(screen.getAllByPlaceholderText(/cost/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/dairy/i)).toBeInTheDocument();
+  });
+
+  it("shows an icon next to each allergen, and a scope caption", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    expect(screen.getByText("🥛")).toBeInTheDocument();
+    expect(screen.getByText("🥜")).toBeInTheDocument();
+    expect(
+      screen.getByText(/only when this choice is picked/i),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("OptionGroupsEditor group collapse", () => {
+  it("starts expanded, with no choice-count badge shown", () => {
+    render(<Host initial={[MILK_GROUP]} />);
+    expect(screen.getAllByPlaceholderText("Choice (e.g. Small)")).toHaveLength(
+      2,
+    );
+    expect(screen.queryByText(/2 choices/i)).not.toBeInTheDocument();
+  });
+
+  it("collapsing hides the choices and shows a choice-count badge", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getByRole("button", { name: /collapse group/i }));
+
+    expect(
+      screen.queryByPlaceholderText("Choice (e.g. Small)"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("2 choices")).toBeInTheDocument();
+    // The group's own identity stays interactive while collapsed.
+    expect(screen.getByPlaceholderText(/group name/i)).toBeInTheDocument();
+  });
+
+  it("expanding again restores the choices", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getByRole("button", { name: /collapse group/i }));
+    await user.click(screen.getByRole("button", { name: /expand group/i }));
+
+    expect(screen.getAllByPlaceholderText("Choice (e.g. Small)")).toHaveLength(
+      2,
+    );
+  });
+});
+
+describe("OptionGroupsEditor advanced modal", () => {
+  it("opens exactly one choice's Advanced dialog, scoped to that choice", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    const triggers = screen.getAllByRole("button", { name: /advanced/i });
+
+    await user.click(triggers[0]!);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { name: /Regular/i }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    await user.click(triggers[1]!);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { name: /Oat Milk/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("closes the dialog via Done", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("marks the trigger once a choice has cost or an allergen set", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    const trigger = screen.getAllByRole("button", { name: /advanced/i })[0]!;
+    expect(trigger.querySelector('[aria-hidden="true"].bg-primary')).toBeNull();
+
+    await user.click(trigger);
+    await user.click(screen.getAllByLabelText(/dairy/i)[0]!);
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    expect(
+      trigger.querySelector('[aria-hidden="true"].bg-primary'),
+    ).not.toBeNull();
+  });
+});
+
+describe("OptionGroupsEditor customer-sees preview", () => {
+  it("shows nothing when neither the item nor the choice has allergens", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    expect(screen.queryByText(/customer sees/i)).not.toBeInTheDocument();
+  });
+
+  it("appears once a choice allergen is checked, with its icon", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+    await user.click(screen.getAllByLabelText(/dairy/i)[0]!);
+
+    expect(screen.getByText(/customer sees/i)).toBeInTheDocument();
+    const preview = screen.getByRole("status", { name: /contains allergens/i });
+    expect(preview).toHaveTextContent("dairy");
+    expect(preview).toHaveTextContent("🥛");
+  });
+
+  it("unions the item's own allergens into the preview, even with no choice allergens checked", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} itemAllergens={["gluten"]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[0]!);
+
+    const preview = screen.getByRole("status", { name: /contains allergens/i });
+    expect(preview).toHaveTextContent("gluten");
   });
 });

@@ -17,6 +17,13 @@ function printerHint(boothId: string | undefined): string {
     : "Save this booth first to choose its printer in printkit.";
 }
 
+// General entry point for setting up printkit before flipping the switch on.
+function printkitDashboardLink(): string | null {
+  const printkitUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
+  if (!printkitUrl) return null;
+  return new URL("/dashboard", printkitUrl).toString();
+}
+
 export function PrintingSection({
   value,
   onChange,
@@ -28,6 +35,7 @@ export function PrintingSection({
   boothId?: string;
 }) {
   const printerLink = value && boothId ? printerLinkFor(boothId) : null;
+  const dashboardLink = printkitDashboardLink();
 
   return (
     <div className="space-y-3">
@@ -58,6 +66,20 @@ export function PrintingSection({
           ) : (
             printerHint(boothId)
           )}
+        </p>
+      )}
+      {/* Redundant once the booth-scoped deep link above is available — it
+          already does more (skips the picker). Only the general fallback. */}
+      {!printerLink && dashboardLink && (
+        <p className="px-1 text-sm text-muted-foreground">
+          <a
+            href={dashboardLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary hover:underline"
+          >
+            Manage printers in printkit ↗
+          </a>
         </p>
       )}
     </div>

@@ -32,13 +32,19 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   `placeOrder`'s `customerPhone` input. Menu items render grouped under
   `menuCategories` (`@/lib/menu-sections`'s `groupByCategory`) with a jump
   nav once there are 2+ non-empty sections; a booth with 0 or 1 category
-  falls back to the original flat "Menu" list, no chrome.
+  falls back to the original flat "Menu" list, no chrome. Each card row also
+  renders `AllergenBadges` (`@/components/allergen-badges`, 2026-09-01) from
+  `item.allergens` — works even while the booth is closed and browse-only,
+  since it doesn't depend on opening `ItemCustomizer` (which items with no
+  option groups never even offer a button for).
 - `order-form.dom.test.tsx` — RTL tests covering cart add/increment/decrement,
   stock-cap blocking, reorder seeding/reconciliation, the closed-booth submit
   guard, the placeOrder retry-then-fail path, the phone field (renders,
   optional — submits with it blank, passes its value through when filled),
-  and category sections (flat fallback for 0/1 category, grouped headings +
-  jump nav for 2+, unmatched/stale category ids bucketed into "Other" last).
+  category sections (flat fallback for 0/1 category, grouped headings +
+  jump nav for 2+, unmatched/stale category ids bucketed into "Other" last),
+  and the card-level allergen badges (one tappable icon per tag, nothing for
+  an item with none, tap reveals the name — works with the booth closed).
 - `recent-orders.tsx` — `RecentOrders({ boothId })`: reads
   `getRecentOrdersForBooth` from localStorage post-mount (avoids an SSR
   hydration mismatch — there's no server-side customer identity), rendering

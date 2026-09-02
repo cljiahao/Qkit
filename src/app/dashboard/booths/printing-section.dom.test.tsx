@@ -7,7 +7,10 @@ describe("PrintingSection", () => {
   const originalUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_PRINTKIT_URL = originalUrl;
+    // process.env.X = undefined stringifies to "undefined" in Node, not
+    // unset — delete instead when there was nothing there to restore.
+    if (originalUrl === undefined) delete process.env.NEXT_PUBLIC_PRINTKIT_URL;
+    else process.env.NEXT_PUBLIC_PRINTKIT_URL = originalUrl;
   });
 
   it("calls onChange with the new value when toggled", () => {
@@ -59,5 +62,36 @@ describe("PrintingSection", () => {
     expect(
       screen.getByText("Printing isn't configured yet."),
     ).toBeInTheDocument();
+  });
+
+  it("shows a printkit dashboard link regardless of the switch value", () => {
+    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.test";
+    render(<PrintingSection value={false} onChange={vi.fn()} />);
+    expect(
+      screen.getByRole("link", { name: "Manage printers in printkit ↗" }),
+    ).toHaveAttribute("href", "https://printkit.test/dashboard");
+  });
+
+  it("hides the printkit dashboard link when its URL is unset", () => {
+    delete process.env.NEXT_PUBLIC_PRINTKIT_URL;
+    render(<PrintingSection value={false} onChange={vi.fn()} />);
+    expect(
+      screen.queryByRole("link", { name: /manage printers/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the dashboard link once the booth-scoped link is available", () => {
+    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.test";
+    render(
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
+    );
+    expect(
+      screen.getByRole("link", {
+        name: "Choose the printer for this booth →",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /manage printers/i }),
+    ).not.toBeInTheDocument();
   });
 });

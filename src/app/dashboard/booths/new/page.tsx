@@ -36,8 +36,8 @@ export default async function NewBoothPage({ searchParams }: Props) {
             Set up for an event
           </h1>
           <p className="text-sm text-muted-foreground">
-            This booth defaults to staff entering every order at the counter —
-            no QR scanning required. To take payments and cover the whole event,{" "}
+            This booth defaults to staff entering every order at the counter, no
+            QR scanning required. To take payments and cover the whole event,{" "}
             <Link
               href="/dashboard/plan"
               className="font-medium text-primary underline underline-offset-2"

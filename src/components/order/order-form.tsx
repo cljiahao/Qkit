@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZoomableImage } from "@/components/zoomable-image";
 import { ItemCustomizer } from "@/components/item-customizer";
+import { AllergenBadges } from "@/components/allergen-badges";
 import { Ticket } from "@/components/ticket";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import {
@@ -348,6 +349,7 @@ export function OrderForm({
                 {formatPrice(item.price_cents)}
               </p>
             )}
+            <AllergenBadges tags={item.allergens ?? []} />
             {left !== null &&
               (soldOut ? (
                 <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
