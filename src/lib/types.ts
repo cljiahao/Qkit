@@ -417,6 +417,24 @@ export interface Database {
         };
         Relationships: [];
       };
+      legal_check_state: {
+        Row: {
+          email: string;
+          checked_at: string;
+          is_current: boolean;
+        };
+        Insert: {
+          email: string;
+          checked_at?: string;
+          is_current: boolean;
+        };
+        Update: {
+          email?: string;
+          checked_at?: string;
+          is_current?: boolean;
+        };
+        Relationships: [];
+      };
       feedback: {
         Row: {
           id: string;

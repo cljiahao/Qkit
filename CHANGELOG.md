@@ -8,6 +8,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Legal-document gate. `/legal/terms` and `/legal/privacy` render the shared
+  `@merqo/ui` documents (also linked from the landing footer), and a signed-in
+  vendor whose accepted terms/privacy versions are behind `@merqo/ui`'s
+  `LEGAL_VERSIONS` is bounced to a `/legal/accept` interstitial before any
+  dashboard route renders. qkit owns no acceptance record — merqo does — so
+  currency is a bearer-authed `GET /api/merqo/legal-status` call cached in a
+  new `legal_check_state` TTL table (migration `0084`, 5 min, mirroring
+  merqo's `vendor_sync_state`), and acceptance is two idempotent
+  `POST /api/merqo/legal-accept` calls (one per doc, each hashed via
+  `getLegalDocSource`). The gate fails closed: an unreachable merqo or an
+  unset `MERQO_CUSTOMER_SECRET` routes the vendor to `/legal/accept` rather
+  than past the gate. `@merqo/ui` bumped to `v0.23.0`.
+
 - Menu CSV export/import gains a `cost` column (`name,description,price,
 cost,available`) — the item's own private `cost_cents`, an always-visible
   field next to Price in the UI, not an Advanced one, so it belonged in the

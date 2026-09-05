@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(101);
+select plan(105);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -846,6 +846,37 @@ select throws_ok(
   '42501',
   null,
   'authenticated (a real vendor, not an admin) cannot write platform_settings either');
+
+reset role;
+
+-- ── legal_check_state (0084): service-role-only TTL cache, no client access ───
+-- Same shape as rate_limits / booth_item_sold: RLS on, zero policies, only the
+-- service-role client (src/lib/legal-gate.ts) touches it.
+select ok(
+  (select relrowsecurity from pg_class where oid = 'qkit.legal_check_state'::regclass),
+  'RLS on legal_check_state');
+select is(
+  (select count(*)::int from pg_policies
+   where schemaname = 'qkit' and tablename = 'legal_check_state'),
+  0, 'legal_check_state has no RLS policies (service-role-only)');
+
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select throws_ok(
+  $$ select 1 from qkit.legal_check_state limit 1 $$,
+  null,
+  'anon cannot SELECT legal_check_state directly');
+
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object('sub', '00000000-0000-0000-0000-00000000000a', 'role', 'authenticated')::text,
+  true);
+select throws_ok(
+  $$ select 1 from qkit.legal_check_state limit 1 $$,
+  null,
+  'authenticated cannot SELECT legal_check_state directly');
 
 reset role;
 

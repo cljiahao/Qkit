@@ -10,6 +10,7 @@ import {
   type SocialLinks,
 } from "@/lib/types";
 import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-gate";
 
 /**
  * Vendor row merged with its shared merqo.vendor_profile fields. qkit.vendors
@@ -131,7 +132,8 @@ export const loadEntitlement = cache(
 
 /**
  * Page guard variant of loadEntitlement: redirect when the gate fails
- * (`/login` if not signed in, `/onboarding` if not yet onboarded), otherwise
+ * (`/login` if not signed in, `/onboarding` if not yet onboarded,
+ * `/legal/accept` if their terms/privacy acceptance is stale), otherwise
  * return the entitlement bundle with non-null user + vendor.
  */
 export async function requireEntitledVendor(): Promise<{
@@ -144,5 +146,6 @@ export async function requireEntitledVendor(): Promise<{
     await loadEntitlement();
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
+  await requireCurrentLegalAcceptance(user.email);
   return { user, vendor, entitlement, licenseExpiresAt };
 }

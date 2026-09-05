@@ -37,6 +37,12 @@ vi.mock("@/lib/supabase/get-entitlement", () => ({
 vi.mock("@/lib/admin", () => ({
   isAdmin: vi.fn(async () => false),
 }));
+// The legal-acceptance gate has its own suite (legal-gate.test.ts); stubbed
+// here so this test stays focused on layout.tsx's header composition and
+// doesn't reach for a real service-role client.
+vi.mock("@/lib/legal-gate", () => ({
+  requireCurrentLegalAcceptance: vi.fn(async () => {}),
+}));
 // The onboarding tour's own auto-run/driver.js behavior is covered by
 // dashboard-tour.dom.test.tsx; stubbed here so this test stays focused on
 // layout.tsx's header composition.

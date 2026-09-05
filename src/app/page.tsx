@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LegalFooterLinks } from "@merqo/ui";
 import { Bell, Check, ListChecks, QrCode, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Nav } from "@/components/landing/nav";
@@ -610,6 +611,7 @@ export default async function LandingPage() {
           </a>
           <span>Built for booths. Made in Singapore.</span>
           <span className="text-xs">© 2026 qkit · a Merqo kit</span>
+          <LegalFooterLinks />
           <Link href="/login" className="hover:text-foreground">
             Vendor sign in →
           </Link>
