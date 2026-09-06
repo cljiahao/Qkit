@@ -27,7 +27,22 @@ export function Nav({ authed }: { authed: boolean }) {
             size="sm"
             className="hidden rounded-lg sm:inline-flex"
           >
-            <a href="#faq">FAQ</a>
+            {/* Plain <a>, not Link — same reasoning as the wordmark above: a
+                native anchor jumps straight to the hash whether this nav is
+                rendered on "/" itself (same-page jump) or on "/about"
+                (full navigation to "/", then the hash), where Link's
+                same-page-hash-only-change caveat doesn't apply cleanly
+                either way. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a href="/#faq">FAQ</a>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden rounded-lg sm:inline-flex"
+          >
+            <Link href="/about">About</Link>
           </Button>
           {authed ? (
             <Button asChild variant="ghost" size="sm" className="rounded-lg">
