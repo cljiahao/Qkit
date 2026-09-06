@@ -27,7 +27,7 @@
     "@dnd-kit/utilities": "3.2.2",
     "@hookform/resolvers": "^3.10.0",
     "@icons-pack/react-simple-icons": "^13.13.0",
-    "@merqo/ui": "github:cljiahao/merqo-ui#v0.23.2",
+    "@merqo/ui": "github:cljiahao/merqo-ui#v0.24.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.48.0",
     "class-variance-authority": "^0.7.1",

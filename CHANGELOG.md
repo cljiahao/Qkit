@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Dropped the required typed legal-name field from terms/privacy
+  acceptance — a plain ToS/Privacy clickwrap doesn't need a signatory
+  name for evidentiary strength beyond the existing (vendor_email,
+  auth_uid, doc_type, doc_version, ip, user_agent, timestamp) record kept
+  on merqo. `@merqo/ui` bumped to `v0.24.0` (`TermsAcceptanceCheckbox` no
+  longer takes `legalName`/`onLegalNameChange`).
+
 ### Added
 
 - Legal-document gate. `/legal/terms` and `/legal/privacy` render the shared
@@ -19,10 +28,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `POST /api/merqo/legal-accept` calls (one per doc, each hashed via
   `getLegalDocSource`). The gate fails closed: an unreachable merqo or an
   unset `MERQO_CUSTOMER_SECRET` routes the vendor to `/legal/accept` rather
-  than past the gate. `@merqo/ui` bumped to `v0.23.1` — `acceptLegalTerms`
-  now forwards the vendor's submitted `legal_name` and their real `ip`/
-  `user_agent` (read via `headers()`) in both `legal-accept` POST bodies,
-  matching merqo's now-required `legal_name` field.
+  than past the gate. `@merqo/ui` bumped to `v0.24.0` — `acceptLegalTerms`
+  forwards the vendor's real `ip`/`user_agent` (read via `headers()`) in
+  both `legal-accept` POST bodies. (A typed legal-name field was briefly
+  required here too, then dropped again — see below.)
 
 - Menu CSV export/import gains a `cost` column (`name,description,price,
 cost,available`) — the item's own private `cost_cents`, an always-visible
