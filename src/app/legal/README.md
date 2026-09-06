@@ -23,17 +23,24 @@ it and, on `accept/`, records the vendor's acceptance with merqo.
   `@merqo/ui`'s `TermsAcceptanceCheckbox` (checkbox + legal-name field); the
   submit button is disabled until both are filled. Posts to `acceptLegalTerms`.
 - `accept/actions.ts` — `acceptLegalTerms` server action. Re-checks for a
-  signed-in user (redirects to `/login` otherwise), then `POST`s
+  signed-in user (redirects to `/login` otherwise), reads+trims `legal_name`
+  from the submitted `FormData` (throws if empty — the real trust boundary,
+  the client-side disabled submit button is not), then `POST`s
   `/api/merqo/legal-accept` on merqo once per doc type (`terms`, `privacy`) —
   bearer-authed with `MERQO_CUSTOMER_SECRET`, `kit_slug: "qkit"`, each body
-  carrying the SHA-256 of that doc's `getLegalDocSource(...)`. Each call is
-  independent, and merqo maps a duplicate `(email, doc_type, doc_version)` to a
-  success, so a conflict on one doc never blocks the other. On success it
-  primes the local `legal_check_state` cache to `is_current = true` and
-  redirects to a `safeRedirectPath`-checked `next` (default `/dashboard`).
-- `accept/actions.test.ts` — covers the two independent posts, the
-  cache prime, `next`-param safety (absolute / protocol-relative rejected), the
-  no-user and missing-secret branches, and a non-2xx throw.
+  carrying the SHA-256 of that doc's `getLegalDocSource(...)` plus
+  `legal_name` and the vendor's real `ip`/`user_agent` (read via
+  `headers()`/`clientIp`, since this action runs on the vendor's own browser
+  submission). Each call is independent, and merqo maps a duplicate `(email,
+doc_type, doc_version)` to a success, so a conflict on one doc never blocks
+  the other. On success it primes the local `legal_check_state` cache to
+  `is_current = true` and redirects to a `safeRedirectPath`-checked `next`
+  (default `/dashboard`).
+- `accept/actions.test.ts` — covers the two independent posts (asserting
+  `legal_name`/`ip`/`user_agent` land in both bodies), the cache prime,
+  `next`-param safety (absolute / protocol-relative rejected), the no-user,
+  missing-secret, and missing/whitespace-only `legal_name` branches, and a
+  non-2xx throw.
 
 ## Connectivity
 
