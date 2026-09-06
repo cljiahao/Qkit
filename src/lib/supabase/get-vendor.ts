@@ -2,6 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-gate";
 import type { User } from "@supabase/supabase-js";
 import { DEFAULT_BOARD_SETTINGS, type Vendor } from "@/lib/types";
 
@@ -48,7 +49,8 @@ export const getVendor = cache(
 
 /**
  * Page/layout guard: load the vendor and redirect when the gate fails —
- * `/login` if not signed in, `/onboarding` if signed in but not yet onboarded.
+ * `/login` if not signed in, `/onboarding` if signed in but not yet onboarded,
+ * `/legal/accept` if signed in but their terms/privacy acceptance is stale.
  * Returns non-null user + vendor so callers skip the repeated guard.
  */
 export async function requireVendor(): Promise<{
@@ -58,5 +60,6 @@ export async function requireVendor(): Promise<{
   const { user, vendor } = await getVendor();
   if (!user) redirect("/login");
   if (!vendor) redirect("/onboarding");
+  await requireCurrentLegalAcceptance(user.email);
   return { user, vendor };
 }

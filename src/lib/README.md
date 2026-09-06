@@ -106,6 +106,22 @@ factories, respectively).
   time `onUpload` runs, so there's nothing left to close over.
 - `image-upload-adapter.test.ts` — tests a successful upload/public-URL
   round trip and that a storage error propagates as a rejection.
+- `legal-gate.ts` — `checkLegalAcceptance(email)` and its guard companion
+  `requireCurrentLegalAcceptance(email)`. qkit owns no legal-acceptance
+  record (merqo does), so checking currency is a bearer-authed
+  `GET /api/merqo/legal-status` call, its result compared against
+  `@merqo/ui`'s `LEGAL_VERSIONS` via `isLegalCurrent` and cached in the
+  `legal_check_state` TTL table (5 min) — the same throttle pattern as
+  merqo's `vendor_sync_state`, since the check runs on every gated dashboard
+  render. **Fails closed**: a missing `MERQO_CUSTOMER_SECRET`, an unreachable
+  merqo, a non-2xx, or a malformed body all resolve to "not current", which
+  `requireCurrentLegalAcceptance` turns into a `redirect("/legal/accept")`.
+  Wired into `requireVendor`/`requireEntitledVendor` (`supabase/`) and
+  `dashboard/layout.tsx`.
+- `legal-gate.test.ts` — covers the TTL cache short-circuit (no fetch within
+  the window), the re-check-and-cache path, a stale/out-of-date accepted
+  version, and every fail-closed branch (network error, non-2xx, missing
+  secret).
 - `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`/
   `optionGroupsFromCsvChoices(choices)`: the qkit-side of the menu-manager's
   CSV bulk export/import, 9 fixed columns —
@@ -330,6 +346,12 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   (maps the internal `StatsSummary`), `salesSummaryToCsv`.
 - `sales-summary.test.ts` — tests the v1 mapping and CSV serialization
   (including cell-quoting of values containing commas/quotes/newlines).
+- `safe-redirect.ts` — `safeRedirectPath(next, fallback)`: open-redirect guard
+  that accepts only a same-origin relative path (leading `/`, not `//` or
+  `/\`, no control characters) and returns `fallback` otherwise. Used by the
+  `/legal/accept` page + action for the `next` param.
+- `safe-redirect.test.ts` — tests the accept/reject cases (relative path,
+  absolute URL, `//`, `/\`, control characters, nullish/non-slash input).
 - `schemas.ts` — the Zod schema library for every form/action/JSONB boundary:
   `loginSchema`, `vendorSchema`, `menuItemFormSchema`/`menuItemSchema`,
   `optionGroupSchema`/`sanitizeOptionGroups`, `boothHoursSchema`/

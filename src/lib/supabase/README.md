@@ -29,7 +29,9 @@ answered.
   `getOrCreateVendorProfile`, `supabase.schema("merqo").rpc(...)`) — those
   two fields don't exist on `qkit.vendors` at all as of migration 0069 —
   `merqo.vendor_profile` is the only source. `requireEntitledVendor()` is the
-  redirect-on-failure page-guard wrapper (`/login` then `/onboarding`).
+  redirect-on-failure page-guard wrapper (`/login`, then `/onboarding`, then
+  `/legal/accept` via `requireCurrentLegalAcceptance` from `@/lib/legal-gate`
+  when the vendor's accepted terms/privacy versions are stale).
 - `get-user.ts` — `getUser()`: the current auth user via
   `supabase.auth.getUser()`, memoized per request with React `cache` so a
   layout and its page don't each pay their own round-trip.
@@ -37,7 +39,12 @@ answered.
   gate — resolves `{ user, vendor }`, treating a `maybeSingle()` read error as
   a thrown failure (not "not onboarded", which would misroute on a transient
   error) and backfilling `board_settings` the same way as
-  `get-entitlement.ts`. `requireVendor()` is the redirect-on-failure guard.
+  `get-entitlement.ts`. `requireVendor()` is the redirect-on-failure guard
+  (`/login`, `/onboarding`, then `/legal/accept` via the same
+  `requireCurrentLegalAcceptance` gate as `requireEntitledVendor`).
+- `get-vendor.test.ts` — tests that `requireVendor` routes the signed-in
+  vendor's email through the legal gate, propagates its `/legal/accept`
+  redirect, and never consults the gate before the `/onboarding` redirect.
 - `middleware.ts` — `updateSession(request)`, called from `src/proxy.ts`:
   refreshes the Supabase session cookie via `createServerClient` from
   `@supabase/ssr`, but only resolves `auth.getUser()` (and redirects

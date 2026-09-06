@@ -13,11 +13,15 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(95)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(105)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
-    `purchase_requests`, `licenses`. (`support_messages` was dropped in
+    `purchase_requests`, `licenses`. `legal_check_state` (migration `0084`,
+    the legal-acceptance TTL cache) has RLS on, zero policies, and neither
+    `anon` nor `authenticated` can SELECT it directly — a service-role-only
+    table, same shape as `rate_limits`/`booth_item_sold`. (`support_messages`
+    was dropped in
     migration `0073` — fully superseded by the shared
     `merqo.support_messages` table; `vendor_telegram`/`telegram_link_tokens`
     were added in migration `0076` and dropped again in `0077`, Phase A2's

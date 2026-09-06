@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { isAdmin } from "@/lib/admin";
+import { requireCurrentLegalAcceptance } from "@/lib/legal-gate";
 import { DashboardNav } from "./dashboard-nav";
 import { DashboardTour } from "@/components/dashboard-tour";
 
@@ -24,6 +25,12 @@ export default async function DashboardLayout({
   // this layout's header shell renders, instead of letting DashboardPage
   // redirect after the shell already painted (the blank-flash bug).
   if (!vendor) redirect("/onboarding");
+
+  // A vendor whose accepted terms/privacy versions are stale is bounced to
+  // the /legal/accept interstitial — done here in the layout (not only in the
+  // page-level requireEntitledVendor guard) for the same blank-flash reason as
+  // the onboarding redirect above.
+  await requireCurrentLegalAcceptance(user.email);
 
   // Custom profile icon lives on the auth user's metadata (no schema change).
   const rawAvatar = user.user_metadata?.avatar_url;
