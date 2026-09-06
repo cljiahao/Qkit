@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { LEGAL_VERSIONS } from "@merqo/ui";
 
 vi.mock("@/lib/supabase/server", () => ({ createServiceClient: vi.fn() }));
 
@@ -57,8 +58,8 @@ describe("checkLegalAcceptance", () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        terms: "2026-09-06",
-        privacy: "2026-09-06",
+        terms: LEGAL_VERSIONS.terms,
+        privacy: LEGAL_VERSIONS.privacy,
         pilot: null,
       }),
     });
