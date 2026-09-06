@@ -19,7 +19,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `POST /api/merqo/legal-accept` calls (one per doc, each hashed via
   `getLegalDocSource`). The gate fails closed: an unreachable merqo or an
   unset `MERQO_CUSTOMER_SECRET` routes the vendor to `/legal/accept` rather
-  than past the gate. `@merqo/ui` bumped to `v0.23.0`.
+  than past the gate. `@merqo/ui` bumped to `v0.23.1` — `acceptLegalTerms`
+  now forwards the vendor's submitted `legal_name` and their real `ip`/
+  `user_agent` (read via `headers()`) in both `legal-accept` POST bodies,
+  matching merqo's now-required `legal_name` field.
 
 - Menu CSV export/import gains a `cost` column (`name,description,price,
 cost,available`) — the item's own private `cost_cents`, an always-visible

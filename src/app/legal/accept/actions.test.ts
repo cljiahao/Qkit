@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const { redirectMock, getUserMock, upsertMock } = vi.hoisted(() => ({
-  redirectMock: vi.fn(),
-  getUserMock: vi.fn(),
-  upsertMock: vi.fn(),
-}));
+const { redirectMock, getUserMock, upsertMock, headersMock } = vi.hoisted(
+  () => ({
+    redirectMock: vi.fn(),
+    getUserMock: vi.fn(),
+    upsertMock: vi.fn(),
+    headersMock: vi.fn(),
+  }),
+);
 
 vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("next/headers", () => ({ headers: headersMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ auth: { getUser: getUserMock } }),
   createServiceClient: async () => ({ from: () => ({ upsert: upsertMock }) }),
@@ -23,10 +27,13 @@ vi.mock("@merqo/ui", () => ({
 import { acceptLegalTerms } from "./actions";
 
 const originalFetch = global.fetch;
+const REAL_IP = "203.0.113.5";
+const REAL_UA = "Mozilla/5.0 (test vendor browser)";
 
-function formData(next?: string): FormData {
+function formData(next?: string, legalName = "Jane Vendor"): FormData {
   const fd = new FormData();
   if (next) fd.set("next", next);
+  if (legalName) fd.set("legal_name", legalName);
   return fd;
 }
 
@@ -39,6 +46,9 @@ beforeEach(() => {
   process.env.MERQO_BASE_URL = "https://merqo.example.com";
   process.env.MERQO_CUSTOMER_SECRET = "test-secret";
   upsertMock.mockResolvedValue({ error: null });
+  headersMock.mockResolvedValue(
+    new Headers({ "x-forwarded-for": REAL_IP, "user-agent": REAL_UA }),
+  );
 });
 
 afterEach(() => {
@@ -78,14 +88,47 @@ describe("acceptLegalTerms", () => {
       doc_type: "terms",
       doc_version: "2026-09-04",
       kit_slug: "qkit",
+      legal_name: "Jane Vendor",
+      ip: REAL_IP,
+      user_agent: REAL_UA,
     });
     expect(bodies[0].doc_sha256).toHaveLength(64);
     expect(bodies[1]).toMatchObject({
       vendor_email: "vendor@business.sg",
       doc_type: "privacy",
       kit_slug: "qkit",
+      legal_name: "Jane Vendor",
+      ip: REAL_IP,
+      user_agent: REAL_UA,
     });
     expect(redirectMock).toHaveBeenCalledWith("/dashboard/settings");
+  });
+
+  it("throws when legal_name is missing from the submitted form data", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "u1", email: "vendor@business.sg" } },
+    });
+    const fetchSpy = okFetch();
+    global.fetch = fetchSpy as never;
+
+    await expect(acceptLegalTerms(formData("/dashboard", ""))).rejects.toThrow(
+      /legal_name/,
+    );
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+
+  it("throws when legal_name is only whitespace", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "u1", email: "vendor@business.sg" } },
+    });
+    const fetchSpy = okFetch();
+    global.fetch = fetchSpy as never;
+
+    await expect(
+      acceptLegalTerms(formData("/dashboard", "   ")),
+    ).rejects.toThrow(/legal_name/);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("primes the local legal_check_state cache to is_current: true on success", async () => {

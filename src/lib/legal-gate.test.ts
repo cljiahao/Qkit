@@ -57,8 +57,8 @@ describe("checkLegalAcceptance", () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        terms: "2026-09-04",
-        privacy: "2026-09-04",
+        terms: "2026-09-06",
+        privacy: "2026-09-06",
         pilot: null,
       }),
     });
