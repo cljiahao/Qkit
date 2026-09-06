@@ -6,14 +6,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `/about`, a public "Why Merqo" page rendering `@merqo/ui`'s shared
+  `AboutMerqo` origin-story component, linked from the landing `Nav` and
+  a new `Footer` component (extracted from `src/app/page.tsx`'s
+  previously-inlined footer markup so `/about` could reuse it). `Nav`'s
+  "FAQ" link now points at the absolute `/#faq` instead of a bare `#faq`
+  fragment, since it renders on `/about` too, not just `/`.
+
 ### Changed
 
 - Dropped the required typed legal-name field from terms/privacy
   acceptance — a plain ToS/Privacy clickwrap doesn't need a signatory
   name for evidentiary strength beyond the existing (vendor_email,
   auth_uid, doc_type, doc_version, ip, user_agent, timestamp) record kept
-  on merqo. `@merqo/ui` bumped to `v0.24.0` (`TermsAcceptanceCheckbox` no
-  longer takes `legalName`/`onLegalNameChange`).
+  on merqo. `@merqo/ui` bumped to `v0.25.0` (`v0.24.0`:
+  `TermsAcceptanceCheckbox` no longer takes `legalName`/
+  `onLegalNameChange`; `v0.25.0`: a pre-lawyer-review legal-wording pass,
+  the new `AboutMerqo` component, and a "← Back" button on every
+  `/legal/*` page).
 
 ### Added
 

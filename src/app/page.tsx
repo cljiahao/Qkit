@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { LegalFooterLinks } from "@merqo/ui";
 import { Bell, Check, ListChecks, QrCode, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Nav } from "@/components/landing/nav";
+import { Footer } from "@/components/landing/footer";
 import { LandingCta } from "@/components/landing-cta";
 import { HeroPreviewCarousel } from "@/components/hero-preview-carousel";
 import { FeaturedBooths } from "@/components/featured-booths";
@@ -597,26 +596,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-6 text-sm text-muted-foreground sm:flex-row">
-          {/* Plain <a>, not Link — see the header logo's comment above. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a
-            href="/#top"
-            aria-label="qkit home, back to top"
-            className="font-display text-xl font-semibold text-foreground transition-opacity hover:opacity-80"
-          >
-            <span className="text-primary">Q</span>Kit
-          </a>
-          <span>Built for booths. Made in Singapore.</span>
-          <span className="text-xs">© 2026 qkit · a Merqo kit</span>
-          <LegalFooterLinks />
-          <Link href="/login" className="hover:text-foreground">
-            Vendor sign in →
-          </Link>
-        </div>
-      </footer>
+      <Footer />
 
       <BackToTop />
     </div>

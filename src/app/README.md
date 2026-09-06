@@ -7,6 +7,11 @@ Next.js App Router tree — every page, layout, route handler, and PWA manifest 
 ## Contents
 
 - `(auth)/` — vendor login and password-reset pages (route group, no URL segment).
+- `about/` — `AboutPage`, the public "Why Merqo" page. The story itself is
+  `@merqo/ui`'s shared `AboutMerqo` component (one source, reused by
+  merqo's own `/about` and every other kit's); this page supplies only
+  `Nav`/`Footer` and a "See how qkit works" CTA. Linked from `Nav` and
+  `Footer`.
 - `actions/` — server actions shared across routes: analytics events, feedback, purchase (upgrade) requests, support messages.
 - `admin/` — internal admin dashboard (vendor management, pricing, feedback, support inbox).
 - `api/` — route-handler API endpoints: the Merqo cross-product integration and qkit's own `v1` public API.
@@ -25,7 +30,7 @@ Next.js App Router tree — every page, layout, route handler, and PWA manifest 
 - `o/` — short-code customer ordering entry point.
 - `onboarding/` — post-signup vendor onboarding flow.
 - `order/` — legacy booth-id-based customer ordering route.
-- `page.tsx` — `LandingPage` async server component, the marketing home page. Fetches the signed-in user and the single `pricing` row via `createServerClient()`, falls back to `DEFAULT_PRICING` (from `@/lib/pricing`) when prices are unset (pre-Stripe beta framing). Renders hero, trust strip, `FeaturedBooths`, "how it works" steps, "why qkit" cards, a pricing teaser (Free / Event pass / Monthly Pro), and two FAQ columns (`FAQ` for prospects, `VENDOR_FAQ` for signed-up vendors troubleshooting real product behavior — QR regeneration, stock caps, SGT-scheduled hours, rate limits, etc.). CTA target and label switch based on whether `user` is signed in.
+- `page.tsx` — `LandingPage` async server component, the marketing home page. Fetches the signed-in user and the single `pricing` row via `createServerClient()`, falls back to `DEFAULT_PRICING` (from `@/lib/pricing`) when prices are unset (pre-Stripe beta framing). Renders hero, trust strip, `FeaturedBooths`, "how it works" steps, "why qkit" cards, a pricing teaser (Free / Event pass / Monthly Pro), two FAQ columns (`FAQ` for prospects, `VENDOR_FAQ` for signed-up vendors troubleshooting real product behavior — QR regeneration, stock caps, SGT-scheduled hours, rate limits, etc.), and `Footer` (`src/components/landing/footer.tsx`, own README). CTA target and label switch based on whether `user` is signed in.
 
 ## Connectivity
 
