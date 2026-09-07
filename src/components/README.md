@@ -228,7 +228,10 @@ tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
   `renderToStaticMarkup` instead of a hand-copied color/label, so it can't
   silently drift from what the real badge looks like — see
   `../../../docs/superpowers/specs/2026-08-25-tour-example-badge-drift-fix-design.md`
-  (outside this repo's own git tree, a cross-kit spec).
+  (outside this repo's own git tree, a cross-kit spec). The final step now
+  also tells a vendor which booth-page sections are optional (Payment,
+  Printing, Booking Status), since the tour ends before those sections
+  are ever on screen.
 - `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists.
 - `ui/` — the shadcn/ui primitive library everything else in this tree is
   built from. See its own README.

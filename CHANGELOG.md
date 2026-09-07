@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Onboarding tour's final step now tells a vendor which booth-page
+  sections are optional (Payment, Printing, Booking Status) before they
+  create their first booth, instead of leaving them to discover it
+  section by section.
+
 ### Added
 
 - `/about`, a public "Why Merqo" page rendering `@merqo/ui`'s shared
