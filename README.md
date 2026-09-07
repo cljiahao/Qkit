@@ -2,7 +2,10 @@
 
 Vendor booth ordering system. Vendors sign in to manage their menu and watch
 live orders; customers scan a booth QR code, order from the menu, and track
-their order status in realtime.
+their order status in realtime. The dashboard onboarding tour's final step
+(`src/components/tour-steps.ts`) tells a vendor which booth-page sections
+are optional (Payment, Printing, Booking Status) before they ever create
+their first booth.
 
 ## Stack
 
