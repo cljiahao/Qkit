@@ -1,8 +1,17 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BookingStatusSection } from "./booking-status-section";
 import type { BookingStatus } from "@/lib/paykit/client";
+
+const originalUrl = process.env.NEXT_PUBLIC_PAYKIT_URL;
+
+afterEach(() => {
+  // process.env.X = undefined stringifies to "undefined" in Node, not
+  // unset — delete instead when there was nothing there to restore.
+  if (originalUrl === undefined) delete process.env.NEXT_PUBLIC_PAYKIT_URL;
+  else process.env.NEXT_PUBLIC_PAYKIT_URL = originalUrl;
+});
 
 const STATUS: BookingStatus = {
   bookingId: "b-1",
@@ -62,5 +71,23 @@ describe("BookingStatusSection", () => {
     expect(screen.getByText(/Balance \$300\.00/)).toBeInTheDocument();
     expect(screen.getByText("Paid")).toBeInTheDocument();
     expect(screen.getByText("Not yet paid")).toBeInTheDocument();
+  });
+
+  it("links to paykit's bookings list so a vendor can find/copy a booking ID", () => {
+    process.env.NEXT_PUBLIC_PAYKIT_URL = "https://paykit.test";
+    render(<BookingStatusSection value={null} onChange={vi.fn()} />);
+    expect(
+      screen.getByRole("link", {
+        name: "Find or create a booking in paykit →",
+      }),
+    ).toHaveAttribute("href", "https://paykit.test/dashboard/bookings");
+  });
+
+  it("hides the paykit link when its URL is unset", () => {
+    delete process.env.NEXT_PUBLIC_PAYKIT_URL;
+    render(<BookingStatusSection value={null} onChange={vi.fn()} />);
+    expect(
+      screen.queryByRole("link", { name: /find or create a booking/i }),
+    ).not.toBeInTheDocument();
   });
 });
