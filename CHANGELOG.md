@@ -12,6 +12,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sections are optional (Payment, Printing, Booking Status) before they
   create their first booth, instead of leaving them to discover it
   section by section.
+- Booth settings' Paykit booking ID field now links out to paykit's
+  bookings list ("Find or create a booking in paykit"), so a vendor
+  linking a booth to a booking doesn't have to already know paykit
+  exists as a separate product and go find it unprompted.
 
 ### Added
 

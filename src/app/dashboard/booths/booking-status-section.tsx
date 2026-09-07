@@ -12,6 +12,14 @@ const STATUS_LABEL: Record<BookingStatus["status"], string> = {
   cancelled: "Cancelled",
 };
 
+// General entry point for finding/creating a booking before pasting its ID
+// here — mirrors printing-section.tsx's printkitDashboardLink() pattern.
+function paykitBookingsLink(): string | null {
+  const paykitUrl = process.env.NEXT_PUBLIC_PAYKIT_URL;
+  if (!paykitUrl) return null;
+  return new URL("/dashboard/bookings", paykitUrl).toString();
+}
+
 function PaidMark({ paid }: { paid: boolean }) {
   return (
     <span className={paid ? "text-status-ready" : "text-muted-foreground"}>
@@ -33,6 +41,8 @@ export function BookingStatusSection({
   // way this never blocks the rest of the dashboard.
   status?: BookingStatus | null;
 }) {
+  const bookingsLink = paykitBookingsLink();
+
   return (
     <div className="space-y-3">
       <div className="space-y-2.5">
@@ -52,6 +62,19 @@ export function BookingStatusSection({
         <p className="text-sm text-muted-foreground">
           Optional. Links this booth to a deposit/balance booking you&apos;ve
           already created in paykit, so its live payment status shows here.
+          {bookingsLink && (
+            <>
+              {" "}
+              <a
+                href={bookingsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary hover:underline"
+              >
+                Find or create a booking in paykit →
+              </a>
+            </>
+          )}
         </p>
       </div>
 
