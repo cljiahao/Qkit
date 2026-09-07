@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Booth settings' Paykit booking ID field now links out to paykit's
+  bookings list ("Find or create a booking in paykit"), so a vendor
+  linking a booth to a booking doesn't have to already know paykit
+  exists as a separate product and go find it unprompted.
+
 ### Added
 
 - `/about`, a public "Why Merqo" page rendering `@merqo/ui`'s shared
