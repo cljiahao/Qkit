@@ -3,7 +3,7 @@ type ConnectToken = { token: string; deep_link: string };
 // Read lazily (not at module scope) so tests can set/override these per-case
 // via process.env rather than baking a stale value in at import time.
 function merqoBaseUrl(): string {
-  return process.env.MERQO_BASE_URL ?? "https://merqo-sg.vercel.app";
+  return process.env.MERQO_BASE_URL ?? "https://www.merqo.io";
 }
 function merqoCustomerSecret(): string {
   return process.env.MERQO_CUSTOMER_SECRET ?? "";
