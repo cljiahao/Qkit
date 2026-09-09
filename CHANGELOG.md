@@ -19,6 +19,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   to Vercel, which bundles functions itself and does not use the standalone
   output, and under `next` 16.3.x that config also made Vercel's build
   finalizer look for a server trace file it no longer writes there.
+- Bumped `vitest` and `@vitest/coverage-v8` to `4.1.11` (from `3.2.6`).
+  Clears GHSA-82fw-gwwq-j7x9 (`@vitest/mocker` path traversal / arbitrary
+  file read, patched only in `4.1.11`) and, via `fast-uri` `4.1.4`, four
+  high `fast-uri` advisories (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc,
+  GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) reaching in through
+  `@stryker-mutator/vitest-runner`. The `qs` override is raised to
+  `>=6.16.0` (two moderate advisories via `@stryker-mutator/core`), leaving
+  the dependency audit clean at every level.
+  `src/lib/order-alerts.test.ts`'s `AudioContext` constructor mock switched
+  from an arrow to a `function` expression: `vitest` 4 no longer lets an
+  arrow `vi.fn()` be `new`-ed.
 
 ### Changed
 

@@ -40,7 +40,9 @@ function mockAudio(state: AudioContextState = "running") {
     createOscillator: vi.fn(() => make().osc),
     createGain: vi.fn(() => make().gain),
   };
-  const Ctor = vi.fn(() => ctx);
+  const Ctor = vi.fn(function () {
+    return ctx;
+  });
   vi.stubGlobal("window", { AudioContext: Ctor });
   return { ctx, Ctor };
 }
