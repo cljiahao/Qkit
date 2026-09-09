@@ -6,6 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- `merqoBaseUrl()`'s hardcoded fallback (`legal-gate.ts`, `legal/accept/
+actions.ts`, `merqo-customer-notify.ts`) pointed at a stale, pre-custom-
+  domain `.vercel.app` host that now 404s on every route, including `/`.
+  merqo's real production host is `www.merqo.io` (confirmed live).
+  `MERQO_BASE_URL` was never set as a Vercel env override on any kit, so
+  every kit→merqo call relying on this fallback (legal-accept/
+  legal-status, and the previously-silent customer-Telegram-connect
+  calls) has been hitting a dead host in production. Fixed the fallback
+  literal here; also needs `MERQO_BASE_URL` set explicitly to the real
+  host in Vercel (Production + Preview) as the primary, immediate fix —
+  the code fallback is defense-in-depth for whichever environment
+  forgets it.
+
 ### Security
 
 - Bumped `next` to `16.3.4` (`eslint-config-next` to match) and refreshed
