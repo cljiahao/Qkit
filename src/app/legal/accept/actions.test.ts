@@ -15,7 +15,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ auth: { getUser: getUserMock } }),
   createServiceClient: async () => ({ from: () => ({ upsert: upsertMock }) }),
 }));
-vi.mock("@merqo/ui", () => ({
+vi.mock("@merqo/ui/legal", () => ({
   getLegalDocSource: (doc: string) => `${doc}-source`,
   LEGAL_VERSIONS: {
     terms: "2026-09-04",
