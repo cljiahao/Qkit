@@ -6,6 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- Bumped `next` to `16.3.4` (`eslint-config-next` to match) and refreshed
+  `browserslist` to `4.28.9`. Clears two critical Next.js RCE advisories
+  (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4), a high `sharp`/libheif
+  advisory (`sharp` resolves to `0.35.4` via next), and the long-standing
+  high `browserslist` advisory (GHSA-73wf-gq98-2v4g) that earlier PRs this
+  cycle had merged past under admin override. The `pnpm audit` high gate is
+  now clean.
+- Dropped `output: "standalone"` from `next.config.ts`. qkit deploys only
+  to Vercel, which bundles functions itself and does not use the standalone
+  output, and under `next` 16.3.x that config also made Vercel's build
+  finalizer look for a server trace file it no longer writes there.
+
 ### Changed
 
 - Onboarding tour's final step now tells a vendor which booth-page
