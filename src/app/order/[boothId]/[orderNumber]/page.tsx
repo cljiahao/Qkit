@@ -261,6 +261,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
         <OrderStatusPoller
           boothId={boothId}
           orderNumber={orderNumber}
+          displayNumber={headingNumber}
           token={token}
           initialStatus={order.status}
           boothName={booth?.name ?? "Your order"}
