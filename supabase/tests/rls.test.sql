@@ -536,6 +536,7 @@ update qkit.booths set payment = null
 -- exercised this default (print_enabled defaults false) without asserting
 -- status; assert it explicitly here, then flip print_enabled on and confirm
 -- the order auto-starts into 'preparing' as before.
+reset role;
 select is(
   (select status::text from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
