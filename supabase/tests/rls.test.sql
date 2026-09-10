@@ -536,24 +536,20 @@ update qkit.booths set payment = null
 -- exercised this default (print_enabled defaults false) without asserting
 -- status; assert it explicitly here, then flip print_enabled on and confirm
 -- the order auto-starts into 'preparing' as before.
-reset role;
 select is(
   (select status::text from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
      and idempotency_key = '11111111-1111-1111-1111-111111111111'),
   'pending',
   'a QR order lands pending by default (no printer connected)');
-reset role;
 update qkit.booths set print_enabled = true
   where id = '00000000-0000-0000-0000-0000000b0004';
-set role anon;
 select lives_ok(
   $$ select qkit.place_order(
        'rlstestcode1', 'Ada',
        '[{"menuItemId":"cap1","name":"Capped Bun","quantity":1}]'::jsonb,
        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) $$,
   'place_order succeeds at a printer-connected booth');
-reset role;
 select is(
   (select status::text from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
@@ -562,7 +558,6 @@ select is(
   'a QR order auto-starts into preparing once the booth has a printer connected');
 update qkit.booths set print_enabled = false
   where id = '00000000-0000-0000-0000-0000000b0004';
-set role anon;
 
 -- A priced customization choice (0056 / menu-choice-price-delta): "Fancy
 -- Coffee" is $4.00 base, "Oat Milk" adds $1.50 -> $5.50 total.
