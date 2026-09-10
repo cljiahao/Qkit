@@ -52,6 +52,10 @@ interface Props {
   // confirmed receiving it yet — kitchen status and payment status advance
   // independently, so "preparing"/"ready" can be true before payment is.
   awaitingPayment: boolean;
+  // Whether this booth waits for the customer's own "I'm here" tap. A
+  // 'pending' order can also mean the vendor hasn't accepted it yet (no
+  // printer connected, 0086) — that case shows no self-start button.
+  requiresArrivalConfirm: boolean;
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, string> = {
@@ -74,6 +78,51 @@ const AWAITING_PAYMENT_MESSAGE: Partial<Record<OrderStatus, string>> = {
   ready: "Ready for pickup, please pay before you collect",
 };
 
+// A 'pending' order needs a self-start button only when the booth waits on
+// the customer's own "I'm here" tap; the no-printer accept gate (0086) is
+// vendor-only, so that variant is passive text with nothing to tap.
+function PendingOrder({
+  displayNumber,
+  requiresArrivalConfirm,
+  confirming,
+  onConfirmArrival,
+}: {
+  displayNumber: string;
+  requiresArrivalConfirm: boolean;
+  confirming: boolean;
+  onConfirmArrival: () => void;
+}) {
+  return (
+    <div className="space-y-5 px-6 py-6 text-center">
+      <div className="flex justify-center">
+        <OrderStatusBadge status="pending" />
+      </div>
+      <p className="font-display text-xl font-semibold">
+        You&apos;re order #{displayNumber}.{" "}
+        {requiresArrivalConfirm
+          ? "We start making it fresh once you're at the counter."
+          : "We've got it, the stall will start on it shortly."}
+      </p>
+      {requiresArrivalConfirm && (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Tap below when you arrive to pick up.
+          </p>
+          <Button
+            type="button"
+            size="lg"
+            className="h-14 w-full rounded-xl text-base font-semibold"
+            onClick={onConfirmArrival}
+            disabled={confirming}
+          >
+            {confirming ? "Starting…" : "I'm here, start my order"}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function OrderStatusPoller({
   boothId,
   orderNumber,
@@ -83,6 +132,7 @@ export function OrderStatusPoller({
   boothName,
   placedAt,
   awaitingPayment,
+  requiresArrivalConfirm,
 }: Props) {
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   // null = nothing to show at all (order not found — shouldn't happen once
@@ -224,27 +274,12 @@ export function OrderStatusPoller({
 
   if (status === "pending") {
     return (
-      <div className="space-y-5 px-6 py-6 text-center">
-        <div className="flex justify-center">
-          <OrderStatusBadge status={status} />
-        </div>
-        <p className="font-display text-xl font-semibold">
-          You&apos;re order #{displayNumber}. We start making it fresh once
-          you&apos;re at the counter.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Tap below when you arrive to pick up.
-        </p>
-        <Button
-          type="button"
-          size="lg"
-          className="h-14 w-full rounded-xl text-base font-semibold"
-          onClick={onConfirmArrival}
-          disabled={confirming}
-        >
-          {confirming ? "Starting…" : "I'm here, start my order"}
-        </Button>
-      </div>
+      <PendingOrder
+        displayNumber={displayNumber}
+        requiresArrivalConfirm={requiresArrivalConfirm}
+        confirming={confirming}
+        onConfirmArrival={onConfirmArrival}
+      />
     );
   }
 

@@ -10,7 +10,7 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-84 files, `0000` through `0083`. Read in full: `0000`, `0001`, `0010`, `0030`,
+87 files, `0000` through `0086`. Read in full: `0000`, `0001`, `0010`, `0030`,
 and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
@@ -321,6 +321,8 @@ realtime-order-board.tsx`; changes neither `place_order` nor
 - `0082_booth_print_enabled.sql` — `booths.print_enabled` (bool, default `false`) — per-booth opt-in for printkit label printing; before this column every order on every booth unconditionally fired a print-job-creation call to printkit regardless of whether the vendor had an account or a paired bridge.
 - `0083_booth_paykit_booking_id.sql` — `booths.paykit_booking_id` (nullable text) — a vendor-pasted link to a paykit booking, event-mode booths only (see `walkup_default`, `0080`). Unvalidated at write time (no lookup/matching by name or phone — a prior fuzzy-matching design was rejected as a cross-tenant financial-data leak risk); the vendor already owns both sides, same trust level as the existing "quick add PayNow" config section. Read back via paykit's `GET /api/v1/bookings/{booking_id}` (`getBookingStatus`, `src/lib/paykit/client.ts`) to show live deposit/balance status on the booth edit page.
 - `0084_legal_check_state.sql` — `qkit.legal_check_state` (`email` PK, `checked_at`, `is_current`) — a per-email TTL cache for "is this vendor's terms/privacy acceptance current?". qkit owns no acceptance record (merqo does, `merqo.legal_acceptances`), so the real check is a bearer-authed `GET /api/merqo/legal-status` HTTP call (`src/lib/legal-gate.ts`) that runs on every gated dashboard render — this table throttles it to once per 5 min, the same pattern as merqo's own `vendor_sync_state`. RLS on, zero policies, explicit `service_role` grant (post-0041 tables don't inherit the blanket grant — same as `0078`).
+- `0085_place_order_free_skips_payment.sql` — recreates `place_order`/`place_walkup_order` so `v_expects_payment` also requires `v_total > 0`; a $0 order no longer shows a pay panel just because the booth has a payment method configured. Backfills existing `total_cents = 0, payment_status = 'pending'` rows to `not_required`.
+- `0086_place_order_requires_accept_without_printer.sql` — recreates `place_order` so a new order also lands `'pending'` (needs a vendor "Start now" tap) when `booths.print_enabled` is off, alongside the existing `requires_arrival_confirm` gate (`0064`) — no printed ticket means no physical way to track what's being worked on. `place_walkup_order` untouched, same rationale as `0064`.
 
 ## Connectivity
 

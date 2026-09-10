@@ -13,7 +13,7 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(105)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(110)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
@@ -85,6 +85,10 @@ from the Vitest/Playwright tests elsewhere in the repo.
     with `p_customer_phone` set upserts exactly one row into
     `merqo.customers` (name included); a call with it omitted leaves that
     table completely untouched.
+  - A $0 order never expects payment even at a paynow-configured booth
+    (migration `0085`). A QR order lands `'pending'` by default (no printer
+    connected) and auto-starts into `'preparing'` once `print_enabled` is on
+    (migration `0086`).
 
 ## Connectivity
 

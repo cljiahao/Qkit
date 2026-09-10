@@ -481,6 +481,37 @@ export function RealtimeOrderBoard({
 
   const idle = visible.length === 0;
   const preparingCount = visible.filter((o) => o.status === "preparing").length;
+  // Split the board so an order the vendor hasn't accepted yet (no printer
+  // connected, or the booth waits for the customer's own arrival tap) can't
+  // get buried under everything already being worked on.
+  const incoming = visible.filter((o) => o.status === "pending");
+  const accepted = visible.filter((o) => o.status !== "pending");
+
+  function renderCard(order: BoardOrder) {
+    return (
+      <OrderCard
+        key={order.id}
+        order={order}
+        displayNumber={displayOrderNumber(
+          order.order_number,
+          dailyOrderNumberBaselines[order.booth_id] ?? null,
+        )}
+        boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
+        agingMin={boardSettings.aging_min}
+        overdueMin={boardSettings.overdue_min}
+        undoMs={boardSettings.undo_seconds * 1000}
+        readyAutoClearMs={
+          boardSettings.ready_auto_clear_min != null
+            ? boardSettings.ready_auto_clear_min * 60_000
+            : null
+        }
+        onUndoWindowChange={handleUndoWindowChange}
+        selectable={selectMode && order.status === "preparing"}
+        selected={selectedIds.has(order.id)}
+        onToggleSelect={toggleSelect}
+      />
+    );
+  }
 
   return (
     <div>
@@ -733,30 +764,29 @@ export function RealtimeOrderBoard({
           </p>
         </Ticket>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {visible.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              displayNumber={displayOrderNumber(
-                order.order_number,
-                dailyOrderNumberBaselines[order.booth_id] ?? null,
+        <div className="space-y-8">
+          {incoming.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Incoming ({incoming.length})
+              </h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {incoming.map(renderCard)}
+              </div>
+            </section>
+          )}
+          {accepted.length > 0 && (
+            <section>
+              {incoming.length > 0 && (
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Accepted ({accepted.length})
+                </h2>
               )}
-              boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
-              agingMin={boardSettings.aging_min}
-              overdueMin={boardSettings.overdue_min}
-              undoMs={boardSettings.undo_seconds * 1000}
-              readyAutoClearMs={
-                boardSettings.ready_auto_clear_min != null
-                  ? boardSettings.ready_auto_clear_min * 60_000
-                  : null
-              }
-              onUndoWindowChange={handleUndoWindowChange}
-              selectable={selectMode && order.status === "preparing"}
-              selected={selectedIds.has(order.id)}
-              onToggleSelect={toggleSelect}
-            />
-          ))}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {accepted.map(renderCard)}
+              </div>
+            </section>
+          )}
         </div>
       )}
 

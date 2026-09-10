@@ -166,7 +166,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
         .maybeSingle(),
       supabase
         .from("booths")
-        .select("name, vendor_id, social_links")
+        .select("name, vendor_id, social_links, requires_arrival_confirm")
         .eq("id", boothId)
         .single(),
     ]);
@@ -272,6 +272,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           // let the status text claim progress that implies payment is
           // settled when it isn't.
           awaitingPayment={showPay && order.payment_status !== "confirmed"}
+          requiresArrivalConfirm={booth?.requires_arrival_confirm ?? false}
         />
 
         {/* The connect button only makes sense while the order is still
