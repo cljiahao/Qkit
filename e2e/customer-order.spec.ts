@@ -27,7 +27,7 @@ test("customer places an order and reaches the live status page", async ({
   await page.getByRole("button", { name: "Add to order" }).click();
 
   await page.getByLabel("Your name").fill("Ada");
-  await page.getByRole("button", { name: /Place order/ }).click();
+  await page.getByRole("button", { name: /Get my order number/ }).click();
 
   // Lands on /order/<booth>/<orderNumber>?t=<token> with the "preparing"
   // message. The status page now carries a per-order access token (?t=…), so the

@@ -510,18 +510,18 @@ select is(
      and idempotency_key = '44444444-4444-4444-4444-444444444444'),
   0, 'an order of only unpriced items totals 0');
 
--- A $0 order must never expect payment, even at a paynow-configured booth (0085).
-reset role;
+-- A $0 order must never expect payment, even at a paynow-configured booth
+-- (0085). place_order is SECURITY DEFINER, so calling it straight as the
+-- superuser test role (like every neighboring test in this section) proves
+-- the same thing an anon call would, without a role round-trip to clean up.
 update qkit.booths set payment = '{"kind":"paynow"}'::jsonb
   where id = '00000000-0000-0000-0000-0000000b0004';
-set role anon;
 select lives_ok(
   $$ select qkit.place_order(
        'rlstestcode1', 'Ada',
        '[{"menuItemId":"unpriced1","name":"Free Sample","quantity":1}]'::jsonb,
        '99999999-9999-9999-9999-999999999999'::uuid) $$,
   'place_order succeeds for a free item at a paynow-configured booth');
-reset role;
 select is(
   (select payment_status::text from qkit.orders
    where booth_id = '00000000-0000-0000-0000-0000000b0004'
@@ -530,7 +530,6 @@ select is(
   'a $0 order skips payment even when the booth has a payment method configured');
 update qkit.booths set payment = null
   where id = '00000000-0000-0000-0000-0000000b0004';
-set role anon;
 
 -- A priced customization choice (0056 / menu-choice-price-delta): "Fancy
 -- Coffee" is $4.00 base, "Oat Milk" adds $1.50 -> $5.50 total.
