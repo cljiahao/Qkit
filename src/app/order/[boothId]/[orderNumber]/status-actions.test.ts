@@ -283,6 +283,7 @@ describe("getWaitEstimate", () => {
 describe("confirmArrival", () => {
   const writeSelect2 = vi.fn();
   const reread2 = vi.fn();
+  const boothRead2 = vi.fn();
   const update2 = vi.fn(() => ({
     eq: () => ({
       eq: () => ({ eq: () => ({ eq: () => ({ select: writeSelect2 }) }) }),
@@ -294,13 +295,21 @@ describe("confirmArrival", () => {
 
   beforeEach(() => {
     createServiceClientMock.mockImplementation(() =>
-      Promise.resolve({ from: () => ({ update: update2, select: select2 }) }),
+      Promise.resolve({
+        from: (...args: unknown[]) =>
+          args[0] === "booths"
+            ? { select: () => ({ eq: () => ({ maybeSingle: boothRead2 }) }) }
+            : { update: update2, select: select2 },
+      }),
     );
     update2.mockClear();
     writeSelect2
       .mockReset()
       .mockResolvedValue({ data: [{ id: "o1" }], error: null });
     reread2.mockReset().mockResolvedValue({ data: null });
+    boothRead2
+      .mockReset()
+      .mockResolvedValue({ data: { requires_arrival_confirm: true } });
   });
 
   it("starts a pending order (update runs, returns success)", async () => {
@@ -349,5 +358,17 @@ describe("confirmArrival", () => {
       success: false,
       error: "Could not start your order. Try again.",
     });
+  });
+
+  it("refuses on a booth that doesn't require arrival confirmation (no self-accept)", async () => {
+    boothRead2.mockResolvedValue({
+      data: { requires_arrival_confirm: false },
+    });
+    const res = await confirmArrival(BOOTH, ORDER, TOKEN);
+    expect(res).toEqual({
+      success: false,
+      error: "Could not start your order. Try again.",
+    });
+    expect(update2).not.toHaveBeenCalled();
   });
 });

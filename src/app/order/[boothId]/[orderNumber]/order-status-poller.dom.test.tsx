@@ -33,6 +33,7 @@ vi.mock("@/lib/order-alerts", () => alerts);
 function renderPoller(
   initialStatus: OrderStatus = "preparing",
   awaitingPayment = false,
+  requiresArrivalConfirm = true,
 ) {
   return render(
     <OrderStatusPoller
@@ -45,6 +46,7 @@ function renderPoller(
       boothName="Kopi Cart"
       placedAt="2026-07-04T00:00:00Z"
       awaitingPayment={awaitingPayment}
+      requiresArrivalConfirm={requiresArrivalConfirm}
     />,
   );
 }
@@ -274,5 +276,17 @@ describe("OrderStatusPoller — arrival confirmation", () => {
     expect(
       screen.queryByText("Your order is being prepared"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("OrderStatusPoller — vendor-accept gate (no printer, no arrival confirm)", () => {
+  it("shows no self-start button, and never calls confirmArrival", async () => {
+    getOrderStatus.mockResolvedValue("pending");
+    renderPoller("pending", false, false);
+    expect(await screen.findByText(/You're order #7\./)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /i'm here/i }),
+    ).not.toBeInTheDocument();
+    expect(confirmArrival).not.toHaveBeenCalled();
   });
 });

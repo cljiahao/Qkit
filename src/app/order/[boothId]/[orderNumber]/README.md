@@ -34,18 +34,24 @@ completes.
 - `order-status-poller.tsx` — `OrderStatusPoller` client component: polls
   `getOrderStatus` + `getWaitEstimate` every 5s (`usePolling`, paused once
   terminal) — poll-only by design since Supabase realtime is unreliable on
-  customer devices (Safari/iOS, in-app webviews). While `status === "pending"`
-  (a booth with `requires_arrival_confirm` on — see
-  `src/app/dashboard/booths/README.md`) it renders a dedicated early-return
-  branch instead of the normal ticket: no progress bar/badge chrome, just a
-  "You're order #N. We start making it fresh once you're at the counter"
-  message (the order number re-anchored in the sentence itself, not just the
-  ticket header above — pickup-confusion mitigation from Manfred's first-event
-  AAR) and a big "I'm here, start my order" button that calls `confirmArrival` (optimistic
-  local `setStatus("preparing")` on success, an error toast on failure) —
-  the customer stays on this branch until either they tap it or the next
-  poll observes the vendor already started it some other way (e.g. the
-  vendor's own board). Kitchen status and payment status advance
+  customer devices (Safari/iOS, in-app webviews). `status === "pending"` can
+  mean either of two independent gates (`requires_arrival_confirm`, or no
+  printer connected — migration 0086), told apart by the `requiresArrivalConfirm`
+  prop from `page.tsx`: with it on, a dedicated early-return branch shows no
+  progress bar/badge chrome, just a "You're order #N. We start making it
+  fresh once you're at the counter" message (the order number re-anchored in
+  the sentence itself, not just the ticket header above — pickup-confusion
+  mitigation from Manfred's first-event AAR) and a big "I'm here, start my
+  order" button that calls `confirmArrival` (optimistic local
+  `setStatus("preparing")` on success, an error toast on failure) — the
+  customer stays on this branch until either they tap it or the next poll
+  observes the vendor already started it some other way (e.g. the vendor's
+  own board). With it off (print-gated pending only), a passive variant of
+  the same branch shows the order number sentence with no button at all —
+  only the vendor's own "Start now" tap can move the order on, since
+  `confirmArrival` itself refuses when the booth doesn't require arrival
+  confirmation (see `status-actions.ts` below). Kitchen status and payment
+  status advance
   independently (a vendor can mark an order preparing/ready before the
   customer pays), so an `awaitingPayment` prop (from `page.tsx`) overrides
   the confirmed/preparing/ready copy while payment is still outstanding —
@@ -83,7 +89,10 @@ completes.
   vendor-profile/daily-display-number reads below. From that same `showPay`
   gate plus `order.payment_status !== 'confirmed'`, an
   `awaitingPayment` flag passed to `OrderStatusPoller` so its status copy
-  never outruns the actual payment state, and renders the ticket
+  never outruns the actual payment state, plus the booth's own
+  `requires_arrival_confirm` column (now part of the same booth read) as a
+  `requiresArrivalConfirm` prop, telling `OrderStatusPoller` which of the two
+  reasons a `'pending'` order can show apart, and renders the ticket
   header, `OrderStatusPoller`, `TelegramConnect` (gated on
   `!isTerminal(order.status) && order.status !== 'ready'` plus
   `booth?.vendor_id` — the connect button only makes sense while the order
@@ -156,10 +165,13 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal
   null). `confirmArrival(boothId, orderNumber, token)`: the customer-
-  triggered arrival confirmation for a booth with `requires_arrival_confirm`
-  on — flips the order from `'pending'` (the status `place_order`, migration
-  0064, inserts it at when the booth requires arrival confirmation) to
-  `'preparing'`, starting prep. Token-gated and rate-limited exactly like
+  triggered arrival confirmation — flips the order from `'pending'` to
+  `'preparing'`, starting prep. Refuses outright when the booth's own
+  `requires_arrival_confirm` is off (a fresh read, not just the client's own
+  copy) — a 'pending' order there is print-gated instead (migration 0086),
+  and only the vendor's own board "Start now" tap may move it on; the
+  customer can't self-accept an order the vendor didn't opt to let them.
+  Token-gated and rate-limited exactly like
   `claimPayment` in `payment-actions.ts` (10/60s per IP+booth — small
   sequential order numbers are easy to enumerate); on a 0-row update it
   re-reads the order to distinguish a harmless double-tap (already started,

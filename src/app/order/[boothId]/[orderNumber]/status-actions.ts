@@ -79,6 +79,17 @@ export async function confirmArrival(
   if (!allowed)
     return { success: false, error: "Too many attempts. Wait a moment." };
 
+  // A booth can also land an order in 'pending' because it has no printer
+  // connected (0086) — that's a vendor-accept gate, not an arrival gate, and
+  // must not be self-servable by the customer.
+  const { data: booth } = await supabase
+    .from("booths")
+    .select("requires_arrival_confirm")
+    .eq("id", boothId)
+    .maybeSingle();
+  if (!booth?.requires_arrival_confirm)
+    return { success: false, error: "Could not start your order. Try again." };
+
   const { data: rows, error } = await supabase
     .from("orders")
     .update({ status: "preparing" })

@@ -22,7 +22,11 @@ so it's safe to re-run.
   style/temperature/sugar option groups) and a fixed e2e-only `short_code`
   (`e2eKopitiam01`) so `e2e/*.spec.ts` can navigate to `/o/e2eKopitiam01`
   deterministically; also wires a PayNow payment method (UEN) so the payment
-  panel and payment-queue e2e specs have something to render. Kopi/Teh's
+  panel and payment-queue e2e specs have something to render, and sets
+  `print_enabled = true` so a placed order still auto-starts into
+  `'preparing'` (migration 0086's no-printer accept gate would otherwise
+  land it `'pending'`, which `customer-order.spec.ts` doesn't simulate a
+  vendor accepting). Kopi/Teh's
   milk-style choices demonstrate the price/cost-delta and allergen tagging
   features (2026-07-18): "C"/"Normal" are tagged `dairy`, an added "Oat Milk"
   choice carries `price_delta_cents:100`/`cost_delta_cents:40`; Milo is

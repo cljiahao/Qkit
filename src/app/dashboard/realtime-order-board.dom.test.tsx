@@ -483,3 +483,39 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
     expect(advanceOrder).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("RealtimeOrderBoard incoming/accepted split", () => {
+  it("groups a pending order under Incoming, separate from an accepted one", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001", status: "pending" }),
+          order({ id: "o2", order_number: "0002", status: "preparing" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(screen.getByText("Incoming (1)")).toBeInTheDocument();
+    expect(screen.getByText("Accepted (1)")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /start now/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no section headers when every order is already accepted", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[order({ id: "o1", status: "preparing" })]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(screen.queryByText(/^Incoming/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Accepted/)).not.toBeInTheDocument();
+  });
+});
