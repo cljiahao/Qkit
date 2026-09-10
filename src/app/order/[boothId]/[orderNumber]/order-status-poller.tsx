@@ -41,6 +41,8 @@ const POLL_MS = 5000;
 interface Props {
   boothId: string;
   orderNumber: string;
+  // Shown in copy; may differ from orderNumber under daily-reset display.
+  displayNumber: string;
   token: string;
   initialStatus: OrderStatus;
   boothName: string;
@@ -75,6 +77,7 @@ const AWAITING_PAYMENT_MESSAGE: Partial<Record<OrderStatus, string>> = {
 export function OrderStatusPoller({
   boothId,
   orderNumber,
+  displayNumber,
   token,
   initialStatus,
   boothName,
@@ -226,7 +229,8 @@ export function OrderStatusPoller({
           <OrderStatusBadge status={status} />
         </div>
         <p className="font-display text-xl font-semibold">
-          We start making it fresh once you&apos;re at the counter.
+          You&apos;re order #{displayNumber}. We start making it fresh once
+          you&apos;re at the counter.
         </p>
         <p className="text-sm text-muted-foreground">
           Tap below when you arrive to pick up.
@@ -312,8 +316,8 @@ export function OrderStatusPoller({
           </span>
           <p className="text-sm font-medium text-status-ready">
             {awaitingPayment
-              ? "Please pay before you collect your order"
-              : "Please collect your order now"}
+              ? `Please pay before you collect order #${displayNumber}`
+              : `Order #${displayNumber} ready, please collect now`}
           </p>
         </div>
       )}

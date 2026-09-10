@@ -309,7 +309,10 @@ async function main() {
     await glideClick(page, page.getByRole("button", { name: /Add to order/ }));
     await beat(600);
     await slowType(page, page.locator("#customerName"), CUSTOMER);
-    await glideClick(page, page.getByRole("button", { name: /Place order/ }));
+    await glideClick(
+      page,
+      page.getByRole("button", { name: /Get my order number/ }),
+    );
     await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
     });
@@ -337,7 +340,7 @@ async function main() {
     });
     await bgPage.getByRole("button", { name: "Add" }).first().click();
     await bgPage.locator("#customerName").fill(WALK_IN);
-    await bgPage.getByRole("button", { name: /Place order/ }).click();
+    await bgPage.getByRole("button", { name: /Get my order number/ }).click();
     await bgPage.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
     });
@@ -394,7 +397,10 @@ async function main() {
     await glideClick(page, page.getByRole("button", { name: "Add" }).first());
     await beat(400);
     await slowType(page, page.locator("#customerName"), PAYING_CUSTOMER);
-    await glideClick(page, page.getByRole("button", { name: /Place order/ }));
+    await glideClick(
+      page,
+      page.getByRole("button", { name: /Get my order number/ }),
+    );
     await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
     });
