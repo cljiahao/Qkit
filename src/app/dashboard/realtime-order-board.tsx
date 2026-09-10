@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { usePolling } from "@/hooks/use-polling";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -76,6 +82,43 @@ interface Props {
 }
 
 type BoothFilter = "all" | string;
+
+// One board column (Incoming or Accepted). `solo` means the other column is
+// empty — spans both grid tracks and gets the fuller card-grid breakpoints,
+// since it then has the whole board's width to itself.
+function OrderSection({
+  label,
+  orders,
+  solo,
+  showHeader,
+  renderCard,
+}: {
+  label: string;
+  orders: BoardOrder[];
+  solo: boolean;
+  showHeader: boolean;
+  renderCard: (order: BoardOrder) => ReactNode;
+}) {
+  return (
+    <section className={solo ? "sm:col-span-2" : undefined}>
+      {showHeader && (
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          {label} ({orders.length})
+        </h2>
+      )}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-4",
+          solo
+            ? "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            : "lg:grid-cols-2",
+        )}
+      >
+        {orders.map(renderCard)}
+      </div>
+    </section>
+  );
+}
 
 function LoadErrorBanner() {
   return (
@@ -764,28 +807,24 @@ export function RealtimeOrderBoard({
           </p>
         </Ticket>
       ) : (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-2">
           {incoming.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Incoming ({incoming.length})
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {incoming.map(renderCard)}
-              </div>
-            </section>
+            <OrderSection
+              label="Incoming"
+              orders={incoming}
+              solo={accepted.length === 0}
+              showHeader
+              renderCard={renderCard}
+            />
           )}
           {accepted.length > 0 && (
-            <section>
-              {incoming.length > 0 && (
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Accepted ({accepted.length})
-                </h2>
-              )}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {accepted.map(renderCard)}
-              </div>
-            </section>
+            <OrderSection
+              label="Accepted"
+              orders={accepted}
+              solo={incoming.length === 0}
+              showHeader={incoming.length > 0}
+              renderCard={renderCard}
+            />
           )}
         </div>
       )}
