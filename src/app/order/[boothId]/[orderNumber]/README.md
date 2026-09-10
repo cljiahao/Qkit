@@ -38,8 +38,10 @@ completes.
   (a booth with `requires_arrival_confirm` on — see
   `src/app/dashboard/booths/README.md`) it renders a dedicated early-return
   branch instead of the normal ticket: no progress bar/badge chrome, just a
-  "We start making it fresh once you're at the counter" message and a big
-  "I'm here, start my order" button that calls `confirmArrival` (optimistic
+  "You're order #N. We start making it fresh once you're at the counter"
+  message (the order number re-anchored in the sentence itself, not just the
+  ticket header above — pickup-confusion mitigation from Manfred's first-event
+  AAR) and a big "I'm here, start my order" button that calls `confirmArrival` (optimistic
   local `setStatus("preparing")` on success, an error toast on failure) —
   the customer stays on this branch until either they tap it or the next
   poll observes the vendor already started it some other way (e.g. the
@@ -59,7 +61,10 @@ completes.
   for a time estimate yet, an "Alert me when it's ready" opt-in that unlocks
   audio + requests `Notification` permission, and on transition to `"ready"`
   fires a system notification (`fireReadyNotification`), plays a chime, or
-  flashes the tab title if backgrounded.
+  flashes the tab title if backgrounded. The ready-state copy repeats the
+  order number ("Order #N ready, please collect now") instead of a generic
+  "please collect your order now" — same pickup-confusion mitigation as the
+  pending-state message above.
 - `order-status-poller.dom.test.tsx` — RTL tests covering the poll loop,
   status transitions, the ready-state alert/notification/title-flash paths,
   and the enable-alerts permission flow.
@@ -101,7 +106,10 @@ completes.
   the vendor board applies, degrading silently to the real number on any
   read failure (decorative, never worth breaking the page over). `PayPanel`'s
   `orderRef` always stays the real, permanent number regardless — that one's
-  for payment reconciliation, not display.
+  for payment reconciliation, not display. A "Remember this number for
+  pickup" line sits right under the heading, the first of several places
+  (see `OrderStatusPoller` above) that re-anchor the order number to fight
+  pickup mixups, per Manfred's first-event AAR.
 - `page.dom.test.tsx` — RTL test rendering `OrderStatusPage` directly (same
   pattern as `src/app/dashboard/layout.dom.test.tsx`: an async Server
   Component page can be awaited and its returned tree rendered like any

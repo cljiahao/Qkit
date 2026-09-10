@@ -226,7 +226,8 @@ export function OrderStatusPoller({
           <OrderStatusBadge status={status} />
         </div>
         <p className="font-display text-xl font-semibold">
-          We start making it fresh once you&apos;re at the counter.
+          You&apos;re order #{orderNumber}. We start making it fresh once
+          you&apos;re at the counter.
         </p>
         <p className="text-sm text-muted-foreground">
           Tap below when you arrive to pick up.
@@ -312,8 +313,8 @@ export function OrderStatusPoller({
           </span>
           <p className="text-sm font-medium text-status-ready">
             {awaitingPayment
-              ? "Please pay before you collect your order"
-              : "Please collect your order now"}
+              ? `Please pay before you collect order #${orderNumber}`
+              : `Order #${orderNumber} ready, please collect now`}
           </p>
         </div>
       )}

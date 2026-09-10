@@ -417,8 +417,8 @@ export function OrderForm({
   else if (submitting) submitLabel = "Placing order…";
   else if (!hasItems) submitLabel = "Add items to order";
   else if (cartPriced)
-    submitLabel = `Place order · ${count(itemCount, "item")} · ${formatPrice(total)}`;
-  else submitLabel = `Place order · ${count(itemCount, "item")}`;
+    submitLabel = `Get my order number · ${count(itemCount, "item")} · ${formatPrice(total)}`;
+  else submitLabel = `Get my order number · ${count(itemCount, "item")}`;
 
   // A booth with no menu yet: show a friendly placeholder instead of an empty
   // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).

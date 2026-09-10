@@ -234,6 +234,9 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           <p className="mt-3 text-muted-foreground">
             for {order.customer_name}
           </p>
+          <p className="mt-1 text-xs font-medium text-muted-foreground">
+            Remember this number for pickup
+          </p>
         </header>
 
         <div className="perforation" />

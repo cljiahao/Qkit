@@ -66,6 +66,9 @@ describe("OrderStatusPoller", () => {
       ).toBeInTheDocument(),
     );
     expect(getOrderStatus).toHaveBeenCalledWith("b1", "0007", "tok");
+    expect(
+      screen.getByText("Order #0007 ready, please collect now"),
+    ).toBeInTheDocument();
   });
 
   it("alerts the customer when the order becomes ready", async () => {
@@ -205,11 +208,11 @@ describe("OrderStatusPoller — awaiting payment", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText("Please pay before you collect your order"),
+        screen.getByText("Please pay before you collect order #0007"),
       ).toBeInTheDocument(),
     );
     expect(
-      screen.queryByText("Please collect your order now"),
+      screen.queryByText("Order #0007 ready, please collect now"),
     ).not.toBeInTheDocument();
   });
 
@@ -233,6 +236,7 @@ describe("OrderStatusPoller — arrival confirmation", () => {
       await screen.findByRole("button", { name: /i'm here/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/estimated wait/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/You're order #0007\./)).toBeInTheDocument();
   });
 
   it("calls confirmArrival and shows the progress view on success", async () => {
