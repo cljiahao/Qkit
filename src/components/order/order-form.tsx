@@ -604,9 +604,9 @@ export function OrderForm({
       >
         <SheetContent
           side="bottom"
-          className="mx-auto flex max-h-[85dvh] w-full max-w-lg flex-col gap-0 overflow-y-auto rounded-t-2xl p-0"
+          className="mx-auto flex max-h-[85dvh] w-full max-w-lg flex-col gap-0 overflow-hidden rounded-t-2xl p-0"
         >
-          <SheetHeader className="gap-1 pt-5 pb-3">
+          <SheetHeader className="shrink-0 gap-1 pt-5 pb-3">
             <SheetTitle className="font-display text-xl font-semibold">
               Who&apos;s this for?
             </SheetTitle>
@@ -617,8 +617,8 @@ export function OrderForm({
 
           {hasItems && (
             <>
-              <div className="perforation" />
-              <div className="space-y-2 px-4 py-2.5">
+              <div className="perforation shrink-0" />
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-2.5">
                 {cartEntries.map(([key, item]) => {
                   const options = formatOptions(item.options);
                   return (
@@ -650,8 +650,8 @@ export function OrderForm({
               </div>
               {cartPriced && (
                 <>
-                  <div className="perforation" />
-                  <div className="flex items-baseline justify-between px-4 py-2.5">
+                  <div className="perforation shrink-0" />
+                  <div className="flex shrink-0 items-baseline justify-between px-4 py-2.5">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Total
                     </span>
@@ -663,11 +663,11 @@ export function OrderForm({
               )}
             </>
           )}
-          <div className="perforation" />
+          <div className="perforation shrink-0" />
 
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="flex flex-col gap-5 px-4 pt-4"
+            className="flex shrink-0 flex-col gap-5 px-4 pt-4"
           >
             <section className="space-y-2.5">
               <Label
