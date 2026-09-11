@@ -83,17 +83,21 @@ describe("QueueDisplay", () => {
     renderDisplay([PREPARING]);
 
     await waitFor(() => {
-      expect(screen.getByText("001")).toHaveClass("fade-rise");
+      const tile = screen.getByText("001");
+      expect(tile).toHaveClass("fade-rise");
+      expect(tile).toHaveClass("bg-primary"); // fresh: solid fill
     });
     expect(alerts.playReadyChime).not.toHaveBeenCalled();
   });
 
-  it("does not stamp an order that was already ready before the page loaded", async () => {
+  it("renders an order already ready before the page loaded as aged, not fresh", async () => {
     getBoothQueueDisplay.mockResolvedValue([READY]);
     renderDisplay([READY]);
 
     await waitFor(() => expect(getBoothQueueDisplay).toHaveBeenCalled());
-    expect(screen.getByText("002")).not.toHaveClass("fade-rise");
+    const tile = screen.getByText("002");
+    expect(tile).not.toHaveClass("fade-rise");
+    expect(tile).toHaveClass("bg-primary/10"); // aged: muted tint, not solid
   });
 
   it("unlocks audio and hides its own button once sound is enabled", async () => {

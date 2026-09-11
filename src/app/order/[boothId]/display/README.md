@@ -55,56 +55,70 @@ notice.
   viewing device's OS setting — a genuine digital-signage board reads
   better on a dark ground with bright accents than a light one, and the
   choice follows from the use scene (a TV/kiosk screen at a market or
-  event, day or night), not the visitor's own preference. A `ready` order
-  reuses the app's own warm `primary` accent (not a status/semantic
-  color) with the same "ticket-stamp" motion the customer's own status
-  page already uses for its "Ready" moment
-  (`../[orderNumber]/order-status-poller.tsx`'s `status === "ready"`
-  block: `fade-rise`) — a steady Ready tile is a `primary`-tinted,
-  thick-bordered card; the moment one transitions it flips to a solid
-  `bg-primary` fill and tilts `-rotate-3` like a freshly stamped ticket,
-  settling back to the steady tinted style once `FLASH_MS` elapses. An
-  earlier version also carried a "Just called" text badge on the tile —
-  dropped (both the original floating version, which got clipped by the
-  tile grid's own overflow guard, and a later in-flow version) as
-  unnecessary once the fill/tilt change alone reads clearly enough on its
-  own. Preparing tiles stay a quiet, uncolored card — the Ready/Preparing
-  contrast is the entire point, so only Ready carries color. A
-  currently-flashing order also sorts to the front of the Ready grid
-  (ahead of the cap-visibility logic below), landing in the same
-  first/most-noticeable slot a physical "now serving" board gives the
-  latest number. Sound is opt-in and separate from the visual cue on
-  purpose: `playReadyChime` (`@/lib/order-alerts`) uses the Web Audio
-  API, which browsers keep suspended until a user gesture unlocks it — a
-  TV tab nobody touches would never unlock it, so a chime call before
-  that gesture would silently never play. An "Enable sound" button
-  (shown until tapped) calls the shared `unlockAudio()` export once,
-  meant to be tapped by the vendor when they set the screen up; if it's
-  never tapped, the display still works fully via the visual cue alone.
-  Preparing and Ready for pickup render side by side (`grid-cols-2` from
-  `sm:` up, stacked below it, a dashed vertical rule between them
-  echoing the perforation motif used elsewhere in this app) rather than
-  stacked full-width, so a long Preparing list can't push Ready off the
-  bottom. The whole page is `h-screen overflow-hidden` — a TV screen has
-  no scroll — so each column also caps how many tiles it ever renders
+  event, day or night), not the visitor's own preference.
+
+  A `ready` order carries a **freshness** cue, not just a one-shot flash:
+  it's a solid, bright `bg-primary` fill (the app's own warm accent, not
+  a status/semantic color) for `FRESH_MS` (5 minutes) after it first went
+  ready, then eases (`transition-colors duration-700`) into a muted
+  `bg-primary/10` tint — a rough "is this still hot" proxy so a glance at
+  the Ready column tells a customer or vendor which numbers just got
+  called versus which have been sitting a while. `readyAt` (a
+  `Map<orderNumber, timestamp>`, React state) records when each currently
+  -ready order first transitioned, seeded empty on mount so an order
+  already `ready` in `initialOrders` has no entry and renders aged from
+  the start (matches the old "no false flash on load" behavior); `nowMs`
+  (also state, ticked every 30s by its own effect, same
+  seed-null-then-`useEffect` pattern as
+  `../[orderNumber]/order-status-poller.tsx`'s own `nowMs`) supplies the
+  "now" side of the age math — both are plain state rather than refs
+  because render must stay pure (no reading a ref or calling `Date.now()`
+  directly in the render body; the `react-hooks/purity`/`react-hooks/refs`
+  lint rules catch this). On top of that, the moment an order first
+  transitions it also gets a brief one-time "stamped" entrance (tilts
+  `-rotate-3`, `fade-rise`) for `FLASH_MS` (3.5s) — the same reveal the
+  customer's own status page already uses for its "Ready" moment
+  (`order-status-poller.tsx`'s `status === "ready"` block) — layered on
+  top of, not instead of, the freshness fill. Preparing tiles stay a
+  quiet, uncolored card throughout — the Ready/Preparing contrast is the
+  entire point, so only Ready ever carries color. A still-fresh order
+  also sorts to the front of the Ready grid (ahead of the cap-visibility
+  logic below), landing in the same first/most-noticeable slot a physical
+  "now serving" board gives its latest number. Sound is opt-in and
+  separate from the visual cue on purpose: `playReadyChime`
+  (`@/lib/order-alerts`) uses the Web Audio API, which browsers keep
+  suspended until a user gesture unlocks it — a TV tab nobody touches
+  would never unlock it, so a chime call before that gesture would
+  silently never play. An "Enable sound" button (shown until tapped)
+  calls the shared `unlockAudio()` export once, meant to be tapped by the
+  vendor when they set the screen up; if it's never tapped, the display
+  still works fully via the visual cue alone. Preparing and Ready for
+  pickup render side by side (`grid-cols-2` from `sm:` up, stacked below
+  it, a dashed vertical rule between them echoing the perforation motif
+  used elsewhere in this app) rather than stacked full-width, so a long
+  Preparing list can't push Ready off the bottom. The whole page is
+  `h-screen overflow-hidden` — a TV screen has no scroll — so each column
+  also caps how many tiles it ever renders
   (`MAX_VISIBLE_PREPARING`/`MAX_VISIBLE_READY`, fixed numbers tuned for a
   landscape screen rather than measured against the real viewport) and
   shows a "+N more" line for whatever's hidden past the cap, dropping the
   newest orders first (the ones a customer's been waiting on longest stay
-  visible). A currently-flashing order is never one of the hidden ones,
-  even past the cap — that cue is the entire point of this screen, so it
-  always gets a guaranteed slot ahead of older, already-settled ready
-  orders competing for the same limited space.
+  visible). A still-fresh order is never one of the hidden ones, even
+  past the cap — freshness is the entire point of this screen, so it
+  always gets a guaranteed slot ahead of older, already-aged ready orders
+  competing for the same limited space.
+
 - `queue-display.dom.test.tsx` — RTL tests for the Preparing/Ready
   grouping, each group's own empty state, that a poll updates the
-  rendered orders, that only a genuine ready-transition (not an order
-  already ready on mount) gets the `fade-rise` stamp class, the
+  rendered orders, that a genuine ready-transition gets both the
+  `fade-rise` stamp class and the solid fresh-fill class while an order
+  already ready on mount renders aged/muted from the start, the
   silent-by-default chime behavior, the "Enable sound" button's own click
   effect, a transient poll failure (`getBoothQueueDisplay` returning
   `null`) keeping the last good state instead of clearing the screen,
   each column's own render cap plus its "+N more" line, and that a
-  currently-flashing order still renders even when the ready count is
-  already past the cap.
+  still-fresh order still renders even when the ready count is already
+  past the cap.
 
 ## Connectivity
 
