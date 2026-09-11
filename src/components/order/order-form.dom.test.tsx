@@ -182,6 +182,24 @@ describe("OrderForm cart", () => {
     expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
   });
 
+  it("focuses the name field instead of submitting when it's left blank", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(
+      screen.getByRole("button", { name: /Get my order number/ }),
+    );
+
+    // React Hook Form's default shouldFocusError — the sticky submit bar
+    // sits fixed over the bottom of the viewport, so this focus (which the
+    // browser scrolls to natively) is what the field's scroll-mb-28 exists
+    // to keep clear of it.
+    await waitFor(() =>
+      expect(screen.getByLabelText("Your name")).toHaveFocus(),
+    );
+    expect(placeOrder).not.toHaveBeenCalled();
+  });
+
   it("seeds the cart from a reorder handoff on mount", async () => {
     window.sessionStorage.setItem(
       "qkit:reorder:b1",

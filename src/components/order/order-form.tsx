@@ -551,7 +551,12 @@ export function OrderForm({
         <Input
           id="customerName"
           placeholder="So we can call you when it's ready"
-          className="h-12 rounded-xl text-base"
+          // scroll-mb-28 matches the page's own pb-28 (the space it reserves
+          // for the fixed submit bar): a failed submit auto-focuses this
+          // field (React Hook Form's shouldFocusError default), and native
+          // focus-scroll has no idea the fixed bar covers the last ~85px of
+          // the viewport — scroll-margin is what it actually respects.
+          className="h-12 scroll-mb-28 rounded-xl text-base"
           aria-invalid={!!errors.customerName}
           aria-describedby={
             errors.customerName ? "customerName-error" : undefined
@@ -580,7 +585,7 @@ export function OrderForm({
           id="customerPhone"
           type="tel"
           placeholder="So we can recognize you next time"
-          className="h-12 rounded-xl text-base"
+          className="h-12 scroll-mb-28 rounded-xl text-base"
           aria-invalid={!!errors.customerPhone}
           aria-describedby={
             errors.customerPhone ? "customerPhone-error" : undefined
