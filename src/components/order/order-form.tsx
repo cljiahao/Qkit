@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { ChevronDown, Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +70,7 @@ export function OrderForm({
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [cartExpanded, setCartExpanded] = useState(false);
   const hydrated = useRef(false);
 
   const {
@@ -483,74 +484,98 @@ export function OrderForm({
         </section>
       )}
 
-      {/* Cart summary */}
+      {/* Cart summary — collapsed by default so a long menu doesn't push the
+          summary between the customer and the rest of the items. */}
       {hasItems && (
         <Ticket as="section" shadow="none" radius="xl">
-          <h2 className="flex items-center gap-2 px-4 pt-4 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <ShoppingCart className="size-3.5" />
-            Your order
-          </h2>
-          <div className="perforation mx-4" />
-          <div className="space-y-3 px-4 py-3">
-            {cartEntries.map(([key, item]) => {
-              const options = formatOptions(item.options);
-              return (
-                <div
-                  key={key}
-                  className="flex items-start justify-between gap-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.name}</p>
-                    {options && (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {options}
-                      </p>
-                    )}
-                    {item.price_cents != null && (
-                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                        {formatPrice(item.price_cents * item.quantity)}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-11 rounded-lg"
-                      onClick={() => decrement(key)}
-                      aria-label={`Decrease ${item.name}`}
-                    >
-                      <Minus className="size-3" />
-                    </Button>
-                    <span className="w-4 text-center font-mono text-sm font-bold">
-                      {item.quantity}
-                    </span>
-                    <Button
-                      type="button"
-                      size="icon"
-                      className="size-11 rounded-lg"
-                      onClick={() => increment(key)}
-                      aria-label={`Increase ${item.name}`}
-                    >
-                      <Plus className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {cartPriced && (
+          <button
+            type="button"
+            onClick={() => setCartExpanded((v) => !v)}
+            aria-expanded={cartExpanded}
+            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <ShoppingCart className="size-3.5" />
+              Your order
+            </span>
+            <span className="flex items-center gap-2 font-mono text-sm font-semibold">
+              {count(itemCount, "item")}
+              {cartPriced && ` · ${formatPrice(total)}`}
+              <ChevronDown
+                className={cn(
+                  "size-4 text-muted-foreground transition-transform",
+                  cartExpanded && "rotate-180",
+                )}
+              />
+            </span>
+          </button>
+          {cartExpanded && (
             <>
               <div className="perforation mx-4" />
-              <div className="flex items-baseline justify-between px-4 py-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Total
-                </span>
-                <span className="font-mono text-lg font-bold">
-                  {formatPrice(total)}
-                </span>
+              <div className="space-y-3 px-4 py-3">
+                {cartEntries.map(([key, item]) => {
+                  const options = formatOptions(item.options);
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-start justify-between gap-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {item.name}
+                        </p>
+                        {options && (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {options}
+                          </p>
+                        )}
+                        {item.price_cents != null && (
+                          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                            {formatPrice(item.price_cents * item.quantity)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-11 rounded-lg"
+                          onClick={() => decrement(key)}
+                          aria-label={`Decrease ${item.name}`}
+                        >
+                          <Minus className="size-3" />
+                        </Button>
+                        <span className="w-4 text-center font-mono text-sm font-bold">
+                          {item.quantity}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="size-11 rounded-lg"
+                          onClick={() => increment(key)}
+                          aria-label={`Increase ${item.name}`}
+                        >
+                          <Plus className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              {cartPriced && (
+                <>
+                  <div className="perforation mx-4" />
+                  <div className="flex items-baseline justify-between px-4 py-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Total
+                    </span>
+                    <span className="font-mono text-lg font-bold">
+                      {formatPrice(total)}
+                    </span>
+                  </div>
+                </>
+              )}
             </>
           )}
         </Ticket>
@@ -593,16 +618,49 @@ export function OrderForm({
           {hasItems && (
             <>
               <div className="perforation" />
-              <div className="flex items-baseline justify-between px-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">
-                  {count(itemCount, "item")}
-                </span>
-                {cartPriced && (
-                  <span className="font-mono font-semibold">
-                    {formatPrice(total)}
-                  </span>
-                )}
+              <div className="max-h-32 space-y-2 overflow-y-auto px-4 py-2.5">
+                {cartEntries.map(([key, item]) => {
+                  const options = formatOptions(item.options);
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-baseline justify-between gap-3 text-sm"
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {item.quantity > 1 && (
+                          <span className="font-mono font-semibold">
+                            {item.quantity}×{" "}
+                          </span>
+                        )}
+                        {item.name}
+                        {options && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {options}
+                          </span>
+                        )}
+                      </span>
+                      {item.price_cents != null && (
+                        <span className="shrink-0 font-mono text-muted-foreground">
+                          {formatPrice(item.price_cents * item.quantity)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+              {cartPriced && (
+                <>
+                  <div className="perforation" />
+                  <div className="flex items-baseline justify-between px-4 py-2.5">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Total
+                    </span>
+                    <span className="font-mono text-sm font-semibold">
+                      {formatPrice(total)}
+                    </span>
+                  </div>
+                </>
+              )}
             </>
           )}
           <div className="perforation" />

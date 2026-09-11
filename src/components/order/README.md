@@ -22,10 +22,16 @@ closed, remaining })`: the full menu + cart + checkout UI. Seeds the cart on
   Tracks a `Map<string, CartItem>` cart keyed by `cartKey(menuItemId,
 options)`, persists it on every change (`saveCart`), enforces per-item
   stock caps (`remainingFor`/`blockedByStock`), and opens `ItemCustomizer` for
-  items with option groups. The sticky bottom bar is a trigger, not a submit
-  button: tapping it opens a bottom `Sheet` ("Who's this for?") holding a
-  compact order recap (item count + total, echoing the `Ticket` component's
-  perforation-divider styling used in the cart summary above it), the name
+  items with option groups. The "Your order" cart summary is collapsed by
+  default (`cartExpanded` state, toggled by tapping its header) so it doesn't
+  push a long multi-section menu further down the page — the collapsed header
+  still shows the live item count/total, and expanding it is the only way to
+  adjust or remove a customized (option-group) item, since those don't get
+  the inline +/- the plain-item cards do. The sticky bottom bar is a trigger,
+  not a submit button: tapping it opens a bottom `Sheet` ("Who's this for?")
+  holding an itemized order recap (each line's name, options, and price,
+  between perforation dividers echoing the `Ticket` component's own stub
+  styling) so the customer can see exactly what they're confirming, the name
   and optional phone fields, the real submit, and a "Back to menu" close
   action — this keeps checkout a single short step regardless of how long
   the menu above it is (a multi-section menu no longer buries the fields at
@@ -51,9 +57,10 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   jump nav for 2+, unmatched/stale category ids bucketed into "Other" last),
   the card-level allergen badges (one tappable icon per tag, nothing for
   an item with none, tap reveals the name — works with the booth closed),
-  that the sticky trigger opens the checkout sheet rather than submitting
-  directly, and that an empty name inside the sheet focuses the field
-  instead of calling `placeOrder`.
+  the cart summary's collapsed-by-default/expand-on-tap behavior, that the
+  sticky trigger opens the checkout sheet (itemized recap included) rather
+  than submitting directly, and that an empty name inside the sheet focuses
+  the field instead of calling `placeOrder`.
 - `recent-orders.tsx` — `RecentOrders({ boothId })`: reads
   `getRecentOrdersForBooth` from localStorage post-mount (avoids an SSR
   hydration mismatch — there's no server-side customer identity), rendering
