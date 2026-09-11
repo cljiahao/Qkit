@@ -9,6 +9,14 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { ZoomableImage } from "@/components/zoomable-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { AllergenBadges } from "@/components/allergen-badges";
@@ -60,6 +68,7 @@ export function OrderForm({
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const hydrated = useRef(false);
 
   const {
@@ -434,7 +443,7 @@ export function OrderForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <div className="space-y-8">
       {/* Menu items */}
       {grouped ? (
         <>
@@ -540,82 +549,115 @@ export function OrderForm({
         </Ticket>
       )}
 
-      {/* Customer name */}
-      <section className="space-y-2.5">
-        <Label
-          htmlFor="customerName"
-          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-        >
-          Your name
-        </Label>
-        <Input
-          id="customerName"
-          placeholder="So we can call you when it's ready"
-          className="h-12 rounded-xl text-base"
-          aria-invalid={!!errors.customerName}
-          aria-describedby={
-            errors.customerName ? "customerName-error" : undefined
-          }
-          {...register("customerName")}
-        />
-        {errors.customerName && (
-          <p
-            id="customerName-error"
-            className="text-sm font-medium text-destructive"
-          >
-            {errors.customerName.message}
-          </p>
-        )}
-      </section>
-
-      {/* Customer phone — optional, cross-kit customer identity */}
-      <section className="space-y-2.5">
-        <Label
-          htmlFor="customerPhone"
-          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-        >
-          Phone number (optional)
-        </Label>
-        <Input
-          id="customerPhone"
-          type="tel"
-          placeholder="So we can recognize you next time"
-          className="h-12 rounded-xl text-base"
-          aria-invalid={!!errors.customerPhone}
-          aria-describedby={
-            errors.customerPhone ? "customerPhone-error" : undefined
-          }
-          {...register("customerPhone")}
-        />
-        {errors.customerPhone && (
-          <p
-            id="customerPhone-error"
-            className="text-sm font-medium text-destructive"
-          >
-            {errors.customerPhone.message}
-          </p>
-        )}
-      </section>
-
-      {/* Sticky submit bar */}
+      {/* Sticky checkout trigger */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 px-5 py-3.5 backdrop-blur-md">
         <div className="mx-auto max-w-lg">
           <Button
-            type="submit"
+            type="button"
             size="lg"
             className="h-14 w-full rounded-xl text-base font-semibold"
-            disabled={submitting || !hasItems || closed}
+            onClick={() => setCheckoutOpen(true)}
+            disabled={!hasItems || closed}
           >
             {submitLabel}
           </Button>
         </div>
       </div>
 
+      <Sheet
+        open={checkoutOpen}
+        onOpenChange={(open) => {
+          if (!submitting) setCheckoutOpen(open);
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          className="mx-auto flex max-h-[85dvh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl"
+        >
+          <SheetHeader>
+            <SheetTitle>Almost there</SheetTitle>
+            <SheetDescription>
+              Just your name so we know who to call.
+            </SheetDescription>
+          </SheetHeader>
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-1 flex-col gap-5 overflow-y-auto px-4"
+          >
+            <section className="space-y-2.5">
+              <Label
+                htmlFor="customerName"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Your name
+              </Label>
+              <Input
+                id="customerName"
+                placeholder="So we can call you when it's ready"
+                className="h-12 rounded-xl text-base"
+                aria-invalid={!!errors.customerName}
+                aria-describedby={
+                  errors.customerName ? "customerName-error" : undefined
+                }
+                {...register("customerName")}
+              />
+              {errors.customerName && (
+                <p
+                  id="customerName-error"
+                  className="text-sm font-medium text-destructive"
+                >
+                  {errors.customerName.message}
+                </p>
+              )}
+            </section>
+
+            <section className="space-y-2.5">
+              <Label
+                htmlFor="customerPhone"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Phone number (optional)
+              </Label>
+              <Input
+                id="customerPhone"
+                type="tel"
+                placeholder="So we can recognize you next time"
+                className="h-12 rounded-xl text-base"
+                aria-invalid={!!errors.customerPhone}
+                aria-describedby={
+                  errors.customerPhone ? "customerPhone-error" : undefined
+                }
+                {...register("customerPhone")}
+              />
+              {errors.customerPhone && (
+                <p
+                  id="customerPhone-error"
+                  className="text-sm font-medium text-destructive"
+                >
+                  {errors.customerPhone.message}
+                </p>
+              )}
+            </section>
+
+            <SheetFooter className="px-0">
+              <Button
+                type="submit"
+                size="lg"
+                className="h-14 w-full rounded-xl text-base font-semibold"
+                disabled={submitting || !hasItems || closed}
+              >
+                {submitLabel}
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+
       <ItemCustomizer
         item={customizing}
         onClose={() => setCustomizing(null)}
         onAdd={addConfigured}
       />
-    </form>
+    </div>
   );
 }

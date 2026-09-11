@@ -152,13 +152,32 @@ describe("OrderForm cart", () => {
     ).toBeEnabled();
   });
 
+  it("opens the checkout sheet from the sticky trigger, not a direct submit", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(
+      screen.getByRole("button", { name: /Get my order number/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Almost there" }),
+    ).toBeInTheDocument();
+    expect(placeOrder).not.toHaveBeenCalled();
+  });
+
   it("submits the order, remembers it, and navigates to the status page", async () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
     await user.click(
       screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -190,6 +209,7 @@ describe("OrderForm cart", () => {
         customerName: "Bo",
       }),
     );
+    const user = userEvent.setup();
     renderForm();
 
     // Cart prefilled (2 × $3.50), name filled, seed consumed (read-once).
@@ -199,8 +219,13 @@ describe("OrderForm cart", () => {
         name: /Get my order number · 2 items · \$7\.00/,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Your name")).toHaveValue("Bo");
     expect(window.sessionStorage.getItem("qkit:reorder:b1")).toBeNull();
+
+    await user.click(
+      screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Your name")).toHaveValue("Bo");
   });
 
   it("shows a placeholder when the booth has no menu yet", () => {
@@ -280,9 +305,13 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(window.sessionStorage.getItem("qkit:cart:b1")).toContain("kopi");
 
-    await user.type(screen.getByLabelText("Your name"), "Ada");
     await user.click(
       screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -296,9 +325,13 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
     await user.click(
       screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -319,9 +352,13 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
     await user.click(
       screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
@@ -343,14 +380,18 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(
+      screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
 
-    const phoneField = screen.getByLabelText("Phone number (optional)");
+    const phoneField = within(dialog).getByLabelText("Phone number (optional)");
     expect(phoneField).toBeInTheDocument();
     expect(phoneField).toHaveValue("");
 
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -367,13 +408,17 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(
+      screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.type(
-      screen.getByLabelText("Phone number (optional)"),
+      within(dialog).getByLabelText("Phone number (optional)"),
       "+6591234567",
     );
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -386,6 +431,24 @@ describe("OrderForm cart", () => {
         expect.stringMatching(/^[0-9a-f-]{36}$/),
       ),
     );
+  });
+
+  it("blocks submit and shows an error when the name is left blank", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(
+      screen.getByRole("button", { name: /Get my order number/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
+    );
+
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText("Your name")).toHaveFocus(),
+    );
+    expect(placeOrder).not.toHaveBeenCalled();
   });
 
   it("disables ordering when the booth is closed", () => {
