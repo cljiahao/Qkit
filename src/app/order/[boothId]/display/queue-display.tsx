@@ -1,0 +1,151 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { Volume2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { usePolling } from "@/hooks/use-polling";
+import { playReadyChime, unlockAudio } from "@/lib/order-alerts";
+import { getBoothQueueDisplay, type QueueDisplayOrder } from "./actions";
+import type { OrderStatus } from "@/lib/types";
+
+const POLL_MS = 5000;
+// How long a just-ready tile keeps its extra flash animation (queue-flash,
+// globals.css) before settling into the normal "ready" tile style. Roughly
+// matches that animation's own 4 × 0.8s run length, plus a small buffer.
+const FLASH_MS = 3500;
+
+interface Props {
+  boothId: string;
+  boothName: string;
+  initialOrders: QueueDisplayOrder[];
+}
+
+/**
+ * Public TV/second-screen queue display for one booth. Polls (no realtime —
+ * see ./actions.ts) and, when an order transitions into "ready", gives it a
+ * few seconds of flash animation on top of the section's own static
+ * emphasis, plus an optional chime once the vendor has tapped "Enable
+ * sound" (Web Audio needs a user gesture to unlock — see ./README.md).
+ */
+export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
+  const [orders, setOrders] = useState(initialOrders);
+  const [justReady, setJustReady] = useState<Set<string>>(new Set());
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const prevStatusRef = useRef(
+    new Map<string, OrderStatus>(
+      initialOrders.map((o) => [o.orderNumber, o.status]),
+    ),
+  );
+  const flashTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  useEffect(() => {
+    const timers = flashTimers.current;
+    return () => {
+      timers.forEach(clearTimeout);
+      timers.clear();
+    };
+  }, []);
+
+  async function tick() {
+    // A transient read failure keeps showing the last good state.
+    const next = await getBoothQueueDisplay(boothId);
+    if (!next) return;
+
+    const prev = prevStatusRef.current;
+    const newlyReady = next
+      .filter(
+        (o) => o.status === "ready" && prev.get(o.orderNumber) !== "ready",
+      )
+      .map((o) => o.orderNumber);
+    prevStatusRef.current = new Map(next.map((o) => [o.orderNumber, o.status]));
+    setOrders(next);
+
+    if (newlyReady.length === 0) return;
+    setJustReady((cur) => new Set([...cur, ...newlyReady]));
+    if (soundEnabled) void playReadyChime();
+    for (const orderNumber of newlyReady) {
+      const timer = setTimeout(() => {
+        flashTimers.current.delete(timer);
+        setJustReady((cur) => {
+          if (!cur.has(orderNumber)) return cur;
+          const next = new Set(cur);
+          next.delete(orderNumber);
+          return next;
+        });
+      }, FLASH_MS);
+      flashTimers.current.add(timer);
+    }
+  }
+
+  usePolling(tick, { intervalMs: POLL_MS, enabled: true });
+
+  const preparing = orders.filter((o) => o.status !== "ready");
+  const ready = orders.filter((o) => o.status === "ready");
+
+  return (
+    <div className="min-h-screen bg-background px-8 py-10 sm:px-12">
+      <header className="mb-10 flex items-center justify-between gap-4">
+        <h1 className="font-display text-3xl font-semibold sm:text-4xl">
+          {boothName}
+        </h1>
+        {!soundEnabled && (
+          <button
+            type="button"
+            onClick={() => {
+              unlockAudio();
+              setSoundEnabled(true);
+            }}
+            className="flex shrink-0 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground"
+          >
+            <Volume2 className="size-4" />
+            Enable sound
+          </button>
+        )}
+      </header>
+
+      <section className="mb-12">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Preparing
+        </h2>
+        {preparing.length === 0 ? (
+          <p className="text-muted-foreground">No orders in progress</p>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {preparing.map((o) => (
+              <div
+                key={o.orderNumber}
+                className="flex size-24 items-center justify-center rounded-2xl border border-border bg-card font-mono text-3xl font-bold sm:size-28 sm:text-4xl"
+              >
+                {o.displayNumber}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+          Ready for pickup
+        </h2>
+        {ready.length === 0 ? (
+          <p className="text-muted-foreground">Nothing ready yet</p>
+        ) : (
+          <div className="flex flex-wrap gap-6">
+            {ready.map((o) => (
+              <div
+                key={o.orderNumber}
+                className={cn(
+                  "flex size-32 items-center justify-center rounded-2xl border-4 border-primary bg-primary/10 font-mono text-5xl font-bold text-primary sm:size-40 sm:text-6xl",
+                  justReady.has(o.orderNumber) &&
+                    "queue-flash ring-8 ring-primary/40",
+                )}
+              >
+                {o.displayNumber}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
