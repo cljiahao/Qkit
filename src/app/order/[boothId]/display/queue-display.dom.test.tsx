@@ -95,6 +95,14 @@ describe("QueueDisplay", () => {
 
     await waitFor(() => expect(getBoothQueueDisplay).toHaveBeenCalled());
     expect(screen.getByText("002")).not.toHaveClass("queue-flash");
+    expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+  });
+
+  it("marks a just-ready tile with a static NEW badge, not just the animation", async () => {
+    getBoothQueueDisplay.mockResolvedValue([{ ...PREPARING, status: "ready" }]);
+    renderDisplay([PREPARING]);
+
+    await waitFor(() => expect(screen.getByText("NEW")).toBeInTheDocument());
   });
 
   it("unlocks audio and hides its own button once sound is enabled", async () => {

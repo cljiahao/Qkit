@@ -166,11 +166,16 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
                   <div
                     key={o.orderNumber}
                     className={cn(
-                      "flex size-32 items-center justify-center rounded-2xl border-4 border-primary bg-primary/10 font-mono text-5xl font-bold text-primary sm:size-40 sm:text-6xl",
+                      "relative flex size-32 items-center justify-center rounded-2xl bg-primary font-mono text-5xl font-bold text-primary-foreground shadow-lg sm:size-40 sm:text-6xl",
                       justReady.has(o.orderNumber) &&
-                        "queue-flash ring-8 ring-primary/40",
+                        "queue-flash ring-4 ring-background",
                     )}
                   >
+                    {justReady.has(o.orderNumber) && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-background px-2.5 py-0.5 text-xs font-semibold tracking-wide text-primary shadow">
+                        NEW
+                      </span>
+                    )}
                     {o.displayNumber}
                   </div>
                 ))}

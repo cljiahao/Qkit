@@ -52,9 +52,18 @@ notice.
   previous status snapshot (seeded from `initialOrders` on mount, so
   orders already `ready` before the page loaded never falsely flash); any
   order that just transitioned into `ready` gets a few seconds of
-  `queue-flash` animation (`globals.css`) layered on top of the "Ready for
-  pickup" section's own static (always-visible, reduced-motion-safe)
-  emphasis. Sound is opt-in and separate from the visual flash on purpose:
+  `queue-flash` animation (`globals.css`) plus a static "NEW" badge
+  (survives `prefers-reduced-motion`, unlike the animation) layered on top
+  of the "Ready for pickup" tile's own bold, solid-fill styling — QSR-
+  counter-display convention (McDonald's/KFC/Chagee-style: Ready tiles are
+  a filled brand-color block, Preparing tiles stay a quiet outlined
+  neutral card, and a just-called number gets extra emphasis on top of
+  that, not just a bigger version of the same look) rather than the
+  lighter tinted/outlined treatment both sections started with. A
+  currently-flashing order also sorts to the front of the Ready grid
+  (ahead of the cap-visibility logic below), landing in the same
+  first/most-noticeable slot a physical "now serving" board gives the
+  latest number. Sound is opt-in and separate from the visual flash on purpose:
   `playReadyChime` (`@/lib/order-alerts`) uses the Web Audio API, which
   browsers keep suspended until a user gesture unlocks it — a TV tab
   nobody touches would never unlock it, so a chime call before that gesture
@@ -77,7 +86,8 @@ notice.
 - `queue-display.dom.test.tsx` — RTL tests for the Preparing/Ready grouping,
   each group's own empty state, that a poll updates the rendered orders,
   that only a genuine ready-transition (not an order already ready on
-  mount) gets the flash class, the silent-by-default chime behavior, the
+  mount) gets the flash class and static "NEW" badge, the silent-by-default
+  chime behavior, the
   "Enable sound" button's own click effect, a transient poll failure
   (`getBoothQueueDisplay` returning `null`) keeping the last good state
   instead of clearing the screen, each column's own render cap plus its
