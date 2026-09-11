@@ -83,8 +83,7 @@ describe("QueueDisplay", () => {
     renderDisplay([PREPARING]);
 
     await waitFor(() => {
-      const tile = screen.getByText("001").parentElement!;
-      expect(tile).toHaveClass("fade-rise");
+      expect(screen.getByText("001")).toHaveClass("fade-rise");
     });
     expect(alerts.playReadyChime).not.toHaveBeenCalled();
   });
@@ -94,17 +93,7 @@ describe("QueueDisplay", () => {
     renderDisplay([READY]);
 
     await waitFor(() => expect(getBoothQueueDisplay).toHaveBeenCalled());
-    expect(screen.getByText("002").parentElement!).not.toHaveClass("fade-rise");
-    expect(screen.queryByText("Just called")).not.toBeInTheDocument();
-  });
-
-  it("marks a just-ready tile with a static 'Just called' caption, not just the animation", async () => {
-    getBoothQueueDisplay.mockResolvedValue([{ ...PREPARING, status: "ready" }]);
-    renderDisplay([PREPARING]);
-
-    await waitFor(() =>
-      expect(screen.getByText("Just called")).toBeInTheDocument(),
-    );
+    expect(screen.getByText("002")).not.toHaveClass("fade-rise");
   });
 
   it("unlocks audio and hides its own button once sound is enabled", async () => {
@@ -167,9 +156,7 @@ describe("QueueDisplay", () => {
 
     await waitFor(() => {
       const section = screen.getByText("Ready for pickup").closest("section")!;
-      expect(within(section).getByText("001").parentElement!).toHaveClass(
-        "fade-rise",
-      );
+      expect(within(section).getByText("001")).toHaveClass("fade-rise");
     });
   });
 });

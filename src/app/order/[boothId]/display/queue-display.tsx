@@ -9,8 +9,8 @@ import { getBoothQueueDisplay, type QueueDisplayOrder } from "./actions";
 import type { OrderStatus } from "@/lib/types";
 
 const POLL_MS = 5000;
-// How long a just-ready tile keeps its "stamped" look (solid fill, tilted,
-// "Just called" caption) before settling into the steady ready-tile style.
+// How long a just-ready tile keeps its "stamped" look (solid fill, tilted)
+// before settling into the steady ready-tile style.
 const FLASH_MS = 3500;
 
 // This is a TV screen — no scrolling — so each column caps how many tiles it
@@ -30,12 +30,11 @@ interface Props {
 /**
  * Public TV/second-screen queue display for one booth. Polls (no realtime —
  * see ./actions.ts) and, when an order transitions into "ready", gives it a
- * few seconds of "stamped" emphasis — solid fill, tilted, a "Just called"
- * caption, reusing the same fade-rise reveal and status-ready color the
- * customer's own order-status page already uses for its "Ready" stamp
- * (../[orderNumber]/order-status-poller.tsx) — plus an optional chime once
- * the vendor has tapped "Enable sound" (Web Audio needs a user gesture to
- * unlock — see ./README.md).
+ * few seconds of "stamped" emphasis — solid fill, tilted -rotate-3 — reusing
+ * the same fade-rise reveal the customer's own order-status page already
+ * uses for its "Ready" stamp (../[orderNumber]/order-status-poller.tsx),
+ * plus an optional chime once the vendor has tapped "Enable sound" (Web
+ * Audio needs a user gesture to unlock — see ./README.md).
  */
 export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
   const [orders, setOrders] = useState(initialOrders);
@@ -158,7 +157,7 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
         </section>
 
         <section className="flex min-h-0 flex-col sm:border-l sm:border-dashed sm:border-border sm:pl-8">
-          <h2 className="mb-4 shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-status-ready">
+          <h2 className="mb-4 shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
             Ready for pickup
           </h2>
           {ready.length === 0 ? (
@@ -172,20 +171,13 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
                     <div
                       key={o.orderNumber}
                       className={cn(
-                        "flex size-32 flex-col items-center justify-center gap-1 rounded-2xl border-[3px] border-status-ready font-mono font-bold sm:size-40",
+                        "flex size-32 items-center justify-center rounded-2xl border-[3px] border-primary font-mono text-5xl font-bold sm:size-40 sm:text-6xl",
                         flashing
-                          ? "fade-rise -rotate-3 bg-status-ready text-primary-foreground shadow-lg"
-                          : "bg-status-ready/10 text-status-ready",
+                          ? "fade-rise -rotate-3 bg-primary text-primary-foreground shadow-lg"
+                          : "bg-primary/10 text-primary",
                       )}
                     >
-                      <span className="text-5xl sm:text-6xl">
-                        {o.displayNumber}
-                      </span>
-                      {flashing && (
-                        <span className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
-                          Just called
-                        </span>
-                      )}
+                      {o.displayNumber}
                     </div>
                   );
                 })}

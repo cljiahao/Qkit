@@ -56,20 +56,19 @@ notice.
   better on a dark ground with bright accents than a light one, and the
   choice follows from the use scene (a TV/kiosk screen at a market or
   event, day or night), not the visitor's own preference. A `ready` order
-  is styled after this app's own existing "ticket-stamp" reveal for the
-  customer's own status page
+  reuses the app's own warm `primary` accent (not a status/semantic
+  color) with the same "ticket-stamp" motion the customer's own status
+  page already uses for its "Ready" moment
   (`../[orderNumber]/order-status-poller.tsx`'s `status === "ready"`
-  block: `border-status-ready`/`text-status-ready`, `fade-rise`) rather
-  than an invented QSR-generic look — a steady Ready tile is a
-  `status-ready`-tinted, thick-bordered card; the moment one transitions
-  it flips to a solid `bg-status-ready` fill, tilts `-rotate-3` like a
-  freshly stamped ticket, reuses the same `fade-rise` reveal keyframe
-  (`globals.css`) the order-status page's own stamp already uses, and
-  carries a static "Just called" caption inside the tile (in normal
-  document flow, not absolutely positioned — an earlier version's
-  floating badge got clipped by the tile grid's own overflow guard) so a
-  `prefers-reduced-motion` viewer still gets a clear non-animated cue.
-  Preparing tiles stay a quiet, uncolored card — the Ready/Preparing
+  block: `fade-rise`) — a steady Ready tile is a `primary`-tinted,
+  thick-bordered card; the moment one transitions it flips to a solid
+  `bg-primary` fill and tilts `-rotate-3` like a freshly stamped ticket,
+  settling back to the steady tinted style once `FLASH_MS` elapses. An
+  earlier version also carried a "Just called" text badge on the tile —
+  dropped (both the original floating version, which got clipped by the
+  tile grid's own overflow guard, and a later in-flow version) as
+  unnecessary once the fill/tilt change alone reads clearly enough on its
+  own. Preparing tiles stay a quiet, uncolored card — the Ready/Preparing
   contrast is the entire point, so only Ready carries color. A
   currently-flashing order also sorts to the front of the Ready grid
   (ahead of the cap-visibility logic below), landing in the same
@@ -99,13 +98,13 @@ notice.
 - `queue-display.dom.test.tsx` — RTL tests for the Preparing/Ready
   grouping, each group's own empty state, that a poll updates the
   rendered orders, that only a genuine ready-transition (not an order
-  already ready on mount) gets the `fade-rise` stamp class and static
-  "Just called" caption, the silent-by-default chime behavior, the
-  "Enable sound" button's own click effect, a transient poll failure
-  (`getBoothQueueDisplay` returning `null`) keeping the last good state
-  instead of clearing the screen, each column's own render cap plus its
-  "+N more" line, and that a currently-flashing order still renders even
-  when the ready count is already past the cap.
+  already ready on mount) gets the `fade-rise` stamp class, the
+  silent-by-default chime behavior, the "Enable sound" button's own click
+  effect, a transient poll failure (`getBoothQueueDisplay` returning
+  `null`) keeping the last good state instead of clearing the screen,
+  each column's own render cap plus its "+N more" line, and that a
+  currently-flashing order still renders even when the ready count is
+  already past the cap.
 
 ## Connectivity
 
