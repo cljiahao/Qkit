@@ -13,6 +13,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   multi-section menu the fields used to sit below every item on the page,
   forcing a full scroll before a customer could even see them; now the
   fields are always one tap away regardless of menu length.
+- Public TV/second-screen queue display for one booth
+  (`/order/{boothId}/display`, linked from the booth list's new "Open TV
+  display" button) — answers Manfred's second-event AAR ask for a
+  customer-facing screen his "won't watch a phone" customers can glance at.
+  Groups active orders into Preparing/Ready for pickup, polling every 5s
+  (no realtime — the same public-read constraint the customer status page
+  already works around), and gives an order a few seconds of flash
+  animation the moment it transitions to ready, plus an optional chime
+  once the vendor taps "Enable sound" once to unlock it.
 
 ### Fixed
 

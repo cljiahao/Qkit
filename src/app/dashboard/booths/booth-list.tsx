@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { MediaImage } from "@/components/media-image";
 import { toast } from "sonner";
-import { Copy, Pencil, QrCode } from "lucide-react";
+import { Copy, Pencil, QrCode, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Ticket } from "@/components/ticket";
 
@@ -107,6 +107,21 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
                   aria-label="Copy order link"
                 >
                   <Copy className="size-3.5" />
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="rounded-lg"
+                  aria-label="Open TV display"
+                >
+                  <Link
+                    href={`/order/${booth.id}/display`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Tv className="size-3.5" />
+                  </Link>
                 </Button>
               </div>
             </div>
