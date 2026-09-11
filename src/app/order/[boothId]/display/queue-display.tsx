@@ -14,6 +14,14 @@ const POLL_MS = 5000;
 // matches that animation's own 4 × 0.8s run length, plus a small buffer.
 const FLASH_MS = 3500;
 
+// This is a TV screen — no scrolling — so each column caps how many tiles it
+// ever renders rather than overflowing off the bottom. Fixed numbers, not
+// measured against the real viewport (no ResizeObserver): simple, predictable,
+// easy to bump later if a vendor's screen visibly fits more or fewer. Ready
+// tiles are bigger than Preparing tiles, so its cap is lower.
+const MAX_VISIBLE_PREPARING = 12;
+const MAX_VISIBLE_READY = 8;
+
 interface Props {
   boothId: string;
   boothName: string;
@@ -82,9 +90,23 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
   const preparing = orders.filter((o) => o.status !== "ready");
   const ready = orders.filter((o) => o.status === "ready");
 
+  const visiblePreparing = preparing.slice(0, MAX_VISIBLE_PREPARING);
+  const hiddenPreparingCount = preparing.length - visiblePreparing.length;
+
+  // A currently-flashing order must never be capped out — that flash is the
+  // entire point of this screen. Give every justReady order a guaranteed
+  // slot, then fill the rest of the cap from the normal sorted order.
+  const flashingReady = ready.filter((o) => justReady.has(o.orderNumber));
+  const otherReady = ready.filter((o) => !justReady.has(o.orderNumber));
+  const visibleReady = [...flashingReady, ...otherReady].slice(
+    0,
+    MAX_VISIBLE_READY,
+  );
+  const hiddenReadyCount = ready.length - visibleReady.length;
+
   return (
-    <div className="min-h-screen bg-background px-8 py-10 sm:px-12">
-      <header className="mb-10 flex items-center justify-between gap-4">
+    <div className="flex h-screen flex-col overflow-hidden bg-background px-8 py-8 sm:px-12">
+      <header className="mb-8 flex shrink-0 items-center justify-between gap-4">
         <h1 className="font-display text-3xl font-semibold sm:text-4xl">
           {boothName}
         </h1>
@@ -103,49 +125,65 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
         )}
       </header>
 
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Preparing
-        </h2>
-        {preparing.length === 0 ? (
-          <p className="text-muted-foreground">No orders in progress</p>
-        ) : (
-          <div className="flex flex-wrap gap-4">
-            {preparing.map((o) => (
-              <div
-                key={o.orderNumber}
-                className="flex size-24 items-center justify-center rounded-2xl border border-border bg-card font-mono text-3xl font-bold sm:size-28 sm:text-4xl"
-              >
-                {o.displayNumber}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-8 sm:grid-cols-2">
+        <section className="flex min-h-0 flex-col">
+          <h2 className="mb-4 shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Preparing
+          </h2>
+          {preparing.length === 0 ? (
+            <p className="text-muted-foreground">No orders in progress</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap content-start gap-4 overflow-hidden">
+                {visiblePreparing.map((o) => (
+                  <div
+                    key={o.orderNumber}
+                    className="flex size-24 items-center justify-center rounded-2xl border border-border bg-card font-mono text-3xl font-bold sm:size-28 sm:text-4xl"
+                  >
+                    {o.displayNumber}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+              {hiddenPreparingCount > 0 && (
+                <p className="mt-3 shrink-0 text-sm text-muted-foreground">
+                  +{hiddenPreparingCount} more preparing
+                </p>
+              )}
+            </>
+          )}
+        </section>
 
-      <section>
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-          Ready for pickup
-        </h2>
-        {ready.length === 0 ? (
-          <p className="text-muted-foreground">Nothing ready yet</p>
-        ) : (
-          <div className="flex flex-wrap gap-6">
-            {ready.map((o) => (
-              <div
-                key={o.orderNumber}
-                className={cn(
-                  "flex size-32 items-center justify-center rounded-2xl border-4 border-primary bg-primary/10 font-mono text-5xl font-bold text-primary sm:size-40 sm:text-6xl",
-                  justReady.has(o.orderNumber) &&
-                    "queue-flash ring-8 ring-primary/40",
-                )}
-              >
-                {o.displayNumber}
+        <section className="flex min-h-0 flex-col">
+          <h2 className="mb-4 shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+            Ready for pickup
+          </h2>
+          {ready.length === 0 ? (
+            <p className="text-muted-foreground">Nothing ready yet</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap content-start gap-6 overflow-hidden">
+                {visibleReady.map((o) => (
+                  <div
+                    key={o.orderNumber}
+                    className={cn(
+                      "flex size-32 items-center justify-center rounded-2xl border-4 border-primary bg-primary/10 font-mono text-5xl font-bold text-primary sm:size-40 sm:text-6xl",
+                      justReady.has(o.orderNumber) &&
+                        "queue-flash ring-8 ring-primary/40",
+                    )}
+                  >
+                    {o.displayNumber}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+              {hiddenReadyCount > 0 && (
+                <p className="mt-3 shrink-0 text-sm text-muted-foreground">
+                  +{hiddenReadyCount} more ready
+                </p>
+              )}
+            </>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

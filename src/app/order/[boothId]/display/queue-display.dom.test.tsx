@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueueDisplay } from "./queue-display";
 import type { QueueDisplayOrder } from "./actions";
@@ -115,5 +115,49 @@ describe("QueueDisplay", () => {
 
     await waitFor(() => expect(getBoothQueueDisplay).toHaveBeenCalled());
     expect(screen.getByText("001")).toBeInTheDocument();
+  });
+
+  it("caps how many preparing tiles it renders, no scrolling on a TV screen", () => {
+    const many = Array.from({ length: 15 }, (_, i) => ({
+      orderNumber: String(i + 1).padStart(4, "0"),
+      displayNumber: String(i + 1).padStart(3, "0"),
+      status: "preparing" as const,
+    }));
+    renderDisplay(many);
+
+    const section = screen.getByText("Preparing").closest("section")!;
+    expect(section.querySelectorAll('[class*="size-24"]')).toHaveLength(12);
+    expect(section).toHaveTextContent("+3 more preparing");
+  });
+
+  it("caps how many ready tiles it renders", () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({
+      orderNumber: String(i + 1).padStart(4, "0"),
+      displayNumber: String(i + 1).padStart(3, "0"),
+      status: "ready" as const,
+    }));
+    renderDisplay(many);
+
+    const section = screen.getByText("Ready for pickup").closest("section")!;
+    expect(section.querySelectorAll('[class*="size-32"]')).toHaveLength(8);
+    expect(section).toHaveTextContent("+2 more ready");
+  });
+
+  it("never caps out a currently-flashing tile, even past the ready limit", async () => {
+    const stale = Array.from({ length: 8 }, (_, i) => ({
+      orderNumber: `stale-${i}`,
+      displayNumber: String(i + 101).padStart(3, "0"),
+      status: "ready" as const,
+    }));
+    getBoothQueueDisplay.mockResolvedValue([
+      ...stale,
+      { ...PREPARING, status: "ready" },
+    ]);
+    renderDisplay(stale);
+
+    await waitFor(() => {
+      const section = screen.getByText("Ready for pickup").closest("section")!;
+      expect(within(section).getByText("001")).toHaveClass("queue-flash");
+    });
   });
 });

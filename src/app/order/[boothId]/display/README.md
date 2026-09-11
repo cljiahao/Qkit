@@ -61,14 +61,28 @@ notice.
   would silently never play. An "Enable sound" button (shown until tapped)
   calls the shared `unlockAudio()` export once, meant to be tapped by the
   vendor when they set the screen up; if it's never tapped, the display
-  still works fully via the visual flash alone.
+  still works fully via the visual flash alone. Preparing and Ready for
+  pickup render side by side (`grid-cols-2` from `sm:` up, stacked below
+  it) rather than stacked full-width, so a long Preparing list can't push
+  Ready off the bottom. The whole page is `h-screen overflow-hidden` — a
+  TV screen has no scroll — so each column also caps how many tiles it
+  ever renders (`MAX_VISIBLE_PREPARING`/`MAX_VISIBLE_READY`, fixed numbers
+  tuned for a landscape screen rather than measured against the real
+  viewport) and shows a "+N more" line for whatever's hidden past the cap,
+  dropping the newest orders first (the ones a customer's been waiting on
+  longest stay visible). A currently-flashing order is never one of the
+  hidden ones, even past the cap — that flash is the entire point of this
+  screen, so it always gets a guaranteed slot ahead of older, already-
+  settled ready orders competing for the same limited space.
 - `queue-display.dom.test.tsx` — RTL tests for the Preparing/Ready grouping,
   each group's own empty state, that a poll updates the rendered orders,
   that only a genuine ready-transition (not an order already ready on
   mount) gets the flash class, the silent-by-default chime behavior, the
-  "Enable sound" button's own click effect, and that a transient poll
-  failure (`getBoothQueueDisplay` returning `null`) keeps showing the last
-  good state instead of clearing the screen.
+  "Enable sound" button's own click effect, a transient poll failure
+  (`getBoothQueueDisplay` returning `null`) keeping the last good state
+  instead of clearing the screen, each column's own render cap plus its
+  "+N more" line, and that a currently-flashing order still renders even
+  when the ready count is already past the cap.
 
 ## Connectivity
 
