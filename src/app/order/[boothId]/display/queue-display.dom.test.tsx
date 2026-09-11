@@ -78,31 +78,33 @@ describe("QueueDisplay", () => {
     );
   });
 
-  it("flashes a tile the moment it transitions to ready, silently by default", async () => {
+  it("stamps a tile the moment it transitions to ready, silently by default", async () => {
     getBoothQueueDisplay.mockResolvedValue([{ ...PREPARING, status: "ready" }]);
     renderDisplay([PREPARING]);
 
     await waitFor(() => {
-      const tile = screen.getByText("001");
-      expect(tile).toHaveClass("queue-flash");
+      const tile = screen.getByText("001").parentElement!;
+      expect(tile).toHaveClass("fade-rise");
     });
     expect(alerts.playReadyChime).not.toHaveBeenCalled();
   });
 
-  it("does not flash an order that was already ready before the page loaded", async () => {
+  it("does not stamp an order that was already ready before the page loaded", async () => {
     getBoothQueueDisplay.mockResolvedValue([READY]);
     renderDisplay([READY]);
 
     await waitFor(() => expect(getBoothQueueDisplay).toHaveBeenCalled());
-    expect(screen.getByText("002")).not.toHaveClass("queue-flash");
-    expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+    expect(screen.getByText("002").parentElement!).not.toHaveClass("fade-rise");
+    expect(screen.queryByText("Just called")).not.toBeInTheDocument();
   });
 
-  it("marks a just-ready tile with a static NEW badge, not just the animation", async () => {
+  it("marks a just-ready tile with a static 'Just called' caption, not just the animation", async () => {
     getBoothQueueDisplay.mockResolvedValue([{ ...PREPARING, status: "ready" }]);
     renderDisplay([PREPARING]);
 
-    await waitFor(() => expect(screen.getByText("NEW")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Just called")).toBeInTheDocument(),
+    );
   });
 
   it("unlocks audio and hides its own button once sound is enabled", async () => {
@@ -165,7 +167,9 @@ describe("QueueDisplay", () => {
 
     await waitFor(() => {
       const section = screen.getByText("Ready for pickup").closest("section")!;
-      expect(within(section).getByText("001")).toHaveClass("queue-flash");
+      expect(within(section).getByText("001").parentElement!).toHaveClass(
+        "fade-rise",
+      );
     });
   });
 });

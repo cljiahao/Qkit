@@ -269,27 +269,7 @@ html::-webkit-scrollbar {
 .hold-fill-bar {
   animation: hold-fill 3s linear forwards;
 }
-/* Attention pulse on the booth queue-display TV screen (queue-display.tsx)
-   when an order just flipped to "ready" — a few seconds of motion on top of
-   the tile's own static ring/background emphasis, which stays regardless of
-   reduced-motion. */
-@keyframes queue-flash {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.06);
-  }
-}
-.queue-flash {
-  animation: queue-flash 0.8s ease-in-out 4;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .queue-flash {
-    animation: none;
-  }
   .fade-rise {
     animation: none;
   }

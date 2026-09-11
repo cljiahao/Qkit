@@ -9,9 +9,8 @@ import { getBoothQueueDisplay, type QueueDisplayOrder } from "./actions";
 import type { OrderStatus } from "@/lib/types";
 
 const POLL_MS = 5000;
-// How long a just-ready tile keeps its extra flash animation (queue-flash,
-// globals.css) before settling into the normal "ready" tile style. Roughly
-// matches that animation's own 4 × 0.8s run length, plus a small buffer.
+// How long a just-ready tile keeps its "stamped" look (solid fill, tilted,
+// "Just called" caption) before settling into the steady ready-tile style.
 const FLASH_MS = 3500;
 
 // This is a TV screen — no scrolling — so each column caps how many tiles it
@@ -31,9 +30,12 @@ interface Props {
 /**
  * Public TV/second-screen queue display for one booth. Polls (no realtime —
  * see ./actions.ts) and, when an order transitions into "ready", gives it a
- * few seconds of flash animation on top of the section's own static
- * emphasis, plus an optional chime once the vendor has tapped "Enable
- * sound" (Web Audio needs a user gesture to unlock — see ./README.md).
+ * few seconds of "stamped" emphasis — solid fill, tilted, a "Just called"
+ * caption, reusing the same fade-rise reveal and status-ready color the
+ * customer's own order-status page already uses for its "Ready" stamp
+ * (../[orderNumber]/order-status-poller.tsx) — plus an optional chime once
+ * the vendor has tapped "Enable sound" (Web Audio needs a user gesture to
+ * unlock — see ./README.md).
  */
 export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
   const [orders, setOrders] = useState(initialOrders);
@@ -105,8 +107,8 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
   const hiddenReadyCount = ready.length - visibleReady.length;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background px-8 py-8 sm:px-12">
-      <header className="mb-8 flex shrink-0 items-center justify-between gap-4">
+    <div className="dark flex h-screen flex-col overflow-hidden bg-background px-8 py-8 text-foreground sm:px-12">
+      <header className="flex shrink-0 items-center justify-between gap-4">
         <h1 className="font-display text-3xl font-semibold sm:text-4xl">
           {boothName}
         </h1>
@@ -125,7 +127,9 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
         )}
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-8 sm:grid-cols-2">
+      <div className="perforation my-6 shrink-0" />
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-0">
         <section className="flex min-h-0 flex-col">
           <h2 className="mb-4 shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Preparing
@@ -145,7 +149,7 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
                 ))}
               </div>
               {hiddenPreparingCount > 0 && (
-                <p className="mt-3 shrink-0 text-sm text-muted-foreground">
+                <p className="mt-3 shrink-0 border-t border-dashed border-border pt-2 text-sm text-muted-foreground">
                   +{hiddenPreparingCount} more preparing
                 </p>
               )}
@@ -153,8 +157,8 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
           )}
         </section>
 
-        <section className="flex min-h-0 flex-col">
-          <h2 className="mb-4 shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+        <section className="flex min-h-0 flex-col sm:border-l sm:border-dashed sm:border-border sm:pl-8">
+          <h2 className="mb-4 shrink-0 text-sm font-semibold uppercase tracking-[0.18em] text-status-ready">
             Ready for pickup
           </h2>
           {ready.length === 0 ? (
@@ -162,26 +166,32 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
           ) : (
             <>
               <div className="flex flex-wrap content-start gap-6 overflow-hidden">
-                {visibleReady.map((o) => (
-                  <div
-                    key={o.orderNumber}
-                    className={cn(
-                      "relative flex size-32 items-center justify-center rounded-2xl bg-primary font-mono text-5xl font-bold text-primary-foreground shadow-lg sm:size-40 sm:text-6xl",
-                      justReady.has(o.orderNumber) &&
-                        "queue-flash ring-4 ring-background",
-                    )}
-                  >
-                    {justReady.has(o.orderNumber) && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-background px-2.5 py-0.5 text-xs font-semibold tracking-wide text-primary shadow">
-                        NEW
+                {visibleReady.map((o) => {
+                  const flashing = justReady.has(o.orderNumber);
+                  return (
+                    <div
+                      key={o.orderNumber}
+                      className={cn(
+                        "flex size-32 flex-col items-center justify-center gap-1 rounded-2xl border-[3px] border-status-ready font-mono font-bold sm:size-40",
+                        flashing
+                          ? "fade-rise -rotate-3 bg-status-ready text-primary-foreground shadow-lg"
+                          : "bg-status-ready/10 text-status-ready",
+                      )}
+                    >
+                      <span className="text-5xl sm:text-6xl">
+                        {o.displayNumber}
                       </span>
-                    )}
-                    {o.displayNumber}
-                  </div>
-                ))}
+                      {flashing && (
+                        <span className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
+                          Just called
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               {hiddenReadyCount > 0 && (
-                <p className="mt-3 shrink-0 text-sm text-muted-foreground">
+                <p className="mt-3 shrink-0 border-t border-dashed border-border pt-2 text-sm text-muted-foreground">
                   +{hiddenReadyCount} more ready
                 </p>
               )}
