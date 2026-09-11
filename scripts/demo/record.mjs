@@ -308,10 +308,15 @@ async function main() {
     await beat(500);
     await glideClick(page, page.getByRole("button", { name: /Add to order/ }));
     await beat(600);
-    await slowType(page, page.locator("#customerName"), CUSTOMER);
+    // The sticky bar is a checkout trigger — it opens a bottom sheet holding
+    // the name field and the real submit.
+    await glideClick(page, page.getByRole("button", { name: /Continue/ }));
+    await beat(700); // sheet slides up
+    const checkoutSheet = page.getByRole("dialog");
+    await slowType(page, checkoutSheet.locator("#customerName"), CUSTOMER);
     await glideClick(
       page,
-      page.getByRole("button", { name: /Get my order number/ }),
+      checkoutSheet.getByRole("button", { name: /Get my order number/ }),
     );
     await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
@@ -339,8 +344,12 @@ async function main() {
       waitUntil: "domcontentloaded",
     });
     await bgPage.getByRole("button", { name: "Add" }).first().click();
-    await bgPage.locator("#customerName").fill(WALK_IN);
-    await bgPage.getByRole("button", { name: /Get my order number/ }).click();
+    await bgPage.getByRole("button", { name: /Continue/ }).click();
+    const bgCheckout = bgPage.getByRole("dialog");
+    await bgCheckout.locator("#customerName").fill(WALK_IN);
+    await bgCheckout
+      .getByRole("button", { name: /Get my order number/ })
+      .click();
     await bgPage.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
     });
@@ -396,10 +405,13 @@ async function main() {
     // A plain (non-customizable) item one-taps onto the order.
     await glideClick(page, page.getByRole("button", { name: "Add" }).first());
     await beat(400);
-    await slowType(page, page.locator("#customerName"), PAYING_CUSTOMER);
+    await glideClick(page, page.getByRole("button", { name: /Continue/ }));
+    await beat(700); // sheet slides up
+    const payCheckout = page.getByRole("dialog");
+    await slowType(page, payCheckout.locator("#customerName"), PAYING_CUSTOMER);
     await glideClick(
       page,
-      page.getByRole("button", { name: /Get my order number/ }),
+      payCheckout.getByRole("button", { name: /Get my order number/ }),
     );
     await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,

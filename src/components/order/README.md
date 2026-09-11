@@ -21,30 +21,46 @@ closed, remaining })`: the full menu + cart + checkout UI. Seeds the cart on
   reconciling either against the live menu/stock (`reconcileReorder`).
   Tracks a `Map<string, CartItem>` cart keyed by `cartKey(menuItemId,
 options)`, persists it on every change (`saveCart`), enforces per-item
-  stock caps (`remainingFor`/`blockedByStock`), opens `ItemCustomizer` for
-  items with option groups, and on submit calls `placeOrder`
-  (`@/app/o/[code]/actions`) with a stable per-submit idempotency key
-  (retried once on a network error), then clears the cart, stashes an
-  `addRecentOrder` entry, and navigates to the order-status page. Also
-  collects an optional "Phone number (optional)" field next to the name
-  field — a genuinely optional convenience (cross-kit customer identity,
-  migration `0075`), never required to submit — passed through
-  `placeOrder`'s `customerPhone` input. Menu items render grouped under
-  `menuCategories` (`@/lib/menu-sections`'s `groupByCategory`) with a jump
-  nav once there are 2+ non-empty sections; a booth with 0 or 1 category
-  falls back to the original flat "Menu" list, no chrome. Each card row also
-  renders `AllergenBadges` (`@/components/allergen-badges`, 2026-09-01) from
-  `item.allergens` — works even while the booth is closed and browse-only,
-  since it doesn't depend on opening `ItemCustomizer` (which items with no
-  option groups never even offer a button for).
+  stock caps (`remainingFor`/`blockedByStock`), and opens `ItemCustomizer` for
+  items with option groups. The "Your order" cart summary is collapsed by
+  default (`cartExpanded` state, toggled by tapping its header) so it doesn't
+  push a long multi-section menu further down the page — the collapsed header
+  still shows the live item count/total, and expanding it is the only way to
+  adjust or remove a customized (option-group) item, since those don't get
+  the inline +/- the plain-item cards do. The sticky bottom bar is a trigger,
+  not a submit button: tapping it opens a bottom `Sheet` ("Who's this for?")
+  holding an itemized order recap (each line's name, options, and price,
+  between perforation dividers echoing the `Ticket` component's own stub
+  styling) so the customer can see exactly what they're confirming, the name
+  and optional phone fields, the real submit, and a "Back to menu" close
+  action — this keeps checkout a single short step regardless of how long
+  the menu above it is (a multi-section menu no longer buries the fields at
+  the bottom of a long scroll). Submit calls `placeOrder` (`@/app/o/[code]/actions`) with a
+  stable per-submit idempotency key (retried once on a network error), then
+  clears the cart, stashes an `addRecentOrder` entry, and navigates to the
+  order-status page. The phone field is a genuinely optional convenience
+  (cross-kit customer identity, migration `0075`), never required to
+  submit, passed through `placeOrder`'s `customerPhone` input. Menu items
+  render grouped under `menuCategories` (`@/lib/menu-sections`'s
+  `groupByCategory`) with a jump nav once there are 2+ non-empty sections;
+  a booth with 0 or 1 category falls back to the original flat "Menu" list,
+  no chrome. Each card row also renders `AllergenBadges`
+  (`@/components/allergen-badges`, 2026-09-01) from `item.allergens` —
+  works even while the booth is closed and browse-only, since it doesn't
+  depend on opening `ItemCustomizer` (which items with no option groups
+  never even offer a button for).
 - `order-form.dom.test.tsx` — RTL tests covering cart add/increment/decrement,
   stock-cap blocking, reorder seeding/reconciliation, the closed-booth submit
   guard, the placeOrder retry-then-fail path, the phone field (renders,
   optional — submits with it blank, passes its value through when filled),
   category sections (flat fallback for 0/1 category, grouped headings +
   jump nav for 2+, unmatched/stale category ids bucketed into "Other" last),
-  and the card-level allergen badges (one tappable icon per tag, nothing for
-  an item with none, tap reveals the name — works with the booth closed).
+  the card-level allergen badges (one tappable icon per tag, nothing for
+  an item with none, tap reveals the name — works with the booth closed),
+  the cart summary's collapsed-by-default/expand-on-tap behavior, that the
+  sticky trigger opens the checkout sheet (itemized recap included) rather
+  than submitting directly, and that an empty name inside the sheet focuses
+  the field instead of calling `placeOrder`.
 - `recent-orders.tsx` — `RecentOrders({ boothId })`: reads
   `getRecentOrdersForBooth` from localStorage post-mount (avoids an SSR
   hydration mismatch — there's no server-side customer identity), rendering

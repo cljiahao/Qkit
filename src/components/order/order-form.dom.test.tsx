@@ -96,21 +96,41 @@ describe("OrderForm cart", () => {
     expect(screen.getByText("Your order")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 1 item · \$3\.50/,
+        name: /Continue · 1 item · \$3\.50/,
       }),
     ).toBeEnabled();
+  });
+
+  it("keeps the cart summary collapsed until tapped", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    const toggle = screen.getByRole("button", { name: /Your order/ });
+    const summary = toggle.closest("section")!;
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(summary).queryByText("Kopi")).not.toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(summary).getByText("Kopi")).toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(summary).queryByText("Kopi")).not.toBeInTheDocument();
   });
 
   it("increments and decrements, removing at zero", async () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByText("Your order")); // expand the collapsed summary
     await user.click(screen.getByRole("button", { name: "Increase Kopi" }));
 
     // 2 × $3.50 = $7.00 in the submit bar.
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 2 items · \$7\.00/,
+        name: /Continue · 2 items · \$7\.00/,
       }),
     ).toBeInTheDocument();
 
@@ -130,6 +150,8 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: "Customize" }));
     await user.click(screen.getByRole("button", { name: "stub-confirm" }));
 
+    // The cart summary starts collapsed — expand it to see line items.
+    await user.click(screen.getByText("Your order"));
     const cart = screen.getByText("Your order").closest("section")!;
     expect(within(cart).getByText("Teh")).toBeInTheDocument();
     expect(within(cart).getByText("Iced")).toBeInTheDocument();
@@ -142,23 +164,53 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: "stub-confirm" }));
 
     // Teh is $3.00 base + $1.00 for the priced "Iced" choice = $4.00 — both
-    // the cart line price and the order total reflect it.
+    // the cart line price and the order total reflect it (expand to see them).
+    await user.click(screen.getByText("Your order"));
     const cart = screen.getByText("Your order").closest("section")!;
     expect(within(cart).getAllByText("$4.00")).toHaveLength(2);
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 1 item · \$4\.00/,
+        name: /Continue · 1 item · \$4\.00/,
       }),
     ).toBeEnabled();
+  });
+
+  it("opens the checkout sheet from the sticky trigger, not a direct submit", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Who's this for?" }),
+    ).toBeInTheDocument();
+    expect(placeOrder).not.toHaveBeenCalled();
+  });
+
+  it("lists what's being ordered inside the checkout sheet", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" })); // Kopi
+    await user.click(screen.getByRole("button", { name: "Customize" })); // Teh
+    await user.click(screen.getByRole("button", { name: "stub-confirm" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Kopi")).toBeInTheDocument();
+    expect(within(dialog).getByText("Teh")).toBeInTheDocument();
+    expect(within(dialog).getByText("Iced")).toBeInTheDocument();
   });
 
   it("submits the order, remembers it, and navigates to the status page", async () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -190,17 +242,21 @@ describe("OrderForm cart", () => {
         customerName: "Bo",
       }),
     );
+    const user = userEvent.setup();
     renderForm();
 
     // Cart prefilled (2 × $3.50), name filled, seed consumed (read-once).
     expect(await screen.findByText("Your order")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 2 items · \$7\.00/,
+        name: /Continue · 2 items · \$7\.00/,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Your name")).toHaveValue("Bo");
     expect(window.sessionStorage.getItem("qkit:reorder:b1")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Your name")).toHaveValue("Bo");
   });
 
   it("shows a placeholder when the booth has no menu yet", () => {
@@ -222,7 +278,7 @@ describe("OrderForm cart", () => {
     expect(await screen.findByText("Your order")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 2 items · \$7\.00/,
+        name: /Continue · 2 items · \$7\.00/,
       }),
     ).toBeInTheDocument();
     expect(window.sessionStorage.getItem("qkit:cart:b1")).not.toBeNull();
@@ -251,6 +307,7 @@ describe("OrderForm cart", () => {
   });
 
   it("warns when only some persisted items sold out", async () => {
+    const user = userEvent.setup();
     window.sessionStorage.setItem(
       "qkit:cart:b1",
       JSON.stringify([
@@ -267,7 +324,8 @@ describe("OrderForm cart", () => {
       />,
     );
     // Teh survives, Kopi is gone → one honest heads-up.
-    const cart = (await screen.findByText("Your order")).closest("section")!;
+    await user.click(await screen.findByText("Your order"));
+    const cart = screen.getByText("Your order").closest("section")!;
     expect(within(cart).getByText("Teh")).toBeInTheDocument();
     expect(within(cart).queryByText("Kopi")).not.toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith("1 item sold out and was removed");
@@ -280,9 +338,11 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(window.sessionStorage.getItem("qkit:cart:b1")).toContain("kopi");
 
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -296,9 +356,11 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -319,9 +381,11 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
@@ -343,14 +407,16 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
 
-    const phoneField = screen.getByLabelText("Phone number (optional)");
+    const phoneField = within(dialog).getByLabelText("Phone number (optional)");
     expect(phoneField).toBeInTheDocument();
     expect(phoneField).toHaveValue("");
 
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -367,13 +433,15 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Your name"), "Ada");
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.type(
-      screen.getByLabelText("Phone number (optional)"),
+      within(dialog).getByLabelText("Phone number (optional)"),
       "+6591234567",
     );
     await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
     );
 
     await waitFor(() =>
@@ -386,6 +454,22 @@ describe("OrderForm cart", () => {
         expect.stringMatching(/^[0-9a-f-]{36}$/),
       ),
     );
+  });
+
+  it("blocks submit and shows an error when the name is left blank", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
+    );
+
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText("Your name")).toHaveFocus(),
+    );
+    expect(placeOrder).not.toHaveBeenCalled();
   });
 
   it("disables ordering when the booth is closed", () => {

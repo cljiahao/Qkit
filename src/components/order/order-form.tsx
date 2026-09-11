@@ -5,10 +5,19 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { ChevronDown, Minus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { ZoomableImage } from "@/components/zoomable-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { AllergenBadges } from "@/components/allergen-badges";
@@ -60,6 +69,8 @@ export function OrderForm({
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [cartExpanded, setCartExpanded] = useState(false);
   const hydrated = useRef(false);
 
   const {
@@ -412,13 +423,19 @@ export function OrderForm({
     );
   }
 
-  let submitLabel: string;
-  if (closed) submitLabel = "Booth closed";
-  else if (submitting) submitLabel = "Placing order…";
-  else if (!hasItems) submitLabel = "Add items to order";
+  // The trigger just opens the sheet, so it reads as a step, not the final
+  // action — "Get my order number" is reserved for the sheet's own submit,
+  // the moment that phrase is actually true.
+  let triggerLabel: string;
+  if (closed) triggerLabel = "Booth closed";
+  else if (!hasItems) triggerLabel = "Add items to order";
   else if (cartPriced)
-    submitLabel = `Get my order number · ${count(itemCount, "item")} · ${formatPrice(total)}`;
-  else submitLabel = `Get my order number · ${count(itemCount, "item")}`;
+    triggerLabel = `Continue · ${count(itemCount, "item")} · ${formatPrice(total)}`;
+  else triggerLabel = `Continue · ${count(itemCount, "item")}`;
+
+  // The sheet already shows the item count/total in its own recap row, so its
+  // submit button repeats only the priming phrase, not the full trigger label.
+  const confirmLabel = submitting ? "Placing order…" : "Get my order number";
 
   // A booth with no menu yet: show a friendly placeholder instead of an empty
   // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).
@@ -434,7 +451,7 @@ export function OrderForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <div className="space-y-8">
       {/* Menu items */}
       {grouped ? (
         <>
@@ -467,155 +484,276 @@ export function OrderForm({
         </section>
       )}
 
-      {/* Cart summary */}
+      {/* Cart summary — collapsed by default so a long menu doesn't push the
+          summary between the customer and the rest of the items. */}
       {hasItems && (
         <Ticket as="section" shadow="none" radius="xl">
-          <h2 className="flex items-center gap-2 px-4 pt-4 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            <ShoppingCart className="size-3.5" />
-            Your order
-          </h2>
-          <div className="perforation mx-4" />
-          <div className="space-y-3 px-4 py-3">
-            {cartEntries.map(([key, item]) => {
-              const options = formatOptions(item.options);
-              return (
-                <div
-                  key={key}
-                  className="flex items-start justify-between gap-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.name}</p>
-                    {options && (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {options}
-                      </p>
-                    )}
-                    {item.price_cents != null && (
-                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                        {formatPrice(item.price_cents * item.quantity)}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-11 rounded-lg"
-                      onClick={() => decrement(key)}
-                      aria-label={`Decrease ${item.name}`}
-                    >
-                      <Minus className="size-3" />
-                    </Button>
-                    <span className="w-4 text-center font-mono text-sm font-bold">
-                      {item.quantity}
-                    </span>
-                    <Button
-                      type="button"
-                      size="icon"
-                      className="size-11 rounded-lg"
-                      onClick={() => increment(key)}
-                      aria-label={`Increase ${item.name}`}
-                    >
-                      <Plus className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {cartPriced && (
+          <button
+            type="button"
+            onClick={() => setCartExpanded((v) => !v)}
+            aria-expanded={cartExpanded}
+            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <ShoppingCart className="size-3.5" />
+              Your order
+            </span>
+            <span className="flex items-center gap-2 font-mono text-sm font-semibold">
+              {count(itemCount, "item")}
+              {cartPriced && ` · ${formatPrice(total)}`}
+              <ChevronDown
+                className={cn(
+                  "size-4 text-muted-foreground transition-transform",
+                  cartExpanded && "rotate-180",
+                )}
+              />
+            </span>
+          </button>
+          {cartExpanded && (
             <>
               <div className="perforation mx-4" />
-              <div className="flex items-baseline justify-between px-4 py-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Total
-                </span>
-                <span className="font-mono text-lg font-bold">
-                  {formatPrice(total)}
-                </span>
+              <div className="space-y-3 px-4 py-3">
+                {cartEntries.map(([key, item]) => {
+                  const options = formatOptions(item.options);
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-start justify-between gap-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {item.name}
+                        </p>
+                        {options && (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {options}
+                          </p>
+                        )}
+                        {item.price_cents != null && (
+                          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                            {formatPrice(item.price_cents * item.quantity)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-11 rounded-lg"
+                          onClick={() => decrement(key)}
+                          aria-label={`Decrease ${item.name}`}
+                        >
+                          <Minus className="size-3" />
+                        </Button>
+                        <span className="w-4 text-center font-mono text-sm font-bold">
+                          {item.quantity}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="size-11 rounded-lg"
+                          onClick={() => increment(key)}
+                          aria-label={`Increase ${item.name}`}
+                        >
+                          <Plus className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              {cartPriced && (
+                <>
+                  <div className="perforation mx-4" />
+                  <div className="flex items-baseline justify-between px-4 py-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Total
+                    </span>
+                    <span className="font-mono text-lg font-bold">
+                      {formatPrice(total)}
+                    </span>
+                  </div>
+                </>
+              )}
             </>
           )}
         </Ticket>
       )}
 
-      {/* Customer name */}
-      <section className="space-y-2.5">
-        <Label
-          htmlFor="customerName"
-          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-        >
-          Your name
-        </Label>
-        <Input
-          id="customerName"
-          placeholder="So we can call you when it's ready"
-          className="h-12 rounded-xl text-base"
-          aria-invalid={!!errors.customerName}
-          aria-describedby={
-            errors.customerName ? "customerName-error" : undefined
-          }
-          {...register("customerName")}
-        />
-        {errors.customerName && (
-          <p
-            id="customerName-error"
-            className="text-sm font-medium text-destructive"
-          >
-            {errors.customerName.message}
-          </p>
-        )}
-      </section>
-
-      {/* Customer phone — optional, cross-kit customer identity */}
-      <section className="space-y-2.5">
-        <Label
-          htmlFor="customerPhone"
-          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-        >
-          Phone number (optional)
-        </Label>
-        <Input
-          id="customerPhone"
-          type="tel"
-          placeholder="So we can recognize you next time"
-          className="h-12 rounded-xl text-base"
-          aria-invalid={!!errors.customerPhone}
-          aria-describedby={
-            errors.customerPhone ? "customerPhone-error" : undefined
-          }
-          {...register("customerPhone")}
-        />
-        {errors.customerPhone && (
-          <p
-            id="customerPhone-error"
-            className="text-sm font-medium text-destructive"
-          >
-            {errors.customerPhone.message}
-          </p>
-        )}
-      </section>
-
-      {/* Sticky submit bar */}
+      {/* Sticky checkout trigger */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 px-5 py-3.5 backdrop-blur-md">
         <div className="mx-auto max-w-lg">
           <Button
-            type="submit"
+            type="button"
             size="lg"
             className="h-14 w-full rounded-xl text-base font-semibold"
-            disabled={submitting || !hasItems || closed}
+            onClick={() => setCheckoutOpen(true)}
+            disabled={!hasItems || closed}
           >
-            {submitLabel}
+            {triggerLabel}
           </Button>
         </div>
       </div>
+
+      <Sheet
+        open={checkoutOpen}
+        onOpenChange={(open) => {
+          if (!submitting) setCheckoutOpen(open);
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          className="mx-auto flex max-h-[85dvh] w-full max-w-lg flex-col gap-0 overflow-hidden rounded-t-2xl p-0"
+        >
+          <SheetHeader className="shrink-0 gap-1 pt-5 pb-3">
+            <SheetTitle className="font-display text-xl font-semibold">
+              Who&apos;s this for?
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Add your name to confirm this order.
+            </SheetDescription>
+          </SheetHeader>
+
+          {hasItems && (
+            <>
+              <div className="perforation shrink-0" />
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-2.5">
+                {cartEntries.map(([key, item]) => {
+                  const options = formatOptions(item.options);
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-baseline justify-between gap-3 text-sm"
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {item.quantity > 1 && (
+                          <span className="font-mono font-semibold">
+                            {item.quantity}×{" "}
+                          </span>
+                        )}
+                        {item.name}
+                        {options && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {options}
+                          </span>
+                        )}
+                      </span>
+                      {item.price_cents != null && (
+                        <span className="shrink-0 font-mono text-muted-foreground">
+                          {formatPrice(item.price_cents * item.quantity)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {cartPriced && (
+                <>
+                  <div className="perforation shrink-0" />
+                  <div className="flex shrink-0 items-baseline justify-between px-4 py-2.5">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Total
+                    </span>
+                    <span className="font-mono text-sm font-semibold">
+                      {formatPrice(total)}
+                    </span>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+          <div className="perforation shrink-0" />
+
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex shrink-0 flex-col gap-5 px-4 pt-4"
+          >
+            <section className="space-y-2.5">
+              <Label
+                htmlFor="customerName"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Your name
+              </Label>
+              <Input
+                id="customerName"
+                placeholder="So we can call you when it's ready"
+                autoFocus
+                className="h-12 rounded-xl text-base"
+                aria-invalid={!!errors.customerName}
+                aria-describedby={
+                  errors.customerName ? "customerName-error" : undefined
+                }
+                {...register("customerName")}
+              />
+              {errors.customerName && (
+                <p
+                  id="customerName-error"
+                  className="text-sm font-medium text-destructive"
+                >
+                  {errors.customerName.message}
+                </p>
+              )}
+            </section>
+
+            <section className="space-y-2.5">
+              <Label
+                htmlFor="customerPhone"
+                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+              >
+                Phone number (optional)
+              </Label>
+              <Input
+                id="customerPhone"
+                type="tel"
+                placeholder="So we can recognize you next time"
+                className="h-12 rounded-xl text-base"
+                aria-invalid={!!errors.customerPhone}
+                aria-describedby={
+                  errors.customerPhone ? "customerPhone-error" : undefined
+                }
+                {...register("customerPhone")}
+              />
+              {errors.customerPhone && (
+                <p
+                  id="customerPhone-error"
+                  className="text-sm font-medium text-destructive"
+                >
+                  {errors.customerPhone.message}
+                </p>
+              )}
+            </section>
+
+            <SheetFooter className="gap-2 px-0 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <Button
+                type="submit"
+                size="lg"
+                className="h-14 w-full rounded-xl text-base font-semibold"
+                disabled={submitting || !hasItems || closed}
+              >
+                {confirmLabel}
+              </Button>
+              <SheetClose asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-full font-normal text-muted-foreground"
+                  disabled={submitting}
+                >
+                  Back to menu
+                </Button>
+              </SheetClose>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
 
       <ItemCustomizer
         item={customizing}
         onClose={() => setCustomizing(null)}
         onAdd={addConfigured}
       />
-    </form>
+    </div>
   );
 }

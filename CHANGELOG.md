@@ -6,6 +6,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Customer checkout moved from inline name/phone fields at the bottom of the
+  order page into a bottom `Sheet` opened by the sticky CTA. On a long,
+  multi-section menu the fields used to sit below every item on the page,
+  forcing a full scroll before a customer could even see them; now the
+  fields are always one tap away regardless of menu length.
+
 ### Fixed
 
 - `merqoBaseUrl()`'s hardcoded fallback (`legal-gate.ts`, `legal/accept/
