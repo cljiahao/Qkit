@@ -618,7 +618,7 @@ export function OrderForm({
           {hasItems && (
             <>
               <div className="perforation" />
-              <div className="max-h-32 space-y-2 overflow-y-auto px-4 py-2.5">
+              <div className="space-y-2 px-4 py-2.5">
                 {cartEntries.map(([key, item]) => {
                   const options = formatOptions(item.options);
                   return (
@@ -667,7 +667,7 @@ export function OrderForm({
 
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 pt-4"
+            className="flex flex-col gap-5 px-4 pt-4"
           >
             <section className="space-y-2.5">
               <Label
