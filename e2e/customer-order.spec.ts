@@ -28,7 +28,7 @@ test("customer places an order and reaches the live status page", async ({
 
   // The sticky bar is a checkout trigger, not a direct submit — it opens a
   // bottom sheet holding the name field and the real submit.
-  await page.getByRole("button", { name: /Get my order number/ }).click();
+  await page.getByRole("button", { name: /Continue/ }).click();
   const checkout = page.getByRole("dialog");
   await checkout.getByLabel("Your name").fill("Ada");
   await checkout.getByRole("button", { name: /Get my order number/ }).click();

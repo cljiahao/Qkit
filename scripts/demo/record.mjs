@@ -310,10 +310,7 @@ async function main() {
     await beat(600);
     // The sticky bar is a checkout trigger — it opens a bottom sheet holding
     // the name field and the real submit.
-    await glideClick(
-      page,
-      page.getByRole("button", { name: /Get my order number/ }),
-    );
+    await glideClick(page, page.getByRole("button", { name: /Continue/ }));
     await beat(700); // sheet slides up
     const checkoutSheet = page.getByRole("dialog");
     await slowType(page, checkoutSheet.locator("#customerName"), CUSTOMER);
@@ -347,7 +344,7 @@ async function main() {
       waitUntil: "domcontentloaded",
     });
     await bgPage.getByRole("button", { name: "Add" }).first().click();
-    await bgPage.getByRole("button", { name: /Get my order number/ }).click();
+    await bgPage.getByRole("button", { name: /Continue/ }).click();
     const bgCheckout = bgPage.getByRole("dialog");
     await bgCheckout.locator("#customerName").fill(WALK_IN);
     await bgCheckout
@@ -408,10 +405,7 @@ async function main() {
     // A plain (non-customizable) item one-taps onto the order.
     await glideClick(page, page.getByRole("button", { name: "Add" }).first());
     await beat(400);
-    await glideClick(
-      page,
-      page.getByRole("button", { name: /Get my order number/ }),
-    );
+    await glideClick(page, page.getByRole("button", { name: /Continue/ }));
     await beat(700); // sheet slides up
     const payCheckout = page.getByRole("dialog");
     await slowType(page, payCheckout.locator("#customerName"), PAYING_CUSTOMER);

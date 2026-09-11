@@ -422,13 +422,15 @@ export function OrderForm({
     );
   }
 
-  let submitLabel: string;
-  if (closed) submitLabel = "Booth closed";
-  else if (submitting) submitLabel = "Placing order…";
-  else if (!hasItems) submitLabel = "Add items to order";
+  // The trigger just opens the sheet, so it reads as a step, not the final
+  // action — "Get my order number" is reserved for the sheet's own submit,
+  // the moment that phrase is actually true.
+  let triggerLabel: string;
+  if (closed) triggerLabel = "Booth closed";
+  else if (!hasItems) triggerLabel = "Add items to order";
   else if (cartPriced)
-    submitLabel = `Get my order number · ${count(itemCount, "item")} · ${formatPrice(total)}`;
-  else submitLabel = `Get my order number · ${count(itemCount, "item")}`;
+    triggerLabel = `Continue · ${count(itemCount, "item")} · ${formatPrice(total)}`;
+  else triggerLabel = `Continue · ${count(itemCount, "item")}`;
 
   // The sheet already shows the item count/total in its own recap row, so its
   // submit button repeats only the priming phrase, not the full trigger label.
@@ -564,7 +566,7 @@ export function OrderForm({
             onClick={() => setCheckoutOpen(true)}
             disabled={!hasItems || closed}
           >
-            {submitLabel}
+            {triggerLabel}
           </Button>
         </div>
       </div>

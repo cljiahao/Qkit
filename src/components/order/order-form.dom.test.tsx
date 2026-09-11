@@ -96,7 +96,7 @@ describe("OrderForm cart", () => {
     expect(screen.getByText("Your order")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 1 item · \$3\.50/,
+        name: /Continue · 1 item · \$3\.50/,
       }),
     ).toBeEnabled();
   });
@@ -110,7 +110,7 @@ describe("OrderForm cart", () => {
     // 2 × $3.50 = $7.00 in the submit bar.
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 2 items · \$7\.00/,
+        name: /Continue · 2 items · \$7\.00/,
       }),
     ).toBeInTheDocument();
 
@@ -147,7 +147,7 @@ describe("OrderForm cart", () => {
     expect(within(cart).getAllByText("$4.00")).toHaveLength(2);
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 1 item · \$4\.00/,
+        name: /Continue · 1 item · \$4\.00/,
       }),
     ).toBeEnabled();
   });
@@ -156,9 +156,7 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
 
     const dialog = await screen.findByRole("dialog");
     expect(
@@ -171,9 +169,7 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
@@ -216,14 +212,12 @@ describe("OrderForm cart", () => {
     expect(await screen.findByText("Your order")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 2 items · \$7\.00/,
+        name: /Continue · 2 items · \$7\.00/,
       }),
     ).toBeInTheDocument();
     expect(window.sessionStorage.getItem("qkit:reorder:b1")).toBeNull();
 
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByLabelText("Your name")).toHaveValue("Bo");
   });
@@ -247,7 +241,7 @@ describe("OrderForm cart", () => {
     expect(await screen.findByText("Your order")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Get my order number · 2 items · \$7\.00/,
+        name: /Continue · 2 items · \$7\.00/,
       }),
     ).toBeInTheDocument();
     expect(window.sessionStorage.getItem("qkit:cart:b1")).not.toBeNull();
@@ -305,9 +299,7 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(window.sessionStorage.getItem("qkit:cart:b1")).toContain("kopi");
 
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
@@ -325,9 +317,7 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
@@ -352,9 +342,7 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
@@ -380,9 +368,7 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
 
@@ -408,9 +394,7 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.type(
@@ -437,9 +421,7 @@ describe("OrderForm cart", () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(
-      screen.getByRole("button", { name: /Get my order number/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.click(
       within(dialog).getByRole("button", { name: /Get my order number/ }),
