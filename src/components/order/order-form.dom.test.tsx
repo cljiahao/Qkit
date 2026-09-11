@@ -162,7 +162,7 @@ describe("OrderForm cart", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      within(dialog).getByRole("heading", { name: "Almost there" }),
+      within(dialog).getByRole("heading", { name: "Who's this for?" }),
     ).toBeInTheDocument();
     expect(placeOrder).not.toHaveBeenCalled();
   });

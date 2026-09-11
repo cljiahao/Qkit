@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -429,6 +430,10 @@ export function OrderForm({
     submitLabel = `Get my order number · ${count(itemCount, "item")} · ${formatPrice(total)}`;
   else submitLabel = `Get my order number · ${count(itemCount, "item")}`;
 
+  // The sheet already shows the item count/total in its own recap row, so its
+  // submit button repeats only the priming phrase, not the full trigger label.
+  const confirmLabel = submitting ? "Placing order…" : "Get my order number";
+
   // A booth with no menu yet: show a friendly placeholder instead of an empty
   // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).
   if (menuItems.length === 0) {
@@ -572,17 +577,37 @@ export function OrderForm({
       >
         <SheetContent
           side="bottom"
-          className="mx-auto flex max-h-[85dvh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl"
+          className="mx-auto flex max-h-[85dvh] w-full max-w-lg flex-col gap-0 overflow-y-auto rounded-t-2xl p-0"
         >
-          <SheetHeader>
-            <SheetTitle>Almost there</SheetTitle>
-            <SheetDescription>
-              Just your name so we know who to call.
+          <SheetHeader className="gap-1 pt-5 pb-3">
+            <SheetTitle className="font-display text-xl font-semibold">
+              Who&apos;s this for?
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Add your name to confirm this order.
             </SheetDescription>
           </SheetHeader>
+
+          {hasItems && (
+            <>
+              <div className="perforation" />
+              <div className="flex items-baseline justify-between px-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">
+                  {count(itemCount, "item")}
+                </span>
+                {cartPriced && (
+                  <span className="font-mono font-semibold">
+                    {formatPrice(total)}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+          <div className="perforation" />
+
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="flex flex-1 flex-col gap-5 overflow-y-auto px-4"
+            className="flex flex-1 flex-col gap-5 overflow-y-auto px-4 pt-4"
           >
             <section className="space-y-2.5">
               <Label
@@ -594,6 +619,7 @@ export function OrderForm({
               <Input
                 id="customerName"
                 placeholder="So we can call you when it's ready"
+                autoFocus
                 className="h-12 rounded-xl text-base"
                 aria-invalid={!!errors.customerName}
                 aria-describedby={
@@ -639,15 +665,25 @@ export function OrderForm({
               )}
             </section>
 
-            <SheetFooter className="px-0">
+            <SheetFooter className="gap-2 px-0 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <Button
                 type="submit"
                 size="lg"
                 className="h-14 w-full rounded-xl text-base font-semibold"
                 disabled={submitting || !hasItems || closed}
               >
-                {submitLabel}
+                {confirmLabel}
               </Button>
+              <SheetClose asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-9 w-full font-normal text-muted-foreground"
+                  disabled={submitting}
+                >
+                  Back to menu
+                </Button>
+              </SheetClose>
             </SheetFooter>
           </form>
         </SheetContent>

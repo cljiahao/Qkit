@@ -23,11 +23,13 @@ closed, remaining })`: the full menu + cart + checkout UI. Seeds the cart on
 options)`, persists it on every change (`saveCart`), enforces per-item
   stock caps (`remainingFor`/`blockedByStock`), and opens `ItemCustomizer` for
   items with option groups. The sticky bottom bar is a trigger, not a submit
-  button: tapping it opens a bottom `Sheet` ("Almost there") holding the name
-  and optional phone fields and the real submit — this keeps checkout a
-  single short step regardless of how long the menu above it is (a
-  multi-section menu no longer buries the fields at the bottom of a long
-  scroll). Submit calls `placeOrder` (`@/app/o/[code]/actions`) with a
+  button: tapping it opens a bottom `Sheet` ("Who's this for?") holding a
+  compact order recap (item count + total, echoing the `Ticket` component's
+  perforation-divider styling used in the cart summary above it), the name
+  and optional phone fields, the real submit, and a "Back to menu" close
+  action — this keeps checkout a single short step regardless of how long
+  the menu above it is (a multi-section menu no longer buries the fields at
+  the bottom of a long scroll). Submit calls `placeOrder` (`@/app/o/[code]/actions`) with a
   stable per-submit idempotency key (retried once on a network error), then
   clears the cart, stashes an `addRecentOrder` entry, and navigates to the
   order-status page. The phone field is a genuinely optional convenience
