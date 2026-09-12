@@ -175,8 +175,15 @@ order's flow is completely unchanged.
 ## Vendor flow
 
 - **Board visibility** (`use-realtime-orders.ts` query + realtime filter):
-  excludes `payment_status = 'pending'`. A vendor never sees an order until
-  the customer has at least claimed payment (or it's `not_required`).
+  excludes `payment_status = 'pending' AND source = 'qr'` — **QR/customer
+  orders only.** A vendor never sees a customer-placed order until the
+  customer has at least claimed payment (or it's `not_required`). Walk-up
+  orders (`source = 'walkup'`, `placeWalkupOrder`'s existing `paid` param)
+  are unaffected regardless of `payment_status` — staff already handles
+  that transaction face-to-face at creation time (cash or PayNow shown
+  directly to them), so there's nothing to hide: the whole reason this
+  gate exists (an absent, unverifiable customer) doesn't apply to an order
+  staff just personally entered.
 - **`order-card.tsx`**, `claimed` orders: shows the uploaded proof-photo
   thumbnail (tap to enlarge via a signed URL, minted on demand — never
   embedded pre-signed in the realtime payload, since signed URLs expire)
@@ -287,7 +294,8 @@ QR needs:
 
 ## Testing
 
-- `use-realtime-orders`/board query: excludes `pending`-payment orders.
+- `use-realtime-orders`/board query: excludes `pending`-payment `qr`-source
+  orders; a `pending`-payment `walkup` order still appears.
 - `claimPayment`: rejects a claim with no/failed photo upload.
 - `confirmCollection`: ready→completed happy path, vendor-actor event
   logged, payment auto-confirm reused correctly, non-ready/already-
