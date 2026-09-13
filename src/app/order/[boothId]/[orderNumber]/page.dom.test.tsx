@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-//
-// page.tsx is awaited and rendered directly (same approach as
-// src/app/dashboard/layout.dom.test.tsx); every nested async/side-effecting
-// child is stubbed so this stays focused on TelegramConnect gating and the
-// redirect guard.
+// page.tsx is awaited and rendered directly (dashboard/layout.dom.test.tsx's
+// approach); nested async/side-effecting children are stubbed so this stays
+// focused on TelegramConnect gating and the redirect guard.
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { OrderStatus } from "@/lib/types";
