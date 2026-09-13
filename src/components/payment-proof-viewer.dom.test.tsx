@@ -94,6 +94,22 @@ describe("PaymentProofViewer", () => {
     expect(createWorkerMock).not.toHaveBeenCalled();
   });
 
+  it("spawns the tesseract worker with workerBlobURL disabled (blob: workers are refused under this app's CSP, which has no worker-src/child-src)", async () => {
+    getProofPhotoUrlMock.mockResolvedValueOnce(
+      "https://signed.example/proof.png",
+    );
+    findDuplicateProofOrderMock.mockResolvedValueOnce(null);
+
+    render(<PaymentProofViewer orderId="order-1" expectedAmountCents={550} />);
+
+    await vi.waitFor(() => expect(createWorkerMock).toHaveBeenCalled());
+    expect(createWorkerMock).toHaveBeenCalledWith(
+      "eng",
+      1,
+      expect.objectContaining({ workerBlobURL: false }),
+    );
+  });
+
   it("shows a couldn't-confirm hint when the OCR text doesn't contain the amount", async () => {
     getProofPhotoUrlMock.mockResolvedValueOnce(
       "https://signed.example/proof.png",

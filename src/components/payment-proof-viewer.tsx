@@ -51,6 +51,13 @@ export function PaymentProofViewer({ orderId, expectedAmountCents }: Props) {
           workerPath: `${TESSERACT_ASSET_PATH}/worker.min.js`,
           corePath: TESSERACT_ASSET_PATH,
           langPath: TESSERACT_ASSET_PATH,
+          // tesseract.js defaults to spawning the worker from a blob: URL
+          // (defaultOptions.workerBlobURL); this app's CSP has no
+          // worker-src/child-src directive, so worker creation falls back to
+          // script-src, which doesn't allow blob:. false makes it spawn a
+          // plain `new Worker(workerPath)` instead -- workerPath is already
+          // same-origin, so this needs no CSP change.
+          workerBlobURL: false,
         });
         const { data } = await worker.recognize(photoUrl);
         await worker.terminate();
