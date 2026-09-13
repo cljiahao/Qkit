@@ -34,9 +34,7 @@ export function PayForm({
     const selected = e.target.files?.[0];
     if (!selected) return;
     setPhotoError(null);
-    // Shrink before the round-trip to the server action — claimPayment
-    // resizes again server-side, but a slow mobile upload benefits from not
-    // sending the full-size original over the wire in the first place.
+    // Shrink before upload; claimPayment resizes again, but this saves bandwidth on the way there.
     const resized = await resizeToWebp(selected, 1600);
     setPhoto(
       resized.blob instanceof File
@@ -87,8 +85,7 @@ export function PayForm({
         {payHeading}
       </p>
 
-      {/* Echo the amount so the customer keys the right sum (and can sanity-check
-          a dynamic PayNow QR). Hidden for a $0 / unpriced order. */}
+      {/* Echoes the amount for a $0/unpriced order to skip this. */}
       {amountCents > 0 && (
         <p className="text-center font-mono text-2xl font-bold">
           {formatPrice(amountCents)}
