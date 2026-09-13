@@ -326,6 +326,35 @@ describe("placeOrder", () => {
     });
   });
 
+  describe("nullable order_number (payment-required orders)", () => {
+    it("does not notify the vendor or print a ticket when the order has no number yet (payment required)", async () => {
+      rpc.mockImplementation((name: string) => {
+        if (name === "check_rate_limit") return Promise.resolve({ data: true });
+        if (name === "place_order")
+          return Promise.resolve({
+            data: {
+              order_number: null,
+              booth_id: "booth-1",
+              access_token: "tok-1",
+            },
+            error: null,
+          });
+        throw new Error(`unexpected rpc: ${name}`);
+      });
+
+      const result = await placeOrder("SHORTCODE", validInput, IDEM);
+
+      expect(result).toEqual({
+        success: true,
+        orderNumber: null,
+        boothId: "booth-1",
+        accessToken: "tok-1",
+      });
+      expect(notifyVendor).not.toHaveBeenCalled();
+      expect(createPrintJob).not.toHaveBeenCalled();
+    });
+  });
+
   describe("printkit notify (redundant channel — must never affect the result)", () => {
     it("calls createPrintJob with the booth's vendor_id, order id, boothId, order number, and customer name", async () => {
       mockSuccessfulRpc();

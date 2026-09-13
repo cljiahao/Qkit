@@ -10,7 +10,7 @@ import { createPrintJob } from "@/lib/printkit/client";
 import type { ActionResult } from "@/lib/action-result";
 
 type Result = ActionResult<{
-  orderNumber: string;
+  orderNumber: string | null;
   boothId: string;
   accessToken: string;
 }>;
@@ -220,7 +220,7 @@ export async function placeOrder(
   }
   const out = z
     .object({
-      order_number: z.string(),
+      order_number: z.string().nullable(),
       booth_id: z.string(),
       access_token: z.string(),
     })
@@ -241,14 +241,16 @@ export async function placeOrder(
   // Redundant vendor alert + printing job — both fire-and-forget, run
   // concurrently so a slow/unreachable one doesn't add its timeout on top
   // of the other's before the customer gets a response.
-  await Promise.all([
-    notifyVendorTelegram(out.data.booth_id, out.data.order_number),
-    notifyPrintkit(
-      out.data.booth_id,
-      out.data.order_number,
-      parsed.data.customerName,
-    ),
-  ]);
+  if (out.data.order_number) {
+    await Promise.all([
+      notifyVendorTelegram(out.data.booth_id, out.data.order_number),
+      notifyPrintkit(
+        out.data.booth_id,
+        out.data.order_number,
+        parsed.data.customerName,
+      ),
+    ]);
+  }
 
   return {
     success: true,
