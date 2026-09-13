@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(115);
+select plan(117);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -1051,6 +1051,23 @@ select is(
        and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
   'assign_order_number is idempotent for the same order'
 );
+
+-- The freeze trigger's order_number carve-out (0087) only permits the ONE
+-- NULL -> assigned transition assign_order_number performs above; changing
+-- an already-set number, or erasing it back to NULL, must still be blocked
+-- exactly like every other frozen column.
+select throws_like(
+  $$ update qkit.orders set order_number = '9999'
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'cannot change an already-assigned order_number to a different value');
+select throws_like(
+  $$ update qkit.orders set order_number = NULL
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'cannot erase an already-assigned order_number back to NULL');
 
 -- storage: no anon/public read on payment-proofs. Seed a real row as the
 -- privileged test role first, so the anon check below proves RLS actually

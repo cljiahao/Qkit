@@ -36,8 +36,12 @@ CREATE POLICY "payment_proofs_vendor_select"
 -- migration 0008 -- that function is unused dead code with a truncation
 -- bug: its lpad(v_seq::text, 4, '0') silently drops the leading digit once
 -- a booth passes 9999 orders, since Postgres's lpad truncates a too-long
--- input from the left). Idempotent: a retried call for an already-numbered
--- order just returns the existing number instead of incrementing again.
+-- input from the left). Idempotent under a SEQUENTIAL retry (an
+-- already-numbered order returns the existing number, no re-increment) AND
+-- under a genuinely CONCURRENT double-call for the same order: the closing
+-- UPDATE ... RETURNING tells the loser its own write did nothing, so it
+-- re-reads and returns whatever the winner actually persisted instead of
+-- the (unpersisted) number it locally computed.
 CREATE OR REPLACE FUNCTION qkit.assign_order_number(p_order_id UUID)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -49,6 +53,7 @@ DECLARE
   v_existing TEXT;
   v_seq INT;
   v_number TEXT;
+  v_assigned TEXT;
 BEGIN
   SELECT booth_id, order_number INTO v_booth_id, v_existing
   FROM qkit.orders WHERE id = p_order_id;
@@ -66,9 +71,18 @@ BEGIN
   v_number := lpad(v_seq::text, greatest(4, length(v_seq::text)), '0');
 
   UPDATE qkit.orders SET order_number = v_number
-  WHERE id = p_order_id AND order_number IS NULL;
+  WHERE id = p_order_id AND order_number IS NULL
+  RETURNING order_number INTO v_assigned;
 
-  RETURN v_number;
+  IF v_assigned IS NULL THEN
+    -- Lost the race: a concurrent call already set a number between our own
+    -- read above and this UPDATE. v_number was computed (and order_seq
+    -- already burned) but never persisted -- return the number that
+    -- actually won instead.
+    SELECT order_number INTO v_assigned FROM qkit.orders WHERE id = p_order_id;
+  END IF;
+
+  RETURN v_assigned;
 END;
 $$;
 
@@ -241,7 +255,7 @@ BEGIN
       (line - 'price_cents' - 'cost_cents' - 'name')
       || jsonb_build_object('name', menu_item->>'name')
       -- Same "Free" convention as base price: only stamp price_cents when
-      -- the item was priced OR a selected choice added a cost -- an unpriced
+      -- the item was priced OR a selected choice added a cost — an unpriced
       -- item with no priced choices stays keyless, not price_cents:0.
       || CASE WHEN v_price IS NOT NULL OR v_option_price_delta > 0
            THEN jsonb_build_object('price_cents', v_combined_price)
@@ -297,7 +311,7 @@ BEGIN
   END IF;
 
   -- Cross-kit customer identity: a genuinely optional convenience, not a
-  -- required identity check -- skipped entirely when the customer declined to
+  -- required identity check — skipped entirely when the customer declined to
   -- give a phone, and guarded (see header) for the CI/local Postgres that has
   -- no merqo schema at all.
   IF p_customer_phone IS NOT NULL THEN
