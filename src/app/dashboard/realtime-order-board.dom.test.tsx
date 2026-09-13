@@ -22,6 +22,8 @@ function order(overrides: Partial<BoardOrder> = {}): BoardOrder {
     payment_status: "not_required",
     payment_method_kind: null,
     paid_at: null,
+    payment_proof_path: null,
+    payment_proof_hash: null,
     print_status: "not_required",
     print_status_updated_at: null,
     created_at: "2026-06-12T04:00:00Z",

@@ -575,6 +575,8 @@ export interface Database {
           payment_status: PaymentStatus;
           payment_method_kind: PaymentKind | null;
           paid_at: string | null;
+          payment_proof_path: string | null;
+          payment_proof_hash: string | null;
           print_status: PrintStatus;
           print_status_updated_at: string | null;
           created_at: string;
@@ -598,6 +600,8 @@ export interface Database {
           payment_status?: PaymentStatus;
           payment_method_kind?: PaymentKind | null;
           paid_at?: string | null;
+          payment_proof_path?: string | null;
+          payment_proof_hash?: string | null;
           print_status?: PrintStatus;
           print_status_updated_at?: string | null;
           created_at?: string;
@@ -621,6 +625,8 @@ export interface Database {
           payment_status?: PaymentStatus;
           payment_method_kind?: PaymentKind | null;
           paid_at?: string | null;
+          payment_proof_path?: string | null;
+          payment_proof_hash?: string | null;
           print_status?: PrintStatus;
           print_status_updated_at?: string | null;
           created_at?: string;

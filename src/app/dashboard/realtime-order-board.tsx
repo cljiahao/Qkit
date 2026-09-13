@@ -475,16 +475,8 @@ export function RealtimeOrderBoard({
     { intervalMs: 30_000, enabled: boardSettings.ready_auto_clear_min != null },
   );
 
-  // Filter to only orders with assigned order_numbers — payment-required orders
-  // without payment don't have one yet and shouldn't appear on the board. The
-  // filter's runtime check enforces what the type system guarantees: DisplayOrder
-  // functions never receive null.
   const active = sortActiveOrders(
-    orders.filter(
-      (o) =>
-        (!isTerminal(o.status) || undoWindowIds.has(o.id)) &&
-        o.order_number != null,
-    ),
+    orders.filter((o) => !isTerminal(o.status) || undoWindowIds.has(o.id)),
     sortOrder,
   );
   const activeCountFor = (id: string) =>

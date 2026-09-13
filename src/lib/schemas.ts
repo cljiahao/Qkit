@@ -616,6 +616,8 @@ export const orderRowSchema = z.object({
     // rather than dropping the whole realtime order.
     .catch(null),
   paid_at: z.string().nullable(),
+  payment_proof_path: z.string().nullable().catch(null),
+  payment_proof_hash: z.string().nullable().catch(null),
   // Tolerant like source/auto_completed below — a payload from mid-deploy
   // (before migration 0081 lands everywhere) shouldn't drop the event;
   // degrade to the column's own DB default.
