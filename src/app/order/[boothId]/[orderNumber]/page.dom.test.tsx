@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 //
-// page.tsx is a plain async function (same rendering approach as
-// src/app/dashboard/layout.dom.test.tsx), so it's awaited directly and
-// rendered. Every nested async/side-effecting child (EarnLink,
-// OrderStatusPoller, PayPanel) is stubbed so this stays focused on
-// page.tsx's own TelegramConnect gating and redirect guard.
+// page.tsx is awaited and rendered directly (same approach as
+// src/app/dashboard/layout.dom.test.tsx); every nested async/side-effecting
+// child is stubbed so this stays focused on TelegramConnect gating and the
+// redirect guard.
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { OrderStatus } from "@/lib/types";
