@@ -476,7 +476,11 @@ export function RealtimeOrderBoard({
   );
 
   const active = sortActiveOrders(
-    orders.filter((o) => !isTerminal(o.status) || undoWindowIds.has(o.id)),
+    orders.filter(
+      (o) =>
+        (!isTerminal(o.status) || undoWindowIds.has(o.id)) &&
+        !(o.payment_status === "pending" && o.source === "qr"),
+    ),
     sortOrder,
   );
   const activeCountFor = (id: string) =>

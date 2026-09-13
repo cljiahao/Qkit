@@ -521,3 +521,55 @@ describe("RealtimeOrderBoard incoming/accepted split", () => {
     expect(screen.queryByText(/^Accepted/)).not.toBeInTheDocument();
   });
 });
+
+describe("RealtimeOrderBoard payment filter", () => {
+  it("hides a pending-payment QR order from the board", () => {
+    const orders = [
+      order({
+        id: "1",
+        order_number: "0001",
+        status: "pending",
+        payment_status: "pending",
+        source: "qr",
+      }),
+      order({
+        id: "2",
+        order_number: "0002",
+        status: "pending",
+        payment_status: "not_required",
+        source: "qr",
+      }),
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={orders}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText(/#0001/)).not.toBeInTheDocument();
+    expect(screen.getByText(/#0002/)).toBeInTheDocument();
+  });
+
+  it("still shows a pending-payment walk-up order", () => {
+    const orders = [
+      order({
+        id: "1",
+        order_number: "0001",
+        status: "pending",
+        payment_status: "pending",
+        source: "walkup",
+      }),
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={orders}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText(/#0001/)).toBeInTheDocument();
+  });
+});
