@@ -23,6 +23,7 @@ import { boothColor } from "@/lib/booth-color";
 import {
   ADVANCE,
   isTerminal,
+  needsPaymentReview,
   orderAgeTone,
   elapsedMinutes,
   type AgeTone,
@@ -32,7 +33,9 @@ import {
   bumpOrder,
   cancelOrder as cancelOrderAction,
   confirmOrderPayment,
+  confirmPaymentAndStart,
   revertOrderAdvance,
+  revertPaymentAndStart,
   restoreAutoCompleted,
 } from "@/app/dashboard/order-actions";
 import { sgtClock, shortDateTime } from "@/lib/tz";
@@ -95,6 +98,43 @@ function ageToneAriaSuffix(tone: AgeTone): string {
   if (tone === "overdue") return ", overdue";
   if (tone === "aging") return ", getting old";
   return "";
+}
+
+type PendingUndo = {
+  revertTo: OrderStatus;
+  revertFrom: OrderStatus;
+  prevPaymentStatus: PaymentStatus;
+  // Which action this undo reverts — advanceOrder's plain transition, or
+  // confirmPaymentAndStart's merged one, which needs its own revert function
+  // (see revertPaymentAndStart's own doc comment for why).
+  action: "advance" | "paymentAndStart";
+};
+
+/** Dispatch a pending undo to the server action that made the original change. */
+function revertPendingUndo(orderId: string, pending: PendingUndo) {
+  return pending.action === "paymentAndStart"
+    ? revertPaymentAndStart(orderId, pending.prevPaymentStatus)
+    : revertOrderAdvance(
+        orderId,
+        pending.revertTo,
+        pending.revertFrom,
+        pending.prevPaymentStatus,
+      );
+}
+
+/**
+ * Whether a successful undo should also clear the local optimistic "paid"
+ * flag. Always true for the merged action's own undo; for a plain advance
+ * undo, only when reverting the auto-confirm buildAdvancePatch applied on
+ * completion (mirrors advanceStatus's own condition for setting it).
+ */
+function shouldUnconfirmOnUndo(pending: PendingUndo): boolean {
+  if (pending.action === "paymentAndStart") return true;
+  return (
+    pending.revertFrom === "completed" &&
+    (pending.prevPaymentStatus === "pending" ||
+      pending.prevPaymentStatus === "claimed")
+  );
 }
 
 export function OrderCard({
@@ -181,11 +221,7 @@ export function OrderCard({
   // in undoTimerRef) or the vendor taps Undo. Cleared on unmount too, so a
   // card that scrolls out of view (or the completed order finally leaving the
   // board once the window ends) never fires a late setState.
-  const [pendingUndo, setPendingUndo] = useState<{
-    revertTo: OrderStatus;
-    revertFrom: OrderStatus;
-    prevPaymentStatus: PaymentStatus;
-  } | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
@@ -217,6 +253,7 @@ export function OrderCard({
   const number = displayNumber ?? order.order_number;
   const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
+  const paymentReviewNeeded = needsPaymentReview(status, payStatus);
 
   // Time left before sweepReadyOrders auto-completes this order, for the
   // "Mark Picked Up" drain bar. Set once per ready_at (the effect only
@@ -275,7 +312,12 @@ export function OrderCard({
         // completed order on the active board for this window; without it,
         // the realtime echo of this very write would filter the card off the
         // board before the vendor could react to a mis-tap.
-        setPendingUndo({ revertTo, revertFrom: res.status, prevPaymentStatus });
+        setPendingUndo({
+          revertTo,
+          revertFrom: res.status,
+          prevPaymentStatus,
+          action: "advance",
+        });
         onUndoWindowChange?.(order.id, true);
         if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
         undoTimerRef.current = setTimeout(() => dismissUndo(order.id), undoMs);
@@ -285,25 +327,16 @@ export function OrderCard({
 
   function undoAdvance() {
     if (!pendingUndo) return;
-    const { revertTo, revertFrom, prevPaymentStatus } = pendingUndo;
+    const pending = pendingUndo;
     const orderId = order.id;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     return run(async () => {
-      const res = await revertOrderAdvance(
-        orderId,
-        revertTo,
-        revertFrom,
-        prevPaymentStatus,
-      );
+      const res = await revertPendingUndo(orderId, pending);
       if (!res.success) {
         toast.error(res.error);
       } else {
         setStatus(res.status);
-        if (
-          revertFrom === "completed" &&
-          (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed")
-        )
-          setConfirmedLocally(false);
+        if (shouldUnconfirmOnUndo(pending)) setConfirmedLocally(false);
       }
       // Clearing the local pendingUndo is enough to restore this card's own
       // buttons — status is no longer terminal, so `closed` already flips
@@ -322,6 +355,31 @@ export function OrderCard({
       const res = await confirmOrderPayment(order.id);
       if (!res.success) toast.error(res.error);
       else setConfirmedLocally(true);
+    });
+  }
+
+  // Reconciled "Mark paid & start" review action: there's no real scenario
+  // where a vendor confirms payment on a still-pending order without also
+  // starting it, so one tap does both atomically instead of two separate
+  // taps (Confirm payment received + Start now).
+  function confirmPaymentAndStartHandler() {
+    return run(async () => {
+      const res = await confirmPaymentAndStart(order.id);
+      if (!res.success) {
+        toast.error(res.error);
+      } else {
+        setStatus(res.status);
+        setConfirmedLocally(true);
+        setPendingUndo({
+          revertTo: "pending",
+          revertFrom: res.status,
+          prevPaymentStatus: res.prevPaymentStatus,
+          action: "paymentAndStart",
+        });
+        onUndoWindowChange?.(order.id, true);
+        if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+        undoTimerRef.current = setTimeout(() => dismissUndo(order.id), undoMs);
+      }
     });
   }
 
@@ -561,8 +619,10 @@ export function OrderCard({
         )}
 
         {/* Payment prompts only while the order is live — a cancelled/completed
-            order must not solicit or re-confirm payment. */}
-        {!closed && payStatus === "claimed" && (
+            order must not solicit or re-confirm payment. A still-pending order
+            gets the merged review action instead (below) — no separate
+            confirm-payment prompt for it. */}
+        {!closed && status !== "pending" && payStatus === "claimed" && (
           <div className="px-4 pb-3">
             <Button
               className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
@@ -573,7 +633,7 @@ export function OrderCard({
             </Button>
           </div>
         )}
-        {!closed && payStatus === "pending" && (
+        {!closed && status !== "pending" && payStatus === "pending" && (
           <div className="px-4 pb-3">
             <Button
               size="sm"
@@ -582,6 +642,20 @@ export function OrderCard({
               disabled={updating}
             >
               Mark as paid
+            </Button>
+          </div>
+        )}
+
+        {/* Reconciled "Mark paid & start" review action — see
+            paymentReviewNeeded above. */}
+        {!closed && paymentReviewNeeded && (
+          <div className="px-4 pb-3">
+            <Button
+              className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
+              onClick={confirmPaymentAndStartHandler}
+              disabled={updating}
+            >
+              <Banknote className="size-5" /> Mark paid &amp; start
             </Button>
           </div>
         )}
@@ -614,7 +688,7 @@ export function OrderCard({
               </Button>
             ) : (
               <>
-                {advance && (
+                {advance && !paymentReviewNeeded && (
                   <Button
                     size="sm"
                     className="relative h-11 flex-1 overflow-hidden rounded-lg font-semibold"

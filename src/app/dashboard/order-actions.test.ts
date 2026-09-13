@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   advanceOrder,
   confirmOrderPayment,
+  confirmPaymentAndStart,
+  revertPaymentAndStart,
   cancelOrder,
   bumpOrder,
   restoreAutoCompleted,
@@ -302,6 +304,98 @@ describe("advanceOrder", () => {
       success: false,
       error: "Order changed — please refresh.",
     });
+  });
+});
+
+describe("confirmPaymentAndStart", () => {
+  it("confirms payment and advances to preparing in one write", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "pending", payment_status: "claimed" },
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+    expect(update).toHaveBeenCalledWith({
+      status: "preparing",
+      payment_status: "confirmed",
+    });
+  });
+
+  it("refuses when payment is already confirmed", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "pending", payment_status: "confirmed" },
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order can't be advanced",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refuses when status isn't pending", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "claimed" },
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order can't be advanced",
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh when the order changed concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "pending", payment_status: "claimed" },
+    });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed -- please refresh.",
+    });
+  });
+
+  it("rejects an invalid order id before touching the DB", async () => {
+    const res = await confirmPaymentAndStart("not-a-uuid");
+    expect(res.success).toBe(false);
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("revertPaymentAndStart", () => {
+  it("reverts both status and payment_status together", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "confirmed" },
+    });
+    const res = await revertPaymentAndStart(ID, "claimed");
+    expect(res).toEqual({ success: true, status: "pending" });
+    expect(update).toHaveBeenCalledWith({
+      status: "pending",
+      payment_status: "claimed",
+    });
+  });
+
+  it("reports a refresh when the order changed concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "confirmed" },
+    });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await revertPaymentAndStart(ID, "claimed");
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed -- please refresh.",
+    });
+  });
+
+  it("rejects an invalid order id before touching the DB", async () => {
+    const res = await revertPaymentAndStart("not-a-uuid", "claimed");
+    expect(res.success).toBe(false);
+    expect(getUserMock).not.toHaveBeenCalled();
   });
 });
 

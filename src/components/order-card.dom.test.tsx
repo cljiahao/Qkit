@@ -13,6 +13,8 @@ import type { BoardOrder } from "@/lib/types";
 const {
   advanceOrder,
   confirmOrderPayment,
+  confirmPaymentAndStart,
+  revertPaymentAndStart,
   cancelOrder,
   bumpOrder,
   revertOrderAdvance,
@@ -20,6 +22,8 @@ const {
 } = vi.hoisted(() => ({
   advanceOrder: vi.fn(),
   confirmOrderPayment: vi.fn(),
+  confirmPaymentAndStart: vi.fn(),
+  revertPaymentAndStart: vi.fn(),
   cancelOrder: vi.fn(),
   bumpOrder: vi.fn(),
   revertOrderAdvance: vi.fn(),
@@ -29,6 +33,8 @@ const {
 vi.mock("@/app/dashboard/order-actions", () => ({
   advanceOrder,
   confirmOrderPayment,
+  confirmPaymentAndStart,
+  revertPaymentAndStart,
   cancelOrder,
   bumpOrder,
   revertOrderAdvance,
@@ -68,12 +74,20 @@ function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
 beforeEach(() => {
   advanceOrder.mockReset();
   confirmOrderPayment.mockReset();
+  confirmPaymentAndStart.mockReset();
+  revertPaymentAndStart.mockReset();
   cancelOrder.mockReset();
   bumpOrder.mockReset();
   revertOrderAdvance.mockReset();
   restoreAutoCompleted.mockReset();
   advanceOrder.mockResolvedValue({ success: true, status: "ready" });
   confirmOrderPayment.mockResolvedValue({ success: true });
+  confirmPaymentAndStart.mockResolvedValue({
+    success: true,
+    status: "preparing",
+    prevPaymentStatus: "claimed",
+  });
+  revertPaymentAndStart.mockResolvedValue({ success: true, status: "pending" });
   cancelOrder.mockResolvedValue({ success: true });
   bumpOrder.mockResolvedValue({ success: true });
   revertOrderAdvance.mockResolvedValue({ success: true, status: "preparing" });
@@ -506,6 +520,110 @@ describe("OrderCard payment", () => {
     expect(
       screen.queryByLabelText(/manually bumped to the front/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("OrderCard — reconciled payment+start", () => {
+  it("shows one merged button, not two, for a pending order awaiting payment confirm", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "pending", payment_status: "claimed" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /mark paid.*start/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /confirm payment received/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /start now/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the merged button for an unpaid walk-up order too", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          status: "pending",
+          payment_status: "pending",
+          source: "walkup",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /mark paid.*start/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the plain Start now button, not the merged one, once payment is already settled", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "pending", payment_status: "not_required" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /start now/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /mark paid.*start/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("tapping the merged button calls confirmPaymentAndStart and shows an undo option", async () => {
+    const user = userEvent.setup();
+    confirmPaymentAndStart.mockResolvedValueOnce({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+    render(
+      <OrderCard
+        order={makeOrder({
+          id: "order-1",
+          status: "pending",
+          payment_status: "claimed",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(screen.getByRole("button", { name: /mark paid.*start/i }));
+    expect(confirmPaymentAndStart).toHaveBeenCalledWith("order-1");
+    expect(
+      await screen.findByRole("button", { name: /undo/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("undoes the merged action back to pending, restoring the prior payment status", async () => {
+    const user = userEvent.setup();
+    confirmPaymentAndStart.mockResolvedValueOnce({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+    render(
+      <OrderCard
+        order={makeOrder({
+          id: "order-1",
+          status: "pending",
+          payment_status: "claimed",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /mark paid.*start/i }));
+    await user.click(await screen.findByRole("button", { name: /undo/i }));
+
+    expect(revertPaymentAndStart).toHaveBeenCalledWith("order-1", "claimed");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /mark paid.*start/i }),
+      ).toBeInTheDocument(),
+    );
   });
 });
 

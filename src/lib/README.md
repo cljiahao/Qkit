@@ -280,11 +280,16 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   `created_at` relative to a caller-supplied baseline, never a live recount;
   zero-padded to 3 digits like a ticket counter ("003"), growing past that
   rather than truncating; falls back to the real number when there's no
-  baseline).
+  baseline), `needsPaymentReview(status, paymentStatus)` (pure: whether a
+  still-`pending` order with an outstanding payment claim needs
+  `OrderCard`'s merged "Mark paid & start" review action instead of separate
+  confirm-payment/advance buttons — keyed on order state, not `order.source`,
+  so a walk-up order gets it too).
 - `orders.test.ts` — tests status transitions, patch-building (including the
-  payment auto-confirm-on-complete rule), sorting, age/label formatting, and
-  `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth, and
-  real-number fallbacks.
+  payment auto-confirm-on-complete rule), sorting, age/label formatting,
+  `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth and
+  real-number fallbacks, and `needsPaymentReview`'s pending/payment-status
+  matrix.
 - `paykit/` — server-only HTTP client for paykit's `/api/v1/*` checkout API
   (vendor config upsert + full read-back, checkout create/claim/unclaim/
   confirm/status); see its own README. Replaced the local PayNow QR builder

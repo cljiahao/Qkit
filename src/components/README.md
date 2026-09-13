@@ -106,7 +106,19 @@ selected, onToggleSelect })`: the
   arrival timestamp (`sgtClock`, bare time — or `shortDateTime`, date+time,
   when `showDate` is set, for the completed-orders history list where every
   card isn't from today), expandable item options, and the advance/cancel/
-  confirm-payment action buttons wired to `@/app/dashboard/order-actions`.
+  confirm-payment action buttons wired to `@/app/dashboard/order-actions`. A
+  still-`pending` order with an outstanding payment claim (`payment_status`
+  not `confirmed`/`not_required` — keyed on order state via `needsPaymentReview`
+  in `@/lib/orders`, not `order.source`, so an unpaid walk-up order gets it
+  too) collapses the separate confirm-payment and Start-now buttons into one
+  "Mark paid & start" tap (`confirmPaymentAndStart`) — there's no real
+  scenario where a vendor confirms payment without also starting the order.
+  Its undo (within the same `undoMs` window as every other advance) calls the
+  dedicated `revertPaymentAndStart` rather than `revertOrderAdvance`, which
+  only restores `payment_status` when reverting from `completed`, not
+  `preparing`; the card's `pendingUndo` state carries an `action:
+"advance" | "paymentAndStart"` tag so its one undo button dispatches to
+  whichever action made the original change.
   Advancing (Mark Ready/Mark Picked Up) fires instantly — no confirm gate on
   a tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
   (default `DEFAULT_UNDO_MS`, 4s; vendor-configurable via
@@ -151,7 +163,11 @@ selected, onToggleSelect })`: the
   call itself live on `RealtimeOrderBoard`, not here.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
   transitions, action-button wiring, the `displayNumber` override, the
-  walk-up origin badge, and the batch-select checkbox.
+  walk-up origin badge, the batch-select checkbox, and the reconciled "Mark
+  paid & start" review action — the merged button (not two) for a pending
+  order with an outstanding payment claim, on both a QR and a walk-up order,
+  the plain Start-now button once payment is already settled, and that
+  tapping/undoing it calls `confirmPaymentAndStart`/`revertPaymentAndStart`.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
   pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
   cancelled), shared by the dashboard board and the customer status page.

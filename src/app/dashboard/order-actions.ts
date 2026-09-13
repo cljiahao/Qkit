@@ -224,6 +224,106 @@ export async function revertOrderAdvance(
 }
 
 /**
+ * Reconciled "Mark paid & start" review action: there's no real scenario
+ * where a vendor confirms payment on a still-pending order without also
+ * starting it, so this does both in one write instead of two separate taps.
+ * Rejects an order that isn't pending, or whose payment is already settled
+ * (confirmed/not_required) — those cases keep using the plain advance button.
+ */
+export async function confirmPaymentAndStart(
+  orderId: string,
+): Promise<
+  ActionResult<{ status: OrderStatus; prevPaymentStatus: PaymentStatus }>
+> {
+  if (!idSchema.safeParse(orderId).success)
+    return { success: false, error: "Invalid order" };
+
+  const { supabase, order, userId } = await loadOwnOrder(orderId);
+  if (!supabase || !order) return { success: false, error: "Order not found" };
+
+  if (
+    order.status !== "pending" ||
+    order.payment_status === "confirmed" ||
+    order.payment_status === "not_required"
+  )
+    return { success: false, error: "Order can't be advanced" };
+
+  const prevPaymentStatus = order.payment_status;
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({ status: "preparing", payment_status: "confirmed" })
+    .eq("id", orderId)
+    .eq("status", order.status)
+    .select("id");
+  if (error) {
+    console.error("confirmPaymentAndStart failed", error.message);
+    return { success: false, error: "Failed to update order" };
+  }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed -- please refresh." };
+
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: "pending",
+      to_status: "preparing",
+      actor: userId,
+    });
+    await recordAudit({
+      admin_id: userId,
+      action: "confirm_payment_and_start",
+      target_id: orderId,
+      detail: { prevPaymentStatus },
+    });
+  }
+
+  return { success: true, status: "preparing", prevPaymentStatus };
+}
+
+/**
+ * Undo a just-made confirmPaymentAndStart call within its short undo window.
+ * A separate function from revertOrderAdvance rather than a widened reuse of
+ * it: revertOrderAdvance only restores payment_status when reverting from
+ * `completed`, not from `preparing`, so reusing it here would silently leave
+ * payment_status at "confirmed" instead of undoing it.
+ */
+export async function revertPaymentAndStart(
+  orderId: string,
+  prevPaymentStatus: PaymentStatus,
+): Promise<ActionResult<{ status: OrderStatus }>> {
+  if (!idSchema.safeParse(orderId).success)
+    return { success: false, error: "Invalid order" };
+
+  const { supabase, userId } = await loadOwnOrder(orderId);
+  if (!supabase) return { success: false, error: "Order not found" };
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({ status: "pending", payment_status: prevPaymentStatus })
+    .eq("id", orderId)
+    .eq("status", "preparing")
+    .select("id");
+  if (error) {
+    console.error("revertPaymentAndStart failed", error.message);
+    return { success: false, error: "Failed to revert order" };
+  }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed -- please refresh." };
+
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: "preparing",
+      to_status: "pending",
+      actor: userId,
+    });
+  }
+
+  return { success: true, status: "pending" };
+}
+
+/**
  * Restore an order the auto-clear sweep completed prematurely back to
  * 'ready'. Deliberately narrower than revertOrderAdvance — this is a fresh
  * page load with no client-held prior state (the completed-orders history
