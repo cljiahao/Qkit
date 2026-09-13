@@ -179,13 +179,8 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
 
-  // Show the pay panel for any payment-expected order (PayPanel shows the
-  // claimed/waiting-on-vendor state and a confirmation once paid, and polls
-  // for the flip). A cancelled order must never solicit payment — gate
-  // precisely on status==='cancelled' (NOT isTerminal: a *completed* order
-  // auto-confirms its payment, and PayPanel then shows the intended "Payment
-  // confirmed" panel). `order.payment_status` still "pending" is redirected
-  // to /pay above, so PayPanel only ever renders past claimed/confirmed here.
+  // Show the pay panel for any payment-expected, non-cancelled order (NOT
+  // isTerminal: a completed order still shows PayPanel's "confirmed" state).
   const showPay =
     order.payment_status !== "not_required" && order.status !== "cancelled";
 
