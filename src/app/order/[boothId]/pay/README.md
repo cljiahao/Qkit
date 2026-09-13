@@ -27,23 +27,27 @@ photo and does the deferred numbering.
   amount/token/checkout props.
 - `pay-form.tsx` — `PayForm({ boothId, token, amountCents, checkout })`
   client component: renders the same QR/image/link checkout markup as
-  `../[orderNumber]/pay-panel.tsx` (amount echo, `react-qr-code` for a
-  `qr` checkout, an `<img>` with a load-failure fallback for `image`, a
-  link button for `link`), plus a null-`checkout` branch ("Couldn't load
-  payment right now" with a `router.refresh()` button) that `pay-panel.tsx`
-  itself doesn't yet have. Below the checkout, a labelled file input
-  (`accept="image/*" capture="environment"`) downscales the selected photo
-  via `resizeToWebp` (`@/lib/image-resize`) before holding it in state.
-  "I've paid" shows an inline "A payment screenshot is required." error and
-  never calls the action if no photo was selected; otherwise it calls
+  `../[orderNumber]/pay-panel.tsx` (amount echo, `react-qr-code` +
+  "Save QR image" share/download button for a `qr` checkout via
+  `renderSvgToPngBlob`, `../[orderNumber]/qr-image.ts`, an `<img>` with a
+  load-failure fallback for `image`, a link button for `link`), plus a
+  null-`checkout` branch ("Couldn't load payment right now" with a
+  `router.refresh()` button) that `pay-panel.tsx` itself doesn't yet have.
+  Below the checkout, a labelled file input (`accept="image/*"
+capture="environment"`) downscales the selected photo via `resizeToWebp`
+  (`@/lib/image-resize`) before holding it in state. "I've paid" shows an
+  inline "A payment screenshot is required." error and never calls the
+  action if no photo was selected; otherwise it calls
   `claimPayment(boothId, token, photo)` and, on success, `router.push`es to
   the newly-numbered `../{orderNumber}?t={token}` status page — the moment
   this order first gets a number. A failure shows `res.error` via
   `toast.error` (`sonner`), same convention as `pay-panel.tsx`.
 - `pay-form.dom.test.tsx` — RTL tests: the null-checkout load-failure state
   (and its refresh button), the required-photo inline error, a successful
-  upload+claim+redirect, a failed claim's toast, and QR/link checkout
-  rendering.
+  upload+claim+redirect, a failed claim's toast, QR/link checkout
+  rendering, and the "Save QR image" button's Web Share / download-link /
+  rasterize-failure paths (same coverage shape as
+  `../[orderNumber]/pay-panel.dom.test.tsx`).
 
 Deliberately **not** used here: `unclaimPayment`/`getPaymentStatus`
 (`../[orderNumber]/payment-actions.ts`). Both operate on an
