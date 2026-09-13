@@ -156,6 +156,23 @@ describe("SettingsForm customer notify toggle", () => {
   });
 });
 
+describe("SettingsForm pickup-scan toggle", () => {
+  it("saves pickup_scan_enabled when the switch is toggled", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+
+    await user.click(
+      screen.getByRole("switch", { name: /self-checkout pickup/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ pickup_scan_enabled: true }),
+    );
+  });
+});
+
 describe("SettingsForm sound", () => {
   it("selecting a preset previews it and saves immediately", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });

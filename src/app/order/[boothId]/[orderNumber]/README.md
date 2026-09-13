@@ -137,7 +137,17 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   for payment reconciliation, not display. A "Remember this number for
   pickup" line sits right under the heading, the first of several places
   (see `OrderStatusPoller` above) that re-anchor the order number to fight
-  pickup mixups, per Manfred's first-event AAR.
+  pickup mixups, per Manfred's first-event AAR. `resolveOrderDisplay` (one
+  vendor `board_settings` read) also yields `pickupScanEnabled`; once
+  `order.status === "ready"` and that flag is on, a `react-qr-code` QR
+  encoding this same page's own URL renders after the itemized order
+  ("Show this at the pickup counter to collect") — a vendor opts a booth
+  into this via the dashboard settings "Self-checkout pickup" toggle, and a
+  staff kiosk scans it into `../pickup`'s `confirmCollection`. The QR's
+  origin comes from the request's own `host`/`x-forwarded-host` header
+  (`resolveOrigin`), not an env var — `booth-qr-poster.tsx`'s design doc
+  found `NEXT_PUBLIC_BASE_URL` unreliable, and this URL must resolve on a
+  separate scanning device.
 - `page.dom.test.tsx` — RTL test rendering `OrderStatusPage` directly (same
   pattern as `src/app/dashboard/layout.dom.test.tsx`: an async Server
   Component page can be awaited and its returned tree rendered like any
@@ -145,9 +155,12 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   (`OrderStatusPoller`, `EarnLink`, `next/dynamic`'s `PayPanel`) stubbed out
   so the test stays focused on `TelegramConnect`'s gating (renders while
   `status` is `pending`/`confirmed`/`preparing`, not once
-  `ready`/`completed`/`cancelled`) and the `../pay` redirect guard (fires
+  `ready`/`completed`/`cancelled`), the `../pay` redirect guard (fires
   only when `payment_status === "pending"`, `next/navigation`'s `redirect`
-  mocked the same throw-to-abort way as `notFound`).
+  mocked the same throw-to-abort way as `notFound`), and the pickup QR
+  (renders only when `status === "ready"` AND the mocked vendor row's
+  `board_settings.pickup_scan_enabled` is `true`; `next/headers`' `headers`
+  mocked to a fixed `Headers({ host })` so the QR's URL is deterministic).
 - `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, initialStatus })`
   client component: polls `getPaymentStatus` every 5s until
   `confirmed`/`not_required`. Renders only the states reachable once

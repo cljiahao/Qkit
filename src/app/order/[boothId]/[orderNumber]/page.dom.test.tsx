@@ -23,6 +23,9 @@ vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
 }));
+vi.mock("next/headers", () => ({
+  headers: () => Promise.resolve(new Headers({ host: "qkit-test.example" })),
+}));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("./order-status-poller", () => ({ OrderStatusPoller: () => null }));
 vi.mock("./earn-link", () => ({ EarnLink: () => null }));
@@ -57,6 +60,20 @@ const booth = {
   name: "Kopi Corner",
   vendor_id: VENDOR_ID,
   social_links: null,
+};
+
+// Minimal valid boardSettingsSchema shape (see @/lib/schemas) — required
+// fields filled in, pickup_scan_enabled set per-test.
+const VALID_BOARD_SETTINGS = {
+  aging_min: 5,
+  overdue_min: 10,
+  sound_id: "chime",
+  desktop_notify: false,
+  undo_seconds: 4,
+  daily_order_number_reset: false,
+  show_wait_estimate: true,
+  default_prep_minutes: null,
+  ready_auto_clear_min: null,
 };
 
 const { maybeSingle, boothSingle, vendorMaybeSingle } = vi.hoisted(() => ({
@@ -152,5 +169,46 @@ describe("OrderStatusPage — pending-payment redirect guard", () => {
   it("does not redirect once payment_status is past pending", async () => {
     await renderPage("preparing");
     expect(redirectMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrderStatusPage — pickup QR", () => {
+  it("shows a pickup QR when ready and pickup_scan_enabled is on", async () => {
+    vendorMaybeSingle.mockResolvedValue({
+      data: {
+        board_settings: { ...VALID_BOARD_SETTINGS, pickup_scan_enabled: true },
+      },
+    });
+    await renderPage("ready");
+    expect(
+      screen.getByText(/show this at the pickup counter/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no pickup QR when the toggle is off", async () => {
+    vendorMaybeSingle.mockResolvedValue({
+      data: {
+        board_settings: {
+          ...VALID_BOARD_SETTINGS,
+          pickup_scan_enabled: false,
+        },
+      },
+    });
+    await renderPage("ready");
+    expect(
+      screen.queryByText(/show this at the pickup counter/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows no pickup QR when not ready even if the toggle is on", async () => {
+    vendorMaybeSingle.mockResolvedValue({
+      data: {
+        board_settings: { ...VALID_BOARD_SETTINGS, pickup_scan_enabled: true },
+      },
+    });
+    await renderPage("preparing");
+    expect(
+      screen.queryByText(/show this at the pickup counter/i),
+    ).not.toBeInTheDocument();
   });
 });

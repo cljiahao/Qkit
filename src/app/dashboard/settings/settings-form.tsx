@@ -280,9 +280,9 @@ export function SettingsForm({
   const [customerNotify, setCustomerNotify] = useState(
     initial.customer_telegram_notify_enabled ?? true,
   );
-  // pickup_scan_enabled is persisted in board_settings but has no UI control yet
-  // — it's reserved for future use (pickup kiosk feature). Carried through in
-  // currentSettings() below so vendor changes to other settings don't clobber it.
+  const [pickupScanEnabled, setPickupScanEnabled] = useState(
+    initial.pickup_scan_enabled ?? false,
+  );
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const { pending: savingThresholds, run: runThresholds } = useAsyncAction();
 
@@ -328,7 +328,7 @@ export function SettingsForm({
       ready_auto_clear_min:
         readyAutoClearMin.trim() === "" ? null : Number(readyAutoClearMin),
       customer_telegram_notify_enabled: customerNotify,
-      pickup_scan_enabled: initial.pickup_scan_enabled ?? false,
+      pickup_scan_enabled: pickupScanEnabled,
     };
   }
 
@@ -381,7 +381,8 @@ export function SettingsForm({
       (initial.ready_auto_clear_min != null
         ? String(initial.ready_auto_clear_min)
         : "") &&
-    customerNotify === (initial.customer_telegram_notify_enabled ?? true);
+    customerNotify === (initial.customer_telegram_notify_enabled ?? true) &&
+    pickupScanEnabled === (initial.pickup_scan_enabled ?? false);
 
   const displayUnchanged =
     dailyReset === initial.daily_order_number_reset &&
@@ -554,6 +555,21 @@ export function SettingsForm({
                   Notify customers on Telegram when their order is ready
                   <InfoTooltip
                     content="Fires the same Telegram ping a customer opted into on the order-status page. Turning this off doesn't touch their connection, it just stops this booth from using it."
+                    ariaLabel="More about this setting"
+                  />
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 border-t border-border pt-4">
+                <Switch
+                  checked={pickupScanEnabled}
+                  onCheckedChange={setPickupScanEnabled}
+                  aria-label="Self-checkout pickup"
+                />
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  Self-checkout pickup
+                  <InfoTooltip
+                    content="Customers scan their own order-status QR at a pickup kiosk instead of staff marking pickup manually."
                     ariaLabel="More about this setting"
                   />
                 </span>

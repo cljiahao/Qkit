@@ -7,8 +7,10 @@ customers see while they wait: the amber/red aging thresholds, how long
 staff have to undo a tap, how long an uncollected ready order sits before
 auto-clearing, whether the customer Telegram "order ready" ping is on for
 this vendor, the new-order sound, desktop notifications, whether order
-numbers reset daily, whether a wait-time estimate shows at all, and a
-backup prep-time estimate. Settings are stored on the vendor's own row and
+numbers reset daily, whether a wait-time estimate shows at all, a
+backup prep-time estimate, and whether the order-status page shows a
+pickup QR once an order is `ready` (self-checkout, opt-in). Settings are
+stored on the vendor's own row and
 sync across devices. The "Connect Telegram" section that used to live here
 (a one-time deep-link QR against qkit's own Telegram bot) was retired
 2026-08-16 in favor of merqo's shared bot — a vendor now connects once via
@@ -62,7 +64,10 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
   key, same rationale as `boardSettingsSchema`'s own `.default(true)`); this
   is a vendor-side opt-out layered on the customer's own already-given
   consent (merqo's connect flow), not a re-ask — see `customerNotifyEnabled`
-  in `src/app/dashboard/order-actions.ts`; "New-order
+  in `src/app/dashboard/order-actions.ts`; directly below it, a `Switch`
+  labeled "Self-checkout pickup" for `pickup_scan_enabled` (default `false`,
+  copied from the customer-notify switch above) — gates the pickup QR on
+  `src/app/order/[boothId]/[orderNumber]/page.tsx`'s order-status page; "New-order
   sound" is a `ToggleGroup` of `SOUND_OPTIONS` —
   chime/bell/ding/horn/triple/off — that previews via `playSound` on pick and
   saves immediately; "Notifications" is a `Switch` (its extra iOS/Android
@@ -124,7 +129,8 @@ aging_min` and an out-of-range `undo_seconds` client-side without calling
   `customer_telegram_notify_enabled: false` via "Save timing" once toggled
   off; still renders checked when `initial` is a legacy `BoardSettings`
   object with the key stripped out entirely, simulating a vendor row stored
-  before this key existed), and the
+  before this key existed), the pickup-scan toggle (saves
+  `pickup_scan_enabled: true` via "Save timing" once toggled), and the
   live-estimate line once enough history exists) — all with
   `updateBoardSettings`/`sonner`/`order-alerts` mocked.
 
@@ -145,7 +151,9 @@ sound / fires notifications, `daily_order_number_reset` feeds
 (`src/app/order/[boothId]/[orderNumber]/status-actions.ts`), and
 `ready_auto_clear_min` gates the board's 30s `sweepReadyOrders` poll
 (`realtime-order-board.tsx` in `src/app/dashboard`) — `null` (the field left
-blank here) disables the sweep entirely for that vendor.
+blank here) disables the sweep entirely for that vendor, and
+`pickup_scan_enabled` gates whether the order-status page renders the
+pickup QR once `status === "ready"`.
 
 ## Parent
 
