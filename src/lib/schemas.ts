@@ -534,6 +534,7 @@ export const boardSettingsSchema = z
     // postdates the column) keeps notifying exactly as before this shipped —
     // only an explicit `false` (a vendor who finds it off-brand) turns it off.
     customer_telegram_notify_enabled: z.boolean().default(true),
+    pickup_scan_enabled: z.boolean().default(false),
   })
   .refine((d) => d.overdue_min > d.aging_min, {
     message: "Overdue must be later than amber",
@@ -602,7 +603,7 @@ export const orderStatusSchema = z.enum([
 export const orderRowSchema = z.object({
   id: z.string(),
   booth_id: z.string(),
-  order_number: z.string(),
+  order_number: z.string().nullable(),
   customer_name: z.string(),
   items: z.array(orderItemSchema),
   status: orderStatusSchema,

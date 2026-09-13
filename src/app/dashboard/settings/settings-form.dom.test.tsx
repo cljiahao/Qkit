@@ -37,6 +37,7 @@ const DEFAULTS: BoardSettings = {
   default_prep_minutes: null,
   ready_auto_clear_min: 3,
   customer_telegram_notify_enabled: true,
+  pickup_scan_enabled: false,
 };
 
 const PREP_ESTIMATE = { avgMinutes: null, sampleCount: 0, minSample: 10 };

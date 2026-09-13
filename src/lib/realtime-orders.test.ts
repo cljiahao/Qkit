@@ -34,6 +34,19 @@ function row(overrides: Partial<Order> = {}): Order {
 }
 
 describe("parseRealtimeOrderEvent", () => {
+  it("accepts a null order_number (payment-required order before claim)", () => {
+    const testRow = row({ order_number: null });
+    const event = parseRealtimeOrderEvent({
+      eventType: "INSERT",
+      new: testRow,
+      old: {},
+    });
+    expect(event).not.toBeNull();
+    expect(
+      event && "order" in event ? event.order.order_number : undefined,
+    ).toBeNull();
+  });
+
   it("parses a valid INSERT into a typed event, stripping access_token", () => {
     const { access_token: _accessToken, ...expected } = row();
     const event = parseRealtimeOrderEvent({

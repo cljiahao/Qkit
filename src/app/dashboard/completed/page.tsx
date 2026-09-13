@@ -35,7 +35,7 @@ export default async function CompletedOrdersPage() {
       .limit(HISTORY_LIMIT);
     ordersErr = error;
     if (error) console.error("completed orders read failed", error.message);
-    orders = data ?? [];
+    orders = (data ?? []).filter((o) => o.order_number != null);
   }
 
   const loadError = Boolean(boothErr) || Boolean(ordersErr);

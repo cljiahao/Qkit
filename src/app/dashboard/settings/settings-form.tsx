@@ -280,6 +280,9 @@ export function SettingsForm({
   const [customerNotify, setCustomerNotify] = useState(
     initial.customer_telegram_notify_enabled ?? true,
   );
+  // pickup_scan_enabled is persisted in board_settings but has no UI control yet
+  // — it's reserved for future use (pickup kiosk feature). Carried through in
+  // currentSettings() below so vendor changes to other settings don't clobber it.
   const [thresholdError, setThresholdError] = useState<string | null>(null);
   const { pending: savingThresholds, run: runThresholds } = useAsyncAction();
 
@@ -325,6 +328,7 @@ export function SettingsForm({
       ready_auto_clear_min:
         readyAutoClearMin.trim() === "" ? null : Number(readyAutoClearMin),
       customer_telegram_notify_enabled: customerNotify,
+      pickup_scan_enabled: initial.pickup_scan_enabled ?? false,
     };
   }
 

@@ -277,6 +277,11 @@ describe("boardSettingsSchema", () => {
       expect(res.data.customer_telegram_notify_enabled).toBe(false);
     }
   });
+
+  it("defaults pickup_scan_enabled to false when missing", () => {
+    const result = boardSettingsSchema.safeParse(valid);
+    expect(result.success && result.data.pickup_scan_enabled).toBe(false);
+  });
 });
 
 describe("menuItemSchema", () => {

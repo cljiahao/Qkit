@@ -177,7 +177,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   // (maybeSingle → null, no error) is a true 404.
   if (orderError)
     throw new Error(`order status read failed: ${orderError.message}`);
-  if (!order) notFound();
+  if (!order || order.order_number == null) notFound();
 
   // Vendor-level default links, so a booth without its own override still
   // shows the vendor's. Small extra query (not embeddable via Promise.all

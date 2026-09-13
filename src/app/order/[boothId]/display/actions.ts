@@ -108,7 +108,10 @@ export async function getBoothQueueDisplay(
     return null;
   }
 
-  return sortForDisplay(orders ?? []).map((o) => ({
+  const nonNullOrders = (orders ?? []).filter(
+    (o): o is typeof o & { order_number: string } => o.order_number != null,
+  );
+  return sortForDisplay(nonNullOrders).map((o) => ({
     orderNumber: o.order_number,
     displayNumber: displayOrderNumber(o.order_number, baseline),
     status: o.status,

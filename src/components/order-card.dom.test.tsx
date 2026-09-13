@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { OrderCard } from "./order-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { sgtClock, shortDateTime } from "@/lib/tz";
-import type { Order } from "@/lib/types";
+import type { BoardOrder } from "@/lib/types";
 
 // The card delegates mutations to server actions (order-actions.ts). We mock
 // those and assert the card calls the right one with the order id; the patch
@@ -37,7 +37,7 @@ vi.mock("@/app/dashboard/order-actions", () => ({
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
-function makeOrder(overrides: Partial<Order> = {}): Order {
+function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
   return {
     id: "o1",
     booth_id: "b1",
@@ -56,7 +56,6 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     completed_at: null,
     updated_at: new Date(0).toISOString(),
     idempotency_key: null,
-    access_token: "tok-test",
     priority_bumped_at: null,
     source: "qr",
     auto_completed: false,

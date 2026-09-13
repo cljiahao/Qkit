@@ -76,7 +76,7 @@ export function CompletedOrdersList({
     if (!query.trim()) return true;
     const q = query.trim().toLowerCase();
     return (
-      o.order_number.toLowerCase().includes(q) ||
+      (o.order_number?.toLowerCase().includes(q) ?? false) ||
       o.customer_name.toLowerCase().includes(q)
     );
   });
