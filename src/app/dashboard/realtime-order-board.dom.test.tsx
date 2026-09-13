@@ -71,6 +71,7 @@ vi.mock("./walkup-menu-actions", () => ({ getWalkupMenu: vi.fn() }));
 vi.mock("./walkup-actions", () => ({ placeWalkupOrder: vi.fn() }));
 vi.mock("./order-actions", () => ({
   sweepReadyOrders: vi.fn(),
+  sweepAbandonedPayments: vi.fn(),
   advanceOrder: vi.fn(),
 }));
 

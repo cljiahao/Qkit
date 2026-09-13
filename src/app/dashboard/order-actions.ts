@@ -613,3 +613,49 @@ export async function sweepReadyOrders(): Promise<void> {
     });
   }
 }
+
+const ABANDONED_PAYMENT_MS = 30 * 60_000;
+
+/**
+ * Abandoned-payment sweep: cancels every pending QR order older than 30
+ * minutes. No vendor setting gate — this is baseline hygiene, not an opt-in
+ * preference. No id param — bulk, RLS-scoped to the caller's own booths
+ * (orders_vendor_update) exactly like every other mutation here. Called on a
+ * client poll (realtime-order-board.tsx) rather than a DB cron job, matching
+ * this codebase's existing usePolling pattern. Returns void: this is a
+ * background sweep the caller doesn't surface a toast for — a real failure is
+ * logged, and the next poll simply retries.
+ */
+export async function sweepAbandonedPayments(): Promise<void> {
+  const user = await getUser();
+  if (!user) return;
+
+  const supabase = await createServerClient();
+  const cutoff = new Date(Date.now() - ABANDONED_PAYMENT_MS).toISOString();
+
+  const { data: swept, error } = await supabase
+    .from("orders")
+    .update({ status: "cancelled" })
+    .eq("payment_status", "pending")
+    .eq("source", "qr")
+    .eq("status", "pending")
+    .lt("created_at", cutoff)
+    .select("id");
+  if (error) {
+    console.error("sweepAbandonedPayments failed", error.message);
+    return;
+  }
+
+  // Log the same real column transition each swept order just got, one
+  // order_status_events row per order — no admin_audit entry here (this is
+  // an automatic sweep, not a deliberate vendor decision, matching the
+  // no-toast/logged-only failure handling this function already uses).
+  for (const { id } of swept ?? []) {
+    await recordOrderStatusEvent({
+      order_id: id,
+      from_status: "pending",
+      to_status: "cancelled",
+      actor: user.id,
+    });
+  }
+}
