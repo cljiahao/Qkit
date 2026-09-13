@@ -24,6 +24,23 @@ to land them together.
   pass through every other section for gaps (queue-display leak, wait-
   estimate inflation, `/pay` dead-end states, undo-window preservation,
   kiosk race conditions). See "Order-number deferral" below.
+- **v6 (current):** a second, deeper file-by-file sweep (fork-dispatched,
+  9 areas, read-only) against the real code found five more concrete
+  issues, now fixed: (1) `orderRowSchema.order_number`
+  (`src/lib/realtime-orders.ts`) is non-nullable today — left as-is, every
+  payment-required order's realtime INSERT would fail schema validation
+  and silently never reach the board at all (not a display bug, a total
+  drop); (2) the spec's claim that `revertOrderAdvance` already supports
+  undoing the reconciled action was wrong — it only restores
+  `payment_status` when reverting from `completed`, not from `preparing`;
+  (3) `loadCheckoutContext` (`payment-actions.ts`) doesn't select
+  `customer_name`, needed for the claim-time `notifyPrintkit` call; (4)
+  `qkit.next_order_number` already exists in the schema but is dead code
+  with a truncation bug at 5-digit order counts — the new function must
+  copy `place_order`'s own corrected inline pattern, not that function;
+  (5) the merge condition for "Mark paid & start" should key on order
+  state, not `source = 'qr'` — a walk-up order left unpaid at `pending`
+  hits the identical reasoning.
 
 ## Problem
 
@@ -266,6 +283,17 @@ NULL` (column becomes nullable), and force `status = 'pending'`
   id = p_order_id AND order_number IS NULL RETURNING order_number` — the
   `IS NULL` guard makes it idempotent against a retried/concurrent call
   (returns the already-assigned number instead of incrementing twice).
+  **Must copy `place_order`'s own zero-pad formatting exactly**
+  (`lpad(v_seq::text, greatest(4, length(v_seq::text)), '0')`), **not**
+  `qkit.next_order_number` — that function already exists in this schema
+  (migration `0008_atomic_order_numbers.sql`), is unused dead code, and
+  has a real truncation bug: its `lpad(v_seq::text, 4, '0')` silently
+  chops the leading digit once a booth passes 9999 orders (Postgres's
+  `lpad` truncates a too-long input from the left). `place_order` and
+  `place_walkup_order` already independently inline the corrected version
+  and never call it — found in this sweep, worth a one-line note in the
+  migration so nobody reaches for `next_order_number` by mistake later,
+  but its own fix is out of scope here.
 - `claimPayment` calls this function as part of the same successful-claim
   flow, **then** fires `notifyVendorTelegram` and `notifyPrintkit` itself
   (moved here from `placeOrder`, for the payment-required case only) — the
@@ -308,8 +336,28 @@ New migration (next number, `0087_...sql`, written to
 `supabase/migrations/` — applied by you via the SQL editor per usual, never
 run directly):
 
-- `orders.order_number` becomes **nullable** — null until a
-  payment-required order is claimed (see Order-number deferral).
+- `orders.order_number` becomes **nullable** (drops the `NOT NULL` set in
+  the original schema, migration `0001_initial_schema.sql`) — null until a
+  payment-required order is claimed (see Order-number deferral). The
+  existing `UNIQUE (booth_id, order_number)` constraint (same migration)
+  needs no change: Postgres treats every `NULL` in a unique constraint as
+  distinct from every other `NULL`, so any number of simultaneous
+  unclaimed orders at one booth (all `order_number = NULL`) can coexist
+  without a conflict — confirmed, not assumed, since this is a real
+  gotcha in some other databases.
+- **App-layer ripple from the above, both required or the board silently
+  breaks:** `src/lib/types.ts`'s `orders` `Row`/`Insert`/`Update` types
+  change `order_number: string` → `string | null`. More importantly,
+  `src/lib/realtime-orders.ts`'s `orderRowSchema` (`order_number:
+z.string()`) must become `z.string().nullable()` — this schema gates
+  `parseRealtimeOrderEvent`, which validates every realtime INSERT/UPDATE
+  before the board sees it. Left non-nullable, every payment-required
+  order's realtime event fails validation and is **silently dropped** —
+  not a display glitch, the vendor never learns the order exists via
+  realtime at all (only an eventual manual resync would catch it). Found
+  in the deep sweep; without this fix the whole feature would appear to
+  work in every manual test that happens to trigger a resync, then fail
+  silently in real usage.
 - `orders.payment_proof_path text null` — storage path of the customer's
   uploaded payment screenshot, in a new **private** bucket `payment-proofs`
   (NOT the existing public `booth-images` bucket — that bucket's adapter
@@ -401,43 +449,57 @@ The order-status page itself:
   realtime subscription filter, and it doesn't need to be one. This was
   never a security boundary (the vendor is already RLS-authorized to read
   their own orders' full data regardless of payment status) — it's a
-  render-level workflow filter. The exclusion lives in
-  `realtime-order-board.tsx`'s own grouping logic (where orders are sorted
-  into board columns), not in the fetch query or the realtime
-  subscription. Walk-up orders (`source = 'walkup'`) are unaffected
-  regardless of `payment_status` — staff already handles that transaction
-  face-to-face at creation, so there's nothing to hide.
+  render-level workflow filter. Exact insertion point, confirmed:
+  `realtime-order-board.tsx`'s board-list filter predicate (currently
+  `!isTerminal(o.status) || undoWindowIds.has(o.id)`) — add `&&
+!(o.payment_status === "pending" && o.source === "qr")` to the same
+  predicate. `orderRowSchema` already carries both fields through, so no
+  new data needs to flow anywhere for this to work. Walk-up orders
+  (`source = 'walkup'`) are unaffected regardless of `payment_status` —
+  staff already handles that transaction face-to-face at creation, so
+  there's nothing to hide.
 - **Two other surfaces read active orders and need the exact same
-  exclusion, found in this sweep:**
-  - `getBoothQueueDisplay` (`display/actions.ts`, PR #144's public TV
-    display) reads all non-terminal orders with no payment filter. Without
-    this fix, an unpaid QR order would show as a "Preparing" tile on the
-    **public** screen while remaining invisible on the vendor's own board
-    — a customer's order publicly displayed as being worked on when it
-    isn't. Needs the same `payment_status = 'pending' AND source = 'qr'`
-    exclusion in its query.
-  - `getWaitEstimate` (`status-actions.ts`) counts all non-terminal orders
-    for a booth as "active," with no payment filter, to compute another
-    customer's "orders ahead of you." A pile of never-claimed QR orders
-    would inflate every other customer's wait estimate. Same exclusion
-    needed in this query too. (Note: once orders are claim-gated for
-    numbering too, an unclaimed order was never going to display a number
-    anyway — but its row still exists and would otherwise be counted here.)
+  exclusion, found in this sweep — exact lines confirmed:**
+  - `getBoothQueueDisplay` (`display/actions.ts:99-100`, PR #144's public
+    TV display): `.select("order_number, status, created_at,
+priority_bumped_at")`, no payment filter. Without this fix, an unpaid QR
+    order would show as a "Preparing" tile on the **public** screen while
+    remaining invisible on the vendor's own board.
+  - `getWaitEstimate` (`status-actions.ts:155-156`)'s `active` query:
+    `.select("id, status, created_at, priority_bumped_at")`, same gap — a
+    pile of never-claimed QR orders would inflate every other customer's
+    "orders ahead of you."
+  - Fix for both: filter via `.eq()`/exclusion on `payment_status`/`source`
+    **without adding those columns to the select list** — both queries
+    are deliberately narrow, least-privilege row shapes already
+    (documented in the queue-display code); filtering without selecting
+    preserves that intent instead of widening a public-facing query's own
+    row shape just to filter on it.
 - **`order-card.tsx`, reconciled review action:** today, a payment-required
   order at `status === "pending"` shows two separate taps — "Mark as
   paid"/"Confirm payment received" (`confirmOrderPayment`) and a second
   "Start now" button (`advanceOrder`) — verified against the actual
   current UI (`order-card.tsx:565-587`). They merge into one button ("Mark
-  paid & start", exact copy TBD in the plan): there's no scenario where a
-  vendor confirms payment without also starting the order. Shows the
-  proof-photo thumbnail (signed URL, minted on demand) plus the OCR +
-  duplicate-photo hints once opened, then performs both the payment
-  confirm and the pending→preparing advance in one action.
-  **Preserves the existing undo window**: `revertOrderAdvance` already
-  supports restoring a `prevPaymentStatus` alongside the status revert
-  (built for undoing the ready→completed auto-confirm case) — the
-  reconciled action's client-side mis-tap recovery reuses this exact
-  mechanism rather than dropping undo for this one case. Rejecting a
+  paid & start", exact copy TBD in the plan) whenever `status ===
+"pending"` AND `payment_status` isn't `confirmed`/`not_required` —
+  **keyed on order state, not `source`**: a walk-up order staff left
+  unpaid at creation (`paid: false`) hits the identical "why would you
+  confirm payment without also starting" reasoning, so it gets the merged
+  button too, not just QR orders. Shows the proof-photo thumbnail (signed
+  URL, minted on demand) plus the OCR + duplicate-photo hints once opened,
+  then performs both the payment confirm and the pending→preparing
+  advance in one action.
+  **Undo needs its own revert path, not a reuse of `revertOrderAdvance`.**
+  The v5 draft claimed that function already restores `payment_status` on
+  a revert — checked its actual condition
+  (`order-actions.ts:160-224`): it only does so when `revertFrom ===
+"completed"` (the ready→completed auto-confirm case), not `"preparing"`.
+  Reusing it as-is for this undo would silently leave `payment_status`
+  stuck at `confirmed` after reverting `status` back to `pending` — a real
+  bug if left as originally claimed. Fix: a small dedicated revert
+  function for this one case (`revertPaymentAndStart(orderId, ...)`)
+  rather than widening `revertOrderAdvance`'s condition, which would
+  conflate two different semantic cases in one function. Rejecting a
   bad/fraudulent claim still uses the existing Cancel action.
 - Existing one-tap "Mark Picked Up" is untouched — the fallback for a
   dead/unpaired scanner or a vendor who hasn't turned the kiosk capability
@@ -458,17 +520,34 @@ The order-status page itself:
   claim leaves only a harmless orphaned photo in storage — never a
   `payment_status = 'claimed'` order with no photo, and never an assigned
   order number for a claim that didn't actually succeed. Reuses
-  `rateLimit`/`clientIp` and `image-resize.ts`.
+  `rateLimit`/`clientIp` and `image-resize.ts`. **`loadCheckoutContext`'s
+  own select needs `customer_name` added** — checked its current select
+  (`payment-actions.ts:66`, `"id, total_cents, payment_status, status"`)
+  and confirmed it doesn't fetch it today; `notifyPrintkit` needs it for
+  the label content and there's no other cheap source for it in this
+  function's existing reads.
 - **`confirmPaymentAndStart(orderId)`** (new action, `order-actions.ts`,
   vendor-authenticated like `advanceOrder`/`confirmOrderPayment`): wraps
   the same underlying writes those two already make (`payment_status` →
   `confirmed`, `status` `pending` → `preparing`) as one atomic update.
-  Only valid when `status === "pending"` and payment isn't already
-  confirmed; existing actions remain as-is for every other transition.
-- **`sweepAbandonedPayments()`** (new action, `order-actions.ts`, polled
-  from `realtime-order-board.tsx` the same way `sweepReadyOrders` already
-  is): cancels a vendor's own `pending`-payment `qr`-source orders older
-  than 30 minutes.
+  Only valid when `status === "pending"` and `payment_status` isn't
+  `confirmed`/`not_required` (any source, including a still-unpaid
+  walk-up order — see Vendor flow); existing actions remain as-is for
+  every other transition. Paired with a new
+  **`revertPaymentAndStart(orderId, prevPaymentStatus)`** for its own undo
+  window — a dedicated function, not a reuse of `revertOrderAdvance` (see
+  Vendor flow for why that would silently corrupt `payment_status`).
+- **`sweepAbandonedPayments()`** (new action, `order-actions.ts`): cancels
+  a vendor's own `pending`-payment `qr`-source orders older than 30
+  minutes. Polled from `realtime-order-board.tsx` via its own separate
+  `usePolling` call, **not** batched into the existing `sweepReadyOrders`
+  poll and **not** gated behind a vendor setting the way that one is —
+  checked the existing poll's condition
+  (`realtime-order-board.tsx:470-475`, `enabled: boardSettings.
+ready_auto_clear_min != null`) and confirmed it only runs when a vendor
+  has opted into auto-clearing ready orders. Abandoned-payment cleanup
+  isn't an opt-in preference, it's baseline hygiene, so it runs
+  unconditionally on its own interval instead.
 - **`confirmCollection(boothId, orderNumber, token)`** (new action, new
   file `[orderNumber]/collect-actions.ts`): anonymous, service-client-
   based, since the kiosk page has no login. Verifies the order the same
@@ -516,9 +595,13 @@ The order-status page itself:
 - Board query / `getBoothQueueDisplay` / `getWaitEstimate`: all three
   exclude `pending`-payment `qr`-source orders; a `pending`-payment
   `walkup` order still appears on the board.
+- `orderRowSchema`/realtime: a payment-required order's INSERT event (null
+  `order_number`) parses successfully and reaches the board — the
+  regression test for the schema bug found in this sweep.
 - `order-card.tsx`: merged "Mark paid & start" button for the
-  pending/claimed case; existing separate buttons for every later
-  transition; undo reverts both payment and status together.
+  pending/unconfirmed-payment case regardless of `source` (walk-up
+  included); existing separate buttons for every later transition; undo
+  (`revertPaymentAndStart`) reverts both payment and status together.
 - `/pay`: shows the form when `pending`; redirects forward when already
   claimed/confirmed; shows a cancelled state; shows a load-failure state
   when `checkout` is null.
@@ -549,3 +632,11 @@ The order-status page itself:
 - 30-minute abandoned-payment threshold reuses the value already used by
   `stuck-orders.ts` for an unrelated purpose — a coincidence, not a shared
   constant.
+- The reconciled "Mark paid & start" merge condition is keyed on order
+  state (`status === "pending"` + payment not confirmed), not on
+  `source === "qr"` — a walk-up order left unpaid gets the same merged
+  button, since the underlying reasoning doesn't depend on how the order
+  was placed.
+- `qkit.next_order_number` (existing, unused, buggy past 9999 orders) is
+  left alone — fixing or removing it is a separate cleanup, out of scope
+  here; the new `assign_order_number` function simply doesn't call it.
