@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import QRCode from "react-qr-code";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
   getOrCreateVendorProfile,
@@ -61,19 +63,19 @@ async function loadVendorProfile(
 }
 
 /**
- * Daily order-number reset (board_settings.daily_order_number_reset): shows
- * this order's position among today's orders instead of its permanent
- * order_number — same display-only rule the vendor board applies (see
- * displayOrderNumber in @/lib/orders). Decorative, so any failure here
- * degrades to the real order_number rather than breaking the page — same
- * philosophy as loadVendorProfile above.
+ * board_settings-derived page state: the daily-reset heading number (see
+ * displayOrderNumber in @/lib/orders) and whether the vendor has turned on
+ * the pickup QR (pickup_scan_enabled) — one vendor-row read serves both, so
+ * the pickup toggle doesn't cost a second query. Decorative, so any failure
+ * here degrades to the real order_number / QR-off rather than breaking the
+ * page — same philosophy as loadVendorProfile above.
  */
-async function resolveHeadingNumber(
+async function resolveOrderDisplay(
   supabase: Awaited<ReturnType<typeof createServiceClient>>,
   boothId: string,
   vendorId: string,
   orderNumber: string,
-): Promise<string> {
+): Promise<{ headingNumber: string; pickupScanEnabled: boolean }> {
   try {
     const { data: vendorRow } = await supabase
       .from("vendors")
@@ -81,8 +83,11 @@ async function resolveHeadingNumber(
       .eq("id", vendorId)
       .maybeSingle();
     const settings = boardSettingsSchema.safeParse(vendorRow?.board_settings);
+    const pickupScanEnabled =
+      settings.success && settings.data.pickup_scan_enabled;
+
     if (!settings.success || !settings.data.daily_order_number_reset)
-      return orderNumber;
+      return { headingNumber: orderNumber, pickupScanEnabled };
 
     const { data: firstToday } = await supabase
       .from("orders")
@@ -92,16 +97,54 @@ async function resolveHeadingNumber(
       .order("order_number", { ascending: true })
       .limit(1)
       .maybeSingle();
-    return firstToday
-      ? displayOrderNumber(orderNumber, firstToday.order_number)
-      : orderNumber;
+    return {
+      headingNumber: firstToday
+        ? displayOrderNumber(orderNumber, firstToday.order_number)
+        : orderNumber,
+      pickupScanEnabled,
+    };
   } catch (err) {
     console.error(
       "order-status: daily display-number read failed",
       err instanceof Error ? err.message : err,
     );
-    return orderNumber;
+    return { headingNumber: orderNumber, pickupScanEnabled: false };
   }
+}
+
+// host/x-forwarded-host are client-spoofable (same caution clientIp's own
+// doc comment gives in @/lib/rate-limit, "NOT trusted... a coarse fairness
+// key, not an authz signal") — this allowlist is a basic check, not full
+// trusted-proxy IP-range validation (that's a separate, bigger task).
+const ALLOWED_HOST_SUFFIXES = [".merqo.io", ".vercel.app"];
+
+function isAllowedHost(host: string): boolean {
+  const hostname = host.split(":")[0];
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    ALLOWED_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+  );
+}
+
+// Host-header-derived origin, not an env var — booth-qr-poster.tsx's design
+// doc found NEXT_PUBLIC_BASE_URL unreliable, and this URL must resolve on a
+// separate scanning device, not just this render. Prefers the plain `host`
+// header; `x-forwarded-host` is only used as a fallback, and only once it
+// also passes the allowlist above.
+async function resolveOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("host");
+  const forwardedHost = h.get("x-forwarded-host");
+
+  let trustedHost: string | null = null;
+  if (host && isAllowedHost(host)) trustedHost = host;
+  else if (forwardedHost && isAllowedHost(forwardedHost))
+    trustedHost = forwardedHost;
+
+  if (!trustedHost) return "https://qkit.example";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${trustedHost}`;
 }
 
 export default async function OrderStatusPage({ params, searchParams }: Props) {
@@ -167,14 +210,19 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
     parseSocialLinks(vendorProfile?.social_links ?? null),
   );
 
-  const headingNumber = booth?.vendor_id
-    ? await resolveHeadingNumber(
+  const { headingNumber, pickupScanEnabled } = booth?.vendor_id
+    ? await resolveOrderDisplay(
         supabase,
         boothId,
         booth.vendor_id,
         order.order_number,
       )
-    : order.order_number;
+    : { headingNumber: order.order_number, pickupScanEnabled: false };
+
+  const pickupUrl =
+    order.status === "ready" && pickupScanEnabled
+      ? `${await resolveOrigin()}/order/${boothId}/${orderNumber}?t=${token}`
+      : null;
 
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
@@ -298,6 +346,20 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             </div>
           )}
         </section>
+
+        {pickupUrl && (
+          <>
+            <div className="perforation" />
+            <section className="flex flex-col items-center gap-3 px-6 py-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                Show this at the pickup counter to collect
+              </p>
+              <div className="rounded-xl bg-white p-4">
+                <QRCode value={pickupUrl} size={180} />
+              </div>
+            </section>
+          </>
+        )}
       </Ticket>
 
       {/* Only once the order is done, not while still in progress — a
