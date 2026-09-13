@@ -11,6 +11,22 @@ completes.
 
 ## Contents
 
+- `collect-actions.ts` — `confirmCollection(boothId, orderNumber, token)`:
+  the self-checkout pickup kiosk's server action (`../pickup/`). Token-gated
+  and rate-limited exactly like `claimPayment` (20/60s per IP+booth — a
+  busier limit than the payment actions since a kiosk can legitimately fire
+  many scans in a shift). Distinguishes three non-error outcomes a `ready`
+  order can already be in: `"Not ready yet."` (still `preparing`/etc.),
+  `"Already collected."` (a double-scan, `status === "completed"`), and a
+  successful `{ success: true, status: "completed" }` for the one legal
+  transition — flips the order to `completed` via the same
+  `buildAdvancePatch`/guarded-UPDATE/re-read-on-0-rows pattern
+  `advanceOrder` (`src/app/dashboard/order-actions.ts`) uses, then logs a
+  `recordOrderStatusEvent` with `actor: null` (no authenticated user at an
+  unattended kiosk, unlike every other caller of that function).
+- `collect-actions.test.ts` — unit tests for the ready/not-ready/already-
+  completed/invalid-ref/rate-limited branches, plus the update-race
+  ("Order changed") and update-error paths.
 - `earn-link.tsx` — `EarnLink({ orderId, vendorId, loopkitBaseUrl })` (async
   server component): fetches the vendor's LoopKit earn-program config from
   `NEXT_PUBLIC_LOOPKIT_URL` (bearer-authed with `MERQO_METRICS_SECRET`,
@@ -202,7 +218,10 @@ paykit's checkout API (`@/lib/paykit/client`) for the actual QR/link/image
 and the claim transition; `EarnLink` calls out to the separate LoopKit
 service, and `TelegramConnect` calls out to merqo's `customer-connect-token`
 endpoint (`@/lib/merqo-customer-notify`) — the first kit → merqo HTTP
-direction in this codebase.
+direction in this codebase. `collect-actions.ts`'s `confirmCollection` is
+called from `../pickup/pickup-scanner.tsx`, the self-checkout pickup kiosk
+— a separate, public entry point that shares this same directory's
+`access_token`-gated trust model but not its route.
 
 ## Parent
 
