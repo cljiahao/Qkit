@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 //
-// Follows the pattern established in src/app/dashboard/layout.dom.test.tsx:
-// page.tsx is a plain async function with no RSC-specific machinery, so it
-// can be awaited directly and its returned tree rendered like any other
-// component. Every nested async/side-effecting child (EarnLink,
-// OrderStatusPoller, PayPanel behind next/dynamic) is stubbed out here so
-// the test stays focused on page.tsx's own TelegramConnect gating and
-// pending-payment redirect guard, not those components' own behavior.
+// page.tsx is a plain async function (same rendering approach as
+// src/app/dashboard/layout.dom.test.tsx), so it's awaited directly and
+// rendered. Every nested async/side-effecting child (EarnLink,
+// OrderStatusPoller, PayPanel) is stubbed so this stays focused on
+// page.tsx's own TelegramConnect gating and redirect guard.
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { OrderStatus } from "@/lib/types";
