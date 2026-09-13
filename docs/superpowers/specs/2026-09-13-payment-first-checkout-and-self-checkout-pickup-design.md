@@ -13,13 +13,19 @@ to land them together.
 - v2: reversed to staff-scanned, vendor-authenticated `/dashboard/scan`
   (closer to Luckin's real mechanic, but reintroduces staff into the
   handoff — see below).
-- **v3 (current):** reversed again to a true **self-checkout kiosk** —
-  customer operates the scanner themselves, at an unattended public
-  station. Matches the AAR backlog's own original goal ("removing staff
-  from the handoff entirely") and real self-checkout precedent (grocery
-  self-checkout lanes), not Luckin's staff-scan model. Also brings the OCR
-  hint into scope (was deferred) after resolving the earlier Vercel/
-  Next.js bundling concern.
+- v3: self-checkout kiosk, but the QR is printed on the cup label
+  (printkit dependency) and scanned by the customer against a kiosk
+  scanner.
+- **v4 (current):** the QR moves to the customer's own order-status page
+  (shown only once `status === "ready"`) instead of the cup — the kiosk
+  scanner reads the customer's **phone screen**, not a printed label. This
+  removes the printkit cross-repo dependency entirely, avoids printing
+  cost, and — unlike a printed label anyone holding the cup could scan —
+  ties the scan to whoever holds that customer's own private link. This is
+  also the literal Luckin mechanic (customer's app displays a QR, a
+  scanner reads it), not an adaptation of it. v4 also reconciles the
+  vendor's payment-review UI into a single action (see Vendor flow) and
+  adds a duplicate-photo fraud check to the OCR hint (see OCR hint).
 
 ## Problem
 
@@ -63,6 +69,18 @@ to land them together.
   payment-provider SDK, a webhook that moves money, or a real auto-verify
   integration." This is why the proof-of-payment approach below stays a
   human-reviewed hint, never an auto-verify.
+- **Checked: no payment type in qkit/paykit auto-clears today.** It's
+  tempting to assume a card/hosted-link checkout (`checkout.type ===
+"link"`) already gets a real API confirmation the way a genuine
+  payment-gateway integration would, unlike raw PayNow. Verified against
+  `payment-actions.ts`: it doesn't — every checkout type (`qr`/`link`/
+  `image`) goes through the identical manual claim→confirm honor system,
+  with no branching by provider anywhere in the code. This is a direct
+  consequence of paykit's rule above, which applies to every provider, not
+  just PayNow. The reconciled review flow below therefore applies
+  uniformly to any payment-required order; a real "card auto-clears, skip
+  the review" distinction would require reopening paykit's own rule — a
+  separate, bigger decision, not part of this spec.
 - **Tesseract.js in the browser vs. on a Next.js server**: the earlier
   concern (documented, recurring Vercel/Next.js build failures —
   [naptha/tesseract.js#868](https://github.com/naptha/tesseract.js/issues/868),
@@ -94,41 +112,44 @@ Enter keystroke into whatever has keyboard focus, with no driver and no
 custom pairing protocol — completely unlike the NIIMBOT label printer,
 which needs printkit specifically because printers require real
 print-command protocol support. A HID scanner needs none of that, so this
-stays entirely inside qkit regardless of which of the three mechanics
-above is chosen.
+stays entirely inside qkit regardless of which mechanic is chosen.
 
-**Chosen approach (v3):** a new **public, booth-scoped, unattended** page,
-`/order/{boothId}/pickup`, with an auto-focused text input — sits open on
-a tablet/iPad mounted at the pickup shelf, no login. The customer pairs
-nothing themselves; the vendor pairs a commodity Bluetooth barcode/QR
-scanner (~SGD 20-30) to that tablet once (Settings > Bluetooth, same as
-any Bluetooth keyboard — iPadOS also auto-suppresses the on-screen
-keyboard whenever a physical/BT keyboard is connected, so the focused
-input never pops up the software keyboard). The customer picks up their
-own cup and scans its printed QR themselves against the mounted
-scanner — the scanner types the QR's content + Enter into the page's
-input automatically, no button press beyond the scan gesture itself. The
-page parses it, calls the collection action, flashes a result ("Order
-#042 collected" / an error), clears, and re-focuses for the next customer.
-No scanner connected → the page just sits idle; staff use the existing
+**Why not print the QR on the cup (v3):** two real problems. Cost — every
+order now needs printkit label printing turned on, an ongoing consumable
+expense the vendor didn't necessarily want just for this. And identity —
+a QR sitting on a physical cup can be scanned by anyone holding that cup,
+which doesn't actually verify the scanner is the right customer, the exact
+kind of mix-up this feature is meant to prevent.
+
+**Chosen approach (v4):** the QR lives on the customer's own **order-status
+page**, appearing only once `status === "ready"` — the same page they've
+already had open while waiting, no new link to visit. It encodes the same
+existing customer URL (`/order/{boothId}/{orderNumber}?t=token`) already
+used for that page. A new **public, booth-scoped, unattended** kiosk page,
+`/order/{boothId}/pickup`, sits open on a tablet mounted at the pickup
+shelf with an auto-focused text input — no login. The vendor pairs a
+commodity Bluetooth barcode/QR scanner (~SGD 20-30) to that tablet once
+(Settings > Bluetooth, same as any Bluetooth keyboard — iPadOS also
+auto-suppresses the on-screen keyboard whenever a physical/BT keyboard is
+connected, so the focused input never pops up the software keyboard). At
+pickup, the customer holds up their own phone screen (showing the QR from
+their order-status page) to the kiosk's scanner — no printed object
+involved. The scanner reads it and types the URL + Enter into the page's
+input automatically, no button press beyond presenting the phone. The page
+parses it, calls the collection action, flashes a result ("Order #042
+collected" / an error), clears, and re-focuses for the next customer. No
+scanner connected → the page just sits idle; staff use the existing
 one-tap "Mark Picked Up" board button as the fallback.
 
-**Security trade-off of true self-checkout (accepted):** because this page
-has no login to lean on, the printed QR **must** carry the same unguessable
-`access_token` every other customer action already uses — a bare order id
-would let anyone scan/type an arbitrary id into a public page. The QR
-therefore encodes the **same existing customer order-status URL**
-(`/order/{boothId}/{orderNumber}?t=token`), not a new bespoke code. Two
-benefits of reusing that exact URL: the kiosk page parses it with the same
-`orderBoothIdSchema`/`orderNumberSchema`/`orderTokenSchema` validation
-already used everywhere else, and if a stray phone's QR scanner (not the
-kiosk) ever reads the label, it just opens the customer's own order-status
-page harmlessly instead of doing nothing or erroring. The trade-off:
-a photographed label exposes the same thing a leaked chat link already
-would (today's actual exposure for every order), just now on a physically
-visible object — not a new class of risk, but a wider one than v2's
-token-free label would have been. Accepted per explicit decision to
-prioritize true self-checkout over that narrower exposure.
+**Identity binding, and why this is stronger than v3's printed label:** the
+QR only exists on the specific customer's own device, behind their private
+link — a bystander would need to be looking at that exact phone at that
+exact moment to intercept it, versus a printed label sitting readable on a
+shelf indefinitely. Reusing the existing customer URL format also means
+the kiosk page validates it with the same
+`orderBoothIdSchema`/`orderNumberSchema`/`orderTokenSchema` already used
+everywhere else, and a stray phone scan (not the kiosk) just opens the
+customer's own order-status page harmlessly instead of erroring.
 
 ## OCR hint (now in scope, was deferred)
 
@@ -158,6 +179,17 @@ Confirm button.
   server-bundling-specific, see Research above) — no spike needed before
   building this, unlike the earlier assessment.
 
+**Duplicate-photo check (fraud signal, not OCR):** text recognition alone
+can't catch a doctored or reused screenshot — that needs a different,
+still non-AI technique. At upload time (`claimPayment`), compute a hash of
+the proof image and store it (`orders.payment_proof_hash`, see Data model).
+When the vendor opens a photo to review, check whether that same hash
+already exists on a _different_ order for the same vendor; if so, show
+"⚠ This photo was already used for order #031" alongside the OCR hint.
+Catches the realistic fraud pattern (reusing one real payment screenshot
+across multiple orders) with a cheap, deterministic comparison — no AI,
+no image-forensics library.
+
 ## Scope
 
 **In scope (this spec, qkit only):**
@@ -165,23 +197,24 @@ Confirm button.
 - Payment-first customer checkout flow.
 - Vendor board visibility gated on payment claim (QR orders only).
 - Async proof-of-payment (screenshot upload, vendor reviews on their own
-  time, no more physical show-your-screen) plus a client-side OCR hint on
-  that review.
+  time, no more physical show-your-screen) plus a client-side OCR hint and
+  a duplicate-photo fraud check on that review.
+- Reconciled vendor review action: "Confirm payment" + "Start now" merge
+  into one button for a payment-required order still at `pending`/`claimed`.
 - Self-checkout pickup kiosk: a public, unattended `/order/{boothId}/pickup`
-  page + Bluetooth HID barcode scanner, customer scans their own cup to
-  mark it collected. Existing one-tap "Mark Picked Up" stays as fallback.
+  page + Bluetooth HID barcode scanner, customer scans the QR on their own
+  order-status page (not a printed label) to mark it collected. Existing
+  one-tap "Mark Picked Up" stays as fallback.
 
-**Out of scope (separate spec/PR, different repo):**
+**Out of scope:**
 
-- printkit's label template gaining QR-rendering support (see
-  "Cross-repo dependency" below).
-- Any real payment-gateway webhook integration (against paykit's own rules).
+- Any real payment-gateway webhook integration, or a per-provider
+  auto-clear distinction (against paykit's own rules — see Research).
 - Shelf-slot software tracking — the shelf is a physical numbered rack
   matching the existing display number; no new data model for it.
-- Renaming printkit to reflect a broader hardware-bridge role — this
-  feature needs zero printkit change beyond QR rendering (no input/scanner
-  work), so there's no second job-type to motivate a rename yet. Revisit
-  only if/when printkit actually gains a non-print job type.
+- **No printkit involvement at all, for anything, in this spec** — v4's
+  pivot (QR on the customer's phone, not the cup) removed the only
+  cross-repo dependency the earlier drafts had.
 
 ## Data model changes
 
@@ -196,12 +229,16 @@ run directly):
   screenshot). No public/anon storage policy; read only via the
   service-role client (a short-lived signed URL minted on demand for the
   vendor's board).
+- `orders.payment_proof_hash text null` — a hash of the uploaded proof
+  image (e.g. SHA-256 of the file bytes), computed at upload time. Indexed
+  per-vendor (via a join through `booths`) so the duplicate-photo check
+  (see OCR hint) is a cheap lookup, not a full scan.
 - `vendors.board_settings` (JSONB, `boardSettingsSchema` in
   `src/lib/schemas.ts`) gains `pickup_scan_enabled: z.boolean().default(false)`
   — **opt-in**, unlike `customer_telegram_notify_enabled`'s default-true
   (that flag preserved existing behavior; this one introduces new behavior
-  a vendor must choose, including a printed-label change and buying a
-  scanner).
+  a vendor must choose, including buying a scanner and setting up the
+  kiosk tablet).
 
 No new table. No change to `orders.status`'s state machine (`pending` →
 `preparing` → `ready` → `completed`/`cancelled`, `ADVANCE` map in
@@ -237,9 +274,12 @@ The order-status page itself:
   branch entirely — it only ever needs the `claimed` ("waiting for the
   stall to confirm") / `confirmed` / `not_required` display states, since
   `pending` is now unreachable here by construction.
-- Gets no new pickup UI — collection is entirely kiosk-side now. The
-  page's only real change from today is this redirect guard plus the new
-  `/pay` branch above; a `not_required` order's flow is unchanged.
+- New: when `status === "ready"` AND the booth's vendor has
+  `pickup_scan_enabled`, the page shows a QR code encoding its own URL
+  (`/order/{boothId}/{orderNumber}?t=token`) — "Show this at the pickup
+  counter to collect." This is the only new customer-facing UI this spec
+  adds; everything else about the page (items, live status) is unchanged.
+  Without the toggle on, the page behaves exactly as it does today.
 
 ## Vendor flow
 
@@ -253,13 +293,23 @@ The order-status page itself:
   directly to them), so there's nothing to hide: the whole reason this
   gate exists (an absent, unverifiable customer) doesn't apply to an order
   staff just personally entered.
-- **`order-card.tsx`**, `claimed` orders: shows the uploaded proof-photo
-  thumbnail (tap to enlarge via a signed URL, minted on demand — never
-  embedded pre-signed in the realtime payload, since signed URLs expire)
-  next to the existing "Confirm payment" button. Enlarging the photo is
-  also where the OCR hint (see above) renders once loaded. The vendor
-  reviews asynchronously, at their own time, never needing the customer
-  physically present.
+- **`order-card.tsx`**, reconciled review action: today, a payment-required
+  order at `status === "pending"` shows two separate taps — "Mark as paid"/
+  "Confirm payment received" (`confirmOrderPayment`) and, below it, a
+  second "Start now" button (`advanceOrder`). Verified against the actual
+  current UI (`order-card.tsx:565-587`) that these are genuinely two
+  separate actions today. They merge into **one button** ("Mark paid &
+  start", exact copy TBD in the plan) for this specific case — there's no
+  real scenario where a vendor confirms payment without also intending to
+  start the order, per the reasoning that prompted this. The button shows
+  the proof-photo thumbnail (tap to enlarge via a signed URL, minted on
+  demand — never embedded pre-signed in the realtime payload, since signed
+  URLs expire) plus the OCR + duplicate-photo hints once the photo is
+  opened, then performs both the payment-confirm and the pending→preparing
+  advance in one action. Once payment is confirmed, later transitions
+  (`preparing`→`ready`→`completed`) keep today's existing single-button
+  behavior, unaffected. Rejecting a bad/fraudulent claim still uses the
+  existing Cancel action — no new "reject" control needed.
 - Existing one-tap "Mark Picked Up" (F3, `ADVANCE.ready`) is untouched —
   the fallback for a dead/unpaired scanner or a vendor who hasn't turned
   the kiosk capability on. No vendor-facing scan UI is added to
@@ -274,11 +324,20 @@ The order-status page itself:
   photo. Upload goes to the new private `payment-proofs` bucket via the
   service client (the bucket has no anon/public policy, so this can't go
   through the client-side `ImageUploader`/`image-upload-adapter.ts` path
-  used for menu photos — that path assumes a public bucket). If the upload
-  fails, the claim fails outright — the photo IS the claim, not an
-  optional extra. Reuses `rateLimit`/`clientIp`
-  (`src/lib/rate-limit.ts`, already used here) and `image-resize.ts` to
-  downscale client-side before upload.
+  used for menu photos — that path assumes a public bucket). Also computes
+  and stores `payment_proof_hash`. If the upload fails, the claim fails
+  outright — the photo IS the claim, not an optional extra. Reuses
+  `rateLimit`/`clientIp` (`src/lib/rate-limit.ts`, already used here) and
+  `image-resize.ts` to downscale client-side before upload.
+- **`confirmPaymentAndStart(orderId)`** (new action, `order-actions.ts`,
+  vendor-authenticated like `advanceOrder`/`confirmOrderPayment`): the
+  reconciled single action behind the merged button above. Wraps the same
+  underlying writes `confirmOrderPayment` + `advanceOrder` already make
+  (payment_status → confirmed, order status pending → preparing) as one
+  atomic update, so it can't leave the order half-transitioned if
+  interrupted. Only valid when `order.status === "pending"` and payment
+  isn't already confirmed; existing `confirmOrderPayment`/`advanceOrder`
+  remain as-is for every other transition.
 - **`confirmCollection(boothId, orderNumber, token)`** (new action, new
   file `[orderNumber]/collect-actions.ts`, mirroring `payment-actions.ts`'s
   own shape): **anonymous, service-client-based** — back to this shape
@@ -327,21 +386,6 @@ auth.users(id)`, migration 0078), already designed for a non-vendor-
   vendor's own board. No customer-facing harm (a dead unpaid row); revisit
   only if it becomes real friction.
 
-## Cross-repo dependency (printkit — separate spec/PR, not built here)
-
-`createPrintJob`'s payload (`src/lib/printkit/client.ts`) today is
-`{ customer_name, order_number }` — plain text, no QR. Printing the pickup
-QR needs:
-
-1. qkit sends a new payload field (e.g. `collect_url`, the same
-   `/order/{boothId}/{orderNumber}?t=token` string), only when the booth's
-   `pickup_scan_enabled` is on.
-2. printkit's own label template needs to render a payload field as a QR
-   code — it doesn't today. This is printkit-repo work, tracked as a
-   dependency of this feature, not built as part of this qkit spec. No
-   scanner-reading/input work is needed on printkit's side (see Pickup
-   mechanic) — only QR rendering on the print side.
-
 ## Error handling & edge cases
 
 - Upload failure at claim time → claim rejected, customer told to retry;
@@ -355,9 +399,14 @@ QR needs:
 - The kiosk page's input loses focus (someone taps elsewhere on the
   tablet) → re-focus on blur, otherwise a scan silently types into
   nothing.
-- Walk-up orders: unaffected by this mechanic either way — a printed label
-  works the same regardless of `source`. Closes the backlog's own open
-  question about walk-up participation.
+- Walk-up orders: no customer phone/order-status link exists for these
+  today (staff-entered, no QR sent to a customer device) — the QR-on-
+  order-status-page mechanic doesn't apply to them. They keep the existing
+  staff one-tap "Mark Picked Up" as their only path, unchanged from today.
+  This is a real, narrower gap than v3's cup-label version could avoid
+  (that one worked for walk-up too); accepted since walk-up orders are
+  already a smaller, staff-supervised flow where the original mix-up
+  problem is less severe.
 
 ## Testing
 
@@ -371,10 +420,17 @@ QR needs:
   test suite).
 - Storage: private bucket has no anon/public read policy
   (`supabase/tests/rls.test.sql`).
-- `order-card.tsx`: renders proof thumbnail + confirm for `claimed`; OCR
-  hint renders after the dynamic import resolves, never blocks Confirm.
+- `order-card.tsx`: shows the merged "Mark paid & start" button (not two
+  separate ones) for a `pending`/`claimed`-payment order at `status ===
+"pending"`; existing separate buttons still render for every later
+  transition. OCR + duplicate-hash hints render after the dynamic import
+  resolves, never block the button.
+- `confirmPaymentAndStart`: happy path (payment confirmed + advanced to
+  `preparing` in one write), refuses when payment already confirmed or
+  status isn't `pending`.
 - Order-status page: redirects to `/pay` when `pending`; `/pay` itself
-  redirects correctly based on `payment_status`.
+  redirects correctly based on `payment_status`; shows the pickup QR only
+  when `ready` AND `pickup_scan_enabled`.
 - Kiosk page (`/order/{boothId}/pickup`): parses a valid scanned URL and
   calls `confirmCollection`; ignores/flags a garbled scan; re-focuses
   after each attempt; shows the right flash message for each outcome.
@@ -387,7 +443,12 @@ QR needs:
   instead; not built since no vendor has asked for it (YAGNI).
 - Photo upload is mandatory on every claim, regardless of checkout type
   (`qr`/`link`/`image`) — one code path, no branching on payment provider.
-- True self-checkout (v3) was chosen over the safer, token-free
-  vendor-scanned version (v2) per explicit instruction to prioritize
-  removing staff from the handoff, accepting the wider label-exposure
-  trade-off documented above.
+- True self-checkout (v3/v4) was chosen over the safer, vendor-scanned
+  version (v2) per explicit instruction to prioritize removing staff from
+  the handoff.
+- The pickup QR lives on the customer's order-status page (v4), not a
+  printed cup label (v3) — removes printing cost and the printkit
+  dependency, and binds the scan to the actual customer's own device
+  rather than to whoever is holding the cup. Trade-off: walk-up orders
+  lose the mechanic entirely (see Error handling), accepted as a smaller
+  gap than the mix-up problem this feature targets in the first place.
