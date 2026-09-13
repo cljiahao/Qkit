@@ -147,7 +147,13 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   origin comes from the request's own `host`/`x-forwarded-host` header
   (`resolveOrigin`), not an env var — `booth-qr-poster.tsx`'s design doc
   found `NEXT_PUBLIC_BASE_URL` unreliable, and this URL must resolve on a
-  separate scanning device.
+  separate scanning device. Both headers are client-spoofable (same caution
+  `clientIp` documents in `@/lib/rate-limit`), so `isAllowedHost` checks
+  either against a `.merqo.io`/`.vercel.app`/localhost allowlist before it's
+  trusted — `host` is preferred, `x-forwarded-host` only used as a fallback
+  and only once it also passes the allowlist; neither matching degrades to
+  the same hardcoded `https://qkit.example` placeholder. A basic check, not
+  full trusted-proxy IP-range validation (a separate, bigger task).
 - `page.dom.test.tsx` — RTL test rendering `OrderStatusPage` directly (same
   pattern as `src/app/dashboard/layout.dom.test.tsx`: an async Server
   Component page can be awaited and its returned tree rendered like any
@@ -157,10 +163,15 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   `status` is `pending`/`confirmed`/`preparing`, not once
   `ready`/`completed`/`cancelled`), the `../pay` redirect guard (fires
   only when `payment_status === "pending"`, `next/navigation`'s `redirect`
-  mocked the same throw-to-abort way as `notFound`), and the pickup QR
+  mocked the same throw-to-abort way as `notFound`), the pickup QR
   (renders only when `status === "ready"` AND the mocked vendor row's
-  `board_settings.pickup_scan_enabled` is `true`; `next/headers`' `headers`
-  mocked to a fixed `Headers({ host })` so the QR's URL is deterministic).
+  `board_settings.pickup_scan_enabled` is `true`), and `resolveOrigin`'s
+  host allowlist (`react-qr-code` mocked to expose its `value` prop as a
+  `data-value` attribute so a test can assert the exact URL embedded — a
+  trusted `host` or `x-forwarded-host` is used verbatim, an untrusted one
+  in either header degrades to the `https://qkit.example` placeholder
+  instead of ever being embedded, `next/headers`' `headers` mocked
+  per-test via a shared `headersMock`).
 - `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, initialStatus })`
   client component: polls `getPaymentStatus` every 5s until
   `confirmed`/`not_required`. Renders only the states reachable once
