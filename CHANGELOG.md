@@ -8,6 +8,34 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Payment-first checkout: placing an order no longer assigns it a number —
+  a payment-required order now redirects to a new `/order/{boothId}/pay`
+  gate and only gets its order number once the customer claims payment with
+  a required photo proof-of-payment upload (migration `0087`'s nullable
+  `orders.order_number` + a new `qkit.assign_order_number` function). Closes
+  a real gap where an unpaid order's kitchen ticket and vendor Telegram
+  alert used to fire the instant an order was placed, and a booth with no
+  accept-gate could start prep on an order nobody had paid for yet.
+- The vendor board, the public TV/queue display, and the customer wait
+  estimate all now exclude an unpaid QR order until its payment is claimed
+  — a walk-up order (already handled face-to-face at the counter) is
+  unaffected.
+- Reconciled vendor review action, "Mark paid & start": merges "Confirm
+  payment" and "Start now" into one tap for any pending order with
+  unconfirmed payment (QR or walk-up), with its own dedicated undo.
+- Client-side, self-hosted OCR + duplicate-photo hint on the vendor's
+  payment-proof review — a non-blocking assist ("Looks like $12.50, paid",
+  "This photo was already used for order #031"); the vendor's own manual
+  review stays the real gate.
+- Unpaid QR orders now auto-cancel 30 minutes after creation, polled from
+  the vendor's own open dashboard the same way the existing ready-order
+  auto-clear sweep works.
+- New public, unattended self-checkout pickup kiosk
+  (`/order/{boothId}/pickup`): a paired Bluetooth HID barcode/QR scanner
+  reads the QR now shown on a customer's own order-status page once their
+  order is ready, marking it collected with no staff involvement. Opt-in
+  per vendor via a new "Self-checkout pickup" dashboard setting; the
+  existing one-tap "Mark Picked Up" board button stays as the fallback.
 - Customer checkout moved from inline name/phone fields at the bottom of the
   order page into a bottom `Sheet` opened by the sticky CTA. On a long,
   multi-section menu the fields used to sit below every item on the page,
