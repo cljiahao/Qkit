@@ -29,18 +29,23 @@ const {
   vendorSingle,
   sweepLt,
   sweepSelect,
+  sweepEqMock,
 } = vi.hoisted(() => {
   const updateSelect = vi.fn();
   const sweepSelect = vi.fn();
   const sweepLt = vi.fn(() => ({ select: sweepSelect }));
   const vendorSingle = vi.fn();
 
-  // Create a recursive chain that supports unlimited .eq() calls followed by .lt()
+  // Create a recursive chain that supports unlimited .eq() calls followed by .lt().
+  // All .eq() calls share the same mock (sweepEqMock) so tests can assert on the
+  // full filter chain.
+  let sweepEqMock: any;
   const createChain = (): any => ({
-    eq: vi.fn(() => createChain()),
+    eq: sweepEqMock,
     lt: sweepLt,
     select: updateSelect,
   });
+  sweepEqMock = vi.fn(() => createChain());
 
   return {
     getUserMock: vi.fn(),
@@ -50,6 +55,7 @@ const {
     vendorSingle,
     sweepLt,
     sweepSelect,
+    sweepEqMock,
   };
 });
 
@@ -123,6 +129,7 @@ beforeEach(() => {
       },
     },
   });
+  sweepEqMock.mockClear();
   sweepLt.mockClear();
   sweepSelect.mockReset().mockResolvedValue({ data: [], error: null });
   recordAuditMock.mockReset().mockResolvedValue(undefined);
@@ -787,7 +794,10 @@ describe("sweepAbandonedPayments", () => {
     await sweepAbandonedPayments();
     // Verify the filter chain: .eq("payment_status", "pending").eq("source", "qr").eq("status", "pending").lt("created_at", cutoff)
     expect(update).toHaveBeenCalledWith({ status: "cancelled" });
-    // The eq calls are made in the chain, verified by checking sweepLt was called (which comes after the eqs)
+    expect(sweepEqMock).toHaveBeenCalledWith("payment_status", "pending");
+    expect(sweepEqMock).toHaveBeenCalledWith("source", "qr");
+    expect(sweepEqMock).toHaveBeenCalledWith("status", "pending");
+    expect(sweepLt).toHaveBeenCalledWith("created_at", expect.any(String));
   });
 
   it("records an order_status_events row for each cancelled order, but no admin_audit entry", async () => {
