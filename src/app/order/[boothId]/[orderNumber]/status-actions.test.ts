@@ -15,6 +15,7 @@ function chain(result: { data: unknown; error: unknown }) {
   obj.select = self;
   obj.eq = self;
   obj.in = self;
+  obj.or = self;
   obj.order = self;
   obj.limit = self;
   obj.maybeSingle = () => Promise.resolve(result);
@@ -269,6 +270,52 @@ describe("getWaitEstimate", () => {
 
     const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({ seconds: null, ordersAhead: 0 });
+  });
+
+  it("excludes a pending-payment QR order from the active orders count", async () => {
+    const orSpy = vi.fn();
+    function chainWithOrSpy(result: { data: unknown; error: unknown }) {
+      const obj: Record<string, unknown> = {};
+      const self = () => obj;
+      obj.select = self;
+      obj.eq = self;
+      obj.in = self;
+      obj.or = (arg: string) => {
+        orSpy(arg);
+        return obj;
+      };
+      obj.order = self;
+      obj.limit = self;
+      obj.maybeSingle = () => Promise.resolve(result);
+      obj.then = (resolve: (v: typeof result) => void) =>
+        Promise.resolve(result).then(resolve);
+      return obj;
+    }
+
+    const target = {
+      id: "t",
+      status: "pending",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    const active = [target];
+    const recent = Array.from({ length: 10 }, () => ({
+      status: "completed",
+      created_at: "2026-06-12T04:00:00Z",
+      ready_at: "2026-06-12T04:02:00Z",
+      total_cents: 0,
+      items: [],
+    }));
+    fromMock
+      .mockReturnValueOnce(chainWithOrSpy({ data: target, error: null }))
+      .mockReturnValueOnce(chainWithOrSpy({ data: active, error: null }))
+      .mockReturnValueOnce(chainWithOrSpy({ data: recent, error: null }));
+
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(orSpy).toHaveBeenCalledWith(
+      "payment_status.neq.pending,source.neq.qr",
+    );
+    expect(res?.ordersAhead).toBe(0);
   });
 });
 

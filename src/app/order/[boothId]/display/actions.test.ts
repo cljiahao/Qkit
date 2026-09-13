@@ -12,6 +12,7 @@ function chain(result: { data: unknown; error: unknown }) {
   obj.eq = self;
   obj.gte = self;
   obj.not = self;
+  obj.or = self;
   obj.order = self;
   obj.limit = self;
   obj.maybeSingle = () => Promise.resolve(result);
@@ -169,5 +170,48 @@ describe("getBoothQueueDisplay", () => {
       "boom",
     );
     errorSpy.mockRestore();
+  });
+
+  it("excludes a pending-payment QR order from the result", async () => {
+    const orSpy = vi.fn();
+    function chainWithOrSpy(result: { data: unknown; error: unknown }) {
+      const obj: Record<string, unknown> = {};
+      const self = () => obj;
+      obj.select = self;
+      obj.eq = self;
+      obj.gte = self;
+      obj.not = self;
+      obj.or = (arg: string) => {
+        orSpy(arg);
+        return obj;
+      };
+      obj.order = self;
+      obj.limit = self;
+      obj.maybeSingle = () => Promise.resolve(result);
+      obj.then = (resolve: (v: typeof result) => void) =>
+        Promise.resolve(result).then(resolve);
+      return obj;
+    }
+
+    const active = [
+      {
+        order_number: "0001",
+        status: "preparing" as const,
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+      },
+    ];
+    fromMock
+      .mockReturnValueOnce(
+        chainWithOrSpy({ data: { vendor_id: VENDOR }, error: null }),
+      )
+      .mockReturnValueOnce(chainWithOrSpy({ data: null, error: null }))
+      .mockReturnValueOnce(chainWithOrSpy({ data: active, error: null }));
+
+    const res = await getBoothQueueDisplay(BOOTH);
+    expect(orSpy).toHaveBeenCalledWith(
+      "payment_status.neq.pending,source.neq.qr",
+    );
+    expect(res?.map((o) => o.orderNumber)).toEqual(["0001"]);
   });
 });

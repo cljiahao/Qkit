@@ -99,7 +99,8 @@ export async function getBoothQueueDisplay(
     .from("orders")
     .select("order_number, status, created_at, priority_bumped_at")
     .eq("booth_id", boothId)
-    .not("status", "in", "(completed,cancelled)");
+    .not("status", "in", "(completed,cancelled)")
+    .or("payment_status.neq.pending,source.neq.qr");
   if (ordersError) {
     console.error(
       "getBoothQueueDisplay: orders read failed",
