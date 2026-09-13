@@ -15,6 +15,22 @@ import { render, screen } from "@testing-library/react";
 import type { OrderStatus } from "@/lib/types";
 import OrderStatusPage from "./page";
 
+const { notFoundMock, redirectMock } = vi.hoisted(() => ({
+  // Both throw to abort rendering — mirrors the real next/navigation
+  // behavior so a test hitting either branch doesn't fall through into the
+  // rest of the function body, same as it never would in production.
+  notFoundMock: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
+  redirectMock: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT:${url}`);
+  }),
+}));
+
+vi.mock("next/navigation", () => ({
+  notFound: notFoundMock,
+  redirect: redirectMock,
+}));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("./order-status-poller", () => ({ OrderStatusPoller: () => null }));
 vi.mock("./earn-link", () => ({ EarnLink: () => null }));
@@ -23,9 +39,6 @@ vi.mock("./telegram-connect", () => ({
 }));
 vi.mock("@/lib/merqo-vendor-profile", () => ({
   getOrCreateVendorProfile: vi.fn().mockResolvedValue(null),
-}));
-vi.mock("@/lib/paykit/client", () => ({
-  createCheckout: vi.fn(),
 }));
 
 const BOOTH_ID = "00000000-0000-4000-8000-000000000001";
@@ -91,6 +104,8 @@ beforeEach(() => {
   // No board_settings row -> boardSettingsSchema fails -> resolveHeadingNumber
   // degrades to the real order_number without a second query.
   vendorMaybeSingle.mockReset().mockResolvedValue({ data: null });
+  notFoundMock.mockClear();
+  redirectMock.mockClear();
 });
 
 async function renderPage(status: OrderStatus) {
@@ -118,4 +133,32 @@ describe("OrderStatusPage — TelegramConnect gating", () => {
       expect(screen.queryByTestId("telegram-connect")).not.toBeInTheDocument();
     },
   );
+});
+
+describe("OrderStatusPage — pending-payment redirect guard", () => {
+  it("redirects to /pay when payment_status is still pending", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { ...makeOrder("pending"), payment_status: "pending" },
+      error: null,
+    });
+
+    await expect(
+      OrderStatusPage({
+        params: Promise.resolve({
+          boothId: BOOTH_ID,
+          orderNumber: ORDER_NUMBER,
+        }),
+        searchParams: Promise.resolve({ t: TOKEN }),
+      }),
+    ).rejects.toThrow();
+
+    expect(redirectMock).toHaveBeenCalledWith(
+      `/order/${BOOTH_ID}/pay?t=${TOKEN}`,
+    );
+  });
+
+  it("does not redirect once payment_status is past pending", async () => {
+    await renderPage("preparing");
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
 });

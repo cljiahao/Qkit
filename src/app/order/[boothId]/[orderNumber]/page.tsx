@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -19,7 +19,6 @@ import {
 } from "@/lib/schemas";
 import { displayOrderNumber, isTerminal } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
-import { createCheckout, type CheckoutView } from "@/lib/paykit/client";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
@@ -27,9 +26,8 @@ import { EarnLink } from "./earn-link";
 import { TelegramConnect } from "./telegram-connect";
 import { SocialLinksRow } from "@/components/social-links-row";
 
-// Split out react-qr-code's bundle: showPay is false for most orders
-// (queue-only booths, or once payment is a moot point), so PayPanel
-// shouldn't ship in every order-status page's JS regardless.
+// showPay is false for most orders (queue-only booths, or once payment is a
+// moot point), so PayPanel shouldn't ship in every order-status page's JS.
 const PayPanel = dynamic(() => import("./pay-panel").then((m) => m.PayPanel));
 
 interface Props {
@@ -106,32 +104,6 @@ async function resolveHeadingNumber(
   }
 }
 
-/**
- * Fetch the paykit checkout view for a payment-expected order. A 422 (no/
- * incomplete paykit config) or any other failure (paykit down, network)
- * degrades to null (no pay panel content, not a page error) — a customer
- * holding a valid, paid order link must not get a hard error just because
- * paykit is unreachable, same philosophy as the two reads above.
- */
-async function loadCheckoutView(
-  vendorId: string,
-  amountCents: number,
-  orderId: string,
-): Promise<CheckoutView | null> {
-  const result = await createCheckout({
-    vendorId,
-    amountCents,
-    orderRef: orderId,
-  });
-  if (result.ok) return result.data;
-  console.error(
-    "order-status: paykit checkout failed",
-    result.status,
-    result.error,
-  );
-  return null;
-}
-
 export default async function OrderStatusPage({ params, searchParams }: Props) {
   const { boothId, orderNumber } = await params;
   const { t: token } = await searchParams;
@@ -179,6 +151,11 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
     throw new Error(`order status read failed: ${orderError.message}`);
   if (!order || order.order_number == null) notFound();
 
+  // A still-unclaimed payment belongs on /pay, not here (stale bookmark guard).
+  if (order.payment_status === "pending") {
+    redirect(`/order/${boothId}/pay?t=${token}`);
+  }
+
   // Vendor-level default links, so a booth without its own override still
   // shows the vendor's. Small extra query (not embeddable via Promise.all
   // above — it depends on booth.vendor_id) but this page isn't a hot path.
@@ -202,21 +179,15 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
 
-  // Show the pay panel for any payment-expected order (PayPanel renders the QR
-  // while pending/claimed and a confirmation once paid, and polls for the flip).
-  // A cancelled order must never solicit payment — gate precisely on
-  // status==='cancelled' (NOT isTerminal: a *completed* order auto-confirms its
-  // payment, and PayPanel then shows the intended "Payment confirmed" panel).
-  // `order.payment_status` (set by qkit.place_order at order-creation time,
-  // from booths.payment's still-locally-written `{kind}` marker — see
-  // dashboard/booths/actions.ts) is the gate; the actual checkout render (QR/
-  // link/image) now comes from paykit, not booths.payment's full content.
+  // Show the pay panel for any payment-expected order (PayPanel shows the
+  // claimed/waiting-on-vendor state and a confirmation once paid, and polls
+  // for the flip). A cancelled order must never solicit payment — gate
+  // precisely on status==='cancelled' (NOT isTerminal: a *completed* order
+  // auto-confirms its payment, and PayPanel then shows the intended "Payment
+  // confirmed" panel). `order.payment_status` still "pending" is redirected
+  // to /pay above, so PayPanel only ever renders past claimed/confirmed here.
   const showPay =
     order.payment_status !== "not_required" && order.status !== "cancelled";
-  const checkout =
-    showPay && booth?.vendor_id
-      ? await loadCheckoutView(booth.vendor_id, order.total_cents, order.id)
-      : null;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
@@ -250,9 +221,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
               boothId={boothId}
               orderNumber={orderNumber}
               token={token}
-              checkout={checkout}
               initialStatus={order.payment_status}
-              amountCents={order.total_cents}
             />
             <div className="perforation" />
           </>

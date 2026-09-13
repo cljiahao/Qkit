@@ -3,11 +3,14 @@
 ## Purpose
 
 Live customer order-status page — the page a customer lands on right after
-placing an order (and can return to via "recent orders"). Polls status and
-payment state, shows a PayNow/QR/link pay panel when the booth expects
-payment, offers a "Get notified on Telegram" connect button while the order
-is still waiting, and surfaces a loyalty "earn a stamp" link once the order
-completes.
+placing an order (and can return to via "recent orders"). A payment-required
+order with `payment_status` still `"pending"` is redirected to `../pay`
+instead of rendering here (that page owns the actual QR/link/image checkout
+UI; this page can only see `"pending"` via a stale bookmark from before
+`../pay` existed). Polls status and payment state, shows a claimed/confirmed
+pay panel once a payment-required order is past that gate, offers a "Get
+notified on Telegram" connect button while the order is still waiting, and
+surfaces a loyalty "earn a stamp" link once the order completes.
 
 ## Contents
 
@@ -95,14 +98,14 @@ completes.
   parallel via the **service client** (customers are unauthenticated; the
   token match is what authorizes the read, not RLS), distinguishes a real
   DB error (retryable error boundary) from a genuine 404 (`maybeSingle` →
-  null), gates the pay panel purely on the local `order.payment_status`
-  mirror (`!== 'not_required'` and not cancelled — set by `qkit.place_order`
-  at order-creation time from `booths.payment`'s `{kind}` marker), and when
-  shown calls paykit's `createCheckout` (`@/lib/paykit/client`, idempotent on
-  `order.id` as `order_ref`) to get the actual QR/link/image to render,
-  degrading to no pay panel (logged, not thrown) on any paykit failure — same
-  "never strand a customer holding a valid order link" philosophy as the
-  vendor-profile/daily-display-number reads below. From that same `showPay`
+  null), then redirects to `../pay?t=<token>` if `order.payment_status` is
+  still `"pending"` (a stale-bookmark guard — `../pay` is the only place a
+  payment-required order gets claimed now; this page never renders the
+  QR/link/image checkout itself). Past that gate, gates the pay panel purely
+  on the local `order.payment_status` mirror (`!== 'not_required'` and not
+  cancelled — set by `qkit.place_order` at order-creation time from
+  `booths.payment`'s `{kind}` marker); `PayPanel` itself only ever needs to
+  show the claimed/confirmed states from here on. From that same `showPay`
   gate plus `order.payment_status !== 'confirmed'`, an
   `awaitingPayment` flag passed to `OrderStatusPoller` so its status copy
   never outruns the actual payment state, plus the booth's own
@@ -140,24 +143,23 @@ completes.
   Component page can be awaited and its returned tree rendered like any
   other component), with every nested async/side-effecting child
   (`OrderStatusPoller`, `EarnLink`, `next/dynamic`'s `PayPanel`) stubbed out
-  so the test stays focused on `TelegramConnect`'s gating: renders while
+  so the test stays focused on `TelegramConnect`'s gating (renders while
   `status` is `pending`/`confirmed`/`preparing`, not once
-  `ready`/`completed`/`cancelled`.
-- `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, checkout,
-initialStatus, amountCents })` client component: polls `getPaymentStatus`
-  every 5s until `confirmed`/`not_required`; renders a QR
-  (`react-qr-code`), an uploaded payment-QR image, or a pay link depending on
-  `checkout.type` (now paykit's `CheckoutView`, `@/lib/paykit/client`) — the
-  heading names the scan target explicitly ("Scan with your PayNow banking
-  app to pay" for `type: "qr"`, a generic "banking or payment app" for a
-  vendor-uploaded `type: "image"` since its provider is unknown) so a
-  customer doesn't reach for a plain camera/QR scanner, which can't parse an
-  EMVCo payload and would report it as invalid; lets the customer self-report
-  via `claimPayment` ("I've paid"), with a "Tapped by mistake? Undo" text
-  button (calling `unclaimPayment`) while `claimed` and unconfirmed; shows a
-  persistent confirmed state once the vendor marks it paid.
-- `pay-panel.dom.test.tsx` — RTL tests for the claim flow, each checkout
-  type's rendering, and the confirmed/not-required terminal states.
+  `ready`/`completed`/`cancelled`) and the `../pay` redirect guard (fires
+  only when `payment_status === "pending"`, `next/navigation`'s `redirect`
+  mocked the same throw-to-abort way as `notFound`).
+- `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, initialStatus })`
+  client component: polls `getPaymentStatus` every 5s until
+  `confirmed`/`not_required`. Renders only the states reachable once
+  `page.tsx`'s redirect guard has ruled out `"pending"`: `not_required` →
+  nothing, `confirmed` → a persistent "Payment confirmed" state, `claimed` →
+  "Payment sent, waiting for the stall to confirm" with a "Tapped by
+  mistake? Undo" button (`unclaimPayment`) — any other status renders
+  nothing rather than throwing, defensively. The actual claim UI (photo
+  capture, QR/link/image checkout) lives on `../pay` (`pay-form.tsx`) now,
+  not here.
+- `pay-panel.dom.test.tsx` — RTL tests for the claimed/undo/confirmed/
+  not-required states.
 - `payment-actions.ts` — service-client server actions: `getPaymentStatus`
   (read-only poll of the local `orders.payment_status` mirror — cheaper than
   round-tripping paykit every 5s), `loadPreClaimContext(boothId, token)`
@@ -225,14 +227,16 @@ default_prep_minutes` (× 60 × `ordersAhead`) when there isn't enough recent
 
 Reached at `/order/{boothId}/{orderNumber}?t=<accessToken>` — the URL
 `placeOrder` (in `src/app/o/[code]/actions.ts`) returns on success, and the
-link `RecentOrders`/`ReorderButton` construct for a past order. `page.tsx`
-composes `OrderStatusPoller` (polls `status-actions.ts`) and `PayPanel`
-(polls/mutates via `payment-actions.ts`) — both bypass RLS via the service
-client since the customer is anonymous and the per-order `access_token` is
-the sole authorization. `page.tsx` and `payment-actions.ts` both call out to
-paykit's checkout API (`@/lib/paykit/client`) for the actual QR/link/image
-and the claim transition; `EarnLink` calls out to the separate LoopKit
-service, and `TelegramConnect` calls out to merqo's `customer-connect-token`
+link `RecentOrders`/`ReorderButton` construct for a past order. A
+payment-required order still `"pending"` is redirected to `../pay?t=
+<accessToken>` instead (that route's own `page.tsx` owns the claim UI).
+Past that gate, `page.tsx` composes `OrderStatusPoller` (polls
+`status-actions.ts`) and `PayPanel` (polls/mutates via `payment-actions.ts`)
+— both bypass RLS via the service client since the customer is anonymous and
+the per-order `access_token` is the sole authorization. `payment-actions.ts`
+calls out to paykit's checkout API (`@/lib/paykit/client`) for the claim/
+unclaim transitions; `EarnLink` calls out to the separate LoopKit service,
+and `TelegramConnect` calls out to merqo's `customer-connect-token`
 endpoint (`@/lib/merqo-customer-notify`) — the first kit → merqo HTTP
 direction in this codebase. `collect-actions.ts`'s `confirmCollection` is
 called from `../pickup/pickup-scanner.tsx`, the self-checkout pickup kiosk
