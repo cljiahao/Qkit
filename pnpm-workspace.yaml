@@ -4,6 +4,10 @@ allowBuilds:
   supabase: true
   unrs-resolver: true
   "@merqo/ui": true
+  # No install-time lifecycle script -- dist/ ships prebuilt in the published
+  # tarball; its own "build" script (webpack+rollup) is dev-only, never run
+  # by a consumer's install.
+  tesseract.js: false
 
 # Security: force-patch transitive advisories. Each entry is scoped to the
 # vulnerable range, so it self-clears once a dep ships the patched version.

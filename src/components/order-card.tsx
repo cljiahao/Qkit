@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,8 +42,21 @@ import {
 import { sgtClock, shortDateTime } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
-import { Banknote, ChevronDown, Clock, Undo2, Zap } from "lucide-react";
+import {
+  Banknote,
+  ChevronDown,
+  Clock,
+  ImageIcon,
+  Undo2,
+  Zap,
+} from "lucide-react";
 import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
+
+// Heavy (pulls in tesseract.js on demand once opened) — code-split out of the
+// board's initial bundle, same next/dynamic pattern as PayPanel.
+const PaymentProofViewer = dynamic(() =>
+  import("./payment-proof-viewer").then((m) => m.PaymentProofViewer),
+);
 
 // Undo window for advanceStatus (Mark Ready / Mark Picked Up) — instant tap,
 // no hold-to-confirm gate (research: confirmation friction on a high-frequency
@@ -76,6 +90,41 @@ function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
     >
       {v.label}
     </span>
+  );
+}
+
+// Tap-to-expand proof-photo review, factored out of OrderCard's own render to
+// keep its cognitive complexity down. Renders only when the caller has
+// already established there's a claimed, un-reviewed proof photo to show.
+function ProofPhotoTrigger({
+  order,
+  expanded,
+  onToggle,
+}: {
+  order: BoardOrder;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="px-4 pb-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/40 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary/50"
+      >
+        <ImageIcon className="size-3.5" aria-hidden="true" />
+        {expanded ? "Hide payment proof" : "View payment proof"}
+      </button>
+      {expanded && (
+        <div className="mt-2">
+          <PaymentProofViewer
+            orderId={order.id}
+            expectedAmountCents={order.total_cents}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -216,6 +265,7 @@ export function OrderCard({
   const bumped = bumpedLocally || order.priority_bumped_at != null;
   const { pending: updating, run } = useAsyncAction();
   const [expanded, setExpanded] = useState(false);
+  const [proofExpanded, setProofExpanded] = useState(false);
 
   // A just-tapped advanceStatus sits here until the undo window closes (timer
   // in undoTimerRef) or the vendor taps Undo. Cleared on unmount too, so a
@@ -616,6 +666,19 @@ export function OrderCard({
               </span>
             </div>
           </>
+        )}
+
+        {/* Tap-to-expand proof-photo review — only once a customer has
+            actually claimed payment (a proof photo only exists then). Covers
+            both payment-review button shapes below (the plain confirm button
+            and the merged "Mark paid & start" one), since both require
+            payStatus === "claimed". */}
+        {!closed && payStatus === "claimed" && order.payment_proof_path && (
+          <ProofPhotoTrigger
+            order={order}
+            expanded={proofExpanded}
+            onToggle={() => setProofExpanded((v) => !v)}
+          />
         )}
 
         {/* Payment prompts only while the order is live — a cancelled/completed
