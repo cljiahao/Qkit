@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(110);
+select plan(115);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -984,6 +984,90 @@ select throws_ok(
   null,
   'service_role cannot DELETE order_status_events (0079 revoke)');
 
+reset role;
+
+-- ── Payment-first order numbering (0087) ─────────────────────────────────────
+-- A payment-required order must never get a number or auto-start into
+-- preparing at creation, even at a booth that would otherwise auto-start
+-- (printer connected, no arrival-confirm gate). A fresh vendor/booth here so
+-- this section doesn't depend on booth 0004's print_enabled/payment state,
+-- which earlier tests have already flipped back and forth.
+insert into auth.users (id, instance_id, aud, role, email)
+values
+  ('00000000-0000-0000-0000-00000000000d',
+   '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'vendor-d@test.local');
+
+insert into qkit.vendors (id)
+values ('00000000-0000-0000-0000-00000000000d');
+
+insert into qkit.booths (
+  id, vendor_id, name, is_active, short_code, print_enabled,
+  requires_arrival_confirm, payment, menu_items
+)
+values (
+  '00000000-0000-0000-0000-0000000b0005',
+  '00000000-0000-0000-0000-00000000000d',
+  'D Payment Booth', true, 'rlstestcode2', true, false,
+  '{"kind":"paynow","payee_name":"D","uen":"53312345D"}'::jsonb,
+  '[{"id":"pay1","name":"Paid Item","description":"","price_cents":500,
+     "available":true}]'::jsonb
+);
+
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode2', 'Pat',
+       '[{"menuItemId":"pay1","name":"Paid Item","quantity":1}]'::jsonb,
+       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid) $$,
+  'place_order succeeds for a payment-required order');
+
+reset role;
+select is(
+  (select order_number from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0005'
+     and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
+  NULL,
+  'payment-required order has no order_number at creation'
+);
+select is(
+  (select status::text from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0005'
+     and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
+  'pending',
+  'payment-required order forced to pending even when booth auto-starts'
+);
+
+-- assign_order_number: assigns once, idempotent on retry.
+select is(
+  qkit.assign_order_number(
+    (select id from qkit.orders
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  qkit.assign_order_number(
+    (select id from qkit.orders
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  'assign_order_number is idempotent for the same order'
+);
+
+-- storage: no anon/public read on payment-proofs. Seed a real row as the
+-- privileged test role first, so the anon check below proves RLS actually
+-- filters it out, not just that the bucket happens to be empty. anon has the
+-- platform's default full table grant on storage.objects (same as every
+-- other bucket) -- with no matching SELECT policy, RLS silently returns zero
+-- rows rather than throwing, so is_empty is the correct assertion here (not
+-- throws_ok, which only fits a table-level grant revoke).
+insert into storage.objects (bucket_id, name)
+values ('payment-proofs', '00000000-0000-0000-0000-00000000000d/proof.jpg');
+
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select is_empty(
+  $$ select 1 from storage.objects where bucket_id = 'payment-proofs' $$,
+  'anon cannot read payment-proofs bucket objects'
+);
 reset role;
 
 select * from finish();

@@ -10,7 +10,7 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-87 files, `0000` through `0086`. Read in full: `0000`, `0001`, `0010`, `0030`,
+88 files, `0000` through `0087`. Read in full: `0000`, `0001`, `0010`, `0030`,
 and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
@@ -323,6 +323,7 @@ realtime-order-board.tsx`; changes neither `place_order` nor
 - `0084_legal_check_state.sql` — `qkit.legal_check_state` (`email` PK, `checked_at`, `is_current`) — a per-email TTL cache for "is this vendor's terms/privacy acceptance current?". qkit owns no acceptance record (merqo does, `merqo.legal_acceptances`), so the real check is a bearer-authed `GET /api/merqo/legal-status` HTTP call (`src/lib/legal-gate.ts`) that runs on every gated dashboard render — this table throttles it to once per 5 min, the same pattern as merqo's own `vendor_sync_state`. RLS on, zero policies, explicit `service_role` grant (post-0041 tables don't inherit the blanket grant — same as `0078`).
 - `0085_place_order_free_skips_payment.sql` — recreates `place_order`/`place_walkup_order` so `v_expects_payment` also requires `v_total > 0`; a $0 order no longer shows a pay panel just because the booth has a payment method configured. Backfills existing `total_cents = 0, payment_status = 'pending'` rows to `not_required`.
 - `0086_place_order_requires_accept_without_printer.sql` — recreates `place_order` so a new order also lands `'pending'` (needs a vendor "Start now" tap) when `booths.print_enabled` is off, alongside the existing `requires_arrival_confirm` gate (`0064`) — no printed ticket means no physical way to track what's being worked on. `place_walkup_order` untouched, same rationale as `0064`.
+- `0087_payment_first_and_pickup.sql` — first of the payment-first checkout + self-checkout pickup kiosk task series (see `docs/superpowers/specs/2026-09-13-payment-first-checkout-and-self-checkout-pickup-design.md`). Makes `orders.order_number` nullable and adds `payment_proof_path`/`payment_proof_hash` (+ a partial index for duplicate-photo lookup) and a private `payment-proofs` storage bucket (vendor-scoped SELECT policy only, matching `booth-images`' folder pattern). New `qkit.assign_order_number(p_order_id)` atomically assigns a number at payment-claim time instead of at order creation (idempotent; deliberately not built on the existing unused, truncation-buggy `qkit.next_order_number` from `0008`). Recreates `place_order` so a payment-required order gets no number and is forced to `'pending'` even at an auto-start booth. Also loosens the `0045` column-freeze trigger to allow the one-time `order_number` `NULL` → assigned transition `assign_order_number` needs, while still blocking any change once a number is set — a gap the freeze trigger predates and this task's own pgTAP run surfaced.
 
 ## Connectivity
 
