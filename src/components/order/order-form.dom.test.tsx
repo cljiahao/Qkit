@@ -234,6 +234,38 @@ describe("OrderForm cart", () => {
     expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
   });
 
+  it("redirects to the payment page, without saving a recent order, when order_number is null", async () => {
+    placeOrder.mockResolvedValueOnce({
+      success: true,
+      orderNumber: null,
+      boothId: "b1",
+      accessToken: "tok42",
+    });
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Get my order number/ }),
+    );
+
+    await waitFor(() =>
+      expect(placeOrder).toHaveBeenCalledWith(
+        "code123",
+        {
+          customerName: "Ada",
+          customerPhone: "",
+          items: [expect.objectContaining({ menuItemId: "kopi", quantity: 1 })],
+        },
+        expect.stringMatching(/^[0-9a-f-]{36}$/),
+      ),
+    );
+    expect(addRecentOrder).not.toHaveBeenCalled();
+    expect(push).toHaveBeenCalledWith("/order/b1/pay?t=tok42");
+  });
+
   it("seeds the cart from a reorder handoff on mount", async () => {
     window.sessionStorage.setItem(
       "qkit:reorder:b1",

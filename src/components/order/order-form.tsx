@@ -318,6 +318,8 @@ export function OrderForm({
       router.push(
         `/order/${result.boothId}/${result.orderNumber}?t=${result.accessToken}`,
       );
+    } else {
+      router.push(`/order/${result.boothId}/pay?t=${result.accessToken}`);
     }
   }
 
