@@ -44,6 +44,12 @@ the current (non-legacy) customer ordering entry point.
   never be overwritten back to `'queued'` — so the column doesn't lie about
   a job that's genuinely in progress for the whole window before that
   callback lands. Logs (doesn't discard) an update failure too.
+  `notifyVendorTelegram`/`notifyPrintkit` are now `export`ed (previously
+  module-private) so `order/[boothId]/[orderNumber]/payment-actions.ts`'s
+  `claimPayment` can fire the same two calls at claim time for a
+  payment-required order (numbering + vendor notification are deferred to a
+  successful claim there, not `placeOrder` time) without duplicating either
+  function's logic.
 - `actions.place-order.test.ts` — unit tests (RPC mocked) covering: the
   expired-code message mapping, a successful order, the action-level flood
   guard rejecting before `place_order` is ever called, fail-open behaviour

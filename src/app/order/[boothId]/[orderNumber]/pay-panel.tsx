@@ -116,7 +116,10 @@ export function PayPanel({
 
   function claim() {
     return run(async () => {
-      const res = await claimPayment(boothId, orderNumber, token);
+      // claimPayment now requires an uploaded photo (Task 6 replaces this
+      // one-tap flow with the actual capture/upload UI); passing null keeps
+      // this call site compiling against the new signature in the meantime.
+      const res = await claimPayment(boothId, token, null);
       if (res.success) setStatus("claimed");
       else toast.error(res.error);
     });

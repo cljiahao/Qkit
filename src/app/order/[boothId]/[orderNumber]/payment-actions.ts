@@ -3,12 +3,16 @@
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { parseOrderRef } from "@/lib/schemas";
+import { parseOrderRef, parsePreClaimRef } from "@/lib/schemas";
 import {
   createCheckout,
   claimCheckout,
   unclaimCheckout,
+  type CheckoutView,
 } from "@/lib/paykit/client";
+import { resizeToWebp } from "@/lib/image-resize";
+import { hashBuffer } from "@/lib/hash";
+import { notifyVendorTelegram, notifyPrintkit } from "@/app/o/[code]/actions";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
 
@@ -80,27 +84,78 @@ async function loadCheckoutContext(
   };
 }
 
+/**
+ * Read what the pre-claim pay panel needs for a payment-required order that
+ * has no order_number yet (numbering is deferred to a successful claim — see
+ * claimPayment below). Same two-read + createCheckout shape as page.tsx's own
+ * loadCheckoutView, just keyed on (boothId, token) instead of a numbered
+ * order route.
+ */
+export async function loadPreClaimContext(
+  boothId: string,
+  token: string,
+): Promise<{
+  orderId: string;
+  amountCents: number;
+  checkout: CheckoutView | null;
+} | null> {
+  const parsed = parsePreClaimRef(boothId, token);
+  if (!parsed.ok) return null;
+
+  const supabase = await createServiceClient();
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, total_cents, payment_status")
+    .eq("booth_id", boothId)
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!order || order.payment_status !== "pending") return null;
+
+  const { data: booth } = await supabase
+    .from("booths")
+    .select("vendor_id")
+    .eq("id", boothId)
+    .maybeSingle();
+  if (!booth?.vendor_id) return null;
+
+  const checkout = await createCheckout({
+    vendorId: booth.vendor_id,
+    amountCents: order.total_cents,
+    orderRef: order.id,
+  });
+
+  return {
+    orderId: order.id,
+    amountCents: order.total_cents,
+    checkout: checkout.ok ? checkout.data : null,
+  };
+}
+
 // Customer is anonymous, so this uses the service-role client (same pattern as
-// the order status page read). It is deliberately narrow: it only advances a
-// single order from 'pending' to 'claimed'. It cannot set 'confirmed' (vendor-
-// only) and cannot touch order_status. Payment is trust-based: a claim is
-// only a hint — the vendor confirms real receipt on the board.
+// the order status page read). Requires an uploaded payment screenshot — the
+// photo upload IS the claim now, not a follow-on step, and doubles as the
+// mechanism that finally assigns this order's number (deferred at place_order
+// time for any payment-required order — see migration 0087). Payment is
+// trust-based: a claim is only a hint — the vendor confirms real receipt on
+// the board.
 //
-// paykit is the source of truth for the claim itself (its own
-// pending→claimed transition, see paykit/src/lib/tx-state.ts); the order's
-// order.id is passed as paykit's `order_ref` so repeated taps against the
-// same order always resolve to the same paykit transaction
-// (idempotent on (kit_slug, order_ref)). `orders.payment_status` is updated
-// afterward purely as a local mirror for the rest of qkit's order-lifecycle
-// logic (board realtime, cancel-blocking, auto-confirm-on-complete) — a
-// failure writing that mirror does not undo an already-successful paykit
-// claim, so it still reports success to the customer.
+// Order of operations is load-bearing: upload the photo + hash it first,
+// THEN call paykit's claim, THEN assign the order number and fire the vendor
+// notifications, THEN write the local payment_status mirror last. A failed
+// upload never touches payment_status or order_number at all (no
+// half-claimed state); a failed paykit claim leaves only a harmless orphaned
+// photo in storage; a failed mirror write doesn't undo an already-successful
+// paykit claim + already-assigned number, so it still reports success.
 export async function claimPayment(
   boothId: string,
-  orderNumber: string,
   token: string,
-): Promise<ActionResult> {
-  const parsed = parseOrderRef(boothId, orderNumber, token);
+  photo: File | null,
+): Promise<ActionResult<{ orderNumber: string }>> {
+  if (!photo) {
+    return { success: false, error: "A payment screenshot is required." };
+  }
+
+  const parsed = parsePreClaimRef(boothId, token);
   if (!parsed.ok)
     return {
       success: false,
@@ -117,49 +172,86 @@ export async function claimPayment(
   if (!allowed)
     return { success: false, error: "Too many attempts — wait a moment." };
 
-  const ctx = await loadCheckoutContext(supabase, boothId, orderNumber, token);
-  if (!ctx) return { success: false, error: "Invalid order" };
-  if (ctx.status === "cancelled")
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, total_cents, payment_status, status, customer_name")
+    .eq("booth_id", boothId)
+    .eq("access_token", token)
+    .maybeSingle();
+  if (!order) return { success: false, error: "Invalid order" };
+  if (order.status === "cancelled")
     return { success: false, error: "This order was cancelled." };
-  // Already claimed/confirmed (double-tap, or the vendor already confirmed
-  // receipt) — idempotent success, no need to call paykit again.
-  if (ctx.paymentStatus === "claimed" || ctx.paymentStatus === "confirmed")
-    return { success: true };
-  if (ctx.paymentStatus === "not_required")
-    return { success: false, error: "This order doesn't take payment." };
+  if (order.payment_status !== "pending")
+    return { success: false, error: "This order isn't awaiting payment." };
+
+  const { data: booth } = await supabase
+    .from("booths")
+    .select("vendor_id, print_enabled")
+    .eq("id", boothId)
+    .maybeSingle();
+  if (!booth?.vendor_id) return { success: false, error: "Invalid order" };
+
+  const resized = await resizeToWebp(photo, 1600);
+  const buffer = await resized.blob.arrayBuffer();
+  const hash = await hashBuffer(buffer);
+  const path = `${booth.vendor_id}/${order.id}.${resized.ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("payment-proofs")
+    .upload(path, buffer, { upsert: true, contentType: resized.type });
+  if (uploadError) {
+    console.error("claimPayment: proof upload failed", uploadError.message);
+    return { success: false, error: "Could not upload photo. Try again." };
+  }
 
   const checkout = await createCheckout({
-    vendorId: ctx.vendorId,
-    amountCents: ctx.totalCents,
-    orderRef: ctx.orderId,
+    vendorId: booth.vendor_id,
+    amountCents: order.total_cents,
+    orderRef: order.id,
   });
   if (!checkout.ok) {
     console.error("claimPayment: paykit checkout failed", checkout.error);
     return { success: false, error: "Could not record payment. Try again." };
   }
-
   const claim = await claimCheckout(checkout.data.transactionId);
   if (!claim.ok) {
     console.error("claimPayment: paykit claim failed", claim.error);
     return { success: false, error: "Could not record payment. Try again." };
   }
 
-  const { error } = await supabase
-    .from("orders")
-    .update({ payment_status: "claimed" })
-    .eq("booth_id", boothId)
-    .eq("order_number", orderNumber)
-    .eq("access_token", token)
-    .eq("payment_status", "pending")
-    .neq("status", "cancelled")
-    .select("id");
-  if (error)
-    console.error("claimPayment: local mirror update failed", error.message);
+  const { data: orderNumber, error: assignError } = await supabase.rpc(
+    "assign_order_number",
+    { p_order_id: order.id },
+  );
+  if (assignError || !orderNumber) {
+    console.error(
+      "claimPayment: assign_order_number failed",
+      assignError?.message,
+    );
+    return { success: false, error: "Could not finalize order. Try again." };
+  }
 
-  // paykit already recorded the claim by this point — a mirror-write failure
-  // (or losing a race to a concurrent claim from another tab) doesn't change
-  // that outcome.
-  return { success: true };
+  await Promise.all([
+    notifyVendorTelegram(boothId, orderNumber),
+    notifyPrintkit(boothId, orderNumber, order.customer_name),
+  ]);
+
+  const { error: mirrorError } = await supabase
+    .from("orders")
+    .update({
+      payment_status: "claimed",
+      payment_proof_path: path,
+      payment_proof_hash: hash,
+    })
+    .eq("id", order.id)
+    .eq("payment_status", "pending");
+  if (mirrorError)
+    console.error(
+      "claimPayment: local mirror update failed",
+      mirrorError.message,
+    );
+
+  return { success: true, orderNumber };
 }
 
 // Undo an accidental "I've paid" tap: revert a still-unverified 'claimed'

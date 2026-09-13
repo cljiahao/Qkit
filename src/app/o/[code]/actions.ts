@@ -39,7 +39,7 @@ function messageFor(raw: string): string {
  * nothing here can ever affect placeOrder's own returned result. See
  * docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md.
  */
-async function notifyVendorTelegram(
+export async function notifyVendorTelegram(
   boothId: string,
   orderNumber: string,
 ): Promise<void> {
@@ -89,7 +89,7 @@ async function notifyVendorTelegram(
  * the column lie about a job that's genuinely in progress. Best-effort,
  * same fire-and-forget contract as the createPrintJob call itself.
  */
-async function notifyPrintkit(
+export async function notifyPrintkit(
   boothId: string,
   orderNumber: string,
   customerName: string,

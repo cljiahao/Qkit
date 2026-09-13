@@ -82,6 +82,13 @@ factories, respectively).
 - `events.ts` — `eventLabel(license)`: display name for a paid pass/event
   (vendor's own label, or a dated default like "Pass · 7 Jun").
 - `events.test.ts` — tests label fallback and whitespace-only-label handling.
+- `hash.ts` — `hashBuffer(buffer)`: SHA-256 hex digest of an `ArrayBuffer` via
+  `node:crypto`'s `createHash` (matches this repo's existing hashing
+  convention, not the global Web Crypto `crypto.subtle`). Used by
+  `claimPayment` (`order/[boothId]/[orderNumber]/payment-actions.ts`) to
+  fingerprint an uploaded payment-proof photo (`orders.payment_proof_hash`).
+- `hash.test.ts` — tests digest stability and that different input hashes
+  differently.
 - `hours-editor.ts` — pure state transitions behind the working-hours editor:
   `WEEKDAY_KEYS`, `DEFAULT_WINDOW`, `emptyWeek`, `dailyHours`, `weekFromDaily`,
   `dailyFromWeek` — the daily↔weekly conversions, kept out of the component so
@@ -362,6 +369,9 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   there's no longer a `parsePaymentConfig` DB-read counterpart), `placeOrderSchema`, `orderRowSchema`/
   `parseRealtimeOrderEvent`'s dependency, `parseOrderRef` (validates the
   boothId/orderNumber/token triple every customer order action receives),
+  `parsePreClaimRef` (same shape minus `orderNumber`, for the pre-claim flow
+  where a payment-required order has no number yet — `loadPreClaimContext`/
+  `claimPayment` in `order/[boothId]/[orderNumber]/payment-actions.ts`),
   `feedbackSchema`, `supportMessageSchema`, `profileNameSchema`/
   `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema` (now also
   `daily_order_number_reset: boolean` and `default_prep_minutes:

@@ -17,6 +17,7 @@ import {
   passwordChangeSchema,
   boardSettingsSchema,
   parseOrderRef,
+  parsePreClaimRef,
   socialLinksSchema,
   parseSocialLinks,
   resolveSocialLinks,
@@ -65,6 +66,28 @@ describe("parseOrderRef", () => {
     expect(parseOrderRef("bad", "0042", "also-bad")).toEqual({
       ok: false,
       field: "booth",
+    });
+  });
+});
+
+describe("parsePreClaimRef", () => {
+  it("accepts a valid (boothId, token) pair", () => {
+    const r = parsePreClaimRef(UUID_A, UUID_B);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.ref).toEqual({ boothId: UUID_A, token: UUID_B });
+  });
+
+  it("rejects an invalid booth id", () => {
+    expect(parsePreClaimRef("not-a-uuid", UUID_B)).toEqual({
+      ok: false,
+      field: "booth",
+    });
+  });
+
+  it("rejects an invalid token", () => {
+    expect(parsePreClaimRef(UUID_A, "not-a-uuid")).toEqual({
+      ok: false,
+      field: "token",
     });
   });
 });

@@ -144,23 +144,39 @@ initialStatus, amountCents })` client component: polls `getPaymentStatus`
   type's rendering, and the confirmed/not-required terminal states.
 - `payment-actions.ts` — service-client server actions: `getPaymentStatus`
   (read-only poll of the local `orders.payment_status` mirror — cheaper than
-  round-tripping paykit every 5s), `claimPayment` (customer self-report,
-  rate-limited 10/60s per IP+booth; calls paykit's `createCheckout`
-  — idempotent, re-fetching the transaction `page.tsx` already created for
-  this order — then `claimCheckout`, and mirrors the result into
-  `orders.payment_status` afterward; no-ops on a cancelled order or a repeat
-  claim without calling paykit again), and `unclaimPayment` (the "Tapped by
-  mistake? Undo" companion, same rate-limit/lookup shape; re-fetches the same
-  paykit transaction via `createCheckout` — there's no stored transaction id
-  — then calls `unclaimCheckout`, idempotent on already-`pending` and
-  refusing to revert a `confirmed` transaction, which paykit enforces itself
-  and this mirrors with a fast local pre-check). paykit is authoritative for
-  whether the claim/unclaim itself succeeded; a failed local mirror write
-  still reports success to the customer.
+  round-tripping paykit every 5s), `loadPreClaimContext(boothId, token)`
+  (pre-claim pay-panel data for a payment-required order that has no
+  `order_number` yet — same order id/amount/checkout shape as `page.tsx`'s
+  own `loadCheckoutView`, keyed on the token-only route instead of a numbered
+  one), `claimPayment(boothId, token, photo)` (customer self-report, now
+  **requires an uploaded payment screenshot** — the photo upload IS the claim
+  and is also what finally assigns the order's number, deferred at
+  `place_order` time for any payment-required order; rate-limited 10/60s per
+  IP+booth). Order of operations is load-bearing: uploads the photo to the
+  private `payment-proofs` bucket and hashes it (`@/lib/hash`'s `hashBuffer`)
+  first, **then** calls paykit's `createCheckout`/`claimCheckout`, **then**
+  assigns the number via `qkit.assign_order_number` and fires
+  `notifyVendorTelegram`/`notifyPrintkit` (imported from
+  `src/app/o/[code]/actions.ts`, not duplicated), **then** writes the local
+  `orders.payment_status`/`payment_proof_path`/`payment_proof_hash` mirror
+  last — a failed upload never touches payment state at all, a failed paykit
+  claim leaves only a harmless orphaned photo, and a failed mirror write
+  still reports success (paykit + the assigned number are already real by
+  then). `unclaimPayment` is unchanged (still `(boothId, orderNumber,
+token)`, only ever runs post-claim when a number already exists): the
+  "Tapped by mistake? Undo" companion, same rate-limit/lookup shape;
+  re-fetches the same paykit transaction via `createCheckout` — there's no
+  stored transaction id — then calls `unclaimCheckout`, idempotent on
+  already-`pending` and refusing to revert a `confirmed` transaction, which
+  paykit enforces itself and this mirrors with a fast local pre-check).
+  paykit is authoritative for whether the claim/unclaim itself succeeded; a
+  failed local mirror write still reports success to the customer.
 - `payment-actions.test.ts` — unit tests for the claim/unclaim guards,
-  rate-limiting, paykit-call mocking, and idempotency (including "already
-  claimed/confirmed skips paykit entirely" and "already pending/confirmed
-  skips paykit entirely" for unclaim).
+  rate-limiting, paykit-call mocking, and idempotency, including the new
+  photo-required/deferred-numbering `claimPayment` (no-photo rejection,
+  upload-failure-never-touches-payment-state, the full upload→claim→assign→
+  notify→mirror happy path with a real `hashBuffer` digest assertion) and
+  `loadPreClaimContext`'s valid/invalid/non-pending branches.
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal

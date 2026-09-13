@@ -335,6 +335,26 @@ export function parseOrderRef(
   return { ok: true, ref: { boothId, orderNumber, token } };
 }
 
+export type ParsePreClaimRefResult =
+  | { ok: true; ref: { boothId: string; token: string } }
+  | { ok: false; field: "booth" | "token" };
+
+/**
+ * Validate the (boothId, token) pair for the pre-claim flow, where a
+ * payment-required order has no order_number yet — same shape as
+ * parseOrderRef minus the orderNumber leg.
+ */
+export function parsePreClaimRef(
+  boothId: string,
+  token: string,
+): ParsePreClaimRefResult {
+  if (!orderBoothIdSchema.safeParse(boothId).success)
+    return { ok: false, field: "booth" };
+  if (!orderTokenSchema.safeParse(token).success)
+    return { ok: false, field: "token" };
+  return { ok: true, ref: { boothId, token } };
+}
+
 // ── Social/website links ─────────────────────────────────────────────────────
 // Vendor profile (vendors.social_links) and per-booth (booths.social_links).
 // All fields optional; an absent/empty object means "nothing set".

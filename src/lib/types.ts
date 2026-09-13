@@ -697,6 +697,10 @@ export interface Database {
         Args: { p_booth_id: string };
         Returns: string;
       };
+      assign_order_number: {
+        Args: { p_order_id: string };
+        Returns: string;
+      };
       booth_remaining_stock: {
         Args: { p_booth_id: string };
         Returns: Json;
