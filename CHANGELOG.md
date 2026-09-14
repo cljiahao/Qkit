@@ -81,6 +81,14 @@ actions.ts`, `merqo-customer-notify.ts`) pointed at a stale, pre-custom-
 - The checkout sheet's submit button no longer promises "Get my order
   number" on a payment-required booth, where the number isn't assigned
   until after payment is claimed; it now reads "Place order".
+- "Mark paid & start"'s undo no longer reverts `payment_status` back —
+  paykit's own confirm already happened for real and can't be undone, so
+  the previous undo left qkit's local mirror disagreeing with paykit
+  forever. Undo now only un-starts the order (back to pending); payment
+  stays confirmed, same no-refund-rail principle `cancelOrder` already
+  applies. Also: a lost-race 0-rows result from "Mark paid & start" itself
+  no longer blindly reports failure or success — it re-checks whether the
+  order actually reached the confirmed+advanced state before deciding.
 
 ### Changed
 

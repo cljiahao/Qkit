@@ -173,12 +173,15 @@ function revertPendingUndo(orderId: string, pending: PendingUndo) {
 
 /**
  * Whether a successful undo should also clear the local optimistic "paid"
- * flag. Always true for the merged action's own undo; for a plain advance
+ * flag. Never true for the merged action's own undo — revertPaymentAndStart
+ * deliberately leaves payment_status confirmed (paykit's own confirm can't
+ * be undone), so clearing this flag here would flash a false "not paid"
+ * state before the real order data catches back up. For a plain advance
  * undo, only when reverting the auto-confirm buildAdvancePatch applied on
  * completion (mirrors advanceStatus's own condition for setting it).
  */
 function shouldUnconfirmOnUndo(pending: PendingUndo): boolean {
-  if (pending.action === "paymentAndStart") return true;
+  if (pending.action === "paymentAndStart") return false;
   return (
     pending.revertFrom === "completed" &&
     (pending.prevPaymentStatus === "pending" ||

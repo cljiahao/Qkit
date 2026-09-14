@@ -390,6 +390,49 @@ describe("confirmPaymentAndStart", () => {
     });
   });
 
+  it("treats a lost race as success when a concurrent call already confirmed+advanced it", async () => {
+    maybeSingle
+      .mockResolvedValueOnce({
+        data: {
+          id: ID,
+          status: "pending",
+          payment_status: "claimed",
+          total_cents: 800,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { status: "preparing", payment_status: "confirmed" },
+      });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+  });
+
+  it("still reports a refresh on a lost race if the order was cancelled instead", async () => {
+    maybeSingle
+      .mockResolvedValueOnce({
+        data: {
+          id: ID,
+          status: "pending",
+          payment_status: "claimed",
+          total_cents: 800,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { status: "cancelled", payment_status: "confirmed" },
+      });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed -- please refresh.",
+    });
+  });
+
   it("reports a failure when paykit's checkout call fails", async () => {
     maybeSingle.mockResolvedValue({
       data: {
@@ -437,16 +480,13 @@ describe("confirmPaymentAndStart", () => {
 });
 
 describe("revertPaymentAndStart", () => {
-  it("reverts both status and payment_status together", async () => {
+  it("reverts status only, leaving payment_status confirmed (paykit's confirm can't be undone)", async () => {
     maybeSingle.mockResolvedValue({
       data: { id: ID, status: "preparing", payment_status: "confirmed" },
     });
     const res = await revertPaymentAndStart(ID, "claimed");
     expect(res).toEqual({ success: true, status: "pending" });
-    expect(update).toHaveBeenCalledWith({
-      status: "pending",
-      payment_status: "claimed",
-    });
+    expect(update).toHaveBeenCalledWith({ status: "pending" });
   });
 
   it("reports a refresh when the order changed concurrently (0 rows)", async () => {

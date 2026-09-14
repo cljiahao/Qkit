@@ -284,8 +284,28 @@ export async function confirmPaymentAndStart(
     console.error("confirmPaymentAndStart failed", error.message);
     return { success: false, error: "Failed to update order" };
   }
-  if (!rows || rows.length === 0)
+  if (!rows || rows.length === 0) {
+    // paykit's confirm above already happened for real -- a lost race here
+    // doesn't necessarily mean it's safe to report success (the concurrent
+    // change could just as well be a cancel), so re-read rather than assume
+    // either way. Only a concurrent call that already reached the same
+    // confirmed+advanced state counts as "already done"; anything else
+    // (still pending, or cancelled) is a genuine conflict.
+    const { data: current } = await supabase
+      .from("orders")
+      .select("status, payment_status")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (
+      current &&
+      current.status !== "pending" &&
+      current.status !== "cancelled" &&
+      current.payment_status === "confirmed"
+    ) {
+      return { success: true, status: current.status, prevPaymentStatus };
+    }
     return { success: false, error: "Order changed -- please refresh." };
+  }
 
   if (userId) {
     await recordOrderStatusEvent({
@@ -306,15 +326,19 @@ export async function confirmPaymentAndStart(
 }
 
 /**
- * Undo a just-made confirmPaymentAndStart call within its short undo window.
- * A separate function from revertOrderAdvance rather than a widened reuse of
- * it: revertOrderAdvance only restores payment_status when reverting from
- * `completed`, not from `preparing`, so reusing it here would silently leave
- * payment_status at "confirmed" instead of undoing it.
+ * Undo a just-made confirmPaymentAndStart call within its short undo window —
+ * but only the "start" half. Unlike revertOrderAdvance's own undo,
+ * payment_status is deliberately left alone: confirmPaymentAndStart's
+ * paykit confirm already happened for real and paykit has no "unconfirm"
+ * capability, so reverting the local mirror back to pending/claimed would
+ * make qkit lie about money paykit still shows as confirmed — same
+ * no-refund-rail principle cancelOrder already applies to a confirmed
+ * payment. `prevPaymentStatus` is kept only so this shares a call
+ * signature with revertOrderAdvance at the one dispatch site (order-card.tsx).
  */
 export async function revertPaymentAndStart(
   orderId: string,
-  prevPaymentStatus: PaymentStatus,
+  _prevPaymentStatus: PaymentStatus,
 ): Promise<ActionResult<{ status: OrderStatus }>> {
   if (!idSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
@@ -324,7 +348,7 @@ export async function revertPaymentAndStart(
 
   const { data: rows, error } = await supabase
     .from("orders")
-    .update({ status: "pending", payment_status: prevPaymentStatus })
+    .update({ status: "pending" })
     .eq("id", orderId)
     .eq("status", "preparing")
     .select("id");

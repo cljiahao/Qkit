@@ -615,7 +615,11 @@ describe("OrderCard — reconciled payment+start", () => {
     ).toBeInTheDocument();
   });
 
-  it("undoes the merged action back to pending, restoring the prior payment status", async () => {
+  it("undoes the merged action's status back to pending, but leaves payment confirmed", async () => {
+    // paykit's own confirm already happened for real and can't be undone
+    // (see revertPaymentAndStart's own doc comment) — undo only un-starts
+    // the order, so it lands back on the plain "Start now" button, not the
+    // merged one (payment no longer needs review).
     const user = userEvent.setup();
     confirmPaymentAndStart.mockResolvedValueOnce({
       success: true,
@@ -639,9 +643,12 @@ describe("OrderCard — reconciled payment+start", () => {
     expect(revertPaymentAndStart).toHaveBeenCalledWith("order-1", "claimed");
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: /mark paid.*start/i }),
+        screen.getByRole("button", { name: /^start now$/i }),
       ).toBeInTheDocument(),
     );
+    expect(
+      screen.queryByRole("button", { name: /mark paid.*start/i }),
+    ).not.toBeInTheDocument();
   });
 });
 
