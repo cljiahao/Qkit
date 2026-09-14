@@ -111,7 +111,7 @@ const { notifyVendorTelegramMock, notifyPrintkitMock } = vi.hoisted(() => ({
   notifyVendorTelegramMock: vi.fn(),
   notifyPrintkitMock: vi.fn(),
 }));
-vi.mock("@/app/o/[code]/actions", () => ({
+vi.mock("@/app/o/[code]/notify", () => ({
   notifyVendorTelegram: notifyVendorTelegramMock,
   notifyPrintkit: notifyPrintkitMock,
 }));
@@ -351,7 +351,7 @@ describe("claimPayment (photo required, deferred numbering)", () => {
       p_order_id: "o1",
     });
     expect(notifyVendorTelegramMock).toHaveBeenCalledWith(BOOTH, "0007");
-    expect(notifyPrintkitMock).toHaveBeenCalledWith(BOOTH, "0007", "Ann");
+    expect(notifyPrintkitMock).toHaveBeenCalledWith(BOOTH, "0007");
     expect(update).toHaveBeenCalledWith({
       payment_status: "claimed",
       payment_proof_path: "v1/o1.webp",

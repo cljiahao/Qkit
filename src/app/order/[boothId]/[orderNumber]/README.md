@@ -199,7 +199,7 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   first, **then** calls paykit's `createCheckout`/`claimCheckout`, **then**
   assigns the number via `qkit.assign_order_number` and fires
   `notifyVendorTelegram`/`notifyPrintkit` (imported from
-  `src/app/o/[code]/actions.ts`, not duplicated), **then** writes the local
+  `src/app/o/[code]/notify.ts`, not duplicated), **then** writes the local
   `orders.payment_status`/`payment_proof_path`/`payment_proof_hash` mirror
   last — a failed upload never touches payment state at all, a failed paykit
   claim leaves only a harmless orphaned photo, and a failed mirror write

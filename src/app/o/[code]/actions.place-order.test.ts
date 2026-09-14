@@ -364,7 +364,7 @@ describe("placeOrder", () => {
       ];
       orderQueue = [
         { data: { total_cents: 700 } }, // consumed by notifyVendorTelegram
-        { data: { id: "order-uuid-1" } }, // consumed by notifyPrintkit
+        { data: { id: "order-uuid-1", customer_name: "Ada" } }, // consumed by notifyPrintkit
       ];
 
       const res = await placeOrder("code123", validInput, IDEM);
@@ -388,7 +388,7 @@ describe("placeOrder", () => {
       ];
       orderQueue = [
         { data: { total_cents: 700 } },
-        { data: { id: "order-uuid-1" } },
+        { data: { id: "order-uuid-1", customer_name: "Ada" } },
       ];
 
       const res = await placeOrder("code123", validInput, IDEM);
@@ -407,7 +407,7 @@ describe("placeOrder", () => {
       ];
       orderQueue = [
         { data: { total_cents: 700 } },
-        { data: { id: "order-uuid-1" } },
+        { data: { id: "order-uuid-1", customer_name: "Ada" } },
       ];
       createPrintJob.mockResolvedValueOnce({
         ok: false,
@@ -443,7 +443,7 @@ describe("placeOrder", () => {
       ];
       orderQueue = [
         { data: { total_cents: 700 } },
-        { data: { id: "order-uuid-1" } },
+        { data: { id: "order-uuid-1", customer_name: "Ada" } },
       ];
       createPrintJob.mockRejectedValueOnce(new Error("printkit down"));
 

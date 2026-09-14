@@ -125,7 +125,7 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   }
 
   // Same fire-and-forget pattern as notifyVendorTelegram in
-  // src/app/o/[code]/actions.ts: notifyCustomer already never throws on its
+  // src/app/o/[code]/notify.ts: notifyCustomer already never throws on its
   // own, but this call site still wraps it so nothing here can ever change
   // advanceOrder's own returned result below.
   if (
@@ -229,6 +229,8 @@ export async function revertOrderAdvance(
  * starting it, so this does both in one write instead of two separate taps.
  * Rejects an order that isn't pending, or whose payment is already settled
  * (confirmed/not_required) — those cases keep using the plain advance button.
+ * Confirms via paykit first, same as confirmOrderPayment, so a claimPayment
+ * transaction doesn't stay stuck at "claimed" on paykit's side.
  */
 export async function confirmPaymentAndStart(
   orderId: string,
@@ -239,7 +241,8 @@ export async function confirmPaymentAndStart(
     return { success: false, error: "Invalid order" };
 
   const { supabase, order, userId } = await loadOwnOrder(orderId);
-  if (!supabase || !order) return { success: false, error: "Order not found" };
+  if (!supabase || !order || !userId)
+    return { success: false, error: "Order not found" };
 
   if (
     order.status !== "pending" ||
@@ -249,6 +252,27 @@ export async function confirmPaymentAndStart(
     return { success: false, error: "Order can't be advanced" };
 
   const prevPaymentStatus = order.payment_status;
+
+  const checkout = await createCheckout({
+    vendorId: userId,
+    amountCents: order.total_cents,
+    orderRef: order.id,
+  });
+  if (!checkout.ok) {
+    console.error(
+      "confirmPaymentAndStart: paykit checkout failed",
+      checkout.error,
+    );
+    return { success: false, error: "Failed to confirm payment" };
+  }
+  const confirm = await confirmCheckout(checkout.data.transactionId);
+  if (!confirm.ok) {
+    console.error(
+      "confirmPaymentAndStart: paykit confirm failed",
+      confirm.error,
+    );
+    return { success: false, error: "Failed to confirm payment" };
+  }
 
   const { data: rows, error } = await supabase
     .from("orders")

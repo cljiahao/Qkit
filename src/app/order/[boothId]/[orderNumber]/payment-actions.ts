@@ -12,7 +12,7 @@ import {
 } from "@/lib/paykit/client";
 import { resizeToWebp } from "@/lib/image-resize";
 import { hashBuffer } from "@/lib/hash";
-import { notifyVendorTelegram, notifyPrintkit } from "@/app/o/[code]/actions";
+import { notifyVendorTelegram, notifyPrintkit } from "@/app/o/[code]/notify";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
 
@@ -174,7 +174,7 @@ export async function claimPayment(
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, total_cents, payment_status, status, customer_name")
+    .select("id, total_cents, payment_status, status")
     .eq("booth_id", boothId)
     .eq("access_token", token)
     .maybeSingle();
@@ -233,7 +233,7 @@ export async function claimPayment(
 
   await Promise.all([
     notifyVendorTelegram(boothId, orderNumber),
-    notifyPrintkit(boothId, orderNumber, order.customer_name),
+    notifyPrintkit(boothId, orderNumber),
   ]);
 
   const { error: mirrorError } = await supabase
