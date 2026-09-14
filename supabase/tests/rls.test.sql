@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(117);
+select plan(120);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -445,6 +445,15 @@ select throws_ok(
   $$ select qkit.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
   null,
   'anon cannot EXECUTE next_order_number');
+
+-- place_walkup_order is vendor-only (its own auth.uid() check already blocks
+-- an anon caller, but 0089 also revokes the EXECUTE grant PUBLIC left in
+-- place, matching every other write RPC in this schema).
+select throws_ok(
+  $$ select qkit.place_walkup_order(
+       '00000000-0000-0000-0000-0000000b0004'::uuid, 'Eve', '[]'::jsonb) $$,
+  null,
+  'anon cannot EXECUTE place_walkup_order');
 
 -- get_booth_for_order: the only public read — public-safe projection only.
 select ok(
@@ -1068,6 +1077,34 @@ select throws_like(
        and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' $$,
   '%ORDER_IMMUTABLE_COLUMN%',
   'cannot erase an already-assigned order_number back to NULL');
+
+-- 0088: the freeze trigger alone doesn't stop a vendor from setting a still-
+-- NULL order_number directly, since it only exempts that one transition --
+-- the actual gate is authenticated's column grant, tested here as vendor D.
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode2', 'Sam',
+       '[{"menuItemId":"pay1","name":"Paid Item","quantity":1}]'::jsonb,
+       'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid) $$,
+  'place_order succeeds for a second payment-required order');
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object(
+    'sub', '00000000-0000-0000-0000-00000000000d',
+    'role', 'authenticated'
+  )::text,
+  true);
+select throws_like(
+  $$ update qkit.orders set order_number = '9999'
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$,
+  '%permission denied%',
+  'authenticated cannot assign order_number directly, even from NULL');
+reset role;
 
 -- storage: no anon/public read on payment-proofs. Seed a real row as the
 -- privileged test role first, so the anon check below proves RLS actually
