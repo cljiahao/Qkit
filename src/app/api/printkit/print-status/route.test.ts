@@ -5,6 +5,7 @@ const updateMock = vi.fn();
 const eqMock = vi.fn();
 const selectMock = vi.fn();
 const maybeSingleMock = vi.fn();
+const rpcMock = vi.fn();
 
 vi.mock("@/lib/qkit-printkit-auth", () => ({
   printkitCallbackBearerOk: (...args: unknown[]) =>
@@ -14,6 +15,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () =>
     Promise.resolve({
       from: () => ({ update: updateMock }),
+      rpc: rpcMock,
     }),
 }));
 
@@ -37,6 +39,7 @@ describe("POST /api/printkit/print-status", () => {
     eqMock.mockReset();
     selectMock.mockReset();
     maybeSingleMock.mockReset();
+    rpcMock.mockReset().mockResolvedValue({ data: true, error: null });
     updateMock.mockReturnValue({ eq: eqMock });
     eqMock.mockReturnValue({ select: selectMock });
     selectMock.mockReturnValue({ maybeSingle: maybeSingleMock });
@@ -53,6 +56,18 @@ describe("POST /api/printkit/print-status", () => {
     );
 
     expect(res.status).toBe(401);
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 when the rate limiter rejects the call", async () => {
+    printkitCallbackBearerOkMock.mockReturnValue(true);
+    rpcMock.mockResolvedValue({ data: false, error: null });
+
+    const res = await POST(
+      requestWith({ order_id: ORDER_ID, status: "failed" }),
+    );
+
+    expect(res.status).toBe(429);
     expect(updateMock).not.toHaveBeenCalled();
   });
 

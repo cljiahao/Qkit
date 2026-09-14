@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-const { fromMock } = vi.hoisted(() => ({ fromMock: vi.fn() }));
+const { fromMock, rpcMock } = vi.hoisted(() => ({
+  fromMock: vi.fn(),
+  rpcMock: vi.fn(async () => ({ data: true, error: null })),
+}));
 vi.mock("@/lib/supabase/server", () => ({
-  createServiceClient: vi.fn(async () => ({ from: fromMock })),
+  createServiceClient: vi.fn(async () => ({ from: fromMock, rpc: rpcMock })),
 }));
 
 import { GET } from "@/app/api/merqo/metrics/route";

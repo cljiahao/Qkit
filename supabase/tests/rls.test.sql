@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(120);
+select plan(121);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -1104,6 +1104,14 @@ select throws_like(
        and idempotency_key = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$,
   '%permission denied%',
   'authenticated cannot assign order_number directly, even from NULL');
+
+-- 0091: printkit_location_id is server-assigned only (syncPrintLocation
+-- writes it via service-role) -- vendor D still owns this booth here.
+select throws_like(
+  $$ update qkit.booths set printkit_location_id = 'fake-loc'
+     where id = '00000000-0000-0000-0000-0000000b0005' $$,
+  '%permission denied%',
+  'authenticated cannot set printkit_location_id directly');
 reset role;
 
 -- storage: no anon/public read on payment-proofs. Seed a real row as the

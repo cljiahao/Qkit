@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { bearerOk, listAllAuthUsers } from "@/lib/merqo-auth";
 import { resolveVendorStatus } from "@/lib/merqo-vendor-status";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Plan } from "@/lib/types";
 
 export const revalidate = 0;
@@ -23,6 +24,17 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createServiceClient();
+
+  // Defense-in-depth against a leaked bearer secret -- the secret itself is
+  // the real gate, this just blunts enumeration/DoS once compromised.
+  const allowed = await rateLimit(
+    supabase,
+    `merqo-vendor-status:${clientIp(request.headers)}`,
+    30,
+    60,
+  );
+  if (!allowed)
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   const [usersRes, vendorsRes] = await Promise.all([
     listAllAuthUsers(supabase, "merqo vendor-status"),

@@ -11,6 +11,7 @@ import { latestActivePassByVendor } from "@/lib/admin-stats";
 import { computeVendorActivity } from "@/lib/merqo-vendor-activity";
 import type { Plan } from "@/lib/types";
 import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const revalidate = 0;
 
@@ -30,6 +31,17 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createServiceClient();
+
+  // Defense-in-depth against a leaked bearer secret -- the secret itself is
+  // the real gate, this just blunts enumeration/DoS once compromised.
+  const allowed = await rateLimit(
+    supabase,
+    `merqo-vendor-activity:${clientIp(request.headers)}`,
+    30,
+    60,
+  );
+  if (!allowed)
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   const usersRes = await listAllAuthUsers(supabase, "merqo vendor-activity");
   if (usersRes.error) {

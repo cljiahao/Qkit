@@ -55,6 +55,7 @@ type Fixtures = {
     | "licenses"
     | "support_messages"
     | "orders";
+  rateLimited?: boolean;
 };
 
 function makeSupabase(fx: Fixtures) {
@@ -77,6 +78,7 @@ function makeSupabase(fx: Fixtures) {
       },
     },
     schema: () => supabase,
+    rpc: () => Promise.resolve({ data: !fx.rateLimited, error: null }),
     from: (table: string) => {
       if (!(table in dataByTable)) throw new Error(`unexpected table ${table}`);
       const errorHere = fx.errorTable === table;
@@ -116,6 +118,15 @@ describe("GET /api/merqo/vendor-activity", () => {
     const res = await GET(requestWith("vendor@example.com"));
 
     expect(res.status).toBe(401);
+  });
+
+  it("returns 429 when the rate limiter rejects the call", async () => {
+    bearerOkMock.mockReturnValue(true);
+    fixtures = { rateLimited: true };
+
+    const res = await GET(requestWith("vendor@example.com"));
+
+    expect(res.status).toBe(429);
   });
 
   it("returns 400 when email is missing or invalid", async () => {

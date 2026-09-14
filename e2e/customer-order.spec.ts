@@ -33,15 +33,31 @@ test("customer places an order and reaches the live status page", async ({
   await checkout.getByLabel("Your name").fill("Ada");
   await checkout.getByRole("button", { name: /Place order/ }).click();
 
-  // Lands on /order/<booth>/<orderNumber>?t=<token> with the "preparing"
-  // message. The status page now carries a per-order access token (?t=…), so the
-  // URL no longer ends in the digits — allow the query string after the number.
-  await expect(page).toHaveURL(new RegExp(`/order/${BOOTH}/\\d+\\?t=`));
-  await expect(page.getByText(/being prepared/i)).toBeVisible();
-
-  // Payment seam: the seeded booth carries a PayNow method, so a pay panel
-  // renders. Claiming payment moves it to the "sent" state.
+  // Payment-required orders defer their order number until payment is
+  // claimed (migration 0087), so placing the order lands on /pay first,
+  // not the numbered status page.
+  await expect(page).toHaveURL(new RegExp(`/order/${BOOTH}/pay\\?t=`));
   await expect(page.getByText(/scan with your paynow/i)).toBeVisible();
+
+  // 1x1 PNG — claimPayment requires a photo; the browser's real Canvas
+  // decodes it fine for the client-side resize step.
+  await page.locator("#payment-proof").setInputFiles({
+    name: "proof.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQI12P4DwABAQEAG7buVgAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
   await page.getByRole("button", { name: /i've paid/i }).click();
+
+  // Claiming succeeds — the order gets its number here and lands on the
+  // usual numbered status page, already showing "payment sent". The seeded
+  // booth has no printer connected, so a new order starts 'pending' (needs
+  // a vendor accept tap, migration 0086) rather than auto-starting.
+  await expect(page).toHaveURL(new RegExp(`/order/${BOOTH}/\\d+\\?t=`));
+  await expect(
+    page.getByText(/the stall will start on it shortly/i),
+  ).toBeVisible();
   await expect(page.getByText(/payment sent/i)).toBeVisible();
 });

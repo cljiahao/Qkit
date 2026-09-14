@@ -70,8 +70,8 @@ vi.mock("@/lib/supabase/get-entitlement", () => ({
   loadEntitlement: h.loadEntitlementMock,
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createServerClient: () =>
+vi.mock("@/lib/supabase/server", () => {
+  const makeClient = () =>
     Promise.resolve({
       auth: {
         getUser: () => Promise.resolve({ data: { user: h.state.authUser } }),
@@ -137,8 +137,12 @@ vi.mock("@/lib/supabase/server", () => ({
       storage: {
         from: () => ({ remove: () => Promise.resolve({ error: null }) }),
       },
-    }),
-}));
+    });
+  return {
+    createServerClient: makeClient,
+    createServiceClient: makeClient,
+  };
+});
 
 const BOOTH_ID = "00000000-0000-4000-8000-000000000001";
 

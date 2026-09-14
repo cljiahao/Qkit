@@ -1,24 +1,42 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { PrintingSection } from "./printing-section";
+
+let syncCallback: (() => void) | undefined;
+let presenceState: Record<string, unknown[]>;
+const channelSpy = vi.fn();
 
 function makeChannel() {
   const channel = {
-    on: () => channel,
-    subscribe: () => channel,
-    unsubscribe: () => {},
-    presenceState: () => ({}) as Record<string, unknown[]>,
+    on: vi.fn((_event: string, _filter: unknown, cb: () => void) => {
+      syncCallback = cb;
+      return channel;
+    }),
+    subscribe: vi.fn(() => channel),
+    unsubscribe: vi.fn(),
+    presenceState: () => presenceState,
   };
   return channel;
 }
 
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ channel: () => makeChannel() }),
+  createClient: () => ({
+    channel: (name: string) => {
+      channelSpy(name);
+      return makeChannel();
+    },
+  }),
 }));
 
 describe("PrintingSection", () => {
   const originalUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
+
+  beforeEach(() => {
+    syncCallback = undefined;
+    presenceState = {};
+    channelSpy.mockReset();
+  });
 
   afterEach(() => {
     // process.env.X = undefined stringifies to "undefined" in Node, not
@@ -167,5 +185,86 @@ describe("PrintingSection", () => {
       />,
     );
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("confirms before turning on when a registered printer isn't connected", () => {
+    const onChange = vi.fn();
+    render(
+      <PrintingSection
+        value={false}
+        onChange={onChange}
+        vendorId="v1"
+        boothId="booth-42"
+        printkitLocationId="loc-1"
+      />,
+    );
+    fireEvent.click(screen.getByRole("switch"));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByText("No printer connected")).toBeInTheDocument();
+  });
+
+  it("turns on anyway once confirmed in the dialog", () => {
+    const onChange = vi.fn();
+    render(
+      <PrintingSection
+        value={false}
+        onChange={onChange}
+        vendorId="v1"
+        boothId="booth-42"
+        printkitLocationId="loc-1"
+      />,
+    );
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: /turn on anyway/i }));
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("does not turn on when the confirm dialog is cancelled", () => {
+    const onChange = vi.fn();
+    render(
+      <PrintingSection
+        value={false}
+        onChange={onChange}
+        vendorId="v1"
+        boothId="booth-42"
+        printkitLocationId="loc-1"
+      />,
+    );
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("turns on directly with no confirm dialog once the printer is connected", () => {
+    const onChange = vi.fn();
+    render(
+      <PrintingSection
+        value={false}
+        onChange={onChange}
+        vendorId="v1"
+        boothId="booth-42"
+        printkitLocationId="loc-1"
+      />,
+    );
+    presenceState = { bridge: [{ online: true }] };
+    act(() => syncCallback?.());
+    fireEvent.click(screen.getByRole("switch"));
+    expect(onChange).toHaveBeenCalledWith(true);
+    expect(screen.queryByText("No printer connected")).not.toBeInTheDocument();
+  });
+
+  it("turns off directly with no confirm dialog even when disconnected", () => {
+    const onChange = vi.fn();
+    render(
+      <PrintingSection
+        value={true}
+        onChange={onChange}
+        vendorId="v1"
+        boothId="booth-42"
+        printkitLocationId="loc-1"
+      />,
+    );
+    fireEvent.click(screen.getByRole("switch"));
+    expect(onChange).toHaveBeenCalledWith(false);
   });
 });

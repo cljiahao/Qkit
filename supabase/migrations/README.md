@@ -10,7 +10,7 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-91 files, `0000` through `0090`. Read in full: `0000`, `0001`, `0010`, `0030`,
+92 files, `0000` through `0091`. Read in full: `0000`, `0001`, `0010`, `0030`,
 and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
@@ -327,6 +327,7 @@ realtime-order-board.tsx`; changes neither `place_order` nor
 - `0088_restrict_order_number_writes.sql` — `authenticated`'s `UPDATE` grant on `qkit.orders` is table-level, so `0087`'s freeze-trigger exemption alone left a vendor's own client able to set a still-unassigned `order_number` directly, bypassing `assign_order_number`'s locked-sequence numbering. Revokes the table-level grant and re-grants it column-scoped, omitting `order_number` (same fix shape as `0042`'s `vendors.plan` lockdown).
 - `0089_revoke_walkup_order_public_execute.sql` — `place_walkup_order`'s `EXECUTE` grant was left at the default `PUBLIC` (includes `anon`), unlike every other write RPC in this schema; not exploitable (its own `vendor_id = auth.uid()` check always fails for an anonymous caller) but revoked for defense-in-depth consistency, matching `place_order`/`next_order_number`'s own anon-revoke pattern.
 - `0090_booth_printkit_location_id.sql` — adds nullable `booths.printkit_location_id`, mirroring the id `registerPrintLocation` (`src/lib/printkit/client.ts`) already returns but qkit previously discarded. Needed to subscribe to printkit's own bridge Presence channel (keyed by printkit's `print_locations.id`, not qkit's `booths.id`) for live printer-connectivity status — see `dashboard/booths/printer-status.tsx`.
+- `0091_restrict_printkit_location_id_writes.sql` — `printkit_location_id` is server-assigned only, but `authenticated`'s table-level `UPDATE` on `booths` let a vendor set it directly. Same fix shape as `0088`'s `orders.order_number` lockdown; `syncPrintLocation` now writes it via the service-role client instead.
 
 ## Connectivity
 

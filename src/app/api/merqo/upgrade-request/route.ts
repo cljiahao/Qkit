@@ -7,6 +7,7 @@ import {
   findAuthUserByEmail,
 } from "@/lib/merqo-auth";
 import { resolveUpgradeOutcome } from "@/lib/merqo-upgrade-request";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const revalidate = 0;
 
@@ -16,6 +17,20 @@ export async function POST(request: Request) {
   if (!bearerOk(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = await createServiceClient();
+
+  // Defense-in-depth against a leaked bearer secret -- the secret itself is
+  // the real gate, this just blunts abuse once compromised. Tighter than a
+  // read-only endpoint since this one creates a purchase request.
+  const allowed = await rateLimit(
+    supabase,
+    `merqo-upgrade-request:${clientIp(request.headers)}`,
+    10,
+    60,
+  );
+  if (!allowed)
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   let json: unknown;
   try {
@@ -27,8 +42,6 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "email required" }, { status: 400 });
   }
-
-  const supabase = await createServiceClient();
 
   const usersRes = await listAllAuthUsers(supabase, "merqo upgrade-request");
   if (usersRes.error) {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import type { Entitlement } from "@/lib/plan";
 import {
@@ -36,17 +36,13 @@ async function removeBoothImages(
   if (error) console.error(`${context} image cleanup failed`, error.message);
 }
 
-// Best-effort, same never-affects-the-result contract as notifyPrintkit
-// (o/[code]/actions.ts). Called by both saveBooth (active: print_enabled) and
-// deleteBooth (active: false, so a deleted booth's location stops counting
-// toward printkit's active-location total for the vendor). On success, also
-// mirrors printkit's own location id onto the booth row -- it's what lets
-// PrinterStatus subscribe to printkit's bridge Presence channel later,
-// keyed by THIS id, not boothId. deleteBooth's own call passes a supabase
-// client whose booth row is already gone, so that mirror update is a
-// harmless no-op there (0 rows matched).
+// Best-effort, same never-affects-the-result contract as notifyPrintkit.
+// Mirrors printkit's returned location id onto the booth row for
+// PrinterStatus to key its Presence subscription on. Uses the service-role
+// client for that write since printkit_location_id's grant to
+// `authenticated` is revoked (migration 0091) -- boothId is already
+// vendor-verified by the caller's own upsert/delete before this runs.
 async function syncPrintLocation(
-  supabase: Awaited<ReturnType<typeof createServerClient>>,
   vendorId: string,
   boothId: string,
   label: string,
@@ -68,7 +64,8 @@ async function syncPrintLocation(
       );
       return;
     }
-    const { error } = await supabase
+    const service = await createServiceClient();
+    const { error } = await service
       .from("booths")
       .update({ printkit_location_id: result.data.id })
       .eq("id", boothId);
@@ -245,14 +242,7 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
 
   if (booth) {
     await removeBoothImages(supabase, boothImagePaths(booth), "deleteBooth");
-    await syncPrintLocation(
-      supabase,
-      user.id,
-      boothId,
-      booth.name,
-      false,
-      "deleteBooth",
-    );
+    await syncPrintLocation(user.id, boothId, booth.name, false, "deleteBooth");
   }
   return { success: true };
 }
@@ -347,7 +337,6 @@ export async function saveBooth(
   const result = await upsertBoothRow(supabase, row, data.boothId, user.id);
   if (result.success)
     await syncPrintLocation(
-      supabase,
       user.id,
       result.boothId,
       data.name,
