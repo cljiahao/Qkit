@@ -36,12 +36,8 @@ async function removeBoothImages(
   if (error) console.error(`${context} image cleanup failed`, error.message);
 }
 
-// Best-effort, same never-affects-the-result contract as notifyPrintkit.
-// Mirrors printkit's returned location id onto the booth row for
-// PrinterStatus to key its Presence subscription on. Uses the service-role
-// client for that write since printkit_location_id's grant to
-// `authenticated` is revoked (migration 0091) -- boothId is already
-// vendor-verified by the caller's own upsert/delete before this runs.
+// Mirrors printkit's location id onto the booth row via service-role
+// (0091 revokes authenticated's write); best-effort, same contract as notifyPrintkit.
 async function syncPrintLocation(
   vendorId: string,
   boothId: string,
