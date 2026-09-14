@@ -89,6 +89,9 @@ actions.ts`, `merqo-customer-notify.ts`) pointed at a stale, pre-custom-
   applies. Also: a lost-race 0-rows result from "Mark paid & start" itself
   no longer blindly reports failure or success — it re-checks whether the
   order actually reached the confirmed+advanced state before deciding.
+  Undoing now also confirms this in a toast ("Payment stays confirmed.
+  Refund via paykit if needed."), so a vendor doesn't assume Undo also
+  unconfirmed the payment.
 
 ### Changed
 

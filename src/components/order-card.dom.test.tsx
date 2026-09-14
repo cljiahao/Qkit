@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { OrderCard } from "./order-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { sgtClock, shortDateTime } from "@/lib/tz";
@@ -41,7 +42,7 @@ vi.mock("@/app/dashboard/order-actions", () => ({
   restoreAutoCompleted,
 }));
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 // PaymentProofViewer is dynamically imported (next/dynamic, see order-card.tsx)
 // and heavy (pulls in tesseract.js on demand) — its own rendering/OCR/duplicate
@@ -90,6 +91,8 @@ function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
 }
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockReset();
+  vi.mocked(toast.success).mockReset();
   advanceOrder.mockReset();
   confirmOrderPayment.mockReset();
   confirmPaymentAndStart.mockReset();
@@ -649,6 +652,9 @@ describe("OrderCard — reconciled payment+start", () => {
     expect(
       screen.queryByRole("button", { name: /mark paid.*start/i }),
     ).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith(
+      "Payment stays confirmed. Refund via paykit if needed.",
+    );
   });
 });
 

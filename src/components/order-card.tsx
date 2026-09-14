@@ -390,6 +390,15 @@ export function OrderCard({
       } else {
         setStatus(res.status);
         if (shouldUnconfirmOnUndo(pending)) setConfirmedLocally(false);
+        // Undo only un-starts the order here — the payment half already went
+        // through paykit for real and can't be undone (same principle as
+        // cancelOrder's "Refund the customer directly" on a confirmed
+        // payment), so make that explicit rather than let the vendor assume
+        // "Undo" also unconfirmed the payment.
+        else if (pending.action === "paymentAndStart")
+          toast.success(
+            "Payment stays confirmed. Refund via paykit if needed.",
+          );
       }
       // Clearing the local pendingUndo is enough to restore this card's own
       // buttons — status is no longer terminal, so `closed` already flips
