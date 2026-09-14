@@ -201,10 +201,11 @@ notifyRef)`/`notifyCustomer(vendorId, notifyRef, message)`/
   `notifyVendor` is the Phase A2 replacement for qkit's own now-retired
   Telegram bot (`placeOrder`'s vendor order-alert call — see
   `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`).
-  All three fail closed: `mintCustomerConnectToken` returns `null` on any
-  non-2xx/timeout/network error, `notifyCustomer`/`notifyVendor` catch + log
-  and never throw, same fail-closed philosophy as `fetchEarnConfig` in
-  `earn-link.tsx`.
+  All three fail closed: `mintCustomerConnectToken` Zod-validates the response
+  and returns `null` on any non-2xx/timeout/network error or unexpected body,
+  `notifyCustomer`/`notifyVendor` catch + log and never throw, same
+  fail-closed philosophy as `fetchEarnConfig` in `earn-link.tsx`. All three
+  share one `merqoFetch` helper for the bearer-auth/timeout mechanics.
 - `merqo-customer-notify.test.ts` — tests the request body/header shape for
   all three calls and the fail-closed/never-throw behavior on non-2xx,
   timeout, and network-error cases.
@@ -223,6 +224,9 @@ currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
   so a vendor's Get-help message lands in the shared cross-kit
   `merqo.support_messages` inbox — qkit's own local `support_messages`
   table was dropped (migration `0073`) once every reader/writer converged.
+  Also exports `MerqoSupportMessagesSchema`, the hand-written mirror of that
+  table's row shape shared by every admin page/route that reads it (each
+  narrows via its own `.select(...)` string rather than redeclaring the type).
 - `merqo-upgrade-request.ts` — `resolveUpgradeOutcome(hasVendorRow,
 hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   for the admin/vendor upgrade-to-Pro request flow.

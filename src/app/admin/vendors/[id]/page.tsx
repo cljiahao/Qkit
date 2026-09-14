@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
 import { latestActivePassByVendor } from "@/lib/admin-stats";
 import { buildVendorHealth, passHoursLeft } from "@/lib/admin-vendor-health";
 import { cn, formatPrice, MS_PER_DAY } from "@/lib/utils";
@@ -20,37 +21,6 @@ const CATEGORY_LABEL: Record<string, string> = {
   payment: "Payment",
   pro: "Pro / billing",
   other: "Something else",
-};
-
-/**
- * merqo owns this table's real generated types — this is a hand-written
- * mirror of the support_messages row shape, not a generated type, since
- * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
- * Mirrors the pattern in admin/actions.ts and admin/page.tsx.
- */
-type MerqoSupportMessagesSchema = {
-  merqo: {
-    Tables: {
-      support_messages: {
-        Row: {
-          id: string;
-          user_id: string;
-          kit_slug: string;
-          category: string;
-          body: string;
-          status: string;
-          created_at: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
 };
 
 /** A milestone row in the activation timeline: reached (date) or still pending. */

@@ -28,6 +28,7 @@ import { StuckOrdersSection } from "./stuck-orders-section";
 import { AdminAuditLog } from "./audit-log";
 import { isTerminal } from "@/lib/orders";
 import { findStuckOrders, statusSinceByOrder } from "@/lib/stuck-orders";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
 
 // Lazy-loaded: pulls in recharts, code-split out of the initial admin bundle.
 const TrendChart = dynamic(() =>
@@ -39,37 +40,6 @@ const SUPPORT_CATEGORY_LABEL: Record<string, string> = {
   payment: "Payment",
   pro: "Pro / billing",
   other: "Something else",
-};
-
-/**
- * merqo owns this table's real generated types — this is a hand-written
- * mirror of the support_messages row shape, not a generated type, since
- * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
- * Mirrors the pattern in admin/feedback/page.tsx's MerqoVendorFeedbackSchema.
- */
-type MerqoSupportMessagesSchema = {
-  merqo: {
-    Tables: {
-      support_messages: {
-        Row: {
-          id: string;
-          user_id: string;
-          kit_slug: string;
-          category: string;
-          body: string;
-          status: string;
-          created_at: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
 };
 
 export const revalidate = 0;

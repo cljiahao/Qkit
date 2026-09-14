@@ -10,33 +10,11 @@ import {
 import { latestActivePassByVendor } from "@/lib/admin-stats";
 import { computeVendorActivity } from "@/lib/merqo-vendor-activity";
 import type { Plan } from "@/lib/types";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
 
 export const revalidate = 0;
 
 const querySchema = z.object({ email: z.string().email() });
-
-/**
- * merqo owns this table's real generated types — a hand-written mirror of
- * the support_messages row shape, not a generated type, since merqo.* is
- * outside qkit's own supabase gen types scope (schema: "qkit"). Mirrors the
- * pattern in admin/page.tsx and admin/vendors/[id]/page.tsx.
- */
-type MerqoSupportMessagesSchema = {
-  merqo: {
-    Tables: {
-      support_messages: {
-        Row: { id: string; user_id: string; kit_slug: string; status: string };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
-};
 
 export async function GET(request: Request) {
   if (!bearerOk(request)) {
