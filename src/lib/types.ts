@@ -515,6 +515,7 @@ export interface Database {
           walkup_default: boolean;
           print_enabled: boolean;
           paykit_booking_id: string | null;
+          printkit_location_id: string | null;
         };
         Insert: {
           id?: string;
@@ -534,6 +535,7 @@ export interface Database {
           walkup_default?: boolean;
           print_enabled?: boolean;
           paykit_booking_id?: string | null;
+          printkit_location_id?: string | null;
         };
         Update: {
           id?: string;
@@ -553,6 +555,7 @@ export interface Database {
           walkup_default?: boolean;
           print_enabled?: boolean;
           paykit_booking_id?: string | null;
+          printkit_location_id?: string | null;
         };
         Relationships: [
           {

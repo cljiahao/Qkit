@@ -8,6 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Live printer connectivity status on the booth's "Print via printkit"
+  toggle: once printing is on and the booth has been saved, a status row
+  shows "Printer connected" or "No printer connected" in real time,
+  reusing printkit's own bridge Presence channel (no printkit-side change
+  needed). New `booths.printkit_location_id` column mirrors the id
+  printkit assigns when a booth is registered.
 - Payment-first checkout: placing an order no longer assigns it a number —
   a payment-required order now redirects to a new `/order/{boothId}/pay`
   gate and only gets its order number once the customer claims payment with
@@ -65,9 +71,44 @@ actions.ts`, `merqo-customer-notify.ts`) pointed at a stale, pre-custom-
   host in Vercel (Production + Preview) as the primary, immediate fix —
   the code fallback is defense-in-depth for whichever environment
   forgets it.
+- The vendor's "Mark paid & start" review action now confirms via paykit
+  before marking the local order confirmed, matching the existing
+  `confirmOrderPayment` action; it previously skipped paykit entirely,
+  leaving a payment-first order's paykit transaction stuck at `claimed`.
+- `authenticated`'s `UPDATE` grant on `orders` is column-scoped (migration
+  `0088`) so a vendor's own client can no longer set a still-unassigned
+  `order_number` directly, bypassing `qkit.assign_order_number`.
+- The checkout sheet's submit button no longer promises "Get my order
+  number" on a payment-required booth, where the number isn't assigned
+  until after payment is claimed; it now reads "Place order".
+
+### Changed
+
+- `src/lib/printkit/client.ts`'s two functions now share one request helper
+  (`printkitRequest`, mirroring paykit's own) instead of duplicating the
+  fetch/timeout/error-handling logic.
+- `src/lib/merqo-customer-notify.ts`'s three functions now share one fetch
+  helper, and `mintCustomerConnectToken` Zod-validates its response body
+  instead of trusting an unchecked cast.
+- The six admin pages/routes reading `merqo.support_messages` now import one
+  shared `MerqoSupportMessagesSchema` type (`src/lib/merqo-support.ts`)
+  instead of each redeclaring their own narrowed copy.
 
 ### Security
 
+- `notifyVendorTelegram`/`notifyPrintkit` (`src/app/o/[code]/actions.ts`)
+  were exported from a `"use server"` file, making each independently
+  callable as its own client-invokable Server Action regardless of the fact
+  that only `placeOrder`/`claimPayment` were ever meant to call them —
+  bypassing all of `placeOrder`'s own validation and rate limiting. Moved
+  both to a plain module (`src/app/o/[code]/notify.ts`, no `"use server"`
+  directive). `notifyPrintkit` also no longer trusts a caller-supplied
+  `customerName`; it now prints the order's own stored name.
+- `qkit.place_walkup_order`'s `EXECUTE` grant was left at the default
+  `PUBLIC` (includes `anon`); revoked, matching every other write RPC in
+  this schema (migration `0089`). Not exploitable today — the function's
+  own `vendor_id = auth.uid()` check already rejects an anonymous caller —
+  fixed as defense-in-depth consistency.
 - Bumped `next` to `16.3.4` (`eslint-config-next` to match) and refreshed
   `browserslist` to `4.28.9`. Clears two critical Next.js RCE advisories
   (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4), a high `sharp`/libheif

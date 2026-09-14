@@ -72,6 +72,7 @@ interface Props {
     requires_arrival_confirm: boolean;
     walkup_default: boolean;
     print_enabled: boolean;
+    printkit_location_id: string | null;
     paykit_booking_id: string | null;
     // Fetched server-side (paykit's GET /api/v1/bookings/{id}) — see
     // BookingStatusSection's own doc comment for what null vs. undefined
@@ -383,6 +384,8 @@ export function BoothForm({
               value={printEnabled}
               onChange={setPrintEnabled}
               boothId={initial?.boothId}
+              vendorId={vendorId}
+              printkitLocationId={initial?.printkit_location_id}
             />
           </Section>
 

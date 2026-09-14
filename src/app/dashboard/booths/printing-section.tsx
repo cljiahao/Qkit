@@ -1,6 +1,7 @@
 "use client";
 
 import { Switch } from "@/components/ui/switch";
+import { PrinterStatus } from "./printer-status";
 
 // Keyed by booth id, printkit's own source_ref — no fallback host, same as src/lib/printkit/client.ts.
 function printerLinkFor(boothId: string): string | null {
@@ -28,11 +29,17 @@ export function PrintingSection({
   value,
   onChange,
   boothId,
+  vendorId,
+  printkitLocationId,
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
   // Unset until the booth is saved and registered with printkit.
   boothId?: string;
+  vendorId: string;
+  // Unset until a save's registerPrintLocation call has succeeded at least
+  // once — see syncPrintLocation in dashboard/booths/actions.ts.
+  printkitLocationId?: string | null;
 }) {
   const printerLink = value && boothId ? printerLinkFor(boothId) : null;
   const dashboardLink = printkitDashboardLink();
@@ -53,6 +60,9 @@ export function PrintingSection({
           aria-label="Print via printkit"
         />
       </div>
+      {value && printkitLocationId && (
+        <PrinterStatus vendorId={vendorId} locationId={printkitLocationId} />
+      )}
       {value && (
         <p className="px-1 text-sm text-muted-foreground">
           {printerLink ? (

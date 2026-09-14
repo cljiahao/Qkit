@@ -39,8 +39,14 @@ async function removeBoothImages(
 // Best-effort, same never-affects-the-result contract as notifyPrintkit
 // (o/[code]/actions.ts). Called by both saveBooth (active: print_enabled) and
 // deleteBooth (active: false, so a deleted booth's location stops counting
-// toward printkit's active-location total for the vendor).
+// toward printkit's active-location total for the vendor). On success, also
+// mirrors printkit's own location id onto the booth row -- it's what lets
+// PrinterStatus subscribe to printkit's bridge Presence channel later,
+// keyed by THIS id, not boothId. deleteBooth's own call passes a supabase
+// client whose booth row is already gone, so that mirror update is a
+// harmless no-op there (0 rows matched).
 async function syncPrintLocation(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
   vendorId: string,
   boothId: string,
   label: string,
@@ -54,11 +60,22 @@ async function syncPrintLocation(
       label,
       active,
     });
-    if (!result.ok)
+    if (!result.ok) {
       console.error(
         `${context}: registerPrintLocation failed`,
         result.status,
         result.error,
+      );
+      return;
+    }
+    const { error } = await supabase
+      .from("booths")
+      .update({ printkit_location_id: result.data.id })
+      .eq("id", boothId);
+    if (error)
+      console.error(
+        `${context}: printkit_location_id mirror update failed`,
+        error.message,
       );
   } catch (err) {
     console.error(`${context}: registerPrintLocation failed`, err);
@@ -228,7 +245,14 @@ export async function deleteBooth(boothId: string): Promise<DeleteBoothResult> {
 
   if (booth) {
     await removeBoothImages(supabase, boothImagePaths(booth), "deleteBooth");
-    await syncPrintLocation(user.id, boothId, booth.name, false, "deleteBooth");
+    await syncPrintLocation(
+      supabase,
+      user.id,
+      boothId,
+      booth.name,
+      false,
+      "deleteBooth",
+    );
   }
   return { success: true };
 }
@@ -323,6 +347,7 @@ export async function saveBooth(
   const result = await upsertBoothRow(supabase, row, data.boothId, user.id);
   if (result.success)
     await syncPrintLocation(
+      supabase,
       user.id,
       result.boothId,
       data.name,
