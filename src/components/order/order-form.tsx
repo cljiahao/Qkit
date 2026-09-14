@@ -430,9 +430,7 @@ export function OrderForm({
     );
   }
 
-  // The trigger just opens the sheet, so it reads as a step, not the final
-  // action — "Get my order number" is reserved for the sheet's own submit,
-  // the moment that phrase is actually true.
+  // The trigger just opens the sheet, so it reads as a step, not the final action.
   let triggerLabel: string;
   if (closed) triggerLabel = "Booth closed";
   else if (!hasItems) triggerLabel = "Add items to order";
@@ -440,9 +438,9 @@ export function OrderForm({
     triggerLabel = `Continue · ${count(itemCount, "item")} · ${formatPrice(total)}`;
   else triggerLabel = `Continue · ${count(itemCount, "item")}`;
 
-  // The sheet already shows the item count/total in its own recap row, so its
-  // submit button repeats only the priming phrase, not the full trigger label.
-  const confirmLabel = submitting ? "Placing order…" : "Get my order number";
+  // Payment-agnostic: whether this booth requires payment isn't known here (decided
+  // server-side in place_order), so the label can't promise a number.
+  const confirmLabel = submitting ? "Placing order…" : "Place order";
 
   // A booth with no menu yet: show a friendly placeholder instead of an empty
   // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).

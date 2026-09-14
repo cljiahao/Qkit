@@ -320,9 +320,14 @@ describe("advanceOrder", () => {
 });
 
 describe("confirmPaymentAndStart", () => {
-  it("confirms payment and advances to preparing in one write", async () => {
+  it("confirms payment via paykit and advances to preparing in one write", async () => {
     maybeSingle.mockResolvedValue({
-      data: { id: ID, status: "pending", payment_status: "claimed" },
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
     });
     const res = await confirmPaymentAndStart(ID);
     expect(res).toEqual({
@@ -330,6 +335,12 @@ describe("confirmPaymentAndStart", () => {
       status: "preparing",
       prevPaymentStatus: "claimed",
     });
+    expect(createCheckoutMock).toHaveBeenCalledWith({
+      vendorId: "v1",
+      amountCents: 800,
+      orderRef: ID,
+    });
+    expect(confirmCheckoutMock).toHaveBeenCalledWith("tx1");
     expect(update).toHaveBeenCalledWith({
       status: "preparing",
       payment_status: "confirmed",
@@ -345,6 +356,7 @@ describe("confirmPaymentAndStart", () => {
       success: false,
       error: "Order can't be advanced",
     });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
 
@@ -357,12 +369,18 @@ describe("confirmPaymentAndStart", () => {
       success: false,
       error: "Order can't be advanced",
     });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
 
   it("reports a refresh when the order changed concurrently (0 rows)", async () => {
     maybeSingle.mockResolvedValue({
-      data: { id: ID, status: "pending", payment_status: "claimed" },
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
     });
     updateSelect.mockResolvedValue({ data: [], error: null });
     const res = await confirmPaymentAndStart(ID);
@@ -370,6 +388,45 @@ describe("confirmPaymentAndStart", () => {
       success: false,
       error: "Order changed -- please refresh.",
     });
+  });
+
+  it("reports a failure when paykit's checkout call fails", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    createCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({ success: false, error: "Failed to confirm payment" });
+    expect(confirmCheckoutMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure when paykit's confirm call fails", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    confirmCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({ success: false, error: "Failed to confirm payment" });
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("rejects an invalid order id before touching the DB", async () => {

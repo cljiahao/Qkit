@@ -210,7 +210,7 @@ describe("OrderForm cart", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() =>
@@ -248,7 +248,7 @@ describe("OrderForm cart", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() =>
@@ -374,7 +374,7 @@ describe("OrderForm cart", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() =>
@@ -392,7 +392,7 @@ describe("OrderForm cart", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() =>
@@ -417,7 +417,7 @@ describe("OrderForm cart", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByLabelText("Your name"), "Ada");
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
@@ -448,7 +448,7 @@ describe("OrderForm cart", () => {
     expect(phoneField).toHaveValue("");
 
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() =>
@@ -473,7 +473,7 @@ describe("OrderForm cart", () => {
       "+6591234567",
     );
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() =>
@@ -495,7 +495,7 @@ describe("OrderForm cart", () => {
     await user.click(screen.getByRole("button", { name: /Continue/ }));
     const dialog = await screen.findByRole("dialog");
     await user.click(
-      within(dialog).getByRole("button", { name: /Get my order number/ }),
+      within(dialog).getByRole("button", { name: /Place order/ }),
     );
 
     await waitFor(() =>
