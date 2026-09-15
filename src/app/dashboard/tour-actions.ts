@@ -1,7 +1,7 @@
 "use server";
 
 import { createServerClient } from "@/lib/supabase/server";
-import { TOUR_IDS, type TourId } from "@/components/tour-steps";
+import { tourIdSchema } from "@/lib/tour-ids";
 
 /**
  * Mark one dashboard tour (by tourId) as seen for the current vendor, so it
@@ -12,14 +12,17 @@ import { TOUR_IDS, type TourId } from "@/components/tour-steps";
  * clobber whichever other tours the vendor has already seen. RLS scopes both
  * the read and the update to the vendor's own row (id = auth.uid()).
  *
- * `tourId` is validated against TOUR_IDS before it's ever used as an object
+ * `tourId` is parsed through tourIdSchema before it's ever used as an object
  * key: a server action is a real HTTP endpoint, callable with any argument
- * regardless of what the UI ever sends, so an unchecked tourId would let a
+ * regardless of what the UI ever sends, so an unvalidated tourId would let a
  * caller write an arbitrary key into tours_seen (CodeQL: remote property
- * injection).
+ * injection). The parsed value, not the raw argument, is what gets used
+ * below.
  */
 export async function markTourSeen(tourId: string): Promise<void> {
-  if (!TOUR_IDS.includes(tourId as TourId)) return;
+  const parsed = tourIdSchema.safeParse(tourId);
+  if (!parsed.success) return;
+  const validTourId = parsed.data;
 
   const supabase = await createServerClient();
   const {
@@ -38,7 +41,7 @@ export async function markTourSeen(tourId: string): Promise<void> {
     .update({
       tours_seen: {
         ...(vendor?.tours_seen ?? {}),
-        [tourId]: new Date().toISOString(),
+        [validTourId]: new Date().toISOString(),
       },
     })
     .eq("id", user.id);

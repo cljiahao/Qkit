@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { DashboardTours, type TourDefinition } from "@merqo/ui";
 import { ordersTourSteps, boothsTourSteps } from "./tour-steps";
 import { markTourSeen } from "@/app/dashboard/tour-actions";
+import type { TourId } from "@/lib/tour-ids";
 import type { ToursSeen } from "@/lib/types";
 
 // Matches Tailwind's `sm` breakpoint: below 640px the nav links collapse
@@ -19,8 +20,16 @@ function resolveOrdersSteps() {
 }
 
 const TOURS: TourDefinition[] = [
-  { id: "orders", route: "/dashboard", steps: resolveOrdersSteps },
-  { id: "booths", route: "/dashboard/booths", steps: boothsTourSteps },
+  {
+    id: "orders" satisfies TourId,
+    route: "/dashboard",
+    steps: resolveOrdersSteps,
+  },
+  {
+    id: "booths" satisfies TourId,
+    route: "/dashboard/booths",
+    steps: boothsTourSteps,
+  },
 ];
 
 /**

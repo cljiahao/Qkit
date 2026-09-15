@@ -468,6 +468,17 @@ boolean`, migration 0080 — orders, booth_item_sold —
   `access_token`, `License`, `Pricing`, `Payment`, `Feedback`, `Admin`,
   `AdminAudit`). Must be kept in sync with `supabase/migrations/` by hand (or
   via `supabase gen types typescript`).
+- `tour-ids.ts` — `TOUR_IDS`/`TourId`/`tourIdSchema`: the allowlist for
+  dashboard tourIds, kept in its own zero-React module rather than
+  `@/components/tour-steps` (which pulls in `react-dom/server` for the
+  orders tour's example badge markup) since `tour-actions.ts`'s
+  `markTourSeen` — a `"use server"` action, a real HTTP endpoint callable
+  with any argument regardless of what the UI sends — needs to `safeParse`
+  a caller's `tourId` before ever using it as an object key. An unvalidated
+  version let a caller inject an arbitrary key into `vendors.tours_seen`
+  (a real CodeQL finding: remote property injection).
+- `tour-ids.test.ts` — asserts every `TOUR_IDS` entry parses and an
+  arbitrary string (including `"__proto__"`) is rejected.
 - `tz.ts` — Singapore-only wall-clock helpers built on cached
   `Intl.DateTimeFormat` instances: `sgtHour`/`sgtMinutes`/`sgtWeekday`,
   `WEEKDAY_ORDER`/`WEEKDAY_LABELS`, display formatters `shortDay`/
