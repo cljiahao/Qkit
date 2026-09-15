@@ -11,6 +11,13 @@ export type TourStep = {
   description: string;
 };
 
+// The only valid tourIds — `markTourSeen`'s own allowlist (tour-actions.ts).
+// A dashboard tour's id ultimately reaches a server action argument, which
+// is network-callable directly regardless of what the UI ever sends, so
+// this list is a real security boundary, not just a typo guard.
+export const TOUR_IDS = ["orders", "booths"] as const;
+export type TourId = (typeof TOUR_IDS)[number];
+
 const sel = (tour: string) => `[data-tour="${tour}"]`;
 
 // Renders the real badge, not a hand-copied color, so the example can't drift.

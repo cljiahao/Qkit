@@ -61,6 +61,16 @@ describe("markTourSeen", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it("rejects a tourId outside the known allowlist without writing it (CodeQL: remote property injection)", async () => {
+    await markTourSeen("__proto__");
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an arbitrary attacker-supplied tourId, not just the __proto__ example", async () => {
+    await markTourSeen("anything-else");
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it("never throws when the update fails", async () => {
     update.mockReturnValueOnce({
       eq: () => Promise.resolve({ error: { message: "boom" } }),

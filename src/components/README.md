@@ -298,7 +298,12 @@ tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
   screen. `boothsTourSteps()` (2026-09-15) is a single step anchored on
   `[data-tour="new-booth"]` — the one always-present element regardless of
   plan tier or existing booth count, since a brand-new vendor (this tour's
-  actual audience) has no booth cards yet for driver.js to spotlight.
+  actual audience) has no booth cards yet for driver.js to spotlight. Also
+  exports `TOUR_IDS`/`TourId` — the allowlist `tour-actions.ts`'s
+  `markTourSeen` validates a caller's `tourId` against before ever using it
+  as an object key, since a server action is a real HTTP endpoint callable
+  with any argument regardless of what the UI sends (CodeQL flagged the
+  unvalidated version as a remote property injection).
 - `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists
   for `ordersTourSteps` and the single step for `boothsTourSteps`.
 - `ui/` — the shadcn/ui primitive library everything else in this tree is
