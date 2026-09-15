@@ -37,6 +37,13 @@ export async function getPaymentStatus(
   if (!parseOrderRef(boothId, orderNumber, token).ok) return null;
 
   const supabase = await createServiceClient();
+
+  // Same load-amplification guard as getOrderStatus/getWaitEstimate — the
+  // token can't be brute-forced, but a holder could script polling faster
+  // than the page's own 5s cadence.
+  const allowed = await rateLimit(supabase, `payment-status:${token}`, 30, 60);
+  if (!allowed) return null;
+
   // maybeSingle + log real errors only (an unknown order is a normal null). The
   // token match authorizes the read (booth_id + number aren't secret).
   const { data, error } = await supabase
@@ -103,6 +110,18 @@ export async function loadPreClaimContext(
   if (!parsed.ok) return null;
 
   const supabase = await createServiceClient();
+
+  // Unlike the polling reads above, this one makes a real outbound call to
+  // paykit (createCheckout) on every invocation — cap page-reload-style
+  // abuse tighter than a cheap local-only read.
+  const allowed = await rateLimit(
+    supabase,
+    `pre-claim-context:${boothId}:${token}`,
+    20,
+    60,
+  );
+  if (!allowed) return null;
+
   const { data: order } = await supabase
     .from("orders")
     .select("id, total_cents, payment_status")

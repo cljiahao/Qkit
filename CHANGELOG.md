@@ -61,9 +61,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   already works around), and gives an order a few seconds of flash
   animation the moment it transitions to ready, plus an optional chime
   once the vendor taps "Enable sound" once to unlock it.
+- The order number's trailing digit is now visually emphasized (`OrderCard`,
+  the TV/queue display), for a vendor using a physical pickup-shelf-slot
+  system (bubble-tea-chain style — slotting an order by its last digit).
+
+### Security
+
+- Added rate limits to several previously-uncapped paths: an authenticated
+  vendor's own upgrade-request action, the `/api/v1/sales/summary` export,
+  and the customer order-status page's polling reads (`getOrderStatus`,
+  `getWaitEstimate`, `getPaymentStatus`) and pre-claim checkout lookup —
+  none were a cross-tenant or authorization gap, but all were previously
+  uncapped self-inflicted-load or load-amplification surfaces.
 
 ### Fixed
 
+- A printed order label showed the raw, permanent order number, not the
+  vendor-facing daily-reset number the board/TV display/customer status
+  page all show when `board_settings.daily_order_number_reset` is on —
+  the two numbers' last digits could disagree, undermining the physical
+  pickup-shelf-slot workflow above.
 - `merqoBaseUrl()`'s hardcoded fallback (`legal-gate.ts`, `legal/accept/
 actions.ts`, `merqo-customer-notify.ts`) pointed at a stale, pre-custom-
   domain `.vercel.app` host that now 404s on every route, including `/`.

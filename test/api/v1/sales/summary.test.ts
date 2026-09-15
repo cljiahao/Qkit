@@ -8,9 +8,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock the two server dependencies: loadEntitlement (auth + plan) and the
 // Supabase server client (booths + orders reads). vi.hoisted so the fns exist
 // before the hoisted vi.mock factories run.
-const { loadEntitlementMock, fromMock } = vi.hoisted(() => ({
+const { loadEntitlementMock, fromMock, rpcMock } = vi.hoisted(() => ({
   loadEntitlementMock: vi.fn(),
   fromMock: vi.fn(),
+  // Always-allow rate limiter stub — the route's own rate-limit gate isn't
+  // what this suite exercises.
+  rpcMock: vi.fn(() => Promise.resolve({ data: true, error: null })),
 }));
 
 vi.mock("@/lib/supabase/get-entitlement", () => ({
@@ -18,7 +21,7 @@ vi.mock("@/lib/supabase/get-entitlement", () => ({
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createServerClient: vi.fn(async () => ({ from: fromMock })),
+  createServerClient: vi.fn(async () => ({ from: fromMock, rpc: rpcMock })),
 }));
 
 import { GET } from "@/app/api/v1/sales/summary/route";
@@ -57,6 +60,7 @@ function req(query = "") {
 beforeEach(() => {
   loadEntitlementMock.mockReset();
   fromMock.mockReset();
+  rpcMock.mockReset().mockResolvedValue({ data: true, error: null });
 });
 
 describe("GET /api/v1/sales/summary", () => {
@@ -73,6 +77,16 @@ describe("GET /api/v1/sales/summary", () => {
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: "Unauthorized" });
     // Never reached the data layer.
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 429 and never reads the database when rate-limited", async () => {
+    loadEntitlementMock.mockResolvedValue(authed(["24h", "7d", "30d"]));
+    rpcMock.mockResolvedValue({ data: false, error: null });
+
+    const res = await GET(req("?range=7d"));
+
+    expect(res.status).toBe(429);
     expect(fromMock).not.toHaveBeenCalled();
   });
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { splitTrailingDigit } from "@/lib/orders";
 import { usePolling } from "@/hooks/use-polling";
 import { playReadyChime, unlockAudio } from "@/lib/order-alerts";
 import { getBoothQueueDisplay, type QueueDisplayOrder } from "./actions";
@@ -158,14 +159,22 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
           ) : (
             <>
               <div className="flex flex-wrap content-start gap-4 overflow-hidden">
-                {visiblePreparing.map((o) => (
-                  <div
-                    key={o.orderNumber}
-                    className="flex size-24 items-center justify-center rounded-2xl border border-border bg-card font-mono text-3xl font-bold sm:size-28 sm:text-4xl"
-                  >
-                    {o.displayNumber}
-                  </div>
-                ))}
+                {visiblePreparing.map((o) => {
+                  const { lead, last } = splitTrailingDigit(o.displayNumber);
+                  return (
+                    <div
+                      key={o.orderNumber}
+                      className="flex size-24 items-center justify-center rounded-2xl border border-border bg-card font-mono text-3xl font-bold sm:size-28 sm:text-4xl"
+                    >
+                      {lead}
+                      {/* Emphasized: a physical pickup-shelf-slot system
+                          (bubble-tea-chain style) keys off this digit. */}
+                      <span className="underline decoration-4 underline-offset-4">
+                        {last}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
               {hiddenPreparingCount > 0 && (
                 <p className="mt-3 shrink-0 border-t border-dashed border-border pt-2 text-sm text-muted-foreground">
@@ -189,6 +198,7 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
                   const age = ageMs(o.orderNumber);
                   const fresh = age < FRESH_MS;
                   const flashing = age < FLASH_MS;
+                  const { lead, last } = splitTrailingDigit(o.displayNumber);
                   return (
                     <div
                       key={o.orderNumber}
@@ -200,7 +210,12 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
                         flashing && "fade-rise -rotate-3",
                       )}
                     >
-                      {o.displayNumber}
+                      {lead}
+                      {/* Emphasized: a physical pickup-shelf-slot system
+                          (bubble-tea-chain style) keys off this digit. */}
+                      <span className="underline decoration-4 underline-offset-4">
+                        {last}
+                      </span>
                     </div>
                   );
                 })}

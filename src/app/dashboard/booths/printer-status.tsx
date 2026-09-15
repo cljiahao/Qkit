@@ -1,32 +1,35 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { StatusBadge } from "@merqo/ui";
+
+type PrinterPresence = "online" | "offline";
+
+const STATUS_CONFIG: Record<
+  PrinterPresence,
+  { label: string; className: string }
+> = {
+  online: {
+    label: "Printer connected",
+    className: "text-status-ready border-status-ready/35 bg-status-ready/12",
+  },
+  offline: {
+    label: "No printer connected",
+    className:
+      "text-status-cancelled border-status-cancelled/35 bg-status-cancelled/12",
+  },
+};
 
 // Presentational only -- printing-section.tsx owns the presence subscription.
 export function PrinterStatus({ online }: { online: boolean }) {
   return (
-    <div
-      role="status"
-      className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm"
-    >
-      <span
-        className={cn(
-          "size-2.5 shrink-0 rounded-full",
-          online ? "bg-status-ready" : "bg-status-cancelled",
-        )}
-        aria-hidden
+    <div role="status" className="flex items-center gap-2 text-sm">
+      <StatusBadge
+        status={online ? "online" : "offline"}
+        config={STATUS_CONFIG}
       />
-      <span
-        className={cn(
-          "font-medium",
-          online ? "text-status-ready" : "text-status-cancelled",
-        )}
-      >
-        {online ? "Printer connected" : "No printer connected"}
-      </span>
       {!online && (
         <span className="text-muted-foreground">
-          . Open the bridge on your printing device
+          Open the bridge on your printing device
         </span>
       )}
     </div>

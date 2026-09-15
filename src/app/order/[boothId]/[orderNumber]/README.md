@@ -186,11 +186,15 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   not-required states.
 - `payment-actions.ts` — service-client server actions: `getPaymentStatus`
   (read-only poll of the local `orders.payment_status` mirror — cheaper than
-  round-tripping paykit every 5s), `loadPreClaimContext(boothId, token)`
-  (pre-claim pay-panel data for a payment-required order that has no
+  round-tripping paykit every 5s; rate-limited per token, 30/60s — a holder
+  of a valid token can't be brute-forced but could script polling past the
+  page's own 5s cadence to amplify DB load), `loadPreClaimContext(boothId,
+  token)` (pre-claim pay-panel data for a payment-required order that has no
   `order_number` yet — same order id/amount/checkout shape as `page.tsx`'s
   own `loadCheckoutView`, keyed on the token-only route instead of a numbered
-  one), `claimPayment(boothId, token, photo)` (customer self-report, now
+  one; rate-limited per `boothId:token`, 20/60s — this one makes a real
+  outbound `createCheckout` call to paykit on every invocation, so it's
+  capped tighter than the cheap local-only polling reads), `claimPayment(boothId, token, photo)` (customer self-report, now
   **requires an uploaded payment screenshot** — the photo upload IS the claim
   and is also what finally assigns the order's number, deferred at
   `place_order` time for any payment-required order; rate-limited 10/60s per
@@ -218,11 +222,14 @@ token)`, only ever runs post-claim when a number already exists): the
   photo-required/deferred-numbering `claimPayment` (no-photo rejection,
   upload-failure-never-touches-payment-state, the full upload→claim→assign→
   notify→mirror happy path with a real `hashBuffer` digest assertion) and
-  `loadPreClaimContext`'s valid/invalid/non-pending branches.
+  `loadPreClaimContext`'s valid/invalid/non-pending branches, and the new
+  rate-limit denials on `loadPreClaimContext`/`getPaymentStatus` (never
+  reaches the DB/paykit when limited).
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
-  poller; logs only real DB/network errors (an unknown order is a normal
-  null). `confirmArrival(boothId, orderNumber, token)`: the customer-
+  poller; rate-limited per token (30/60s, same load-amplification rationale
+  as `getPaymentStatus` above); logs only real DB/network errors (an unknown
+  order is a normal null). `confirmArrival(boothId, orderNumber, token)`: the customer-
   triggered arrival confirmation — flips the order from `'pending'` to
   `'preparing'`, starting prep. Refuses outright when the booth's own
   `requires_arrival_confirm` is off (a fresh read, not just the client's own
@@ -234,7 +241,10 @@ token)`, only ever runs post-claim when a number already exists): the
   sequential order numbers are easy to enumerate); on a 0-row update it
   re-reads the order to distinguish a harmless double-tap (already started,
   e.g. the vendor hit "Start now" first — reported as success) from a real
-  failure (still pending, cancelled, or missing). `getWaitEstimate(boothId, orderNumber, token)`: returns
+  failure (still pending, cancelled, or missing). `getWaitEstimate(boothId, orderNumber, token)`: rate-limited per
+  token (30/60s, same rationale as `getOrderStatus` — this one is the more
+  expensive of the two, three reads not one, polled at the same cadence);
+  returns
   `{ seconds, ordersAhead } | null` — `ordersAhead` (via `ordersAheadOf`) is
   always computable once the order exists and is unaffected by anything
   below; `seconds` is forced `null` outright when the vendor's
@@ -246,6 +256,10 @@ default_prep_minutes` (× 60 × `ordersAhead`) when there isn't enough recent
   history to trust the real average, and null only when neither is
   available. `null` for the whole result (not just `seconds`) means there's
   nothing to say at all (order not found).
+- `status-actions.test.ts` — unit tests for `getOrderStatus`/`getWaitEstimate`
+  (invalid token, no matching order, rate-limit denial before any DB read,
+  a real read error) and `confirmArrival`'s arrival-gate/idempotent-double-tap
+  behavior.
 
 ## Connectivity
 

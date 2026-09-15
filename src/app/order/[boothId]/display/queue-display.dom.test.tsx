@@ -19,6 +19,18 @@ vi.mock("./actions", async () => {
 });
 vi.mock("@/lib/order-alerts", () => alerts);
 
+// A tile emphasizes the number's trailing digit in its own <span> (see
+// splitTrailingDigit), so its text is split across elements — a plain
+// string getByText can't match that (TRL's own hint: use a function
+// matcher). Scoped to the tile's own size class so its (identical-text,
+// single-tile) wrapping flex container isn't also a match.
+function byOrderNumber(number: string) {
+  return (_content: string, element: Element | null) =>
+    element?.textContent === number;
+}
+const PREPARING_TILE_OPTS = { selector: '[class*="size-24"]' };
+const READY_TILE_OPTS = { selector: '[class*="size-32"]' };
+
 function renderDisplay(initialOrders: QueueDisplayOrder[]) {
   return render(
     <QueueDisplay
@@ -83,7 +95,7 @@ describe("QueueDisplay", () => {
     renderDisplay([PREPARING]);
 
     await waitFor(() => {
-      const tile = screen.getByText("001");
+      const tile = screen.getByText(byOrderNumber("001"), READY_TILE_OPTS);
       expect(tile).toHaveClass("fade-rise");
       expect(tile).toHaveClass("bg-primary"); // fresh: solid fill
     });
@@ -95,7 +107,7 @@ describe("QueueDisplay", () => {
     renderDisplay([READY]);
 
     await waitFor(() => expect(getBoothQueueDisplay).toHaveBeenCalled());
-    const tile = screen.getByText("002");
+    const tile = screen.getByText(byOrderNumber("002"), READY_TILE_OPTS);
     expect(tile).not.toHaveClass("fade-rise");
     expect(tile).toHaveClass("bg-primary/10"); // aged: muted tint, not solid
   });
@@ -117,7 +129,9 @@ describe("QueueDisplay", () => {
     renderDisplay([PREPARING]);
 
     await waitFor(() => expect(getBoothQueueDisplay).toHaveBeenCalled());
-    expect(screen.getByText("001")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("001"), PREPARING_TILE_OPTS),
+    ).toBeInTheDocument();
   });
 
   it("caps how many preparing tiles it renders, no scrolling on a TV screen", () => {
@@ -160,7 +174,9 @@ describe("QueueDisplay", () => {
 
     await waitFor(() => {
       const section = screen.getByText("Ready for pickup").closest("section")!;
-      expect(within(section).getByText("001")).toHaveClass("fade-rise");
+      expect(
+        within(section).getByText(byOrderNumber("001"), READY_TILE_OPTS),
+      ).toHaveClass("fade-rise");
     });
   });
 });

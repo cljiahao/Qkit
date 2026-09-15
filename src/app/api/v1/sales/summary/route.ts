@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
+import { rateLimit } from "@/lib/rate-limit";
 import { parseOrderItems } from "@/lib/schemas";
 import { computeStats, type StatsOrder } from "@/lib/stats";
 import { toSalesSummaryV1 } from "@/lib/sales-summary";
@@ -39,6 +40,13 @@ export async function GET(request: Request) {
   ).toISOString();
 
   const supabase = await createServerClient();
+
+  // RLS scopes every row to the caller's own booths, so this is only
+  // self-inflicted DB load, not a cross-tenant issue -- still worth capping.
+  const rateOk = await rateLimit(supabase, `sales-summary:${user.id}`, 30, 60);
+  if (!rateOk) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
   // Resolve booth filter against the vendor's own booths (RLS-scoped read).
   // This is a revenue contract consumed by sibling products — a transient DB

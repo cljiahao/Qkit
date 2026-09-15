@@ -89,6 +89,20 @@ describe("getOrderStatus", () => {
     expect(errorSpy).toHaveBeenCalledWith("getOrderStatus failed", "boom");
     errorSpy.mockRestore();
   });
+
+  it("returns null and never reads the order when rate-limited (token-holder polling amplification)", async () => {
+    rateLimitMockRef.mockResolvedValue(false);
+    fromMock.mockReturnValue(chain({ data: { status: "ready" }, error: null }));
+    const res = await getOrderStatus(BOOTH, ORDER, TOKEN);
+    expect(res).toBeNull();
+    expect(fromMock).not.toHaveBeenCalled();
+    expect(rateLimitMockRef).toHaveBeenCalledWith(
+      expect.anything(),
+      `order-status:${TOKEN}`,
+      30,
+      60,
+    );
+  });
 });
 
 describe("getWaitEstimate", () => {
@@ -101,6 +115,19 @@ describe("getWaitEstimate", () => {
   it("returns null when the token doesn't match any order", async () => {
     const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
     expect(res).toBeNull();
+  });
+
+  it("returns null and never reads any order when rate-limited", async () => {
+    rateLimitMockRef.mockResolvedValue(false);
+    const res = await getWaitEstimate(BOOTH, ORDER, TOKEN);
+    expect(res).toBeNull();
+    expect(fromMock).not.toHaveBeenCalled();
+    expect(rateLimitMockRef).toHaveBeenCalledWith(
+      expect.anything(),
+      `wait-estimate:${TOKEN}`,
+      30,
+      60,
+    );
   });
 
   it("computes an estimate from active orders ahead and recent wait history", async () => {

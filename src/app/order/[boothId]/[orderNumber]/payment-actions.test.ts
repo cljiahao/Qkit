@@ -229,6 +229,18 @@ describe("loadPreClaimContext", () => {
     expect(createServiceClientMock).not.toHaveBeenCalled();
   });
 
+  it("returns null and never calls paykit's createCheckout when rate-limited", async () => {
+    rateLimitMock.mockResolvedValue(false);
+    expect(await loadPreClaimContext(BOOTH, TOKEN)).toBeNull();
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+    expect(rateLimitMock).toHaveBeenCalledWith(
+      expect.anything(),
+      `pre-claim-context:${BOOTH}:${TOKEN}`,
+      20,
+      60,
+    );
+  });
+
   it("returns null when no order matches the booth/token", async () => {
     ordersMaybeSingle.mockResolvedValueOnce({ data: null });
     expect(await loadPreClaimContext(BOOTH, TOKEN)).toBeNull();
@@ -586,6 +598,21 @@ describe("getPaymentStatus", () => {
     ordersMaybeSingle.mockResolvedValue({ data: null });
     const res = await getPaymentStatus(BOOTH, ORDER, TOKEN);
     expect(res).toBeNull();
+  });
+
+  it("returns null and never reads the order when rate-limited", async () => {
+    rateLimitMock.mockResolvedValue(false);
+    ordersMaybeSingle.mockResolvedValue({
+      data: { payment_status: "confirmed" },
+    });
+    const res = await getPaymentStatus(BOOTH, ORDER, TOKEN);
+    expect(res).toBeNull();
+    expect(rateLimitMock).toHaveBeenCalledWith(
+      expect.anything(),
+      `payment-status:${TOKEN}`,
+      30,
+      60,
+    );
   });
 
   it("returns the payment status for a matching token", async () => {

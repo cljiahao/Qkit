@@ -10,6 +10,7 @@ const rpc = vi.fn();
 // (the pre-existing ones above) just no-op through it.
 let boothQueue: { data: unknown }[] = [];
 let orderQueue: { data: unknown }[] = [];
+let vendorQueue: { data: unknown }[] = [];
 const orderUpdateMock = vi.fn().mockReturnValue({
   eq: vi.fn().mockReturnValue({
     eq: vi.fn().mockResolvedValue({ error: null }),
@@ -26,6 +27,20 @@ const serviceFrom = vi.fn((table: string) => {
       }),
     };
   }
+  if (table === "vendors") {
+    // Defaults to no row -> boardSettingsSchema fails to parse ->
+    // notifyPrintkit falls back to the raw order_number, matching every
+    // existing expectation in this suite. Individual tests can push a real
+    // board_settings row to exercise the daily-reset relabeling instead.
+    return {
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () =>
+            Promise.resolve(vendorQueue.shift() ?? { data: null }),
+        }),
+      }),
+    };
+  }
   if (table === "orders") {
     return {
       select: () => ({
@@ -33,6 +48,14 @@ const serviceFrom = vi.fn((table: string) => {
           eq: () => ({
             maybeSingle: () =>
               Promise.resolve(orderQueue.shift() ?? { data: null }),
+          }),
+          gte: () => ({
+            order: () => ({
+              limit: () => ({
+                maybeSingle: () =>
+                  Promise.resolve(orderQueue.shift() ?? { data: null }),
+              }),
+            }),
           }),
         }),
       }),
@@ -62,10 +85,12 @@ vi.mock("next/headers", () => ({
 }));
 
 import { placeOrder } from "./actions";
+import { DEFAULT_BOARD_SETTINGS } from "@/lib/types";
 
 beforeEach(() => {
   boothQueue = [];
   orderQueue = [];
+  vendorQueue = [];
   serviceFrom.mockClear();
   notifyVendor.mockClear();
   createPrintJob.mockClear();
@@ -396,6 +421,38 @@ describe("placeOrder", () => {
       expect(res.success).toBe(true);
       expect(orderUpdateMock).toHaveBeenCalledWith(
         expect.objectContaining({ print_status: "queued" }),
+      );
+    });
+
+    it("prints the vendor-facing daily-reset number, not the raw permanent one, when board_settings.daily_order_number_reset is on", async () => {
+      mockSuccessfulRpc(); // order_number "0007"
+      boothQueue = [
+        { data: { vendor_id: "vendor-1" } },
+        { data: { vendor_id: "vendor-1", print_enabled: true } },
+      ];
+      vendorQueue = [
+        {
+          data: {
+            board_settings: {
+              ...DEFAULT_BOARD_SETTINGS,
+              daily_order_number_reset: true,
+            },
+          },
+        },
+      ];
+      orderQueue = [
+        { data: { total_cents: 700 } }, // notifyVendorTelegram
+        { data: { id: "order-uuid-1", customer_name: "Ada" } }, // notifyPrintkit's order lookup
+        { data: { order_number: "0005" } }, // today's first order (baseline)
+      ];
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      expect(res.success).toBe(true);
+      // rank = 7 - 5 + 1 = 3, zero-padded -> "003" -- the same number the
+      // board/TV/customer status page would show, not the raw "0007".
+      expect(createPrintJob).toHaveBeenCalledWith(
+        expect.objectContaining({ orderNumber: "003" }),
       );
     });
 

@@ -48,8 +48,15 @@ the current (non-legacy) customer ordering entry point.
   carries neither, only `order_number`/`booth_id`/`access_token` — migration
   `0075`; printing the order's own stored name, not a caller-supplied one,
   is what closes the same public-endpoint gap above from the print side),
-  calls `@/lib/printkit/client`'s `createPrintJob` (logging on a non-ok
-  result), and on a successful job creation marks
+  calls `@/lib/printkit/client`'s `createPrintJob` — with the label's own
+  `orderNumber` rebased through `displayOrderNumber` (`@/lib/orders`) using
+  the vendor's `board_settings.daily_order_number_reset` and the booth's
+  first order of the SGT day as baseline, same as the board/TV/customer
+  status page, when that setting is on (2026-09-15 fix: it used to print the
+  raw permanent number regardless, so a printed ticket's last digit could
+  disagree with what everyone actually sees on screen — undermining a
+  physical pickup-shelf-slot workflow keyed on that digit) — logging on a
+  non-ok result, and on a successful job creation marks
   `orders.print_status = 'queued'` (migration `0081`) — conditioned on
   `print_status = 'not_required'` so a terminal status from printkit's own
   callback route landing first can never be overwritten back to `'queued'`

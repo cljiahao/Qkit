@@ -288,12 +288,18 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   still-`pending` order with an outstanding payment claim needs
   `OrderCard`'s merged "Mark paid & start" review action instead of separate
   confirm-payment/advance buttons — keyed on order state, not `order.source`,
-  so a walk-up order gets it too).
+  so a walk-up order gets it too), `splitTrailingDigit(orderNumber)` (pure
+  string split into `{lead, last}` so a vendor's physical pickup-shelf-slot
+  system, keyed off an order's last digit, can have that digit visually
+  emphasized wherever the number is shown — `OrderCard`, the TV/queue
+  display; `null` in, both fields empty out, for an order still awaiting a
+  payment claim with no number assigned yet).
 - `orders.test.ts` — tests status transitions, patch-building (including the
   payment auto-confirm-on-complete rule), sorting, age/label formatting,
   `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth and
-  real-number fallbacks, and `needsPaymentReview`'s pending/payment-status
-  matrix.
+  real-number fallbacks, `splitTrailingDigit`'s lead/last split (including
+  the single-character and `null` edge cases), and `needsPaymentReview`'s
+  pending/payment-status matrix.
 - `paykit/` — server-only HTTP client for paykit's `/api/v1/*` checkout API
   (vendor config upsert + full read-back, checkout create/claim/unclaim/
   confirm/status); see its own README. Replaced the local PayNow QR builder
