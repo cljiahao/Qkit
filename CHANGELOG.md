@@ -14,6 +14,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The customer menu page's multi-section jump nav is now a sticky sidebar
+  (with a thumbnail from each section's first item, Oddle-style) beside the
+  scrolling item list, at every screen size — replacing the old horizontal
+  pill row, which forced mobile customers into a scroll-up-tap-scroll-down
+  cycle to switch sections on a long menu.
 - The Payment and Printing booth-form sections now state the actual
   consequence of skipping them ("customers have no way to pay through
   qkit", "no auto-printed label"), not just "Optional" — a rushed

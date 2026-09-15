@@ -42,9 +42,19 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   (cross-kit customer identity, migration `0075`), never required to
   submit, passed through `placeOrder`'s `customerPhone` input. Menu items
   render grouped under `menuCategories` (`@/lib/menu-sections`'s
-  `groupByCategory`) with a jump nav once there are 2+ non-empty sections;
-  a booth with 0 or 1 category falls back to the original flat "Menu" list,
-  no chrome. Each card row also renders `AllergenBadges`
+  `groupByCategory`) as a two-pane layout once there are 2+ non-empty
+  sections: a sticky jump-nav sidebar (own `overflow-y-auto`, so it scrolls
+  independently if sections overflow the viewport) beside the scrolling item
+  list, at every breakpoint (2026-09-15 — replaced the old horizontal
+  pill-row nav, which forced a scroll-up-then-tap-then-scroll-down cycle on
+  mobile to switch sections). Each sidebar link shows its section's first
+  item's `image_url` as a thumbnail (`MediaImage`, Oddle-style), falling
+  back to a label-only chip when none of that section's items has one; the
+  sidebar itself is narrower with a 2-line-clamped label on mobile, wider
+  with a single-line label on `md:` and up (see `src/app/o/[code]/page.tsx`
+  for the matching container-width bump so the two panes have room). A
+  booth with 0 or 1 category falls back to the original flat "Menu" list,
+  no sidebar chrome. Each card row also renders `AllergenBadges`
   (`@/components/allergen-badges`, 2026-09-01) from `item.allergens` —
   works even while the booth is closed and browse-only, since it doesn't
   depend on opening `ItemCustomizer` (which items with no option groups
@@ -54,7 +64,8 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   guard, the placeOrder retry-then-fail path, the phone field (renders,
   optional — submits with it blank, passes its value through when filled),
   category sections (flat fallback for 0/1 category, grouped headings +
-  jump nav for 2+, unmatched/stale category ids bucketed into "Other" last),
+  sidebar nav for 2+, unmatched/stale category ids bucketed into "Other"
+  last, sidebar thumbnail from a section's first imaged item or none),
   the card-level allergen badges (one tappable icon per tag, nothing for
   an item with none, tap reveals the name — works with the booth closed),
   the cart summary's collapsed-by-default/expand-on-tap behavior, that the

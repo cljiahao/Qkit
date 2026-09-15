@@ -65,50 +65,52 @@ export default async function OrderEntryPage({ params }: Props) {
   const socialLinks = parseSocialLinks(booth.social_links);
 
   return (
-    <div className="mx-auto min-h-screen max-w-lg px-5 pb-28 pt-8">
-      {booth.image_url && (
-        <div className="relative mb-5 h-40 w-full overflow-hidden rounded-2xl border border-border">
-          <MediaImage
-            src={booth.image_url}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 100vw, 32rem"
-            className="object-cover"
-          />
-        </div>
-      )}
-      <header className="mb-7">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          Order from
-        </p>
-        <h1 className="font-display mt-1 text-4xl font-semibold leading-[1.05] break-words">
-          {booth.name}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Order right here, no app, no account. Just add your name.
-        </p>
-      </header>
-      <RecentOrders boothId={booth.booth_id} />
-      {closed && (
-        <div className="mb-7 rounded-xl border border-status-cancelled/30 bg-status-cancelled/10 px-4 py-3 text-center">
-          <p className="font-display text-lg font-semibold text-status-cancelled">
-            {!booth.servable ? "Not taking orders" : "Closed right now"}
+    <div className="mx-auto min-h-screen max-w-lg px-5 pb-28 pt-8 md:max-w-2xl">
+      <div className="md:mx-auto md:max-w-lg">
+        {booth.image_url && (
+          <div className="relative mb-5 h-40 w-full overflow-hidden rounded-2xl border border-border">
+            <MediaImage
+              src={booth.image_url}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 100vw, 32rem"
+              className="object-cover"
+            />
+          </div>
+        )}
+        <header className="mb-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Order from
           </p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {!booth.servable
-              ? "This booth isn't accepting orders right now."
-              : `${reopen ?? "Not taking orders at the moment."} You can browse the menu below.`}
+          <h1 className="font-display mt-1 text-4xl font-semibold leading-[1.05] break-words">
+            {booth.name}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Order right here, no app, no account. Just add your name.
           </p>
-          {Object.keys(socialLinks).length > 0 && (
-            <div className="mt-3 flex flex-col items-center gap-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Reach {booth.name} here
-              </p>
-              <SocialLinksRow links={socialLinks} />
-            </div>
-          )}
-        </div>
-      )}
+        </header>
+        <RecentOrders boothId={booth.booth_id} />
+        {closed && (
+          <div className="mb-7 rounded-xl border border-status-cancelled/30 bg-status-cancelled/10 px-4 py-3 text-center">
+            <p className="font-display text-lg font-semibold text-status-cancelled">
+              {!booth.servable ? "Not taking orders" : "Closed right now"}
+            </p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {!booth.servable
+                ? "This booth isn't accepting orders right now."
+                : `${reopen ?? "Not taking orders at the moment."} You can browse the menu below.`}
+            </p>
+            {Object.keys(socialLinks).length > 0 && (
+              <div className="mt-3 flex flex-col items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Reach {booth.name} here
+                </p>
+                <SocialLinksRow links={socialLinks} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <OrderForm
         code={code}
         boothId={booth.booth_id}

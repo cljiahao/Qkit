@@ -593,4 +593,42 @@ describe("OrderForm category sections", () => {
     const headings = screen.getAllByRole("heading", { level: 2 });
     expect(headings.map((h) => h.textContent)).toEqual(["Drinks", "Other"]);
   });
+
+  it("shows a thumbnail on a section's nav link from its first item's image", () => {
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[
+          { ...KOPI, category: "drinks", image_url: "/kopi.jpg" },
+          { ...TEH, category: "mains" },
+        ]}
+        menuCategories={[
+          { id: "drinks", label: "Drinks" },
+          { id: "mains", label: "Mains" },
+        ]}
+      />,
+    );
+    const nav = screen.getByRole("navigation");
+    const thumb = nav.querySelector("img");
+    expect(thumb).toHaveAttribute("src", expect.stringContaining("kopi.jpg"));
+  });
+
+  it("shows no thumbnail on a section's nav link when none of its items have an image", () => {
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[
+          { ...KOPI, category: "drinks" },
+          { ...TEH, category: "mains" },
+        ]}
+        menuCategories={[
+          { id: "drinks", label: "Drinks" },
+          { id: "mains", label: "Mains" },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("navigation").querySelector("img")).toBeNull();
+  });
 });

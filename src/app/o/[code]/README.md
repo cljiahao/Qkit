@@ -100,7 +100,11 @@ the current (non-legacy) customer ordering entry point.
   resolves booth-override-vs-vendor-default, migration `0053`), and
   `OrderForm`. Also parses `menu_categories` (migration `0066`, previously
   fetched by the RPC but dropped by this page's own Zod schema) via
-  `parseMenuCategories` and passes it through to `OrderForm`.
+  `parseMenuCategories` and passes it through to `OrderForm`. The outer
+  container widens to `md:max-w-2xl` (2026-09-15) so `OrderForm`'s
+  two-pane sidebar layout has room beside the item list on tablet/desktop;
+  the header/hero-image/closed-banner block stays wrapped in its own
+  `md:max-w-lg` so it doesn't stretch wide alongside the wider menu below.
 - `loading.tsx` — animated skeleton (title bar + 5 placeholder menu rows)
   shown while `page.tsx`'s server fetch resolves — the QR-scan hot path,
   where event-site network can be slow.
