@@ -8,6 +8,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A warning banner on the booth's Printing toggle when printing is on but
+  no printer has ever been registered for that booth — previously this
+  state only showed a plain, easy-to-miss link.
+
+### Changed
+
+- The Payment and Printing booth-form sections now state the actual
+  consequence of skipping them ("customers have no way to pay through
+  qkit", "no auto-printed label"), not just "Optional" — a rushed
+  first-time setup could finish with no payment method configured with
+  no signal until a customer couldn't pay.
+- Bumping an order to the front of the board is now a single instant tap,
+  matching every other rush-hour action on the card — it was the only one
+  still gated behind a confirm dialog, and a mis-bump has no real
+  consequence (an order just preps slightly out of its natural order).
+
+### Added
+
 - The Booths page now has its own dashboard tour (anchored on "New booth"),
   instead of the tour button always redirecting to `/dashboard` regardless
   of which page you were on. Built on `@merqo/ui`'s new `DashboardTours`

@@ -548,9 +548,14 @@ export function OrderCard({
             and often with greasy/wet hands. The bump affordance is a
             separate icon chip so "read the number" and "this is tappable"
             stay visually distinct signals instead of one dashed, low-
-            emphasis button that used to read as "empty/add here". Not
-            tappable once already bumped (re-tap would just refresh the
-            timestamp with no visible change) or once closed. */}
+            emphasis button that used to read as "empty/add here". Instant
+            tap, no confirm dialog — same rationale as advanceStatus below:
+            confirmation friction on a low-stakes, tapped-often action causes
+            habituation and increases errors more than it prevents them; a
+            mis-bump just means an order preps slightly out of its natural
+            order, not a real consequence. Not tappable once already bumped
+            (re-tap would just refresh the timestamp with no visible change)
+            or once closed. */}
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="font-mono text-xl font-bold tracking-tight">
@@ -563,37 +568,15 @@ export function OrderCard({
                 </span>
               </p>
               {!closed && !bumped && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={`Bump order #${number} to front`}
-                      className="inline-flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 bg-secondary/40 p-1 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-secondary hover:text-primary"
-                      disabled={updating}
-                    >
-                      <Zap className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Bump order #{number} to front?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Moves this order ahead of the others still waiting in
-                        the queue.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={updating}>
-                        Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction onClick={bump} disabled={updating}>
-                        Bump to front
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <button
+                  type="button"
+                  aria-label={`Bump order #${number} to front`}
+                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 bg-secondary/40 p-1 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-secondary hover:text-primary"
+                  disabled={updating}
+                  onClick={bump}
+                >
+                  <Zap className="size-3.5" aria-hidden="true" />
+                </button>
               )}
               {!closed && bumped && (
                 <Zap

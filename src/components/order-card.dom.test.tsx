@@ -501,7 +501,7 @@ describe("OrderCard payment", () => {
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
-  it("shows a small icon-chip bump-confirmation trigger, separate from the plain name/number block, for a live, non-bumped order", () => {
+  it("shows a small icon-chip bump trigger, separate from the plain name/number block, for a live, non-bumped order", () => {
     render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
       wrapper: TooltipProvider,
     });
@@ -512,7 +512,7 @@ describe("OrderCard payment", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls bumpOrder after confirmation and swaps the trigger for a bumped icon", async () => {
+  it("calls bumpOrder on a single instant tap (no confirm dialog) and swaps the trigger for a bumped icon", async () => {
     const user = userEvent.setup();
     render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
       wrapper: TooltipProvider,
@@ -520,8 +520,10 @@ describe("OrderCard payment", () => {
     await user.click(
       screen.getByRole("button", { name: /Bump order #0007 to front/i }),
     );
-    await user.click(screen.getByRole("button", { name: "Bump to front" }));
     expect(bumpOrder).toHaveBeenCalledWith("o1");
+    expect(
+      screen.queryByRole("button", { name: "Bump to front" }),
+    ).not.toBeInTheDocument();
     await waitFor(() => {
       expect(
         screen.queryByRole("button", { name: /Bump order #0007 to front/i }),
@@ -532,7 +534,7 @@ describe("OrderCard payment", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the bumped icon and no confirmation trigger for an order already bumped", () => {
+  it("shows the bumped icon and no bump trigger for an order already bumped", () => {
     render(
       <OrderCard
         order={makeOrder({ priority_bumped_at: new Date(0).toISOString() })}

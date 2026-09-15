@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
@@ -86,6 +87,18 @@ export function PrintingSection({
         />
       </div>
       {value && printkitLocationId && <PrinterStatus online={online} />}
+      {value && boothId && !printkitLocationId && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+          <TriangleAlert
+            className="mt-0.5 size-4 shrink-0 text-amber-600"
+            aria-hidden
+          />
+          <span>
+            Printing is on, but no printer is set up for this booth yet. Orders
+            won&apos;t print until you connect one.
+          </span>
+        </div>
+      )}
       {value && (
         <p className="px-1 text-sm text-muted-foreground">
           {printerLink ? (
