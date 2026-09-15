@@ -29,6 +29,16 @@ export type SoundId = "chime" | "bell" | "ding" | "horn" | "triple" | "none";
 // + default_prep_minutes added + backfilled in migration 0062;
 // daily_order_number_reset flipped true, vendor-wide, in migration 0067;
 // show_wait_estimate added + backfilled true in migration 0068).
+// Map of dashboard tourId -> ISO timestamp first seen, one entry per page's
+// own tour (see @merqo/ui's DashboardTours). Replaces the single-tour
+// tour_seen_at column (migration 0023), retired by migration 0092.
+export type ToursSeen = Record<string, string>;
+
+// Falls back to this until migration 0092 (tours_seen column) has been
+// applied to the environment's DB — same deploy/migrate skew rationale as
+// DEFAULT_BOARD_SETTINGS below.
+export const DEFAULT_TOURS_SEEN: ToursSeen = {};
+
 export type BoardSettings = {
   // Amber threshold, minutes since order created.
   aging_min: number;
@@ -213,21 +223,21 @@ export interface Database {
           id: string;
           plan: Plan;
           created_at: string;
-          tour_seen_at: string | null;
+          tours_seen: ToursSeen;
           board_settings: BoardSettings;
         };
         Insert: {
           id: string;
           plan?: Plan;
           created_at?: string;
-          tour_seen_at?: string | null;
+          tours_seen?: ToursSeen;
           board_settings?: BoardSettings;
         };
         Update: {
           id?: string;
           plan?: Plan;
           created_at?: string;
-          tour_seen_at?: string | null;
+          tours_seen?: ToursSeen;
           board_settings?: BoardSettings;
         };
         Relationships: [];

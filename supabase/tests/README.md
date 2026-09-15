@@ -46,7 +46,7 @@ from the Vitest/Playwright tests elsewhere in the repo.
     `next_order_number` — closing paths that were closed for `anon` but not
     yet for any authenticated attacker.
   - Plan self-escalation is blocked (`UPDATE vendors SET plan='pro'` fails)
-    while a legitimate self-edit (`tour_seen_at`) still works; booth
+    while a legitimate self-edit (`tours_seen`) still works; booth
     re-pointing to another vendor is blocked by `WITH CHECK`;
     feedback/upgrade-request RLS scopes each vendor to its own rows and
     blocks filing as another vendor; `set_license_label` only affects the

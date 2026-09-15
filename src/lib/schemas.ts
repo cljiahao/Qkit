@@ -492,7 +492,7 @@ export type SupportMessageInput = z.infer<typeof supportMessageSchema>;
 // ── Account / profile ────────────────────────────────────────────────────────
 
 // Stall name shown to customers (vendors.name). Same rule as vendorSchema — the
-// authenticated role may UPDATE (name, tour_seen_at) under RLS vendors_self_update.
+// authenticated role may UPDATE (name, tours_seen) under RLS vendors_self_update.
 export const profileNameSchema = z.object({
   name: z.string().min(1, "Stall name is required").max(100),
 });

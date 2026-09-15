@@ -7,7 +7,7 @@ import type { ActionResult } from "@/lib/action-result";
 
 /**
  * Update the vendor's live-order-board preferences (vendors.board_settings).
- * The authenticated role is granted UPDATE on (name, tour_seen_at,
+ * The authenticated role is granted UPDATE on (name, tours_seen,
  * board_settings) under RLS vendors_self_update (migration 0050), so this runs
  * on the normal server client scoped to the caller's own row.
  */

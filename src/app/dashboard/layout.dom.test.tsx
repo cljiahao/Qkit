@@ -30,7 +30,10 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/supabase/get-entitlement", () => ({
   loadEntitlement: vi.fn(async () => ({
     user: { id: "v1", user_metadata: {} },
-    vendor: { name: "Kopi Corner", tour_seen_at: "2026-01-01T00:00:00Z" },
+    vendor: {
+      name: "Kopi Corner",
+      tours_seen: { orders: "2026-01-01T00:00:00Z" },
+    },
     entitlement: ENTITLEMENTS.free,
   })),
 }));

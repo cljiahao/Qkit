@@ -51,13 +51,18 @@ export default async function BoothsPage() {
           </h1>
         </div>
         {canCreate ? (
-          <Button asChild className="rounded-lg">
+          <Button asChild className="rounded-lg" data-tour="new-booth">
             <Link href="/dashboard/booths/new">
               <Plus className="size-4" /> New booth
             </Link>
           </Button>
         ) : (
-          <Button asChild variant="outline" className="rounded-lg">
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-lg"
+            data-tour="new-booth"
+          >
             <Link href="/dashboard/plan">
               <Sparkles className="size-4" /> Upgrade to add booths
             </Link>
