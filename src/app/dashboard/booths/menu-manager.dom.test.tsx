@@ -96,6 +96,30 @@ describe("MenuManager save", () => {
     expect(routerReplace).toHaveBeenCalledWith(`/dashboard/booths/${BOOTH_ID}`);
   });
 
+  it("routes to the QR page instead, on a new booth's first menu save", async () => {
+    const user = userEvent.setup();
+    render(
+      <MenuManager
+        vendorId="v1"
+        boothId={BOOTH_ID}
+        boothName="Kopitiam Cart"
+        entitlement={ENTITLEMENT}
+        initialItems={[makeItem()]}
+        isNewBooth
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Save menu" }));
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Menu saved. Here's your QR to start taking orders.",
+      ),
+    );
+    expect(routerReplace).toHaveBeenCalledWith(
+      `/dashboard/booths/${BOOTH_ID}/qr`,
+    );
+  });
+
   it("also saves the category list alongside the items", async () => {
     const user = userEvent.setup();
     render(
