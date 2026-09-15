@@ -164,16 +164,18 @@ selected, onToggleSelect })`: the
   board_settings.daily_order_number_reset
   — see `displayOrderNumber` in `@/lib/orders`) overrides what's shown/
   referenced everywhere the card names "this order" by number — the
-  name/number block itself, and both its own bump/cancel confirm dialogs —
-  falling back to the real `order.order_number` when omitted (every call
-  site except the live board itself, e.g. the completed-orders history list,
-  which intentionally always shows the real, permanent number). The shown
-  number's trailing digit is emphasized in its own `<span>` (`splitTrailingDigit`
-  in `@/lib/orders`) so a vendor using a physical pickup-shelf-slot system
+  name/number block itself, and its own cancel confirm dialog — falling back
+  to the real `order.order_number` when omitted (every call site except the
+  live board itself, e.g. the completed-orders history list, which
+  intentionally always shows the real, permanent number). The shown number's
+  trailing digit is emphasized in its own `<span>` (`splitTrailingDigit` in
+  `@/lib/orders`) so a vendor using a physical pickup-shelf-slot system
   (bubble-tea-chain style — slotting an order by its last digit) can read it
-  at a glance. The name/number block doubles as the bump trigger
-  (chip-styled, confirm dialog, disabled once already bumped) instead of a
-  separate icon button.
+  at a glance. The name/number block sits beside a dedicated bump icon chip
+  — an instant tap, no confirm dialog (2026-09-15 — dropped the dialog to
+  match `advanceStatus`'s own instant-tap rationale below: a mis-bump has no
+  real consequence, just an order prepped slightly out of its natural order),
+  disabled once already bumped.
   In multi-booth view, a full-width banner above the header shows the booth
   name next to a `boothColor()` dot. One "attention wash" background at a
   time, prioritized overdue > payment-claimed > aging. A closed card whose

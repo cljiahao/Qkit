@@ -365,7 +365,7 @@ export function BoothForm({
             icon={<Wallet className="size-5" />}
             eyebrow="How you get paid"
             title="Payment"
-            description="Optional. Customers pay you directly, and qkit never touches the money."
+            description="Optional, but skip it and customers have no way to pay through qkit. You'd collect payment in person instead."
           >
             <PaymentSection
               vendorId={vendorId}
@@ -378,7 +378,7 @@ export function BoothForm({
             icon={<Printer className="size-5" />}
             eyebrow="At your counter"
             title="Printing"
-            description="Optional. Print a label automatically via printkit."
+            description="Optional. Without it, new orders still land on your board, just with no auto-printed label to work from."
           >
             <PrintingSection
               value={printEnabled}

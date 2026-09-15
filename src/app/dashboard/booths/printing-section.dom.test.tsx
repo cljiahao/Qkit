@@ -174,6 +174,49 @@ describe("PrintingSection", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
+  it("warns that no printer is set up when printing is on but never registered", () => {
+    render(
+      <PrintingSection
+        value={true}
+        onChange={vi.fn()}
+        vendorId="v1"
+        boothId="booth-42"
+      />,
+    );
+    expect(
+      screen.getByText(/no printer is set up for this booth yet/i),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the not-set-up warning once a printer is registered", () => {
+    render(
+      <PrintingSection
+        value={true}
+        onChange={vi.fn()}
+        vendorId="v1"
+        boothId="booth-42"
+        printkitLocationId="loc-1"
+      />,
+    );
+    expect(
+      screen.queryByText(/no printer is set up for this booth yet/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show the not-set-up warning while the switch is off", () => {
+    render(
+      <PrintingSection
+        value={false}
+        onChange={vi.fn()}
+        vendorId="v1"
+        boothId="booth-42"
+      />,
+    );
+    expect(
+      screen.queryByText(/no printer is set up for this booth yet/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows no PrinterStatus while the switch is off, even with a location id", () => {
     render(
       <PrintingSection
