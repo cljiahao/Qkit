@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/money-input";
 import {
   Select,
   SelectContent,
@@ -57,7 +58,7 @@ import { resizeToWebp } from "@/lib/image-resize";
 import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
-import { centsToDollarString, cn, parseDollarsToCents } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { ALLERGEN_TAGS, type MenuItemFormInput } from "@/lib/schemas";
 import type { MenuCategory, OptionGroup } from "@/lib/types";
 import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
@@ -78,10 +79,6 @@ interface Props {
   entitlement: Entitlement;
   categories?: MenuCategory[];
   onCategoriesChange?: (categories: MenuCategory[]) => void;
-}
-
-function centsToDollars(cents?: number): string {
-  return cents == null ? "" : centsToDollarString(cents);
 }
 
 /** Same array instance back when there's nothing to reorder. */
@@ -334,20 +331,17 @@ export function MenuEditor({
   function setMoney(
     index: number,
     field: "price_cents" | "cost_cents",
-    dollars: string,
+    cents: number | undefined,
   ) {
-    const parsed = parseDollarsToCents(dollars);
-    // reject NaN/negative, keep prior value
-    if (!parsed.ok) return;
-    update(index, { [field]: parsed.cents });
+    update(index, { [field]: cents });
   }
 
-  function setPrice(index: number, dollars: string) {
-    setMoney(index, "price_cents", dollars);
+  function setPrice(index: number, cents: number | undefined) {
+    setMoney(index, "price_cents", cents);
   }
 
-  function setCost(index: number, dollars: string) {
-    setMoney(index, "cost_cents", dollars);
+  function setCost(index: number, cents: number | undefined) {
+    setMoney(index, "cost_cents", cents);
   }
 
   function setStock(index: number, raw: string) {
@@ -568,11 +562,10 @@ export function MenuEditor({
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                     $
                   </span>
-                  <Input
-                    inputMode="decimal"
+                  <MoneyInput
                     placeholder="Optional"
-                    value={centsToDollars(item.price_cents)}
-                    onChange={(e) => setPrice(index, e.target.value)}
+                    cents={item.price_cents}
+                    onCommit={(cents) => setPrice(index, cents)}
                     className="rounded-lg pl-7"
                   />
                 </div>
@@ -592,11 +585,10 @@ export function MenuEditor({
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                     $
                   </span>
-                  <Input
-                    inputMode="decimal"
+                  <MoneyInput
                     placeholder="Optional"
-                    value={centsToDollars(item.cost_cents)}
-                    onChange={(e) => setCost(index, e.target.value)}
+                    cents={item.cost_cents}
+                    onCommit={(cents) => setCost(index, cents)}
                     className="rounded-lg pl-7"
                   />
                 </div>

@@ -25,9 +25,9 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ProLock } from "@/components/pro-lock";
 import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
 import { ALLERGEN_TAGS, type AllergenTag } from "@/lib/schemas";
-import { centsToDollarString, parseDollarsToCents } from "@/lib/utils";
 import type { OptionChoice, OptionGroup } from "@/lib/types";
 import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
+import { MoneyInput } from "@/components/money-input";
 
 interface Props {
   groups: OptionGroup[];
@@ -36,10 +36,6 @@ interface Props {
   // The item's own fixed allergens — for the "customer sees" preview below,
   // same union item-customizer.tsx computes at order time.
   itemAllergens: AllergenTag[];
-}
-
-function centsToDollars(cents?: number): string {
-  return cents == null ? "" : centsToDollarString(cents);
 }
 
 function hasAdvancedSet(choice: OptionChoice): boolean {
@@ -121,20 +117,14 @@ export function OptionGroupsEditor({
     });
   }
 
-  function setChoicePrice(gi: number, ci: number, dollars: string) {
-    const parsed = parseDollarsToCents(dollars);
-    if (!parsed.ok) return;
+  function setChoicePrice(gi: number, ci: number, cents: number | undefined) {
     updateChoice(gi, ci, {
-      price_delta_cents: parsed.cents === 0 ? undefined : parsed.cents,
+      price_delta_cents: cents === 0 ? undefined : cents,
     });
   }
 
-  function setChoiceCost(gi: number, ci: number, dollars: string) {
-    const parsed = parseDollarsToCents(dollars);
-    if (!parsed.ok) return;
-    updateChoice(gi, ci, {
-      cost_delta_cents: parsed.cents === 0 ? undefined : parsed.cents,
-    });
+  function setChoiceCost(gi: number, ci: number, cents: number | undefined) {
+    updateChoice(gi, ci, { cost_delta_cents: cents === 0 ? undefined : cents });
   }
 
   function toggleChoiceAllergen(
@@ -251,166 +241,23 @@ export function OptionGroupsEditor({
             {!isCollapsed && (
               <div className="space-y-1.5 rounded-lg bg-muted/40 p-2 pl-3">
                 {group.choices.map((choice, ci) => (
-                  <div
+                  <ChoiceRow
                     key={choice.id}
-                    className="flex flex-col gap-2 sm:flex-row"
-                  >
-                    <Input
-                      placeholder="Choice (e.g. Small)"
-                      value={choice.label}
-                      onChange={(e) =>
-                        updateChoiceLabel(gi, ci, e.target.value)
-                      }
-                      className="rounded-lg bg-background"
-                    />
-                    <div className="flex gap-2">
-                      {/* Price matters to every vendor, always visible, not
-                    behind the Advanced dialog. Grows on mobile (fills the
-                    row beside the two fixed icon buttons instead of
-                    cramping into a fixed 7rem); pinned back to that width
-                    at sm:+, where it sits after the choice-name input. */}
-                      <div className="relative min-w-[6rem] flex-1 sm:w-28 sm:flex-none">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          $
-                        </span>
-                        <Input
-                          inputMode="decimal"
-                          placeholder="Price (opt.)"
-                          value={centsToDollars(choice.price_delta_cents)}
-                          onChange={(e) =>
-                            setChoicePrice(gi, ci, e.target.value)
-                          }
-                          className="rounded-lg bg-background pl-6"
-                        />
-                      </div>
-                      <Dialog
-                        open={openAdvancedFor === choice.id}
-                        onOpenChange={(open) =>
-                          setOpenAdvancedFor(open ? choice.id : null)
-                        }
-                      >
-                        <DialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="relative shrink-0 rounded-lg bg-background text-muted-foreground"
-                            aria-label={`Advanced options for ${choice.label || "this choice"}`}
-                          >
-                            <Settings2 className="size-4" />
-                            {hasAdvancedSet(choice) && (
-                              <span
-                                aria-hidden="true"
-                                className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary"
-                              />
-                            )}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>
-                              Advanced: {choice.label || "Choice"}
-                            </DialogTitle>
-                            <DialogDescription>
-                              Extra cost and allergens only when this choice is
-                              picked.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="relative w-32">
-                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                $
-                              </span>
-                              <Input
-                                inputMode="decimal"
-                                placeholder="Cost (opt.)"
-                                value={centsToDollars(choice.cost_delta_cents)}
-                                onChange={(e) =>
-                                  setChoiceCost(gi, ci, e.target.value)
-                                }
-                                className="rounded-lg pl-6"
-                              />
-                            </div>
-                            <div className="flex flex-wrap gap-3">
-                              {ALLERGEN_TAGS.map((tag) => (
-                                <label
-                                  key={tag}
-                                  className="flex items-center gap-1.5 text-xs capitalize"
-                                >
-                                  <Checkbox
-                                    checked={(choice.allergens ?? []).includes(
-                                      tag,
-                                    )}
-                                    onCheckedChange={(checked) =>
-                                      toggleChoiceAllergen(
-                                        gi,
-                                        ci,
-                                        choice,
-                                        tag,
-                                        checked === true,
-                                      )
-                                    }
-                                  />
-                                  <span aria-hidden="true">
-                                    {ALLERGEN_ICONS[tag]}
-                                  </span>
-                                  {tag}
-                                </label>
-                              ))}
-                            </div>
-                            {(() => {
-                              const effective = effectiveAllergens(
-                                itemAllergens,
-                                choice.allergens,
-                              );
-                              return (
-                                effective.length > 0 && (
-                                  <div className="space-y-1 border-t border-border/60 pt-3">
-                                    <p className="text-xs font-medium text-muted-foreground">
-                                      Customer sees when picked:
-                                    </p>
-                                    <div
-                                      role="status"
-                                      aria-label="Contains allergens"
-                                      className="flex flex-wrap gap-1.5"
-                                    >
-                                      {effective.map((tag) => (
-                                        <span
-                                          key={tag}
-                                          className="rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
-                                        >
-                                          <span aria-hidden="true">
-                                            {ALLERGEN_ICONS[tag]}
-                                          </span>{" "}
-                                          {tag}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              );
-                            })()}
-                          </div>
-                          <DialogFooter>
-                            <DialogClose asChild>
-                              <Button type="button">Done</Button>
-                            </DialogClose>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="shrink-0 rounded-lg bg-background text-muted-foreground hover:text-destructive"
-                        onClick={() => removeChoice(gi, ci)}
-                        aria-label="Remove choice"
-                        disabled={group.choices.length <= 1}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
+                    choice={choice}
+                    disableRemove={group.choices.length <= 1}
+                    itemAllergens={itemAllergens}
+                    isAdvancedOpen={openAdvancedFor === choice.id}
+                    onAdvancedOpenChange={(open) =>
+                      setOpenAdvancedFor(open ? choice.id : null)
+                    }
+                    onLabelChange={(label) => updateChoiceLabel(gi, ci, label)}
+                    onPriceChange={(cents) => setChoicePrice(gi, ci, cents)}
+                    onCostChange={(cents) => setChoiceCost(gi, ci, cents)}
+                    onAllergenToggle={(tag, checked) =>
+                      toggleChoiceAllergen(gi, ci, choice, tag, checked)
+                    }
+                    onRemove={() => removeChoice(gi, ci)}
+                  />
                 ))}
                 <Button
                   type="button"
@@ -445,6 +292,164 @@ export function OptionGroupsEditor({
           <Plus className="size-3.5" /> Add option group
         </Button>
       )}
+    </div>
+  );
+}
+
+function ChoiceRow({
+  choice,
+  disableRemove,
+  itemAllergens,
+  isAdvancedOpen,
+  onAdvancedOpenChange,
+  onLabelChange,
+  onPriceChange,
+  onCostChange,
+  onAllergenToggle,
+  onRemove,
+}: {
+  choice: OptionChoice;
+  disableRemove: boolean;
+  itemAllergens: AllergenTag[];
+  isAdvancedOpen: boolean;
+  onAdvancedOpenChange: (open: boolean) => void;
+  onLabelChange: (label: string) => void;
+  onPriceChange: (cents: number | undefined) => void;
+  onCostChange: (cents: number | undefined) => void;
+  onAllergenToggle: (tag: AllergenTag, checked: boolean) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row">
+      <Input
+        placeholder="Choice (e.g. Small)"
+        value={choice.label}
+        onChange={(e) => onLabelChange(e.target.value)}
+        className="rounded-lg bg-background"
+      />
+      <div className="flex gap-2">
+        {/* Price matters to every vendor, always visible, not behind the
+            Advanced dialog. Grows on mobile (fills the row beside the two
+            fixed icon buttons instead of cramping into a fixed 7rem);
+            pinned back to that width at sm:+, where it sits after the
+            choice-name input. */}
+        <div className="relative min-w-[6rem] flex-1 sm:w-28 sm:flex-none">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            $
+          </span>
+          <MoneyInput
+            placeholder="Price (opt.)"
+            cents={choice.price_delta_cents}
+            onCommit={onPriceChange}
+            className="rounded-lg bg-background pl-6"
+          />
+        </div>
+        <Dialog open={isAdvancedOpen} onOpenChange={onAdvancedOpenChange}>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="relative shrink-0 rounded-lg bg-background text-muted-foreground"
+              aria-label={`Advanced options for ${choice.label || "this choice"}`}
+            >
+              <Settings2 className="size-4" />
+              {hasAdvancedSet(choice) && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary"
+                />
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Advanced: {choice.label || "Choice"}</DialogTitle>
+              <DialogDescription>
+                Extra cost and allergens only when this choice is picked.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="relative w-32">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  $
+                </span>
+                <MoneyInput
+                  placeholder="Cost (opt.)"
+                  cents={choice.cost_delta_cents}
+                  onCommit={onCostChange}
+                  className="rounded-lg pl-6"
+                />
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {ALLERGEN_TAGS.map((tag) => (
+                  <label
+                    key={tag}
+                    className="flex items-center gap-1.5 text-xs capitalize"
+                  >
+                    <Checkbox
+                      checked={(choice.allergens ?? []).includes(tag)}
+                      onCheckedChange={(checked) =>
+                        onAllergenToggle(tag, checked === true)
+                      }
+                    />
+                    <span aria-hidden="true">{ALLERGEN_ICONS[tag]}</span>
+                    {tag}
+                  </label>
+                ))}
+              </div>
+              {(() => {
+                const effective = effectiveAllergens(
+                  itemAllergens,
+                  choice.allergens,
+                );
+                return (
+                  effective.length > 0 && (
+                    <div className="space-y-1 border-t border-border/60 pt-3">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Customer sees when picked:
+                      </p>
+                      <div
+                        role="status"
+                        aria-label="Contains allergens"
+                        className="flex flex-wrap gap-1.5"
+                      >
+                        {effective.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-status-cancelled/40 bg-status-cancelled/10 px-2 py-0.5 text-xs font-medium capitalize text-status-cancelled"
+                          >
+                            <span aria-hidden="true">
+                              {ALLERGEN_ICONS[tag]}
+                            </span>{" "}
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                );
+              })()}
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button">Done</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0 rounded-lg bg-background text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+          aria-label="Remove choice"
+          disabled={disableRemove}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 }
