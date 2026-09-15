@@ -19,6 +19,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ZoomableImage } from "@/components/zoomable-image";
+import { MediaImage } from "@/components/media-image";
 import { ItemCustomizer } from "@/components/item-customizer";
 import { AllergenBadges } from "@/components/allergen-badges";
 import { Ticket } from "@/components/ticket";
@@ -459,27 +460,49 @@ export function OrderForm({
     <div className="space-y-8">
       {/* Menu items */}
       {grouped ? (
-        <>
-          <nav className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 text-sm">
-            {sections.map((s) => (
-              <a
-                key={s.id}
-                href={`#section-${s.id}`}
-                className="shrink-0 rounded-full border border-border px-3 py-1.5 font-medium text-muted-foreground"
-              >
-                {s.label}
-              </a>
-            ))}
+        <div className="flex items-start gap-3 md:gap-6">
+          <nav
+            aria-label="Menu sections"
+            className="sticky top-4 flex w-16 shrink-0 flex-col gap-2 self-start overflow-y-auto text-sm md:w-40 md:gap-1.5"
+            style={{ maxHeight: "calc(100dvh - 2rem)" }}
+          >
+            {sections.map((s) => {
+              const thumb = s.items.find((it) => it.image_url)?.image_url;
+              return (
+                <a
+                  key={s.id}
+                  href={`#section-${s.id}`}
+                  className="flex flex-col items-center gap-1 rounded-lg border border-border p-1.5 text-center font-medium text-muted-foreground md:flex-row md:gap-2 md:p-2 md:text-left"
+                >
+                  {thumb && (
+                    <div className="relative size-10 shrink-0 overflow-hidden rounded-md border border-border md:size-9">
+                      <MediaImage
+                        src={thumb}
+                        alt=""
+                        fill
+                        sizes="2.5rem"
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <span className="line-clamp-2 text-xs leading-tight md:line-clamp-1 md:text-sm">
+                    {s.label}
+                  </span>
+                </a>
+              );
+            })}
           </nav>
-          {sections.map((s) => (
-            <section key={s.id} id={`section-${s.id}`}>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {s.label}
-              </h2>
-              <div className="space-y-2.5">{s.items.map(renderItemCard)}</div>
-            </section>
-          ))}
-        </>
+          <div className="min-w-0 flex-1 space-y-8">
+            {sections.map((s) => (
+              <section key={s.id} id={`section-${s.id}`}>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {s.label}
+                </h2>
+                <div className="space-y-2.5">{s.items.map(renderItemCard)}</div>
+              </section>
+            ))}
+          </div>
+        </div>
       ) : (
         <section>
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
