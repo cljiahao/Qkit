@@ -1,39 +1,43 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { DashboardTour as SharedDashboardTour } from "@merqo/ui";
-import { tourSteps } from "./tour-steps";
+import { usePathname } from "next/navigation";
+import { DashboardTours, type TourDefinition } from "@merqo/ui";
+import { ordersTourSteps, boothsTourSteps } from "./tour-steps";
 import { markTourSeen } from "@/app/dashboard/tour-actions";
+import type { ToursSeen } from "@/lib/types";
 
 // Matches Tailwind's `sm` breakpoint: below 640px the nav links collapse
 // behind the burger, so the mobile step list spotlights that instead.
 // Resolved lazily (only at tour-start time, per @merqo/ui's `steps` contract)
 // rather than during render, so this stays SSR-safe.
-function resolveTourSteps() {
+function resolveOrdersSteps() {
   const isMobile =
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
     window.matchMedia("(max-width: 639px)").matches;
-  return tourSteps(isMobile);
+  return ordersTourSteps(isMobile);
 }
 
+const TOURS: TourDefinition[] = [
+  { id: "orders", route: "/dashboard", steps: resolveOrdersSteps },
+  { id: "booths", route: "/dashboard/booths", steps: boothsTourSteps },
+];
+
 /**
- * qkit's wiring for `@merqo/ui`'s `DashboardTour`: supplies this kit's own
- * step content, mark-seen action, and routing, while the tour mechanism
- * itself (driver.js lifecycle, floating replay button, popover styling) is
- * fully owned by the shared component.
+ * qkit's wiring for `@merqo/ui`'s `DashboardTours`: supplies this kit's own
+ * per-page tour content and mark-seen action, while the tour mechanism
+ * itself (driver.js lifecycle, floating replay button, popover styling,
+ * route-to-tour matching) is fully owned by the shared components.
  */
-export function DashboardTour({ seen }: { seen: boolean }) {
+export function DashboardTour({ toursSeen }: { toursSeen: ToursSeen }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
-    <SharedDashboardTour
-      steps={resolveTourSteps}
-      seen={seen}
+    <DashboardTours
+      tours={TOURS}
+      pathname={pathname}
+      seenTourIds={Object.keys(toursSeen)}
       onFirstSeen={markTourSeen}
-      isHomeRoute={pathname === "/dashboard"}
-      navigateHome={() => router.push("/dashboard")}
       scopeClassName="qkit-tour"
     />
   );

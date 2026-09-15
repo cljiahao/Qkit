@@ -335,11 +335,11 @@ select throws_ok(
      where id = '00000000-0000-0000-0000-00000000000a' $$,
   null,
   'authenticated vendor cannot self-escalate plan to pro');
--- A legitimate self-edit (tour_seen_at) still works — the revoke is column-scoped.
+-- A legitimate self-edit (tours_seen) still works — the revoke is column-scoped.
 select lives_ok(
-  $$ update qkit.vendors set tour_seen_at = now()
+  $$ update qkit.vendors set tours_seen = '{"orders":"2026-01-01T00:00:00Z"}'::jsonb
      where id = '00000000-0000-0000-0000-00000000000a' $$,
-  'vendor can still update its own tour_seen_at');
+  'vendor can still update its own tours_seen');
 -- WITH CHECK now blocks re-pointing an owned booth to another vendor (the USING
 -- filter passes since A owns it; the result row would belong to B).
 select throws_ok(

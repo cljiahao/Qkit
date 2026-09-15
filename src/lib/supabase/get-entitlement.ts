@@ -6,6 +6,7 @@ import { getEntitlement, type Entitlement } from "@/lib/plan";
 import type { User } from "@supabase/supabase-js";
 import {
   DEFAULT_BOARD_SETTINGS,
+  DEFAULT_TOURS_SEEN,
   type Vendor,
   type SocialLinks,
 } from "@/lib/types";
@@ -91,6 +92,9 @@ export const loadEntitlement = cache(
     // every board render.
     if (vendor && !vendor.board_settings) {
       vendor.board_settings = DEFAULT_BOARD_SETTINGS;
+    }
+    if (vendor && !vendor.tours_seen) {
+      vendor.tours_seen = DEFAULT_TOURS_SEEN;
     }
 
     // Stall name + social links live only in merqo.vendor_profile — qkit.vendors

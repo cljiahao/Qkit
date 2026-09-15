@@ -82,7 +82,28 @@ const MOBILE: TourStep[] = [
   DESKTOP[DESKTOP.length - 1],
 ];
 
-/** The tour steps for the current layout. */
-export function tourSteps(isMobile: boolean): TourStep[] {
+/** The orders-board tour's steps for the current layout. */
+export function ordersTourSteps(isMobile: boolean): TourStep[] {
   return isMobile ? MOBILE : DESKTOP;
+}
+
+// Anchored only on "New booth" — the sole always-present element regardless
+// of plan tier (a Free vendor at their booth cap sees "Upgrade to add
+// booths" instead, which carries the same anchor) or booth count (an empty
+// list still renders it). Booth cards themselves aren't spotlighted: a
+// brand-new vendor — this tour's actual audience — has none yet, and
+// driver.js has no target to fall back to for a step whose element isn't in
+// the DOM.
+const BOOTHS: TourStep[] = [
+  {
+    element: sel("new-booth"),
+    title: "Start here",
+    description:
+      "Tap New booth to create your stall: a name, a photo, and your menu. Menu is the only required part — Payment, Printing, and Booking Status are all optional and can be added anytime from the booth's own edit page.",
+  },
+];
+
+/** The booths-page tour's steps. */
+export function boothsTourSteps(): TourStep[] {
+  return BOOTHS;
 }

@@ -13,7 +13,7 @@ export default async function DashboardLayout({
 }) {
   // loadEntitlement resolves the user, their vendor row, and effective plan in
   // one memoized round-trip — the account menu needs the tier badge, and the
-  // vendor row still carries name + tour_seen_at.
+  // vendor row still carries name + tours_seen.
   const { user, vendor, entitlement } = await loadEntitlement();
 
   if (!user) redirect("/login");
@@ -77,7 +77,7 @@ export default async function DashboardLayout({
       <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-7">
         {children}
       </main>
-      <DashboardTour seen={!!vendor.tour_seen_at} />
+      <DashboardTour toursSeen={vendor.tours_seen} />
     </div>
   );
 }

@@ -55,7 +55,7 @@ describe("loadEntitlement", () => {
         id: "v1",
         plan: "free",
         created_at: "2026-01-01T00:00:00Z",
-        tour_seen_at: null,
+        tours_seen: {},
         board_settings: {
           aging_min: 5,
           overdue_min: 10,
@@ -95,5 +95,37 @@ describe("loadEntitlement", () => {
 
     expect(vendor).toBeNull();
     expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
+  });
+
+  it("falls back to an empty tours_seen when the column is missing (migration 0092 not yet applied to this DB)", async () => {
+    getUser.mockResolvedValue({ id: "v1" });
+    maybeSingleVendor.mockResolvedValue({
+      data: {
+        id: "v1",
+        plan: "free",
+        created_at: "2026-01-01T00:00:00Z",
+        board_settings: {
+          aging_min: 5,
+          overdue_min: 10,
+          sound_id: "chime",
+          desktop_notify: false,
+          undo_seconds: 5,
+          daily_order_number_reset: true,
+          show_wait_estimate: true,
+          default_prep_minutes: null,
+          ready_auto_clear_min: null,
+        },
+      },
+      error: null,
+    });
+    getOrCreateVendorProfile.mockResolvedValue({
+      vendor_id: "v1",
+      stall_name: "Kopitiam Cart",
+      social_links: {},
+    });
+
+    const { vendor } = await loadEntitlement();
+
+    expect(vendor?.tours_seen).toEqual({});
   });
 });

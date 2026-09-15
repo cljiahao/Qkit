@@ -22,15 +22,22 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
 - `back-to-top.tsx` — `BackToTop()`: fixed bottom-right scroll-to-top button
   for the landing page, appears past `scrollY > 600`, respects
   `prefers-reduced-motion` for the scroll behavior.
-- `dashboard-tour.tsx` — `DashboardTour({ seen })`: thin wiring around
-  `@merqo/ui`'s `DashboardTour` — supplies qkit's own step content
-  (`tour-steps.ts`, resolved lazily via `matchMedia` at tour-start time),
-  `markTourSeen` as `onFirstSeen`, `/dashboard`-route detection, and
-  `scopeClassName="qkit-tour"` for the popover theme. The tour mechanism
+- `dashboard-tour.tsx` — `DashboardTour({ toursSeen })`: thin wiring around
+  `@merqo/ui`'s `DashboardTours` — registers qkit's per-page tours (`orders`
+  at `/dashboard`, `boothsTourSteps` resolved lazily via `matchMedia` at
+  tour-start time; `booths` at `/dashboard/booths`), derives `seenTourIds`
+  from `Object.keys(toursSeen)`, wires `markTourSeen` as `onFirstSeen`, and
+  sets `scopeClassName="qkit-tour"` for the popover theme. The tour mechanism
   itself (driver.js lifecycle, auto-run/replay timing, floating "?" replay
-  button, popover styling) lives in the shared package.
-- `dashboard-tour.dom.test.tsx` — RTL tests for the tour's auto-run,
-  mark-seen, and cross-page replay behavior.
+  button, popover styling, route-to-tour matching) lives in the shared
+  package — only which tour applies to which route, and what each one says,
+  is qkit-local. Renamed from a single-tour `{ seen }` prop shape (2026-09-15)
+  once the booths page needed its own tour instead of always redirecting to
+  `/dashboard` to replay the orders one.
+- `dashboard-tour.dom.test.tsx` — RTL tests confirming qkit wires the right
+  `tours`/`pathname`/`seenTourIds`/`onFirstSeen`/`scopeClassName` props
+  through to `DashboardTours` (the tour mechanism itself is tested in the
+  shared package).
 - `featured-booths.tsx` — `FeaturedBooths({ featured })`: renders a 3-up grid
   of vendor-approved testimonial quotes; renders nothing when the array is
   empty (no fabricated testimonials — `page.tsx` currently passes `[]`).
@@ -273,22 +280,27 @@ tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
   edge via the `.ticket` CSS class) — centralizes border/radius/shadow so
   every card in the app renders identically instead of each hand-rolling its
   own combination.
-- `tour-steps.ts` — `tourSteps(isMobile)`: pure step config (element
-  selector + title + description) for the dashboard tour, kept free of any
-  `driver.js` import so it's unit-testable. Covers the full order
-  lifecycle (accept/mark ready/mark picked up/confirm payment), bump and
-  auto-clear, and walk-up ("New order") orders — not just navigation
-  landmarks; desktop spotlights each nav landmark too, mobile spotlights
-  the collapsed hamburger menu instead. The first step's "example order"
-  preview renders the real `OrderStatusBadge` via `react-dom/server`'s
-  `renderToStaticMarkup` instead of a hand-copied color/label, so it can't
-  silently drift from what the real badge looks like — see
+- `tour-steps.ts` — pure step config (element selector + title +
+  description), kept free of any `driver.js` import so it's unit-testable,
+  one function per dashboard tour (see `dashboard-tour.tsx`'s `TOURS`
+  registry): `ordersTourSteps(isMobile)` covers the full order lifecycle
+  (accept/mark ready/mark picked up/confirm payment), bump and auto-clear,
+  and walk-up ("New order") orders — not just navigation landmarks; desktop
+  spotlights each nav landmark too, mobile spotlights the collapsed hamburger
+  menu instead. Its first step's "example order" preview renders the real
+  `OrderStatusBadge` via `react-dom/server`'s `renderToStaticMarkup` instead
+  of a hand-copied color/label, so it can't silently drift from what the real
+  badge looks like — see
   `../../../docs/superpowers/specs/2026-08-25-tour-example-badge-drift-fix-design.md`
-  (outside this repo's own git tree, a cross-kit spec). The final step now
-  also tells a vendor which booth-page sections are optional (Payment,
-  Printing, Booking Status), since the tour ends before those sections
-  are ever on screen.
-- `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists.
+  (outside this repo's own git tree, a cross-kit spec). Its final step also
+  tells a vendor which booth-page sections are optional (Payment, Printing,
+  Booking Status), since the tour ends before those sections are ever on
+  screen. `boothsTourSteps()` (2026-09-15) is a single step anchored on
+  `[data-tour="new-booth"]` — the one always-present element regardless of
+  plan tier or existing booth count, since a brand-new vendor (this tour's
+  actual audience) has no booth cards yet for driver.js to spotlight.
+- `tour-steps.test.ts` — unit tests asserting the mobile/desktop step lists
+  for `ordersTourSteps` and the single step for `boothsTourSteps`.
 - `ui/` — the shadcn/ui primitive library everything else in this tree is
   built from. See its own README.
 - `zoomable-image.tsx` — `ZoomableImage({ src, alt, sizes })`: a menu photo

@@ -8,6 +8,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The Booths page now has its own dashboard tour (anchored on "New booth"),
+  instead of the tour button always redirecting to `/dashboard` regardless
+  of which page you were on. Built on `@merqo/ui`'s new `DashboardTours`
+  multi-tour router (bumped to v0.27.0); `vendors.tour_seen_at` is replaced
+  by `vendors.tours_seen`, a per-tour seen-state map (migration `0092`).
 - Live printer connectivity status on the booth's "Print via printkit"
   toggle: once printing is on and the booth has been saved, a status row
   shows "Printer connected" or "No printer connected" in real time,
