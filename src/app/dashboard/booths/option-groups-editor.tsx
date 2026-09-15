@@ -27,7 +27,7 @@ import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
 import { ALLERGEN_TAGS, type AllergenTag } from "@/lib/schemas";
 import type { OptionChoice, OptionGroup } from "@/lib/types";
 import { ALLERGEN_ICONS } from "@/lib/allergen-icons";
-import { MoneyInput } from "@/components/money-input";
+import { MoneyInput } from "@merqo/ui";
 
 interface Props {
   groups: OptionGroup[];

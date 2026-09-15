@@ -18,6 +18,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `BackButton`, `ElevatedCard`, `SOCIAL_LINK_FIELDS`/`SocialLinksFields`,
+  `MoneyInput`, and the landing `Footer` now come from `@merqo/ui`
+  (bumped to v0.29.0) instead of a qkit-local copy — each was confirmed
+  duplicated across 2 or more sibling kits before promoting, no behavior
+  change intended.
 - The customer menu page's multi-section jump nav is now a sticky sidebar
   (with a thumbnail from each section's first item, Oddle-style) beside the
   scrolling item list, at every screen size — replacing the old horizontal
