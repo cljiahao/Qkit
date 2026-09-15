@@ -166,7 +166,7 @@ export function BoothForm({
       // real boothId, which only exists after this first save.
       router.replace(
         isCreate
-          ? `/dashboard/booths/${result.boothId}/menu`
+          ? `/dashboard/booths/${result.boothId}/menu?new=1`
           : "/dashboard/booths",
       );
       await navigatingAway();

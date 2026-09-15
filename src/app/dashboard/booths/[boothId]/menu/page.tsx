@@ -8,10 +8,12 @@ export const revalidate = 0;
 
 interface Props {
   params: Promise<{ boothId: string }>;
+  searchParams: Promise<{ new?: string }>;
 }
 
-export default async function BoothMenuPage({ params }: Props) {
+export default async function BoothMenuPage({ params, searchParams }: Props) {
   const { boothId } = await params;
+  const { new: isNewParam } = await searchParams;
   const { vendor, entitlement } = await requireEntitledVendor();
 
   const supabase = await createServerClient();
@@ -46,6 +48,7 @@ export default async function BoothMenuPage({ params }: Props) {
       entitlement={entitlement}
       initialItems={items}
       initialCategories={categories}
+      isNewBooth={isNewParam === "1"}
     />
   );
 }

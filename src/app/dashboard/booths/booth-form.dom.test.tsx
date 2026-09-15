@@ -271,7 +271,7 @@ describe("BoothForm menu section", () => {
 
     await waitFor(() =>
       expect(routerReplace).toHaveBeenCalledWith(
-        "/dashboard/booths/b-new/menu",
+        "/dashboard/booths/b-new/menu?new=1",
       ),
     );
   });

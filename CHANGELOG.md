@@ -8,6 +8,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Saving a brand-new booth's first menu now lands on its QR page (with a
+  "here's your QR to start taking orders" toast) instead of the plain
+  booth-edit page — nothing previously nudged a first-time vendor toward
+  actually sharing their QR after finishing setup.
 - A warning banner on the booth's Printing toggle when printing is on but
   no printer has ever been registered for that booth — previously this
   state only showed a plain, easy-to-miss link.

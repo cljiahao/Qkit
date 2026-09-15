@@ -29,6 +29,10 @@ interface Props {
   entitlement: Entitlement;
   initialItems: MenuItemFormInput[];
   initialCategories?: MenuCategory[];
+  // Set when this menu save follows a booth's first-ever creation (booth-form's
+  // `?new=1` redirect) -- the vendor has no orderable booth without a menu, so
+  // this is the true "you can go live now" moment, not the earlier bare-info save.
+  isNewBooth?: boolean;
 }
 
 function formatImportRow(row: CsvMenuRow): string {
@@ -68,6 +72,7 @@ export function MenuManager({
   entitlement,
   initialItems,
   initialCategories = [],
+  isNewBooth = false,
 }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<MenuItemFormInput[]>(initialItems);
@@ -160,8 +165,13 @@ export function MenuManager({
         toast.error(categoriesResult.error);
         return;
       }
-      toast.success("Menu saved");
-      router.replace(`/dashboard/booths/${boothId}`);
+      if (isNewBooth) {
+        toast.success("Menu saved. Here's your QR to start taking orders.");
+        router.replace(`/dashboard/booths/${boothId}/qr`);
+      } else {
+        toast.success("Menu saved");
+        router.replace(`/dashboard/booths/${boothId}`);
+      }
       await navigatingAway();
     });
   }
