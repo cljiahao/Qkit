@@ -302,3 +302,24 @@ export function displayOrderNumber(
   const rank = Number(orderNumber) - Number(baselineNumber) + 1;
   return rank > 0 ? String(rank).padStart(3, "0") : orderNumber;
 }
+
+/**
+ * Splits a display order number into its leading digits and its trailing
+ * one, so a vendor using a physical pickup-shelf-slot system (slotting an
+ * order by the last digit of its number, e.g. bubble-tea-chain style) can
+ * have that digit visually emphasized wherever the number is shown. Pure
+ * string split — a single-character `orderNumber` returns an empty `lead`.
+ * `null` (a payment-required order still awaiting claim, migration 0087,
+ * has no order_number yet) returns both fields empty rather than throwing —
+ * callers render this before an order necessarily has a number at all.
+ */
+export function splitTrailingDigit(orderNumber: string | null): {
+  lead: string;
+  last: string;
+} {
+  if (orderNumber === null) return { lead: "", last: "" };
+  return {
+    lead: orderNumber.slice(0, -1),
+    last: orderNumber.slice(-1),
+  };
+}

@@ -49,6 +49,17 @@ const BOOTHS = [{ id: "b1", name: "Kopi Corner" }];
 // completed_at default).
 const EPOCH_ISO = new Date(0).toISOString();
 
+// OrderCard emphasizes the order number's trailing digit in its own <span>
+// (see splitTrailingDigit), so its text is split across elements — a plain
+// string getByText can't match that (TRL's own hint: use a function
+// matcher). Scoped to `p` so the (identical-text) wrapping <div> around it
+// isn't also a match.
+function byOrderNumber(number: string) {
+  return (_content: string, element: Element | null) =>
+    element?.textContent === number;
+}
+const ORDER_NUMBER_OPTS = { selector: "p" };
+
 describe("CompletedOrdersList", () => {
   it("shows an empty state when there are no completed orders", () => {
     render(
@@ -92,8 +103,12 @@ describe("CompletedOrdersList", () => {
         todayStartIso={EPOCH_ISO}
       />,
     );
-    expect(screen.getByText("#0001")).toBeInTheDocument();
-    expect(screen.getByText("#0002")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
   });
 
   it("only shows a booth banner when the vendor has more than one booth", () => {
@@ -138,7 +153,9 @@ describe("CompletedOrdersList", () => {
     // Default pageSize is 12 — the 13th order starts on page 2.
     expect(screen.queryByText("#0012")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Next page" }));
-    expect(screen.getByText("#0012")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0012"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
   });
 
   it("notes the history cap when the fetch hit historyLimit", () => {
@@ -185,13 +202,19 @@ describe("CompletedOrdersList", () => {
         todayStartIso={EPOCH_ISO}
       />,
     );
-    expect(screen.getByText("#0001")).toBeInTheDocument();
-    expect(screen.getByText("#0002")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("combobox"));
     await user.click(screen.getByRole("option", { name: "Kopi Corner" }));
 
-    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
     expect(screen.queryByText("#0002")).not.toBeInTheDocument();
   });
 
@@ -217,7 +240,9 @@ describe("CompletedOrdersList", () => {
     );
 
     expect(screen.queryByText("#0001")).not.toBeInTheDocument();
-    expect(screen.getByText("#0002")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
   });
 
   it("defaults to today's completed orders, then widens by date range", async () => {
@@ -256,17 +281,25 @@ describe("CompletedOrdersList", () => {
     expect(screen.getByRole("button", { name: "Today" })).toHaveClass(
       "text-primary",
     );
-    expect(screen.getByText("#0001")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
     expect(screen.queryByText("#0002")).not.toBeInTheDocument();
     expect(screen.queryByText("#0003")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "7 days" }));
-    expect(screen.getByText("#0001")).toBeInTheDocument();
-    expect(screen.getByText("#0002")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
     expect(screen.queryByText("#0003")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "All time" }));
-    expect(screen.getByText("#0003")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0003"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
   });
 
   it("shows a no-match state when the search matches nothing", async () => {

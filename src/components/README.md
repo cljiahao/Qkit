@@ -122,7 +122,10 @@ selected, onToggleSelect })`: the
   — silent for `queued`/`sent`/`printed`/`not_required`, set via printkit's
   `POST /api/printkit/print-status` callback — and a
   "Walk-up" badge when `order.source === "walkup"`, staff-entered orders vs.
-  the default QR-placed ones), an aging
+  the default QR-placed ones — `PaymentBadge`/`PrintBadge`/the inline
+  walk-up pill all render through one local `MiniPill({label, className})`,
+  since all three shared the identical pill class fingerprint before this
+  extraction), an aging
   clock (`orderAgeTone`, ticks every 30s) moved to the footer beside the
   arrival timestamp (`sgtClock`, bare time — or `shortDateTime`, date+time,
   when `showDate` is set, for the completed-orders history list where every
@@ -164,9 +167,13 @@ selected, onToggleSelect })`: the
   name/number block itself, and both its own bump/cancel confirm dialogs —
   falling back to the real `order.order_number` when omitted (every call
   site except the live board itself, e.g. the completed-orders history list,
-  which intentionally always shows the real, permanent number). The
-  name/number block doubles as the bump trigger (chip-styled, confirm
-  dialog, disabled once already bumped) instead of a separate icon button.
+  which intentionally always shows the real, permanent number). The shown
+  number's trailing digit is emphasized in its own `<span>` (`splitTrailingDigit`
+  in `@/lib/orders`) so a vendor using a physical pickup-shelf-slot system
+  (bubble-tea-chain style — slotting an order by its last digit) can read it
+  at a glance. The name/number block doubles as the bump trigger
+  (chip-styled, confirm dialog, disabled once already bumped) instead of a
+  separate icon button.
   In multi-booth view, a full-width banner above the header shows the booth
   name next to a `boothColor()` dot. One "attention wash" background at a
   time, prioritized overdue > payment-claimed > aging. A closed card whose

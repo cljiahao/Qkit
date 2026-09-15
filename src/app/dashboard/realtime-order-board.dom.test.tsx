@@ -77,6 +77,19 @@ vi.mock("./order-actions", () => ({
 
 const BOOTHS = [{ id: "b1", name: "Kopi Corner", is_active: true, open: true }];
 
+// OrderCard emphasizes the order number's trailing digit in its own <span>
+// (see splitTrailingDigit), so its text is split across elements — a plain
+// string/regex getByText can't match that (TRL's own hint: use a function
+// matcher). Always pass with { selector: "p" } (ORDER_NUMBER_OPTS below) so
+// the (identical-text) wrapping <div> around it isn't also a match.
+function byOrderNumber(pattern: string | RegExp) {
+  return (_content: string, element: Element | null) => {
+    const text = element?.textContent ?? "";
+    return typeof pattern === "string" ? text === pattern : pattern.test(text);
+  };
+}
+const ORDER_NUMBER_OPTS = { selector: "p" };
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(toggleBoothActive).mockResolvedValue({ success: true });
@@ -108,7 +121,9 @@ describe("RealtimeOrderBoard sort toggle", () => {
     );
 
     const numbersInOrder = () =>
-      screen.getAllByText(/^#000[12]$/).map((el) => el.textContent);
+      screen
+        .getAllByText(byOrderNumber(/^#000[12]$/), ORDER_NUMBER_OPTS)
+        .map((el) => el.textContent);
 
     expect(numbersInOrder()).toEqual(["#0001", "#0002"]);
 
@@ -135,7 +150,9 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("#0847")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0847"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
   });
 
   it("shows the daily-reset display number when a baseline is supplied", () => {
@@ -151,8 +168,12 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("#003")).toBeInTheDocument();
-    expect(screen.queryByText("#0847")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#003"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0847"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -549,8 +570,12 @@ describe("RealtimeOrderBoard payment filter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.queryByText(/#0001/)).not.toBeInTheDocument();
-    expect(screen.getByText(/#0002/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber(/#0001/), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber(/#0002/), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
   });
 
   it("still shows a pending-payment walk-up order", () => {
@@ -571,6 +596,8 @@ describe("RealtimeOrderBoard payment filter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText(/#0001/)).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber(/#0001/), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
   });
 });

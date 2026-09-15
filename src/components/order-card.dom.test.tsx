@@ -115,10 +115,23 @@ beforeEach(() => {
   restoreAutoCompleted.mockResolvedValue({ success: true, status: "ready" });
 });
 
+// The order number's trailing digit is emphasized in its own <span> (see
+// splitTrailingDigit), so its container's text is split across elements —
+// getByText's plain-string form can't match that; TRL's own recommended fix
+// is a function matcher against the element's full textContent. Scoped to
+// `p` so the (identical-text) wrapping <div> around it isn't also a match.
+function byOrderNumber(number: string) {
+  return (_content: string, element: Element | null) =>
+    element?.textContent === number;
+}
+const ORDER_NUMBER_OPTS = { selector: "p" };
+
 describe("OrderCard", () => {
   it("renders order number, customer, items and total", () => {
     render(<OrderCard order={makeOrder()} />, { wrapper: TooltipProvider });
-    expect(screen.getByText("#0007")).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#0007"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
     expect(screen.getByText("Ada")).toBeInTheDocument();
     expect(screen.getByText(/Kopi/)).toBeInTheDocument();
     // Line total (350×2) and order total both read $7.00.
@@ -130,8 +143,12 @@ describe("OrderCard", () => {
     render(<OrderCard order={makeOrder()} displayNumber="3" />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.getByText("#3")).toBeInTheDocument();
-    expect(screen.queryByText("#0007")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#3"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0007"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
   });
 
   it("footer stamp is a bare time by default, a date+time when showDate is set", () => {

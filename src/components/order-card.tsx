@@ -27,6 +27,7 @@ import {
   needsPaymentReview,
   orderAgeTone,
   elapsedMinutes,
+  splitTrailingDigit,
   type AgeTone,
 } from "@/lib/orders";
 import {
@@ -66,6 +67,22 @@ const PaymentProofViewer = dynamic(() =>
 // undo_seconds) via the `undoMs` prop, this 4s is just the fallback.
 const DEFAULT_UNDO_MS = 4000;
 
+// Shared shape for the small pills stacked in an OrderCard's top-right
+// corner (payment/print/walk-up) — same class fingerprint, only the tone and
+// label ever differed between them.
+function MiniPill({ label, className }: { label: string; className: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider",
+        className,
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
   if (status === "not_required") return null;
   const map = {
@@ -81,16 +98,7 @@ function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
     },
   } as const;
   const v = map[status];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider",
-        v.cls,
-      )}
-    >
-      {v.label}
-    </span>
-  );
+  return <MiniPill label={v.label} className={v.cls} />;
 }
 
 // Tap-to-expand proof-photo review, factored out of OrderCard's own render to
@@ -131,9 +139,10 @@ function ProofPhotoTrigger({
 function PrintBadge({ status }: { status: BoardOrder["print_status"] }) {
   if (status !== "failed") return null;
   return (
-    <span className="inline-flex items-center rounded-full bg-status-print-failed px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-white">
-      Print failed
-    </span>
+    <MiniPill
+      label="Print failed"
+      className="bg-status-print-failed text-white"
+    />
   );
 }
 
@@ -304,6 +313,7 @@ export function OrderCard({
   // reading "order #3" off the card shouldn't then see "#0847" in the
   // dialog asking them to confirm it.
   const number = displayNumber ?? order.order_number;
+  const numberSplit = splitTrailingDigit(number);
   const advance = ADVANCE[status];
   const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
   const paymentReviewNeeded = needsPaymentReview(status, payStatus);
@@ -544,7 +554,13 @@ export function OrderCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="font-mono text-xl font-bold tracking-tight">
-                #{number}
+                #{numberSplit.lead}
+                {/* Emphasized: staff slotting a pickup by a physical
+                    shelf's last-digit position (bubble-tea-chain style)
+                    read this digit first. */}
+                <span className="text-primary text-2xl">
+                  {numberSplit.last}
+                </span>
               </p>
               {!closed && !bumped && (
                 <AlertDialog>
@@ -595,9 +611,10 @@ export function OrderCard({
             <PaymentBadge status={payStatus} />
             <PrintBadge status={order.print_status} />
             {order.source === "walkup" && (
-              <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                Walk-up
-              </span>
+              <MiniPill
+                label="Walk-up"
+                className="bg-secondary text-muted-foreground"
+              />
             )}
           </div>
         </div>

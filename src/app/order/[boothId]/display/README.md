@@ -57,6 +57,12 @@ notice.
   choice follows from the use scene (a TV/kiosk screen at a market or
   event, day or night), not the visitor's own preference.
 
+  Every tile emphasizes its number's trailing digit (underlined, via
+  `splitTrailingDigit` in `@/lib/orders`) rather than the whole number
+  uniformly, so a vendor using a physical pickup-shelf-slot system
+  (bubble-tea-chain style — slotting an order by its last digit) can read
+  it at a glance, in both the Preparing and Ready columns.
+
   A `ready` order carries a **freshness** cue, not just a one-shot flash:
   it's a solid, bright `bg-primary` fill (the app's own warm accent, not
   a status/semantic color) for `FRESH_MS` (5 minutes) after it first went

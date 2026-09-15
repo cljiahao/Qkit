@@ -12,6 +12,9 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { notifyVendor } from "@/lib/merqo-customer-notify";
 import { createPrintJob } from "@/lib/printkit/client";
+import { displayOrderNumber } from "@/lib/orders";
+import { boardSettingsSchema } from "@/lib/schemas";
+import { sgtStartOfDayIso } from "@/lib/tz";
 
 /**
  * Redundant new-order channel: alerts the booth's vendor via merqo's shared
@@ -108,6 +111,35 @@ export async function notifyPrintkit(
       return;
     }
 
+    // Print the SAME number the vendor's board, the TV display, and the
+    // customer's own status page all show -- board_settings.daily_order_
+    // number_reset (see displayOrderNumber) rebases the permanent
+    // order_number to a per-day rank everywhere else in the app; printing
+    // the raw permanent number here would hand the customer a ticket whose
+    // last digit doesn't match anything staff or the customer see on
+    // screen, breaking a physical pickup-shelf-slot workflow keyed on it.
+    let labelOrderNumber = orderNumber;
+    const { data: vendor } = await service
+      .from("vendors")
+      .select("board_settings")
+      .eq("id", booth.vendor_id)
+      .maybeSingle();
+    const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
+    if (settings.success && settings.data.daily_order_number_reset) {
+      const { data: firstToday } = await service
+        .from("orders")
+        .select("order_number")
+        .eq("booth_id", boothId)
+        .gte("created_at", sgtStartOfDayIso())
+        .order("order_number", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      labelOrderNumber = displayOrderNumber(
+        orderNumber,
+        firstToday?.order_number ?? null,
+      );
+    }
+
     const result = await createPrintJob({
       vendorId: booth.vendor_id,
       orderId: order.id,
@@ -117,7 +149,7 @@ export async function notifyPrintkit(
       // would let anyone who knows a real (boothId, orderNumber) pair print
       // arbitrary text under that order's identity.
       customerName: order.customer_name,
-      orderNumber,
+      orderNumber: labelOrderNumber,
     });
 
     if (!result.ok) {

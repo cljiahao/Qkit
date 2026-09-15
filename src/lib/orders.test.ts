@@ -13,6 +13,7 @@ import {
   estimateRangeLabel,
   queuePositionLabel,
   displayOrderNumber,
+  splitTrailingDigit,
   needsPaymentReview,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
@@ -467,6 +468,21 @@ describe("displayOrderNumber", () => {
 
   it("falls back to the real order_number for a non-positive rank (data inconsistency)", () => {
     expect(displayOrderNumber("0001", "0005")).toBe("0001");
+  });
+});
+
+describe("splitTrailingDigit", () => {
+  it("splits leading digits from the trailing one", () => {
+    expect(splitTrailingDigit("0847")).toEqual({ lead: "084", last: "7" });
+    expect(splitTrailingDigit("003")).toEqual({ lead: "00", last: "3" });
+  });
+
+  it("returns an empty lead for a single-character number", () => {
+    expect(splitTrailingDigit("7")).toEqual({ lead: "", last: "7" });
+  });
+
+  it("returns both fields empty for null (no order_number yet)", () => {
+    expect(splitTrailingDigit(null)).toEqual({ lead: "", last: "" });
   });
 });
 
