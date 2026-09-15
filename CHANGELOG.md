@@ -20,7 +20,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `BackButton`, `ElevatedCard`, `SOCIAL_LINK_FIELDS`/`SocialLinksFields`,
   `MoneyInput`, and the landing `Footer` now come from `@merqo/ui`
-  (bumped to v0.29.0) instead of a qkit-local copy — each was confirmed
+  (bumped to v0.29.1) instead of a qkit-local copy — each was confirmed
   duplicated across 2 or more sibling kits before promoting, no behavior
   change intended.
 - The customer menu page's multi-section jump nav is now a sticky sidebar
