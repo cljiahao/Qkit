@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/lib/action-result";
 
 const optionSchema = z.enum(["event", "monthly"]);
@@ -22,6 +23,18 @@ export async function requestUpgrade(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Please sign in first" };
+
+  // The idempotency check below only blocks a repeat of the SAME kind while
+  // pending -- an authenticated vendor could still script alternating
+  // event/monthly calls to flood the admin queue without this.
+  const allowed = await rateLimit(
+    supabase,
+    `upgrade-request:${user.id}`,
+    5,
+    60,
+  );
+  if (!allowed)
+    return { success: false, error: "Too many requests. Wait a moment." };
 
   const { data: existing } = await supabase
     .from("purchase_requests")

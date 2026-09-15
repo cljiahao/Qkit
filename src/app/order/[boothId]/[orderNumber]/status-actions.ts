@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { boardSettingsSchema, parseOrderRef } from "@/lib/schemas";
 import { ordersAheadOf } from "@/lib/orders";
 import { estimateWaitSeconds, type StatsOrder } from "@/lib/stats";
@@ -36,6 +36,13 @@ export async function getOrderStatus(
   if (!parseOrderRef(boothId, orderNumber, token).ok) return null;
 
   const supabase = await createServiceClient();
+
+  // The token itself can't be brute-forced (122-bit random), but whoever
+  // already holds one could script polling far faster than the page's own
+  // 5s cadence to amplify DB load — cap well above normal single-tab usage.
+  const allowed = await rateLimit(supabase, `order-status:${token}`, 30, 60);
+  if (!allowed) return null;
+
   // maybeSingle (not single): a not-yet-readable / unknown order is a normal
   // null, not an error — only real DB/network failures should surface in logs.
   // The token match is what authorizes the read (booth_id + number aren't secret).
@@ -150,6 +157,11 @@ export async function getWaitEstimate(
   if (!parseOrderRef(boothId, orderNumber, token).ok) return null;
 
   const supabase = await createServiceClient();
+
+  // Same rationale as getOrderStatus's own guard — this is the more
+  // expensive of the two (three reads, not one), polled at the same cadence.
+  const allowed = await rateLimit(supabase, `wait-estimate:${token}`, 30, 60);
+  if (!allowed) return null;
 
   const { data: target, error: targetError } = await supabase
     .from("orders")
