@@ -463,7 +463,7 @@ export function OrderForm({
         <div className="flex items-start gap-3 md:gap-6">
           <nav
             aria-label="Menu sections"
-            className="sticky top-4 flex w-16 shrink-0 flex-col gap-2 self-start overflow-y-auto text-sm md:w-40 md:gap-1.5"
+            className="sticky top-4 flex w-20 shrink-0 flex-col gap-2 self-start overflow-y-auto text-sm md:w-40 md:gap-1.5"
             style={{ maxHeight: "calc(100dvh - 2rem)" }}
           >
             {sections.map((s) => {
@@ -472,15 +472,15 @@ export function OrderForm({
                 <a
                   key={s.id}
                   href={`#section-${s.id}`}
-                  className="flex flex-col items-center gap-1 rounded-lg border border-border p-1.5 text-center font-medium text-muted-foreground md:flex-row md:gap-2 md:p-2 md:text-left"
+                  className="flex flex-col items-center gap-1.5 rounded-lg border border-border p-2 text-center font-medium text-muted-foreground md:flex-row md:gap-2 md:p-2 md:text-left"
                 >
                   {thumb && (
-                    <div className="relative size-10 shrink-0 overflow-hidden rounded-md border border-border md:size-9">
+                    <div className="relative size-12 shrink-0 overflow-hidden rounded-md border border-border md:size-9">
                       <MediaImage
                         src={thumb}
                         alt=""
                         fill
-                        sizes="2.5rem"
+                        sizes="3rem"
                         className="object-cover"
                       />
                     </div>
