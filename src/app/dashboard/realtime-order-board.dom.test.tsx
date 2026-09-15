@@ -22,6 +22,8 @@ function order(overrides: Partial<BoardOrder> = {}): BoardOrder {
     payment_status: "not_required",
     payment_method_kind: null,
     paid_at: null,
+    payment_proof_path: null,
+    payment_proof_hash: null,
     print_status: "not_required",
     print_status_updated_at: null,
     created_at: "2026-06-12T04:00:00Z",
@@ -69,6 +71,7 @@ vi.mock("./walkup-menu-actions", () => ({ getWalkupMenu: vi.fn() }));
 vi.mock("./walkup-actions", () => ({ placeWalkupOrder: vi.fn() }));
 vi.mock("./order-actions", () => ({
   sweepReadyOrders: vi.fn(),
+  sweepAbandonedPayments: vi.fn(),
   advanceOrder: vi.fn(),
 }));
 
@@ -517,5 +520,57 @@ describe("RealtimeOrderBoard incoming/accepted split", () => {
 
     expect(screen.queryByText(/^Incoming/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Accepted/)).not.toBeInTheDocument();
+  });
+});
+
+describe("RealtimeOrderBoard payment filter", () => {
+  it("hides a pending-payment QR order from the board", () => {
+    const orders = [
+      order({
+        id: "1",
+        order_number: "0001",
+        status: "pending",
+        payment_status: "pending",
+        source: "qr",
+      }),
+      order({
+        id: "2",
+        order_number: "0002",
+        status: "pending",
+        payment_status: "not_required",
+        source: "qr",
+      }),
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={orders}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText(/#0001/)).not.toBeInTheDocument();
+    expect(screen.getByText(/#0002/)).toBeInTheDocument();
+  });
+
+  it("still shows a pending-payment walk-up order", () => {
+    const orders = [
+      order({
+        id: "1",
+        order_number: "0001",
+        status: "pending",
+        payment_status: "pending",
+        source: "walkup",
+      }),
+    ];
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={orders}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText(/#0001/)).toBeInTheDocument();
   });
 });

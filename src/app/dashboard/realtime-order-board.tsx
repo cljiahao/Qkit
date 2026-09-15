@@ -51,7 +51,11 @@ import {
 import { boothColor } from "@/lib/booth-color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
-import { advanceOrder, sweepReadyOrders } from "./order-actions";
+import {
+  advanceOrder,
+  sweepReadyOrders,
+  sweepAbandonedPayments,
+} from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
@@ -443,6 +447,7 @@ export function RealtimeOrderBoard({
   }, []);
 
   function handleNewOrder(order: BoardOrder) {
+    if (order.order_number == null) return;
     void playSound(boardSettings.sound_id);
     toast(`New order #${order.order_number} · ${order.customer_name}`);
     if (document.hidden) {
@@ -474,8 +479,23 @@ export function RealtimeOrderBoard({
     { intervalMs: 30_000, enabled: boardSettings.ready_auto_clear_min != null },
   );
 
+  // Abandoned-payment sweep: cancels pending QR orders older than 30 minutes.
+  // Unconditional (no vendor setting gate) — this is baseline hygiene, not an
+  // opt-in preference. Separate from the ready-orders sweep since its condition
+  // and frequency may differ in the future.
+  usePolling(
+    useCallback(async () => {
+      await sweepAbandonedPayments();
+    }, []),
+    { intervalMs: 30_000, enabled: true },
+  );
+
   const active = sortActiveOrders(
-    orders.filter((o) => !isTerminal(o.status) || undoWindowIds.has(o.id)),
+    orders.filter(
+      (o) =>
+        (!isTerminal(o.status) || undoWindowIds.has(o.id)) &&
+        !(o.payment_status === "pending" && o.source === "qr"),
+    ),
     sortOrder,
   );
   const activeCountFor = (id: string) =>
@@ -531,6 +551,7 @@ export function RealtimeOrderBoard({
   const accepted = visible.filter((o) => o.status !== "pending");
 
   function renderCard(order: BoardOrder) {
+    if (order.order_number == null) return null;
     return (
       <OrderCard
         key={order.id}

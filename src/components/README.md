@@ -106,7 +106,19 @@ selected, onToggleSelect })`: the
   arrival timestamp (`sgtClock`, bare time — or `shortDateTime`, date+time,
   when `showDate` is set, for the completed-orders history list where every
   card isn't from today), expandable item options, and the advance/cancel/
-  confirm-payment action buttons wired to `@/app/dashboard/order-actions`.
+  confirm-payment action buttons wired to `@/app/dashboard/order-actions`. A
+  still-`pending` order with an outstanding payment claim (`payment_status`
+  not `confirmed`/`not_required` — keyed on order state via `needsPaymentReview`
+  in `@/lib/orders`, not `order.source`, so an unpaid walk-up order gets it
+  too) collapses the separate confirm-payment and Start-now buttons into one
+  "Mark paid & start" tap (`confirmPaymentAndStart`) — there's no real
+  scenario where a vendor confirms payment without also starting the order.
+  Its undo (within the same `undoMs` window as every other advance) calls the
+  dedicated `revertPaymentAndStart` rather than `revertOrderAdvance`, which
+  only restores `payment_status` when reverting from `completed`, not
+  `preparing`; the card's `pendingUndo` state carries an `action:
+"advance" | "paymentAndStart"` tag so its one undo button dispatches to
+  whichever action made the original change.
   Advancing (Mark Ready/Mark Picked Up) fires instantly — no confirm gate on
   a tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
   (default `DEFAULT_UNDO_MS`, 4s; vendor-configurable via
@@ -148,10 +160,19 @@ selected, onToggleSelect })`: the
   by the board only for `preparing` orders while its own batch mark-ready
   mode is on) renders a `Checkbox` (`selected`, `onToggleSelect(order.id)`)
   next to the name/number block — selection state and the bulk `advanceOrder`
-  call itself live on `RealtimeOrderBoard`, not here.
+  call itself live on `RealtimeOrderBoard`, not here. A non-terminal order
+  with `payment_status === "claimed"` and an uploaded proof photo also shows
+  a dashed "View payment proof" toggle (`ProofPhotoTrigger`, local to this
+  file) that lazily mounts `PaymentProofViewer` (`./payment-proof-viewer.tsx`,
+  `next/dynamic`) only once expanded, so the OCR worker never loads for a
+  card the vendor hasn't opened.
 - `order-card.dom.test.tsx` — RTL tests for `OrderCard`'s status/payment
   transitions, action-button wiring, the `displayNumber` override, the
-  walk-up origin badge, and the batch-select checkbox.
+  walk-up origin badge, the batch-select checkbox, and the reconciled "Mark
+  paid & start" review action — the merged button (not two) for a pending
+  order with an outstanding payment claim, on both a QR and a walk-up order,
+  the plain Start-now button once payment is already settled, and that
+  tapping/undoing it calls `confirmPaymentAndStart`/`revertPaymentAndStart`.
 - `order-status-badge.tsx` — `OrderStatusBadge({ status })`: a colour-coded
   pill for each `OrderStatus` (pending/confirmed/preparing/ready/completed/
   cancelled), shared by the dashboard board and the customer status page.
@@ -170,6 +191,27 @@ alwaysShowCount })`: client-side pager over pre-rendered rows —
   rows sit in their own `className`-styled wrapper, separate from the
   prev/next or Load-more row — a grid `className` (e.g. the completed-orders
   page) lays out only the rows, not the pager controls.
+- `payment-proof-viewer.dom.test.tsx` — RTL tests for `PaymentProofViewer`'s
+  no-photo (renders nothing), duplicate-order-flag, and OCR amount-match/
+  mismatch/failure branches, with `tesseract.js` and the two `proof-actions.ts`
+  reads mocked.
+- `payment-proof-viewer.tsx` — `PaymentProofViewer({ orderId,
+expectedAmountCents })`: `"use client"`, always dynamically imported
+  (`order-card.tsx`'s `ProofPhotoTrigger`) so `tesseract.js` never loads for a
+  card the vendor hasn't opened. On mount, fetches the signed proof-photo URL
+  and any duplicate-hash match (`@/app/dashboard/proof-actions`) in parallel,
+  renders nothing until a photo URL resolves, then shows the photo plus a
+  duplicate-photo warning ("This photo was already used for order #N") when
+  one exists. Separately spins up a self-hosted (`/public/tesseract`, not the
+  default jsDelivr CDN — keeps every asset same-origin under this app's CSP,
+  which has no third-party `script-src`/`connect-src` allowance) `tesseract.js`
+  worker (`workerBlobURL: false`, since this app's CSP has no `worker-src`/
+  `child-src` to permit the library's default `blob:` worker spawn) to OCR the
+  photo and compares the recognized text against `expectedAmountCents`,
+  showing "Looks like $X.XX, paid" or "Couldn't confirm the amount, check
+  manually" — a hint only, never blocking the vendor's own manual review
+  action, and any OCR failure (worker init, recognition) just leaves the hint
+  unset rather than surfacing an error.
 - `pro-lock.tsx` — `ProLock({ feature, label })`: an inline upgrade nudge
   linking to `/dashboard/plan`, logging an `upgrade_cta` event tagged with
   the specific gated `feature` for funnel analysis.
@@ -252,7 +294,10 @@ landing route. `order-card.tsx` and
 `dashboard-tour.tsx` are consumed by the vendor dashboard
 (`src/app/dashboard`); `ticket.tsx`/`ticket-section.tsx` are the shared card
 shell used by both the dashboard and the ordering flow. `feedback-form.tsx` posts
-to a server action under `src/app/actions/`.
+to a server action under `src/app/actions/`. `payment-proof-viewer.tsx`
+(dynamically imported by `order-card.tsx`) calls `src/app/dashboard/
+proof-actions.ts` for its signed photo URL and duplicate-hash lookup, and
+loads its self-hosted `tesseract.js` assets from `/public/tesseract`.
 
 ## Parent
 

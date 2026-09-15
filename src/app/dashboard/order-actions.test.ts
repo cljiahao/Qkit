@@ -2,10 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   advanceOrder,
   confirmOrderPayment,
+  confirmPaymentAndStart,
+  revertPaymentAndStart,
   cancelOrder,
   bumpOrder,
   restoreAutoCompleted,
   sweepReadyOrders,
+  sweepAbandonedPayments,
 } from "./order-actions";
 
 // Mock the supabase server client's fluent chain and the vendor gate. Two
@@ -16,7 +19,8 @@ import {
 // branch (select→eq→maybeSingle) for sweepReadyOrders' board_settings read;
 // `update(...)` on the orders branch also exposes a `.eq().lt(...).select(...)`
 // chain for the sweep's bulk update (returns the swept ids) alongside the
-// existing `.eq().eq().select(...)`.
+// existing `.eq().eq().select(...)`. The sweep chain now supports multiple
+// `.eq()` calls (for sweepAbandonedPayments which needs 3 filters).
 const {
   getUserMock,
   maybeSingle,
@@ -25,24 +29,33 @@ const {
   vendorSingle,
   sweepLt,
   sweepSelect,
+  sweepEqMock,
 } = vi.hoisted(() => {
   const updateSelect = vi.fn();
   const sweepSelect = vi.fn();
   const sweepLt = vi.fn(() => ({ select: sweepSelect }));
   const vendorSingle = vi.fn();
+
+  // Create a recursive chain that supports unlimited .eq() calls followed by .lt().
+  // All .eq() calls share the same mock (sweepEqMock) so tests can assert on the
+  // full filter chain.
+  let sweepEqMock: any;
+  const createChain = (): any => ({
+    eq: sweepEqMock,
+    lt: sweepLt,
+    select: updateSelect,
+  });
+  sweepEqMock = vi.fn(() => createChain());
+
   return {
     getUserMock: vi.fn(),
     maybeSingle: vi.fn(),
-    update: vi.fn(() => ({
-      eq: () => ({
-        eq: () => ({ select: updateSelect }),
-        lt: sweepLt,
-      }),
-    })),
+    update: vi.fn(() => createChain()),
     updateSelect,
     vendorSingle,
     sweepLt,
     sweepSelect,
+    sweepEqMock,
   };
 });
 
@@ -116,6 +129,7 @@ beforeEach(() => {
       },
     },
   });
+  sweepEqMock.mockClear();
   sweepLt.mockClear();
   sweepSelect.mockReset().mockResolvedValue({ data: [], error: null });
   recordAuditMock.mockReset().mockResolvedValue(undefined);
@@ -302,6 +316,195 @@ describe("advanceOrder", () => {
       success: false,
       error: "Order changed — please refresh.",
     });
+  });
+});
+
+describe("confirmPaymentAndStart", () => {
+  it("confirms payment via paykit and advances to preparing in one write", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+    expect(createCheckoutMock).toHaveBeenCalledWith({
+      vendorId: "v1",
+      amountCents: 800,
+      orderRef: ID,
+    });
+    expect(confirmCheckoutMock).toHaveBeenCalledWith("tx1");
+    expect(update).toHaveBeenCalledWith({
+      status: "preparing",
+      payment_status: "confirmed",
+    });
+  });
+
+  it("refuses when payment is already confirmed", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "pending", payment_status: "confirmed" },
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order can't be advanced",
+    });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refuses when status isn't pending", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "claimed" },
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order can't be advanced",
+    });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a refresh when the order changed concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed -- please refresh.",
+    });
+  });
+
+  it("treats a lost race as success when a concurrent call already confirmed+advanced it", async () => {
+    maybeSingle
+      .mockResolvedValueOnce({
+        data: {
+          id: ID,
+          status: "pending",
+          payment_status: "claimed",
+          total_cents: 800,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { status: "preparing", payment_status: "confirmed" },
+      });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+  });
+
+  it("still reports a refresh on a lost race if the order was cancelled instead", async () => {
+    maybeSingle
+      .mockResolvedValueOnce({
+        data: {
+          id: ID,
+          status: "pending",
+          payment_status: "claimed",
+          total_cents: 800,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { status: "cancelled", payment_status: "confirmed" },
+      });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed -- please refresh.",
+    });
+  });
+
+  it("reports a failure when paykit's checkout call fails", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    createCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({ success: false, error: "Failed to confirm payment" });
+    expect(confirmCheckoutMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure when paykit's confirm call fails", async () => {
+    maybeSingle.mockResolvedValue({
+      data: {
+        id: ID,
+        status: "pending",
+        payment_status: "claimed",
+        total_cents: 800,
+      },
+    });
+    confirmCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await confirmPaymentAndStart(ID);
+    expect(res).toEqual({ success: false, error: "Failed to confirm payment" });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid order id before touching the DB", async () => {
+    const res = await confirmPaymentAndStart("not-a-uuid");
+    expect(res.success).toBe(false);
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("revertPaymentAndStart", () => {
+  it("reverts status only, leaving payment_status confirmed (paykit's confirm can't be undone)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "confirmed" },
+    });
+    const res = await revertPaymentAndStart(ID, "claimed");
+    expect(res).toEqual({ success: true, status: "pending" });
+    expect(update).toHaveBeenCalledWith({ status: "pending" });
+  });
+
+  it("reports a refresh when the order changed concurrently (0 rows)", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "confirmed" },
+    });
+    updateSelect.mockResolvedValue({ data: [], error: null });
+    const res = await revertPaymentAndStart(ID, "claimed");
+    expect(res).toEqual({
+      success: false,
+      error: "Order changed -- please refresh.",
+    });
+  });
+
+  it("rejects an invalid order id before touching the DB", async () => {
+    const res = await revertPaymentAndStart("not-a-uuid", "claimed");
+    expect(res.success).toBe(false);
+    expect(getUserMock).not.toHaveBeenCalled();
   });
 });
 
@@ -672,5 +875,66 @@ describe("sweepReadyOrders", () => {
     getUserMock.mockResolvedValue(null);
     await sweepReadyOrders();
     expect(vendorSingle).not.toHaveBeenCalled();
+  });
+});
+
+describe("sweepAbandonedPayments", () => {
+  it("cancels a pending-payment qr order older than 30 minutes", async () => {
+    sweepSelect.mockResolvedValue({ data: [{ id: ID }], error: null });
+    await sweepAbandonedPayments();
+    expect(update).toHaveBeenCalledWith({ status: "cancelled" });
+    expect(sweepLt).toHaveBeenCalledWith("created_at", expect.any(String));
+  });
+
+  it("filters on payment_status=pending, source=qr, status=pending", async () => {
+    sweepSelect.mockResolvedValue({ data: [], error: null });
+    await sweepAbandonedPayments();
+    // Verify the filter chain: .eq("payment_status", "pending").eq("source", "qr").eq("status", "pending").lt("created_at", cutoff)
+    expect(update).toHaveBeenCalledWith({ status: "cancelled" });
+    expect(sweepEqMock).toHaveBeenCalledWith("payment_status", "pending");
+    expect(sweepEqMock).toHaveBeenCalledWith("source", "qr");
+    expect(sweepEqMock).toHaveBeenCalledWith("status", "pending");
+    expect(sweepLt).toHaveBeenCalledWith("created_at", expect.any(String));
+  });
+
+  it("records an order_status_events row for each cancelled order, but no admin_audit entry", async () => {
+    const OTHER = "00000000-0000-4000-8000-000000000002";
+    sweepSelect.mockResolvedValue({
+      data: [{ id: ID }, { id: OTHER }],
+      error: null,
+    });
+    await sweepAbandonedPayments();
+    expect(recordOrderStatusEventMock).toHaveBeenCalledTimes(2);
+    expect(recordOrderStatusEventMock).toHaveBeenCalledWith({
+      order_id: ID,
+      from_status: "pending",
+      to_status: "cancelled",
+      actor: "v1",
+    });
+    expect(recordOrderStatusEventMock).toHaveBeenCalledWith({
+      order_id: OTHER,
+      from_status: "pending",
+      to_status: "cancelled",
+      actor: "v1",
+    });
+    expect(recordAuditMock).not.toHaveBeenCalled();
+  });
+
+  it("records nothing when no order was old enough to sweep", async () => {
+    sweepSelect.mockResolvedValue({ data: [], error: null });
+    await sweepAbandonedPayments();
+    expect(recordOrderStatusEventMock).not.toHaveBeenCalled();
+  });
+
+  it("logs and stops without recording anything when the sweep update errors", async () => {
+    sweepSelect.mockResolvedValue({ data: null, error: { message: "boom" } });
+    await sweepAbandonedPayments();
+    expect(recordOrderStatusEventMock).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when not signed in", async () => {
+    getUserMock.mockResolvedValue(null);
+    await sweepAbandonedPayments();
+    expect(update).not.toHaveBeenCalled();
   });
 });

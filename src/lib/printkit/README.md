@@ -38,7 +38,7 @@ orderNumber})`: fires a job-creation request and returns a
 
 ## Connectivity
 
-`createPrintJob` is called from `src/app/o/[code]/actions.ts`
+`createPrintJob` is called from `src/app/o/[code]/notify.ts`
 (`notifyPrintkit`, fired best-effort from `placeOrder` after a successful
 order, gated on the booth's `print_enabled` — looks up the order's real `id`
 itself, since `place_order`'s RPC output carries none, and marks

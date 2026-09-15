@@ -121,6 +121,7 @@ describe("BoothForm walk-up-default toggle", () => {
           requires_arrival_confirm: false,
           walkup_default: true,
           print_enabled: false,
+          printkit_location_id: null,
           paykit_booking_id: null,
         }}
       />,
@@ -150,6 +151,7 @@ describe("BoothForm walk-up-default toggle", () => {
           requires_arrival_confirm: false,
           walkup_default: true,
           print_enabled: false,
+          printkit_location_id: null,
           paykit_booking_id: null,
         }}
       />,
@@ -219,6 +221,7 @@ describe("BoothForm paykit booking id", () => {
           requires_arrival_confirm: false,
           walkup_default: true,
           print_enabled: false,
+          printkit_location_id: null,
           paykit_booking_id: "book-42",
           bookingStatus: {
             bookingId: "book-42",
@@ -293,6 +296,7 @@ describe("BoothForm menu section", () => {
           requires_arrival_confirm: false,
           walkup_default: false,
           print_enabled: false,
+          printkit_location_id: null,
           paykit_booking_id: null,
         }}
       />,
@@ -322,6 +326,7 @@ describe("BoothForm menu section", () => {
           requires_arrival_confirm: false,
           walkup_default: false,
           print_enabled: false,
+          printkit_location_id: null,
           paykit_booking_id: null,
         }}
       />,

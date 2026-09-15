@@ -125,7 +125,7 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   }
 
   // Same fire-and-forget pattern as notifyVendorTelegram in
-  // src/app/o/[code]/actions.ts: notifyCustomer already never throws on its
+  // src/app/o/[code]/notify.ts: notifyCustomer already never throws on its
   // own, but this call site still wraps it so nothing here can ever change
   // advanceOrder's own returned result below.
   if (
@@ -221,6 +221,154 @@ export async function revertOrderAdvance(
   }
 
   return { success: true, status: revertTo };
+}
+
+/**
+ * Reconciled "Mark paid & start" review action: there's no real scenario
+ * where a vendor confirms payment on a still-pending order without also
+ * starting it, so this does both in one write instead of two separate taps.
+ * Rejects an order that isn't pending, or whose payment is already settled
+ * (confirmed/not_required) — those cases keep using the plain advance button.
+ * Confirms via paykit first, same as confirmOrderPayment, so a claimPayment
+ * transaction doesn't stay stuck at "claimed" on paykit's side.
+ */
+export async function confirmPaymentAndStart(
+  orderId: string,
+): Promise<
+  ActionResult<{ status: OrderStatus; prevPaymentStatus: PaymentStatus }>
+> {
+  if (!idSchema.safeParse(orderId).success)
+    return { success: false, error: "Invalid order" };
+
+  const { supabase, order, userId } = await loadOwnOrder(orderId);
+  if (!supabase || !order || !userId)
+    return { success: false, error: "Order not found" };
+
+  if (
+    order.status !== "pending" ||
+    order.payment_status === "confirmed" ||
+    order.payment_status === "not_required"
+  )
+    return { success: false, error: "Order can't be advanced" };
+
+  const prevPaymentStatus = order.payment_status;
+
+  const checkout = await createCheckout({
+    vendorId: userId,
+    amountCents: order.total_cents,
+    orderRef: order.id,
+  });
+  if (!checkout.ok) {
+    console.error(
+      "confirmPaymentAndStart: paykit checkout failed",
+      checkout.error,
+    );
+    return { success: false, error: "Failed to confirm payment" };
+  }
+  const confirm = await confirmCheckout(checkout.data.transactionId);
+  if (!confirm.ok) {
+    console.error(
+      "confirmPaymentAndStart: paykit confirm failed",
+      confirm.error,
+    );
+    return { success: false, error: "Failed to confirm payment" };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({ status: "preparing", payment_status: "confirmed" })
+    .eq("id", orderId)
+    .eq("status", order.status)
+    .select("id");
+  if (error) {
+    console.error("confirmPaymentAndStart failed", error.message);
+    return { success: false, error: "Failed to update order" };
+  }
+  if (!rows || rows.length === 0) {
+    // paykit's confirm above already happened for real -- a lost race here
+    // doesn't necessarily mean it's safe to report success (the concurrent
+    // change could just as well be a cancel), so re-read rather than assume
+    // either way. Only a concurrent call that already reached the same
+    // confirmed+advanced state counts as "already done"; anything else
+    // (still pending, or cancelled) is a genuine conflict.
+    const { data: current } = await supabase
+      .from("orders")
+      .select("status, payment_status")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (
+      current &&
+      current.status !== "pending" &&
+      current.status !== "cancelled" &&
+      current.payment_status === "confirmed"
+    ) {
+      return { success: true, status: current.status, prevPaymentStatus };
+    }
+    return { success: false, error: "Order changed -- please refresh." };
+  }
+
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: "pending",
+      to_status: "preparing",
+      actor: userId,
+    });
+    await recordAudit({
+      admin_id: userId,
+      action: "confirm_payment_and_start",
+      target_id: orderId,
+      detail: { prevPaymentStatus },
+    });
+  }
+
+  return { success: true, status: "preparing", prevPaymentStatus };
+}
+
+/**
+ * Undo a just-made confirmPaymentAndStart call within its short undo window —
+ * but only the "start" half. Unlike revertOrderAdvance's own undo,
+ * payment_status is deliberately left alone: confirmPaymentAndStart's
+ * paykit confirm already happened for real and paykit has no "unconfirm"
+ * capability, so reverting the local mirror back to pending/claimed would
+ * make qkit lie about money paykit still shows as confirmed — same
+ * no-refund-rail principle cancelOrder already applies to a confirmed
+ * payment. `prevPaymentStatus` is kept only so this shares a call
+ * signature with revertOrderAdvance at the one dispatch site (order-card.tsx).
+ */
+export async function revertPaymentAndStart(
+  orderId: string,
+  _prevPaymentStatus: PaymentStatus,
+): Promise<ActionResult<{ status: OrderStatus }>> {
+  if (!idSchema.safeParse(orderId).success)
+    return { success: false, error: "Invalid order" };
+
+  const { supabase, userId } = await loadOwnOrder(orderId);
+  if (!supabase) return { success: false, error: "Order not found" };
+
+  const { data: rows, error } = await supabase
+    .from("orders")
+    .update({ status: "pending" })
+    .eq("id", orderId)
+    .eq("status", "preparing")
+    .select("id");
+  if (error) {
+    console.error("revertPaymentAndStart failed", error.message);
+    return { success: false, error: "Failed to revert order" };
+  }
+  if (!rows || rows.length === 0)
+    return { success: false, error: "Order changed -- please refresh." };
+
+  if (userId) {
+    await recordOrderStatusEvent({
+      order_id: orderId,
+      from_status: "preparing",
+      to_status: "pending",
+      actor: userId,
+    });
+  }
+
+  return { success: true, status: "pending" };
 }
 
 /**
@@ -509,6 +657,52 @@ export async function sweepReadyOrders(): Promise<void> {
       order_id: id,
       from_status: "ready",
       to_status: "completed",
+      actor: user.id,
+    });
+  }
+}
+
+const ABANDONED_PAYMENT_MS = 30 * 60_000;
+
+/**
+ * Abandoned-payment sweep: cancels every pending QR order older than 30
+ * minutes. No vendor setting gate — this is baseline hygiene, not an opt-in
+ * preference. No id param — bulk, RLS-scoped to the caller's own booths
+ * (orders_vendor_update) exactly like every other mutation here. Called on a
+ * client poll (realtime-order-board.tsx) rather than a DB cron job, matching
+ * this codebase's existing usePolling pattern. Returns void: this is a
+ * background sweep the caller doesn't surface a toast for — a real failure is
+ * logged, and the next poll simply retries.
+ */
+export async function sweepAbandonedPayments(): Promise<void> {
+  const user = await getUser();
+  if (!user) return;
+
+  const supabase = await createServerClient();
+  const cutoff = new Date(Date.now() - ABANDONED_PAYMENT_MS).toISOString();
+
+  const { data: swept, error } = await supabase
+    .from("orders")
+    .update({ status: "cancelled" })
+    .eq("payment_status", "pending")
+    .eq("source", "qr")
+    .eq("status", "pending")
+    .lt("created_at", cutoff)
+    .select("id");
+  if (error) {
+    console.error("sweepAbandonedPayments failed", error.message);
+    return;
+  }
+
+  // Log the same real column transition each swept order just got, one
+  // order_status_events row per order — no admin_audit entry here (this is
+  // an automatic sweep, not a deliberate vendor decision, matching the
+  // no-toast/logged-only failure handling this function already uses).
+  for (const { id } of swept ?? []) {
+    await recordOrderStatusEvent({
+      order_id: id,
+      from_status: "pending",
+      to_status: "cancelled",
       actor: user.id,
     });
   }

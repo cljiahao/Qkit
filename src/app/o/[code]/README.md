@@ -16,34 +16,50 @@ the current (non-legacy) customer ordering entry point.
   prefixes (`ORDER_EXPIRED`/`ORDER_UNSERVABLE`/`ORDER_SOLD_OUT`/
   `ORDER_ITEM_UNAVAILABLE`/`ORDER_RATE_LIMITED`) to customer-facing messages
   via `messageFor()`, logs only the genuinely-unexpected failures, and on
-  success fires the `order_placed` analytics event, fires
+  success fires the `order_placed` analytics event, then fires
+  `notifyVendorTelegram`/`notifyPrintkit` (from `./notify.ts`, see below) and
+  returns `{ orderNumber, boothId, accessToken }`.
+- `notify.ts` — **not** a `"use server"` file, deliberately: every export of
+  a `"use server"` file becomes its own independently client-callable Server
+  Action regardless of who imports it, and these two are only ever meant to
+  be called from `placeOrder` here and `claimPayment`
+  (`order/[boothId]/[orderNumber]/payment-actions.ts`) — never a client
+  component. Keeping them in a plain module closes that unintended public
+  endpoint (a client that knew a real `boothId`/`orderNumber` could otherwise
+  invoke either directly, bypassing `placeOrder`'s own validation and rate
+  limit entirely).
   `notifyVendorTelegram(boothId, orderNumber)` (a redundant vendor alert via
-  merqo's shared Telegram bot), and returns
-  `{ orderNumber, boothId, accessToken }`. `notifyVendorTelegram` is
-  entirely best-effort and wrapped in its own try/catch: it resolves the
-  booth's `vendor_id`, looks up the order's `total_cents` for the message
-  text (both via the service-role client — no vendor session exists in this
-  customer-facing action), then calls `@/lib/merqo-customer-notify`'s
-  `notifyVendor(vendorId, message)` — a merqo outage or a vendor who never
-  connected can never affect `placeOrder`'s own returned result. See
+  merqo's shared Telegram bot) is entirely best-effort and wrapped in its own
+  try/catch: it resolves the booth's `vendor_id`, looks up the order's
+  `total_cents` for the message text (both via the service-role client — no
+  vendor session exists in this customer-facing action), then calls
+  `@/lib/merqo-customer-notify`'s `notifyVendor(vendorId, message)` — a
+  merqo outage or a vendor who never connected can never affect
+  `placeOrder`'s own returned result. See
   `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`
   (Phase A2 — supersedes qkit's own retired bot, formerly
-  `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`). Also
-  fires `notifyPrintkit(boothId, orderNumber, customerName)` on success —
-  same best-effort, wrapped-in-its-own-try/catch contract. It looks up the
+  `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`).
+  `notifyPrintkit(boothId, orderNumber)` fires on success — same
+  best-effort, wrapped-in-its-own-try/catch contract. It looks up the
   booth's `vendor_id` and `print_enabled`, returning silently (no log) when
   printing isn't enabled for that booth — before doing the order lookup, so
   a disabled booth never pays for it. Otherwise it resolves the order's
-  real `id` (the `place_order` RPC output carries none, only
-  `order_number`/`booth_id`/`access_token` — migration `0075`), calls
-  `@/lib/printkit/client`'s `createPrintJob` (which now also takes
-  `boothId`, logging on a non-ok result),
-  and on a successful job creation marks `orders.print_status = 'queued'`
-  (migration `0081`) — conditioned on `print_status = 'not_required'` so a
-  terminal status from printkit's own callback route landing first can
-  never be overwritten back to `'queued'` — so the column doesn't lie about
-  a job that's genuinely in progress for the whole window before that
-  callback lands. Logs (doesn't discard) an update failure too.
+  real `id` and its own stored `customer_name` (the `place_order` RPC output
+  carries neither, only `order_number`/`booth_id`/`access_token` — migration
+  `0075`; printing the order's own stored name, not a caller-supplied one,
+  is what closes the same public-endpoint gap above from the print side),
+  calls `@/lib/printkit/client`'s `createPrintJob` (logging on a non-ok
+  result), and on a successful job creation marks
+  `orders.print_status = 'queued'` (migration `0081`) — conditioned on
+  `print_status = 'not_required'` so a terminal status from printkit's own
+  callback route landing first can never be overwritten back to `'queued'`
+  — so the column doesn't lie about a job that's genuinely in progress for
+  the whole window before that callback lands. Logs (doesn't discard) an
+  update failure too. Both functions are `export`ed so
+  `order/[boothId]/[orderNumber]/payment-actions.ts`'s `claimPayment` can
+  fire the same two calls at claim time for a payment-required order
+  (numbering + vendor notification are deferred to a successful claim
+  there, not `placeOrder` time) without duplicating either function's logic.
 - `actions.place-order.test.ts` — unit tests (RPC mocked) covering: the
   expired-code message mapping, a successful order, the action-level flood
   guard rejecting before `place_order` is ever called, fail-open behaviour

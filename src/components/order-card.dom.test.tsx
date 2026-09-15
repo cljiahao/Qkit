@@ -2,10 +2,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { OrderCard } from "./order-card";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { sgtClock, shortDateTime } from "@/lib/tz";
-import type { Order } from "@/lib/types";
+import type { BoardOrder } from "@/lib/types";
 
 // The card delegates mutations to server actions (order-actions.ts). We mock
 // those and assert the card calls the right one with the order id; the patch
@@ -13,6 +14,8 @@ import type { Order } from "@/lib/types";
 const {
   advanceOrder,
   confirmOrderPayment,
+  confirmPaymentAndStart,
+  revertPaymentAndStart,
   cancelOrder,
   bumpOrder,
   revertOrderAdvance,
@@ -20,6 +23,8 @@ const {
 } = vi.hoisted(() => ({
   advanceOrder: vi.fn(),
   confirmOrderPayment: vi.fn(),
+  confirmPaymentAndStart: vi.fn(),
+  revertPaymentAndStart: vi.fn(),
   cancelOrder: vi.fn(),
   bumpOrder: vi.fn(),
   revertOrderAdvance: vi.fn(),
@@ -29,15 +34,35 @@ const {
 vi.mock("@/app/dashboard/order-actions", () => ({
   advanceOrder,
   confirmOrderPayment,
+  confirmPaymentAndStart,
+  revertPaymentAndStart,
   cancelOrder,
   bumpOrder,
   revertOrderAdvance,
   restoreAutoCompleted,
 }));
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-function makeOrder(overrides: Partial<Order> = {}): Order {
+// PaymentProofViewer is dynamically imported (next/dynamic, see order-card.tsx)
+// and heavy (pulls in tesseract.js on demand) — its own rendering/OCR/duplicate
+// logic is covered by payment-proof-viewer.dom.test.tsx. Here we only assert
+// the wiring: the trigger's visibility rules and the props it's given.
+vi.mock("./payment-proof-viewer", () => ({
+  PaymentProofViewer: ({
+    orderId,
+    expectedAmountCents,
+  }: {
+    orderId: string;
+    expectedAmountCents: number;
+  }) => (
+    <div data-testid="proof-viewer">
+      {orderId}:{expectedAmountCents}
+    </div>
+  ),
+}));
+
+function makeOrder(overrides: Partial<BoardOrder> = {}): BoardOrder {
   return {
     id: "o1",
     booth_id: "b1",
@@ -49,6 +74,8 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     payment_status: "not_required",
     payment_method_kind: null,
     paid_at: null,
+    payment_proof_path: null,
+    payment_proof_hash: null,
     print_status: "not_required",
     print_status_updated_at: null,
     created_at: new Date(0).toISOString(),
@@ -56,7 +83,6 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     completed_at: null,
     updated_at: new Date(0).toISOString(),
     idempotency_key: null,
-    access_token: "tok-test",
     priority_bumped_at: null,
     source: "qr",
     auto_completed: false,
@@ -65,14 +91,24 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
 }
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockReset();
+  vi.mocked(toast.success).mockReset();
   advanceOrder.mockReset();
   confirmOrderPayment.mockReset();
+  confirmPaymentAndStart.mockReset();
+  revertPaymentAndStart.mockReset();
   cancelOrder.mockReset();
   bumpOrder.mockReset();
   revertOrderAdvance.mockReset();
   restoreAutoCompleted.mockReset();
   advanceOrder.mockResolvedValue({ success: true, status: "ready" });
   confirmOrderPayment.mockResolvedValue({ success: true });
+  confirmPaymentAndStart.mockResolvedValue({
+    success: true,
+    status: "preparing",
+    prevPaymentStatus: "claimed",
+  });
+  revertPaymentAndStart.mockResolvedValue({ success: true, status: "pending" });
   cancelOrder.mockResolvedValue({ success: true });
   bumpOrder.mockResolvedValue({ success: true });
   revertOrderAdvance.mockResolvedValue({ success: true, status: "preparing" });
@@ -508,6 +544,120 @@ describe("OrderCard payment", () => {
   });
 });
 
+describe("OrderCard — reconciled payment+start", () => {
+  it("shows one merged button, not two, for a pending order awaiting payment confirm", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "pending", payment_status: "claimed" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /mark paid.*start/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /confirm payment received/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /start now/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the merged button for an unpaid walk-up order too", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          status: "pending",
+          payment_status: "pending",
+          source: "walkup",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /mark paid.*start/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the plain Start now button, not the merged one, once payment is already settled", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "pending", payment_status: "not_required" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /start now/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /mark paid.*start/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("tapping the merged button calls confirmPaymentAndStart and shows an undo option", async () => {
+    const user = userEvent.setup();
+    confirmPaymentAndStart.mockResolvedValueOnce({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+    render(
+      <OrderCard
+        order={makeOrder({
+          id: "order-1",
+          status: "pending",
+          payment_status: "claimed",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(screen.getByRole("button", { name: /mark paid.*start/i }));
+    expect(confirmPaymentAndStart).toHaveBeenCalledWith("order-1");
+    expect(
+      await screen.findByRole("button", { name: /undo/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("undoes the merged action's status back to pending, but leaves payment confirmed", async () => {
+    // paykit's own confirm already happened for real and can't be undone
+    // (see revertPaymentAndStart's own doc comment) — undo only un-starts
+    // the order, so it lands back on the plain "Start now" button, not the
+    // merged one (payment no longer needs review).
+    const user = userEvent.setup();
+    confirmPaymentAndStart.mockResolvedValueOnce({
+      success: true,
+      status: "preparing",
+      prevPaymentStatus: "claimed",
+    });
+    render(
+      <OrderCard
+        order={makeOrder({
+          id: "order-1",
+          status: "pending",
+          payment_status: "claimed",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /mark paid.*start/i }));
+    await user.click(await screen.findByRole("button", { name: /undo/i }));
+
+    expect(revertPaymentAndStart).toHaveBeenCalledWith("order-1", "claimed");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^start now$/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /mark paid.*start/i }),
+    ).not.toBeInTheDocument();
+    expect(toast.success).toHaveBeenCalledWith(
+      "Payment stays confirmed. Refund via paykit if needed.",
+    );
+  });
+});
+
 describe("OrderCard print status", () => {
   it("shows a Print failed badge when print_status is failed", () => {
     render(<OrderCard order={makeOrder({ print_status: "failed" })} />, {
@@ -532,6 +682,100 @@ describe("OrderCard print status", () => {
       expect(screen.queryByText(/print failed/i)).not.toBeInTheDocument();
     },
   );
+});
+
+describe("OrderCard — payment proof review", () => {
+  it("shows a View payment proof trigger for a claimed order with an uploaded proof photo", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          payment_status: "claimed",
+          payment_proof_path: "vendor-1/order-1.png",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /view payment proof/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("proof-viewer")).not.toBeInTheDocument();
+  });
+
+  it("shows no trigger for a claimed order with no uploaded proof photo", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          payment_status: "claimed",
+          payment_proof_path: null,
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.queryByRole("button", { name: /view payment proof/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows no trigger once payment is confirmed, even with a proof photo on file", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          payment_status: "confirmed",
+          payment_proof_path: "vendor-1/order-1.png",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.queryByRole("button", { name: /view payment proof/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the trigger for the merged mark-paid-and-start review too (a still-pending claimed order)", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          status: "pending",
+          payment_status: "claimed",
+          payment_proof_path: "vendor-1/order-1.png",
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", { name: /view payment proof/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("expands to render PaymentProofViewer with the order id and total once tapped, and collapses back on a second tap", async () => {
+    const user = userEvent.setup();
+    render(
+      <OrderCard
+        order={makeOrder({
+          id: "order-9",
+          payment_status: "claimed",
+          payment_proof_path: "vendor-1/order-1.png",
+          total_cents: 550,
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /view payment proof/i }),
+    );
+    expect(await screen.findByTestId("proof-viewer")).toHaveTextContent(
+      "order-9:550",
+    );
+    expect(
+      screen.getByRole("button", { name: /hide payment proof/i }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /hide payment proof/i }),
+    );
+    expect(screen.queryByTestId("proof-viewer")).not.toBeInTheDocument();
+  });
 });
 
 describe("OrderCard — pending arrival aging", () => {

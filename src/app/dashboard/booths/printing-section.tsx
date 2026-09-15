@@ -1,6 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { usePrinterPresence } from "@/hooks/use-printer-presence";
+import { PrinterStatus } from "./printer-status";
 
 // Keyed by booth id, printkit's own source_ref — no fallback host, same as src/lib/printkit/client.ts.
 function printerLinkFor(boothId: string): string | null {
@@ -28,14 +41,33 @@ export function PrintingSection({
   value,
   onChange,
   boothId,
+  vendorId,
+  printkitLocationId,
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
   // Unset until the booth is saved and registered with printkit.
   boothId?: string;
+  vendorId: string;
+  // Unset until a save's registerPrintLocation call has succeeded at least
+  // once — see syncPrintLocation in dashboard/booths/actions.ts.
+  printkitLocationId?: string | null;
 }) {
+  const online = usePrinterPresence(vendorId, printkitLocationId);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const printerLink = value && boothId ? printerLinkFor(boothId) : null;
   const dashboardLink = printkitDashboardLink();
+
+  // A first-time enable has no printkit_location_id yet, so there's nothing
+  // live to check -- only interrupt turning ON when a printer was registered
+  // before but isn't connected right now.
+  function handleToggle(next: boolean) {
+    if (next && printkitLocationId && !online) {
+      setConfirmOpen(true);
+      return;
+    }
+    onChange(next);
+  }
 
   return (
     <div className="space-y-3">
@@ -49,10 +81,11 @@ export function PrintingSection({
         </span>
         <Switch
           checked={value}
-          onCheckedChange={onChange}
+          onCheckedChange={handleToggle}
           aria-label="Print via printkit"
         />
       </div>
+      {value && printkitLocationId && <PrinterStatus online={online} />}
       {value && (
         <p className="px-1 text-sm text-muted-foreground">
           {printerLink ? (
@@ -83,6 +116,24 @@ export function PrintingSection({
           </a>
         </p>
       )}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>No printer connected</AlertDialogTitle>
+            <AlertDialogDescription>
+              This booth&apos;s printer isn&apos;t online right now. Orders will
+              wait in Incoming until you connect one, or you can turn this on
+              anyway and connect it later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => onChange(true)}>
+              Turn on anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

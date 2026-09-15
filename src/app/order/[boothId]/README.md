@@ -18,6 +18,14 @@ Legacy booth-id entry point; redirects to the current short-code route
 - `display/` — the public TV/second-screen queue display for one booth,
   reached from the dashboard's booth list, not from a customer's own order
   flow. See its own README.
+- `pickup/` — the public, unattended self-checkout pickup kiosk (a paired
+  Bluetooth HID scanner reads the customer's own order-status QR to
+  complete their order), reached only by whoever sets up the kiosk tablet,
+  not linked to from anywhere else in the app. See its own README.
+- `pay/` — the payment-first gate shown before a payment-required order has
+  a number: amount, checkout, and the required proof-photo upload that
+  finally assigns the order its number via `claimPayment`. See its own
+  README.
 
 ## Connectivity
 
@@ -26,9 +34,14 @@ Three callers only know a booth id rather than its short code: the
 "Order again" link, and any legacy/printed `/order/{boothId}` URL. `page.tsx`
 resolves the short code and redirects to `/o/{short_code}`, where `OrderForm`
 picks up the reorder handoff stashed in sessionStorage. `[orderNumber]/` is
-linked to directly by `placeOrder`'s result regardless of entry route.
+linked to directly by `placeOrder`'s result regardless of entry route, unless
+`placeOrder` returns a null `orderNumber` (a payment-required order deferred
+until claim), in which case `OrderForm` redirects to `pay/` instead.
 `display/` is linked to from `src/app/dashboard/booths/booth-list.tsx`'s
 "Open TV display" button, not from anything in the customer order flow.
+`pickup/` is set up once per booth at the physical pickup shelf, out of
+band, and calls into `[orderNumber]/collect-actions.ts`. `pay/` redirects to
+`[orderNumber]/` itself, once `claimPayment` succeeds and assigns a number.
 
 ## Parent
 

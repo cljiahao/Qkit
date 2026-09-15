@@ -37,6 +37,7 @@ const DEFAULTS: BoardSettings = {
   default_prep_minutes: null,
   ready_auto_clear_min: 3,
   customer_telegram_notify_enabled: true,
+  pickup_scan_enabled: false,
 };
 
 const PREP_ESTIMATE = { avgMinutes: null, sampleCount: 0, minSample: 10 };
@@ -152,6 +153,23 @@ describe("SettingsForm customer notify toggle", () => {
         name: /notify customers on telegram when their order is ready/i,
       }),
     ).toBeChecked();
+  });
+});
+
+describe("SettingsForm pickup-scan toggle", () => {
+  it("saves pickup_scan_enabled when the switch is toggled", async () => {
+    updateBoardSettings.mockResolvedValue({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+
+    await user.click(
+      screen.getByRole("switch", { name: /self-checkout pickup/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /save timing/i }));
+
+    expect(updateBoardSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ pickup_scan_enabled: true }),
+    );
   });
 });
 

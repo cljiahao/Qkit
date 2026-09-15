@@ -1,20 +1,34 @@
 // @vitest-environment jsdom
-//
-// Follows the pattern established in src/app/dashboard/layout.dom.test.tsx:
-// this repo has no convention for rendering a full async Server Component
-// page through RTL, but page.tsx is a plain async function with no
-// RSC-specific machinery, so it can be awaited directly and its returned
-// element tree rendered like any other component. Every nested async
-// server component (EarnLink) and every client component with its own
-// side effects (OrderStatusPoller, PayPanel behind next/dynamic) is
-// stubbed out here so the test stays focused on page.tsx's own gating of
-// TelegramConnect — not on those components' own behavior, which each
-// already has its own dedicated test file.
+// page.tsx is awaited and rendered directly (dashboard/layout.dom.test.tsx's
+// approach); nested async/side-effecting children are stubbed so this stays
+// focused on TelegramConnect gating and the redirect guard.
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { OrderStatus } from "@/lib/types";
 import OrderStatusPage from "./page";
 
+const { notFoundMock, redirectMock, headersMock } = vi.hoisted(() => ({
+  // Both throw to abort rendering — mirrors the real next/navigation
+  // behavior so a test hitting either branch doesn't fall through into the
+  // rest of the function body, same as it never would in production.
+  notFoundMock: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
+  redirectMock: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT:${url}`);
+  }),
+  // Real, allowlisted host by default; individual tests override to probe
+  // resolveOrigin's host-allowlist behavior.
+  headersMock: vi.fn(() =>
+    Promise.resolve(new Headers({ host: "booth.merqo.io" })),
+  ),
+}));
+
+vi.mock("next/navigation", () => ({
+  notFound: notFoundMock,
+  redirect: redirectMock,
+}));
+vi.mock("next/headers", () => ({ headers: headersMock }));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("./order-status-poller", () => ({ OrderStatusPoller: () => null }));
 vi.mock("./earn-link", () => ({ EarnLink: () => null }));
@@ -24,8 +38,12 @@ vi.mock("./telegram-connect", () => ({
 vi.mock("@/lib/merqo-vendor-profile", () => ({
   getOrCreateVendorProfile: vi.fn().mockResolvedValue(null),
 }));
-vi.mock("@/lib/paykit/client", () => ({
-  createCheckout: vi.fn(),
+// Exposes the exact URL passed to react-qr-code as a DOM attribute, so tests
+// can assert what resolveOrigin actually embedded rather than just presence.
+vi.mock("react-qr-code", () => ({
+  default: ({ value }: { value: string }) => (
+    <div data-testid="pickup-qr" data-value={value} />
+  ),
 }));
 
 const BOOTH_ID = "00000000-0000-4000-8000-000000000001";
@@ -52,6 +70,20 @@ const booth = {
   name: "Kopi Corner",
   vendor_id: VENDOR_ID,
   social_links: null,
+};
+
+// Minimal valid boardSettingsSchema shape (see @/lib/schemas) — required
+// fields filled in, pickup_scan_enabled set per-test.
+const VALID_BOARD_SETTINGS = {
+  aging_min: 5,
+  overdue_min: 10,
+  sound_id: "chime",
+  desktop_notify: false,
+  undo_seconds: 4,
+  daily_order_number_reset: false,
+  show_wait_estimate: true,
+  default_prep_minutes: null,
+  ready_auto_clear_min: null,
 };
 
 const { maybeSingle, boothSingle, vendorMaybeSingle } = vi.hoisted(() => ({
@@ -88,9 +120,14 @@ vi.mock("@/lib/supabase/server", () => ({
 beforeEach(() => {
   maybeSingle.mockReset();
   boothSingle.mockReset().mockResolvedValue({ data: booth });
-  // No board_settings row -> boardSettingsSchema fails -> resolveHeadingNumber
-  // degrades to the real order_number without a second query.
+  // No board_settings row -> boardSettingsSchema fails -> resolveOrderDisplay
+  // degrades to the real order_number/pickupScanEnabled:false, no second query.
   vendorMaybeSingle.mockReset().mockResolvedValue({ data: null });
+  notFoundMock.mockClear();
+  redirectMock.mockClear();
+  headersMock
+    .mockReset()
+    .mockResolvedValue(new Headers({ host: "booth.merqo.io" }));
 });
 
 async function renderPage(status: OrderStatus) {
@@ -118,4 +155,133 @@ describe("OrderStatusPage — TelegramConnect gating", () => {
       expect(screen.queryByTestId("telegram-connect")).not.toBeInTheDocument();
     },
   );
+});
+
+describe("OrderStatusPage — pending-payment redirect guard", () => {
+  it("redirects to /pay when payment_status is still pending", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { ...makeOrder("pending"), payment_status: "pending" },
+      error: null,
+    });
+
+    await expect(
+      OrderStatusPage({
+        params: Promise.resolve({
+          boothId: BOOTH_ID,
+          orderNumber: ORDER_NUMBER,
+        }),
+        searchParams: Promise.resolve({ t: TOKEN }),
+      }),
+    ).rejects.toThrow();
+
+    expect(redirectMock).toHaveBeenCalledWith(
+      `/order/${BOOTH_ID}/pay?t=${TOKEN}`,
+    );
+  });
+
+  it("does not redirect once payment_status is past pending", async () => {
+    await renderPage("preparing");
+    expect(redirectMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrderStatusPage — pickup QR", () => {
+  it("shows a pickup QR when ready and pickup_scan_enabled is on", async () => {
+    vendorMaybeSingle.mockResolvedValue({
+      data: {
+        board_settings: { ...VALID_BOARD_SETTINGS, pickup_scan_enabled: true },
+      },
+    });
+    await renderPage("ready");
+    expect(
+      screen.getByText(/show this at the pickup counter/i),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("pickup-qr")).toHaveAttribute(
+      "data-value",
+      `https://booth.merqo.io/order/${BOOTH_ID}/${ORDER_NUMBER}?t=${TOKEN}`,
+    );
+  });
+
+  it("shows no pickup QR when the toggle is off", async () => {
+    vendorMaybeSingle.mockResolvedValue({
+      data: {
+        board_settings: {
+          ...VALID_BOARD_SETTINGS,
+          pickup_scan_enabled: false,
+        },
+      },
+    });
+    await renderPage("ready");
+    expect(
+      screen.queryByText(/show this at the pickup counter/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows no pickup QR when not ready even if the toggle is on", async () => {
+    vendorMaybeSingle.mockResolvedValue({
+      data: {
+        board_settings: { ...VALID_BOARD_SETTINGS, pickup_scan_enabled: true },
+      },
+    });
+    await renderPage("preparing");
+    expect(
+      screen.queryByText(/show this at the pickup counter/i),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("OrderStatusPage — pickup QR origin allowlist", () => {
+  beforeEach(() => {
+    vendorMaybeSingle.mockResolvedValue({
+      data: {
+        board_settings: { ...VALID_BOARD_SETTINGS, pickup_scan_enabled: true },
+      },
+    });
+  });
+
+  it("trusts a plain vercel.app host", async () => {
+    headersMock.mockResolvedValue(new Headers({ host: "qkit-sg.vercel.app" }));
+    await renderPage("ready");
+    expect(screen.getByTestId("pickup-qr")).toHaveAttribute(
+      "data-value",
+      `https://qkit-sg.vercel.app/order/${BOOTH_ID}/${ORDER_NUMBER}?t=${TOKEN}`,
+    );
+  });
+
+  it("falls back to the placeholder origin for an untrusted host, never embedding it", async () => {
+    headersMock.mockResolvedValue(new Headers({ host: "evil.example.com" }));
+    await renderPage("ready");
+    expect(screen.getByTestId("pickup-qr")).toHaveAttribute(
+      "data-value",
+      `https://qkit.example/order/${BOOTH_ID}/${ORDER_NUMBER}?t=${TOKEN}`,
+    );
+  });
+
+  it("ignores a spoofed x-forwarded-host when the real host is untrusted", async () => {
+    headersMock.mockResolvedValue(
+      new Headers({
+        host: "evil.example.com",
+        "x-forwarded-host": "also-evil.example.com",
+      }),
+    );
+    await renderPage("ready");
+    expect(screen.getByTestId("pickup-qr")).toHaveAttribute(
+      "data-value",
+      `https://qkit.example/order/${BOOTH_ID}/${ORDER_NUMBER}?t=${TOKEN}`,
+    );
+  });
+
+  it("falls back to an allowlisted x-forwarded-host when the real host isn't allowlisted", async () => {
+    headersMock.mockResolvedValue(
+      new Headers({
+        host: "internal-lb.local",
+        "x-forwarded-host": "booth.merqo.io",
+      }),
+    );
+    await renderPage("ready");
+    expect(screen.getByTestId("pickup-qr")).toHaveAttribute(
+      "data-value",
+      `https://booth.merqo.io/order/${BOOTH_ID}/${ORDER_NUMBER}?t=${TOKEN}`,
+    );
+  });
 });

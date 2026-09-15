@@ -99,7 +99,8 @@ export async function getBoothQueueDisplay(
     .from("orders")
     .select("order_number, status, created_at, priority_bumped_at")
     .eq("booth_id", boothId)
-    .not("status", "in", "(completed,cancelled)");
+    .not("status", "in", "(completed,cancelled)")
+    .or("payment_status.neq.pending,source.neq.qr");
   if (ordersError) {
     console.error(
       "getBoothQueueDisplay: orders read failed",
@@ -108,7 +109,10 @@ export async function getBoothQueueDisplay(
     return null;
   }
 
-  return sortForDisplay(orders ?? []).map((o) => ({
+  const nonNullOrders = (orders ?? []).filter(
+    (o): o is typeof o & { order_number: string } => o.order_number != null,
+  );
+  return sortForDisplay(nonNullOrders).map((o) => ({
     orderNumber: o.order_number,
     displayNumber: displayOrderNumber(o.order_number, baseline),
     status: o.status,

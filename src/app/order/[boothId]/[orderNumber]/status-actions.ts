@@ -168,7 +168,8 @@ export async function getWaitEstimate(
     .from("orders")
     .select("id, status, created_at, priority_bumped_at")
     .eq("booth_id", boothId)
-    .in("status", ACTIVE_STATUSES);
+    .in("status", ACTIVE_STATUSES)
+    .or("payment_status.neq.pending,source.neq.qr");
   if (activeError) {
     console.error("getWaitEstimate: active read failed", activeError.message);
     return null;

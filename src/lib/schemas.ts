@@ -335,6 +335,26 @@ export function parseOrderRef(
   return { ok: true, ref: { boothId, orderNumber, token } };
 }
 
+export type ParsePreClaimRefResult =
+  | { ok: true; ref: { boothId: string; token: string } }
+  | { ok: false; field: "booth" | "token" };
+
+/**
+ * Validate the (boothId, token) pair for the pre-claim flow, where a
+ * payment-required order has no order_number yet — same shape as
+ * parseOrderRef minus the orderNumber leg.
+ */
+export function parsePreClaimRef(
+  boothId: string,
+  token: string,
+): ParsePreClaimRefResult {
+  if (!orderBoothIdSchema.safeParse(boothId).success)
+    return { ok: false, field: "booth" };
+  if (!orderTokenSchema.safeParse(token).success)
+    return { ok: false, field: "token" };
+  return { ok: true, ref: { boothId, token } };
+}
+
 // ── Social/website links ─────────────────────────────────────────────────────
 // Vendor profile (vendors.social_links) and per-booth (booths.social_links).
 // All fields optional; an absent/empty object means "nothing set".
@@ -534,6 +554,7 @@ export const boardSettingsSchema = z
     // postdates the column) keeps notifying exactly as before this shipped —
     // only an explicit `false` (a vendor who finds it off-brand) turns it off.
     customer_telegram_notify_enabled: z.boolean().default(true),
+    pickup_scan_enabled: z.boolean().default(false),
   })
   .refine((d) => d.overdue_min > d.aging_min, {
     message: "Overdue must be later than amber",
@@ -602,7 +623,7 @@ export const orderStatusSchema = z.enum([
 export const orderRowSchema = z.object({
   id: z.string(),
   booth_id: z.string(),
-  order_number: z.string(),
+  order_number: z.string().nullable(),
   customer_name: z.string(),
   items: z.array(orderItemSchema),
   status: orderStatusSchema,
@@ -615,6 +636,8 @@ export const orderRowSchema = z.object({
     // rather than dropping the whole realtime order.
     .catch(null),
   paid_at: z.string().nullable(),
+  payment_proof_path: z.string().nullable().catch(null),
+  payment_proof_hash: z.string().nullable().catch(null),
   // Tolerant like source/auto_completed below — a payload from mid-deploy
   // (before migration 0081 lands everywhere) shouldn't drop the event;
   // degrade to the column's own DB default.

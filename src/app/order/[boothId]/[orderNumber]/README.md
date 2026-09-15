@@ -3,14 +3,33 @@
 ## Purpose
 
 Live customer order-status page — the page a customer lands on right after
-placing an order (and can return to via "recent orders"). Polls status and
-payment state, shows a PayNow/QR/link pay panel when the booth expects
-payment, offers a "Get notified on Telegram" connect button while the order
-is still waiting, and surfaces a loyalty "earn a stamp" link once the order
-completes.
+placing an order (and can return to via "recent orders"). A payment-required
+order with `payment_status` still `"pending"` is redirected to `../pay`
+instead of rendering here (that page owns the actual QR/link/image checkout
+UI; this page can only see `"pending"` via a stale bookmark from before
+`../pay` existed). Polls status and payment state, shows a claimed/confirmed
+pay panel once a payment-required order is past that gate, offers a "Get
+notified on Telegram" connect button while the order is still waiting, and
+surfaces a loyalty "earn a stamp" link once the order completes.
 
 ## Contents
 
+- `collect-actions.ts` — `confirmCollection(boothId, orderNumber, token)`:
+  the self-checkout pickup kiosk's server action (`../pickup/`). Token-gated
+  and rate-limited exactly like `claimPayment` (20/60s per IP+booth — a
+  busier limit than the payment actions since a kiosk can legitimately fire
+  many scans in a shift). Distinguishes three non-error outcomes a `ready`
+  order can already be in: `"Not ready yet."` (still `preparing`/etc.),
+  `"Already collected."` (a double-scan, `status === "completed"`), and a
+  successful `{ success: true, status: "completed" }` for the one legal
+  transition — flips the order to `completed` via the same
+  `buildAdvancePatch`/guarded-UPDATE/re-read-on-0-rows pattern
+  `advanceOrder` (`src/app/dashboard/order-actions.ts`) uses, then logs a
+  `recordOrderStatusEvent` with `actor: null` (no authenticated user at an
+  unattended kiosk, unlike every other caller of that function).
+- `collect-actions.test.ts` — unit tests for the ready/not-ready/already-
+  completed/invalid-ref/rate-limited branches, plus the update-race
+  ("Order changed") and update-error paths.
 - `earn-link.tsx` — `EarnLink({ orderId, vendorId, loopkitBaseUrl })` (async
   server component): fetches the vendor's LoopKit earn-program config from
   `NEXT_PUBLIC_LOOPKIT_URL` (bearer-authed with `MERQO_METRICS_SECRET`,
@@ -79,14 +98,14 @@ completes.
   parallel via the **service client** (customers are unauthenticated; the
   token match is what authorizes the read, not RLS), distinguishes a real
   DB error (retryable error boundary) from a genuine 404 (`maybeSingle` →
-  null), gates the pay panel purely on the local `order.payment_status`
-  mirror (`!== 'not_required'` and not cancelled — set by `qkit.place_order`
-  at order-creation time from `booths.payment`'s `{kind}` marker), and when
-  shown calls paykit's `createCheckout` (`@/lib/paykit/client`, idempotent on
-  `order.id` as `order_ref`) to get the actual QR/link/image to render,
-  degrading to no pay panel (logged, not thrown) on any paykit failure — same
-  "never strand a customer holding a valid order link" philosophy as the
-  vendor-profile/daily-display-number reads below. From that same `showPay`
+  null), then redirects to `../pay?t=<token>` if `order.payment_status` is
+  still `"pending"` (a stale-bookmark guard — `../pay` is the only place a
+  payment-required order gets claimed now; this page never renders the
+  QR/link/image checkout itself). Past that gate, gates the pay panel purely
+  on the local `order.payment_status` mirror (`!== 'not_required'` and not
+  cancelled — set by `qkit.place_order` at order-creation time from
+  `booths.payment`'s `{kind}` marker); `PayPanel` itself only ever needs to
+  show the claimed/confirmed states from here on. From that same `showPay`
   gate plus `order.payment_status !== 'confirmed'`, an
   `awaitingPayment` flag passed to `OrderStatusPoller` so its status copy
   never outruns the actual payment state, plus the booth's own
@@ -118,49 +137,88 @@ completes.
   for payment reconciliation, not display. A "Remember this number for
   pickup" line sits right under the heading, the first of several places
   (see `OrderStatusPoller` above) that re-anchor the order number to fight
-  pickup mixups, per Manfred's first-event AAR.
+  pickup mixups, per Manfred's first-event AAR. `resolveOrderDisplay` (one
+  vendor `board_settings` read) also yields `pickupScanEnabled`; once
+  `order.status === "ready"` and that flag is on, a `react-qr-code` QR
+  encoding this same page's own URL renders after the itemized order
+  ("Show this at the pickup counter to collect") — a vendor opts a booth
+  into this via the dashboard settings "Self-checkout pickup" toggle, and a
+  staff kiosk scans it into `../pickup`'s `confirmCollection`. The QR's
+  origin comes from the request's own `host`/`x-forwarded-host` header
+  (`resolveOrigin`), not an env var — `booth-qr-poster.tsx`'s design doc
+  found `NEXT_PUBLIC_BASE_URL` unreliable, and this URL must resolve on a
+  separate scanning device. Both headers are client-spoofable (same caution
+  `clientIp` documents in `@/lib/rate-limit`), so `isAllowedHost` checks
+  either against a `.merqo.io`/`.vercel.app`/localhost allowlist before it's
+  trusted — `host` is preferred, `x-forwarded-host` only used as a fallback
+  and only once it also passes the allowlist; neither matching degrades to
+  the same hardcoded `https://qkit.example` placeholder. A basic check, not
+  full trusted-proxy IP-range validation (a separate, bigger task).
 - `page.dom.test.tsx` — RTL test rendering `OrderStatusPage` directly (same
   pattern as `src/app/dashboard/layout.dom.test.tsx`: an async Server
   Component page can be awaited and its returned tree rendered like any
   other component), with every nested async/side-effecting child
   (`OrderStatusPoller`, `EarnLink`, `next/dynamic`'s `PayPanel`) stubbed out
-  so the test stays focused on `TelegramConnect`'s gating: renders while
+  so the test stays focused on `TelegramConnect`'s gating (renders while
   `status` is `pending`/`confirmed`/`preparing`, not once
-  `ready`/`completed`/`cancelled`.
-- `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, checkout,
-initialStatus, amountCents })` client component: polls `getPaymentStatus`
-  every 5s until `confirmed`/`not_required`; renders a QR
-  (`react-qr-code`), an uploaded payment-QR image, or a pay link depending on
-  `checkout.type` (now paykit's `CheckoutView`, `@/lib/paykit/client`) — the
-  heading names the scan target explicitly ("Scan with your PayNow banking
-  app to pay" for `type: "qr"`, a generic "banking or payment app" for a
-  vendor-uploaded `type: "image"` since its provider is unknown) so a
-  customer doesn't reach for a plain camera/QR scanner, which can't parse an
-  EMVCo payload and would report it as invalid; lets the customer self-report
-  via `claimPayment` ("I've paid"), with a "Tapped by mistake? Undo" text
-  button (calling `unclaimPayment`) while `claimed` and unconfirmed; shows a
-  persistent confirmed state once the vendor marks it paid.
-- `pay-panel.dom.test.tsx` — RTL tests for the claim flow, each checkout
-  type's rendering, and the confirmed/not-required terminal states.
+  `ready`/`completed`/`cancelled`), the `../pay` redirect guard (fires
+  only when `payment_status === "pending"`, `next/navigation`'s `redirect`
+  mocked the same throw-to-abort way as `notFound`), the pickup QR
+  (renders only when `status === "ready"` AND the mocked vendor row's
+  `board_settings.pickup_scan_enabled` is `true`), and `resolveOrigin`'s
+  host allowlist (`react-qr-code` mocked to expose its `value` prop as a
+  `data-value` attribute so a test can assert the exact URL embedded — a
+  trusted `host` or `x-forwarded-host` is used verbatim, an untrusted one
+  in either header degrades to the `https://qkit.example` placeholder
+  instead of ever being embedded, `next/headers`' `headers` mocked
+  per-test via a shared `headersMock`).
+- `pay-panel.tsx` — `PayPanel({ boothId, orderNumber, token, initialStatus })`
+  client component: polls `getPaymentStatus` every 5s until
+  `confirmed`/`not_required`. Renders only the states reachable once
+  `page.tsx`'s redirect guard has ruled out `"pending"`: `not_required` →
+  nothing, `confirmed` → a persistent "Payment confirmed" state, `claimed` →
+  "Payment sent, waiting for the stall to confirm" with a "Tapped by
+  mistake? Undo" button (`unclaimPayment`) — any other status renders
+  nothing rather than throwing, defensively. The actual claim UI (photo
+  capture, QR/link/image checkout) lives on `../pay` (`pay-form.tsx`) now,
+  not here.
+- `pay-panel.dom.test.tsx` — RTL tests for the claimed/undo/confirmed/
+  not-required states.
 - `payment-actions.ts` — service-client server actions: `getPaymentStatus`
   (read-only poll of the local `orders.payment_status` mirror — cheaper than
-  round-tripping paykit every 5s), `claimPayment` (customer self-report,
-  rate-limited 10/60s per IP+booth; calls paykit's `createCheckout`
-  — idempotent, re-fetching the transaction `page.tsx` already created for
-  this order — then `claimCheckout`, and mirrors the result into
-  `orders.payment_status` afterward; no-ops on a cancelled order or a repeat
-  claim without calling paykit again), and `unclaimPayment` (the "Tapped by
-  mistake? Undo" companion, same rate-limit/lookup shape; re-fetches the same
-  paykit transaction via `createCheckout` — there's no stored transaction id
-  — then calls `unclaimCheckout`, idempotent on already-`pending` and
-  refusing to revert a `confirmed` transaction, which paykit enforces itself
-  and this mirrors with a fast local pre-check). paykit is authoritative for
-  whether the claim/unclaim itself succeeded; a failed local mirror write
-  still reports success to the customer.
+  round-tripping paykit every 5s), `loadPreClaimContext(boothId, token)`
+  (pre-claim pay-panel data for a payment-required order that has no
+  `order_number` yet — same order id/amount/checkout shape as `page.tsx`'s
+  own `loadCheckoutView`, keyed on the token-only route instead of a numbered
+  one), `claimPayment(boothId, token, photo)` (customer self-report, now
+  **requires an uploaded payment screenshot** — the photo upload IS the claim
+  and is also what finally assigns the order's number, deferred at
+  `place_order` time for any payment-required order; rate-limited 10/60s per
+  IP+booth). Order of operations is load-bearing: uploads the photo to the
+  private `payment-proofs` bucket and hashes it (`@/lib/hash`'s `hashBuffer`)
+  first, **then** calls paykit's `createCheckout`/`claimCheckout`, **then**
+  assigns the number via `qkit.assign_order_number` and fires
+  `notifyVendorTelegram`/`notifyPrintkit` (imported from
+  `src/app/o/[code]/notify.ts`, not duplicated), **then** writes the local
+  `orders.payment_status`/`payment_proof_path`/`payment_proof_hash` mirror
+  last — a failed upload never touches payment state at all, a failed paykit
+  claim leaves only a harmless orphaned photo, and a failed mirror write
+  still reports success (paykit + the assigned number are already real by
+  then). `unclaimPayment` is unchanged (still `(boothId, orderNumber,
+token)`, only ever runs post-claim when a number already exists): the
+  "Tapped by mistake? Undo" companion, same rate-limit/lookup shape;
+  re-fetches the same paykit transaction via `createCheckout` — there's no
+  stored transaction id — then calls `unclaimCheckout`, idempotent on
+  already-`pending` and refusing to revert a `confirmed` transaction, which
+  paykit enforces itself and this mirrors with a fast local pre-check).
+  paykit is authoritative for whether the claim/unclaim itself succeeded; a
+  failed local mirror write still reports success to the customer.
 - `payment-actions.test.ts` — unit tests for the claim/unclaim guards,
-  rate-limiting, paykit-call mocking, and idempotency (including "already
-  claimed/confirmed skips paykit entirely" and "already pending/confirmed
-  skips paykit entirely" for unclaim).
+  rate-limiting, paykit-call mocking, and idempotency, including the new
+  photo-required/deferred-numbering `claimPayment` (no-photo rejection,
+  upload-failure-never-touches-payment-state, the full upload→claim→assign→
+  notify→mirror happy path with a real `hashBuffer` digest assertion) and
+  `loadPreClaimContext`'s valid/invalid/non-pending branches.
 - `status-actions.ts` — `getOrderStatus(boothId, orderNumber, token)`:
   service-client read of just the `status` column, token-gated, used by the
   poller; logs only real DB/network errors (an unknown order is a normal
@@ -193,16 +251,21 @@ default_prep_minutes` (× 60 × `ordersAhead`) when there isn't enough recent
 
 Reached at `/order/{boothId}/{orderNumber}?t=<accessToken>` — the URL
 `placeOrder` (in `src/app/o/[code]/actions.ts`) returns on success, and the
-link `RecentOrders`/`ReorderButton` construct for a past order. `page.tsx`
-composes `OrderStatusPoller` (polls `status-actions.ts`) and `PayPanel`
-(polls/mutates via `payment-actions.ts`) — both bypass RLS via the service
-client since the customer is anonymous and the per-order `access_token` is
-the sole authorization. `page.tsx` and `payment-actions.ts` both call out to
-paykit's checkout API (`@/lib/paykit/client`) for the actual QR/link/image
-and the claim transition; `EarnLink` calls out to the separate LoopKit
-service, and `TelegramConnect` calls out to merqo's `customer-connect-token`
+link `RecentOrders`/`ReorderButton` construct for a past order. A
+payment-required order still `"pending"` is redirected to `../pay?t=
+<accessToken>` instead (that route's own `page.tsx` owns the claim UI).
+Past that gate, `page.tsx` composes `OrderStatusPoller` (polls
+`status-actions.ts`) and `PayPanel` (polls/mutates via `payment-actions.ts`)
+— both bypass RLS via the service client since the customer is anonymous and
+the per-order `access_token` is the sole authorization. `payment-actions.ts`
+calls out to paykit's checkout API (`@/lib/paykit/client`) for the claim/
+unclaim transitions; `EarnLink` calls out to the separate LoopKit service,
+and `TelegramConnect` calls out to merqo's `customer-connect-token`
 endpoint (`@/lib/merqo-customer-notify`) — the first kit → merqo HTTP
-direction in this codebase.
+direction in this codebase. `collect-actions.ts`'s `confirmCollection` is
+called from `../pickup/pickup-scanner.tsx`, the self-checkout pickup kiosk
+— a separate, public entry point that shares this same directory's
+`access_token`-gated trust model but not its route.
 
 ## Parent
 

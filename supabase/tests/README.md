@@ -13,7 +13,7 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(110)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(117)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
@@ -89,6 +89,16 @@ from the Vitest/Playwright tests elsewhere in the repo.
     (migration `0085`). A QR order lands `'pending'` by default (no printer
     connected) and auto-starts into `'preparing'` once `print_enabled` is on
     (migration `0086`).
+  - Payment-first order numbering (migration `0087`): a payment-required
+    order gets no `order_number` and lands `'pending'` even at a booth that
+    would otherwise auto-start (printer connected, no arrival-confirm gate);
+    `qkit.assign_order_number` is idempotent, returning the same number on a
+    retried call for the same order; the loosened freeze trigger still
+    blocks changing an already-assigned `order_number` to a different value
+    or erasing it back to `NULL` (`ORDER_IMMUTABLE_COLUMN`) — only the
+    one-time `NULL` → assigned transition is permitted; `anon` cannot read
+    the `payment-proofs` storage bucket (a real row is seeded first, as the
+    privileged role, so the check proves RLS actually filters it out).
 
 ## Connectivity
 

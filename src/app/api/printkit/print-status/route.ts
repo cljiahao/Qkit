@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { printkitCallbackBearerOk } from "@/lib/qkit-printkit-auth";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   order_id: z.string().uuid(),
@@ -12,6 +13,20 @@ export async function POST(request: Request) {
   if (!printkitCallbackBearerOk(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = await createServiceClient();
+
+  // Defense-in-depth against a leaked bearer secret -- the secret itself is
+  // the real gate, this just blunts abuse once compromised. Generous since
+  // a busy vendor's bridge can legitimately fire several of these a minute.
+  const allowed = await rateLimit(
+    supabase,
+    `printkit-print-status:${clientIp(request.headers)}`,
+    60,
+    60,
+  );
+  if (!allowed)
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   let json: unknown;
   try {
@@ -30,7 +45,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createServiceClient();
   const { data, error } = await supabase
     .from("orders")
     .update({

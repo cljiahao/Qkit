@@ -82,6 +82,13 @@ factories, respectively).
 - `events.ts` — `eventLabel(license)`: display name for a paid pass/event
   (vendor's own label, or a dated default like "Pass · 7 Jun").
 - `events.test.ts` — tests label fallback and whitespace-only-label handling.
+- `hash.ts` — `hashBuffer(buffer)`: SHA-256 hex digest of an `ArrayBuffer` via
+  `node:crypto`'s `createHash` (matches this repo's existing hashing
+  convention, not the global Web Crypto `crypto.subtle`). Used by
+  `claimPayment` (`order/[boothId]/[orderNumber]/payment-actions.ts`) to
+  fingerprint an uploaded payment-proof photo (`orders.payment_proof_hash`).
+- `hash.test.ts` — tests digest stability and that different input hashes
+  differently.
 - `hours-editor.ts` — pure state transitions behind the working-hours editor:
   `WEEKDAY_KEYS`, `DEFAULT_WINDOW`, `emptyWeek`, `dailyHours`, `weekFromDaily`,
   `dailyFromWeek` — the daily↔weekly conversions, kept out of the component so
@@ -194,10 +201,11 @@ notifyRef)`/`notifyCustomer(vendorId, notifyRef, message)`/
   `notifyVendor` is the Phase A2 replacement for qkit's own now-retired
   Telegram bot (`placeOrder`'s vendor order-alert call — see
   `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`).
-  All three fail closed: `mintCustomerConnectToken` returns `null` on any
-  non-2xx/timeout/network error, `notifyCustomer`/`notifyVendor` catch + log
-  and never throw, same fail-closed philosophy as `fetchEarnConfig` in
-  `earn-link.tsx`.
+  All three fail closed: `mintCustomerConnectToken` Zod-validates the response
+  and returns `null` on any non-2xx/timeout/network error or unexpected body,
+  `notifyCustomer`/`notifyVendor` catch + log and never throw, same
+  fail-closed philosophy as `fetchEarnConfig` in `earn-link.tsx`. All three
+  share one `merqoFetch` helper for the bearer-auth/timeout mechanics.
 - `merqo-customer-notify.test.ts` — tests the request body/header shape for
   all three calls and the fail-closed/never-throw behavior on non-2xx,
   timeout, and network-error cases.
@@ -216,6 +224,9 @@ currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
   so a vendor's Get-help message lands in the shared cross-kit
   `merqo.support_messages` inbox — qkit's own local `support_messages`
   table was dropped (migration `0073`) once every reader/writer converged.
+  Also exports `MerqoSupportMessagesSchema`, the hand-written mirror of that
+  table's row shape shared by every admin page/route that reads it (each
+  narrows via its own `.select(...)` string rather than redeclaring the type).
 - `merqo-upgrade-request.ts` — `resolveUpgradeOutcome(hasVendorRow,
 hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
   for the admin/vendor upgrade-to-Pro request flow.
@@ -273,11 +284,16 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   `created_at` relative to a caller-supplied baseline, never a live recount;
   zero-padded to 3 digits like a ticket counter ("003"), growing past that
   rather than truncating; falls back to the real number when there's no
-  baseline).
+  baseline), `needsPaymentReview(status, paymentStatus)` (pure: whether a
+  still-`pending` order with an outstanding payment claim needs
+  `OrderCard`'s merged "Mark paid & start" review action instead of separate
+  confirm-payment/advance buttons — keyed on order state, not `order.source`,
+  so a walk-up order gets it too).
 - `orders.test.ts` — tests status transitions, patch-building (including the
-  payment auto-confirm-on-complete rule), sorting, age/label formatting, and
-  `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth, and
-  real-number fallbacks.
+  payment auto-confirm-on-complete rule), sorting, age/label formatting,
+  `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth and
+  real-number fallbacks, and `needsPaymentReview`'s pending/payment-status
+  matrix.
 - `paykit/` — server-only HTTP client for paykit's `/api/v1/*` checkout API
   (vendor config upsert + full read-back, checkout create/claim/unclaim/
   confirm/status); see its own README. Replaced the local PayNow QR builder
@@ -362,6 +378,9 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   there's no longer a `parsePaymentConfig` DB-read counterpart), `placeOrderSchema`, `orderRowSchema`/
   `parseRealtimeOrderEvent`'s dependency, `parseOrderRef` (validates the
   boothId/orderNumber/token triple every customer order action receives),
+  `parsePreClaimRef` (same shape minus `orderNumber`, for the pre-claim flow
+  where a payment-required order has no number yet — `loadPreClaimContext`/
+  `claimPayment` in `order/[boothId]/[orderNumber]/payment-actions.ts`),
   `feedbackSchema`, `supportMessageSchema`, `profileNameSchema`/
   `displayNameSchema`/`passwordChangeSchema`, `boardSettingsSchema` (now also
   `daily_order_number_reset: boolean` and `default_prep_minutes:

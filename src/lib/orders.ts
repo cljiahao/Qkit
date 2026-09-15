@@ -5,7 +5,7 @@ import type { BoardOrder, OrderStatus, PaymentStatus } from "@/lib/types";
 // secret, which the board never needs (least privilege). Single source so
 // the two read sites can't drift out of sync with each other.
 export const BOARD_ORDER_COLUMNS =
-  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, print_status, print_status_updated_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at, source, auto_completed" as const;
+  "id, booth_id, order_number, customer_name, items, status, total_cents, payment_status, payment_method_kind, paid_at, payment_proof_path, payment_proof_hash, print_status, print_status_updated_at, created_at, ready_at, completed_at, updated_at, idempotency_key, priority_bumped_at, source, auto_completed" as const;
 
 // A finished order — off the active board, no further transitions. Single
 // source of truth for the "is this done" check that several views need.
@@ -29,6 +29,25 @@ export const ADVANCE: Partial<
   preparing: { next: "ready", label: "Mark Ready" },
   ready: { next: "completed", label: "Mark Picked Up" },
 };
+
+/**
+ * A still-pending order with an outstanding payment claim gets the merged
+ * "Mark paid & start" review action instead of separate confirm-payment and
+ * advance buttons (order-card.tsx) — there's no real scenario where a
+ * vendor confirms payment without also starting the order. Keyed on order
+ * state, not source: a walk-up order left unpaid at creation needs the same
+ * merge as a QR order. Pure.
+ */
+export function needsPaymentReview(
+  status: OrderStatus,
+  paymentStatus: PaymentStatus,
+): boolean {
+  return (
+    status === "pending" &&
+    paymentStatus !== "confirmed" &&
+    paymentStatus !== "not_required"
+  );
+}
 
 // Active-board ordering. Lower rank = higher on the board. Only the statuses
 // that appear on the active board are ranked meaningfully; terminal/legacy

@@ -10,33 +10,12 @@ import {
 import { latestActivePassByVendor } from "@/lib/admin-stats";
 import { computeVendorActivity } from "@/lib/merqo-vendor-activity";
 import type { Plan } from "@/lib/types";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const revalidate = 0;
 
 const querySchema = z.object({ email: z.string().email() });
-
-/**
- * merqo owns this table's real generated types — a hand-written mirror of
- * the support_messages row shape, not a generated type, since merqo.* is
- * outside qkit's own supabase gen types scope (schema: "qkit"). Mirrors the
- * pattern in admin/page.tsx and admin/vendors/[id]/page.tsx.
- */
-type MerqoSupportMessagesSchema = {
-  merqo: {
-    Tables: {
-      support_messages: {
-        Row: { id: string; user_id: string; kit_slug: string; status: string };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
-};
 
 export async function GET(request: Request) {
   if (!bearerOk(request)) {
@@ -52,6 +31,17 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createServiceClient();
+
+  // Defense-in-depth against a leaked bearer secret -- the secret itself is
+  // the real gate, this just blunts enumeration/DoS once compromised.
+  const allowed = await rateLimit(
+    supabase,
+    `merqo-vendor-activity:${clientIp(request.headers)}`,
+    30,
+    60,
+  );
+  if (!allowed)
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   const usersRes = await listAllAuthUsers(supabase, "merqo vendor-activity");
   if (usersRes.error) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { bearerOk } from "@/lib/merqo-auth";
 import { computeMerqoMetrics } from "@/lib/merqo-metrics";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Plan } from "@/lib/types";
 
 export const revalidate = 0;
@@ -12,6 +13,17 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createServiceClient();
+
+  // Defense-in-depth against a leaked bearer secret -- the secret itself is
+  // the real gate, this just blunts enumeration/DoS once compromised.
+  const allowed = await rateLimit(
+    supabase,
+    `merqo-metrics:${clientIp(request.headers)}`,
+    30,
+    60,
+  );
+  if (!allowed)
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   // Five independent reads — issue them concurrently so endpoint latency is one
   // round-trip, not the sum of five.

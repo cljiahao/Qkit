@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(110);
+select plan(121);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -445,6 +445,15 @@ select throws_ok(
   $$ select qkit.next_order_number('00000000-0000-0000-0000-0000000b0004'::uuid) $$,
   null,
   'anon cannot EXECUTE next_order_number');
+
+-- place_walkup_order is vendor-only (its own auth.uid() check already blocks
+-- an anon caller, but 0089 also revokes the EXECUTE grant PUBLIC left in
+-- place, matching every other write RPC in this schema).
+select throws_ok(
+  $$ select qkit.place_walkup_order(
+       '00000000-0000-0000-0000-0000000b0004'::uuid, 'Eve', '[]'::jsonb) $$,
+  null,
+  'anon cannot EXECUTE place_walkup_order');
 
 -- get_booth_for_order: the only public read — public-safe projection only.
 select ok(
@@ -984,6 +993,143 @@ select throws_ok(
   null,
   'service_role cannot DELETE order_status_events (0079 revoke)');
 
+reset role;
+
+-- ── Payment-first order numbering (0087) ─────────────────────────────────────
+-- A payment-required order must never get a number or auto-start into
+-- preparing at creation, even at a booth that would otherwise auto-start
+-- (printer connected, no arrival-confirm gate). A fresh vendor/booth here so
+-- this section doesn't depend on booth 0004's print_enabled/payment state,
+-- which earlier tests have already flipped back and forth.
+insert into auth.users (id, instance_id, aud, role, email)
+values
+  ('00000000-0000-0000-0000-00000000000d',
+   '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+   'vendor-d@test.local');
+
+insert into qkit.vendors (id)
+values ('00000000-0000-0000-0000-00000000000d');
+
+insert into qkit.booths (
+  id, vendor_id, name, is_active, short_code, print_enabled,
+  requires_arrival_confirm, payment, menu_items
+)
+values (
+  '00000000-0000-0000-0000-0000000b0005',
+  '00000000-0000-0000-0000-00000000000d',
+  'D Payment Booth', true, 'rlstestcode2', true, false,
+  '{"kind":"paynow","payee_name":"D","uen":"53312345D"}'::jsonb,
+  '[{"id":"pay1","name":"Paid Item","description":"","price_cents":500,
+     "available":true}]'::jsonb
+);
+
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode2', 'Pat',
+       '[{"menuItemId":"pay1","name":"Paid Item","quantity":1}]'::jsonb,
+       'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid) $$,
+  'place_order succeeds for a payment-required order');
+
+reset role;
+select is(
+  (select order_number from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0005'
+     and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
+  NULL,
+  'payment-required order has no order_number at creation'
+);
+select is(
+  (select status::text from qkit.orders
+   where booth_id = '00000000-0000-0000-0000-0000000b0005'
+     and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'),
+  'pending',
+  'payment-required order forced to pending even when booth auto-starts'
+);
+
+-- assign_order_number: assigns once, idempotent on retry.
+select is(
+  qkit.assign_order_number(
+    (select id from qkit.orders
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  qkit.assign_order_number(
+    (select id from qkit.orders
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')),
+  'assign_order_number is idempotent for the same order'
+);
+
+-- The freeze trigger's order_number carve-out (0087) only permits the ONE
+-- NULL -> assigned transition assign_order_number performs above; changing
+-- an already-set number, or erasing it back to NULL, must still be blocked
+-- exactly like every other frozen column.
+select throws_like(
+  $$ update qkit.orders set order_number = '9999'
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'cannot change an already-assigned order_number to a different value');
+select throws_like(
+  $$ update qkit.orders set order_number = NULL
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' $$,
+  '%ORDER_IMMUTABLE_COLUMN%',
+  'cannot erase an already-assigned order_number back to NULL');
+
+-- 0088: the freeze trigger alone doesn't stop a vendor from setting a still-
+-- NULL order_number directly, since it only exempts that one transition --
+-- the actual gate is authenticated's column grant, tested here as vendor D.
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select lives_ok(
+  $$ select qkit.place_order(
+       'rlstestcode2', 'Sam',
+       '[{"menuItemId":"pay1","name":"Paid Item","quantity":1}]'::jsonb,
+       'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid) $$,
+  'place_order succeeds for a second payment-required order');
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  json_build_object(
+    'sub', '00000000-0000-0000-0000-00000000000d',
+    'role', 'authenticated'
+  )::text,
+  true);
+select throws_like(
+  $$ update qkit.orders set order_number = '9999'
+     where booth_id = '00000000-0000-0000-0000-0000000b0005'
+       and idempotency_key = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$,
+  '%permission denied%',
+  'authenticated cannot assign order_number directly, even from NULL');
+
+-- 0091: printkit_location_id is server-assigned only (syncPrintLocation
+-- writes it via service-role) -- vendor D still owns this booth here.
+select throws_like(
+  $$ update qkit.booths set printkit_location_id = 'fake-loc'
+     where id = '00000000-0000-0000-0000-0000000b0005' $$,
+  '%permission denied%',
+  'authenticated cannot set printkit_location_id directly');
+reset role;
+
+-- storage: no anon/public read on payment-proofs. Seed a real row as the
+-- privileged test role first, so the anon check below proves RLS actually
+-- filters it out, not just that the bucket happens to be empty. anon has the
+-- platform's default full table grant on storage.objects (same as every
+-- other bucket) -- with no matching SELECT policy, RLS silently returns zero
+-- rows rather than throwing, so is_empty is the correct assertion here (not
+-- throws_ok, which only fits a table-level grant revoke).
+insert into storage.objects (bucket_id, name)
+values ('payment-proofs', '00000000-0000-0000-0000-00000000000d/proof.jpg');
+
+set local role anon;
+select set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+select is_empty(
+  $$ select 1 from storage.objects where bucket_id = 'payment-proofs' $$,
+  'anon cannot read payment-proofs bucket objects'
+);
 reset role;
 
 select * from finish();

@@ -17,30 +17,7 @@ import {
 import { MS_PER_DAY } from "@/lib/utils";
 import type { ActionResult } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
-
-/**
- * merqo owns this table's real generated types — this is a hand-written
- * mirror of the support_messages row shape (not a generated type), since
- * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
- * Mirrors the pattern in src/lib/merqo-support.ts and
- * src/app/admin/feedback/page.tsx's MerqoVendorFeedbackSchema.
- */
-type MerqoSupportMessagesSchema = {
-  merqo: {
-    Tables: {
-      support_messages: {
-        Row: { id: string; user_id: string };
-        Insert: never;
-        Update: { status: string };
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
-};
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
 
 const setPlanSchema = z.object({
   vendorId: z.string().uuid(),

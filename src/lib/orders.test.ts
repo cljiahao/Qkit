@@ -13,6 +13,7 @@ import {
   estimateRangeLabel,
   queuePositionLabel,
   displayOrderNumber,
+  needsPaymentReview,
 } from "./orders";
 import type { Order, OrderStatus } from "./types";
 
@@ -30,6 +31,8 @@ function order(over: Partial<Order>): Order {
     payment_status: over.payment_status ?? "not_required",
     payment_method_kind: over.payment_method_kind ?? null,
     paid_at: over.paid_at ?? null,
+    payment_proof_path: over.payment_proof_path ?? null,
+    payment_proof_hash: over.payment_proof_hash ?? null,
     print_status: over.print_status ?? "not_required",
     print_status_updated_at: over.print_status_updated_at ?? null,
     created_at: over.created_at ?? "2026-06-12T10:00:00Z",
@@ -464,5 +467,28 @@ describe("displayOrderNumber", () => {
 
   it("falls back to the real order_number for a non-positive rank (data inconsistency)", () => {
     expect(displayOrderNumber("0001", "0005")).toBe("0001");
+  });
+});
+
+describe("needsPaymentReview", () => {
+  it("is true for a pending order with a claimed (unconfirmed) payment", () => {
+    expect(needsPaymentReview("pending", "claimed")).toBe(true);
+  });
+
+  it("is true for a pending order that's still unpaid", () => {
+    expect(needsPaymentReview("pending", "pending")).toBe(true);
+  });
+
+  it("is false once payment is confirmed", () => {
+    expect(needsPaymentReview("pending", "confirmed")).toBe(false);
+  });
+
+  it("is false for an order that never required payment", () => {
+    expect(needsPaymentReview("pending", "not_required")).toBe(false);
+  });
+
+  it("is false for a non-pending status regardless of payment status", () => {
+    expect(needsPaymentReview("preparing", "claimed")).toBe(false);
+    expect(needsPaymentReview("ready", "pending")).toBe(false);
   });
 });

@@ -294,26 +294,33 @@ export function OrderForm({
     // returning to this booth starts fresh rather than restoring a placed cart.
     clearCart(boothId);
 
-    // Remember on-device so the customer can find this order again after
-    // closing the tab (no server-side customer identity exists). The compact
-    // items snapshot powers one-tap reorder from the list.
-    addRecentOrder({
-      boothId,
-      orderNumber: result.orderNumber,
-      customerName: formData.customerName,
-      // The per-order token gates the status page + its polling reads; store it
-      // so a "track your recent order" link can reopen the page later.
-      token: result.accessToken,
-      items: cartItems.map((it) => ({
-        menuItemId: it.menuItemId,
-        quantity: it.quantity,
-        options: it.options,
-      })),
-    });
+    // Payment-required orders return no order_number yet (Task 1) — they route
+    // to payment before getting a number. Non-payment orders flow to the
+    // customer's live status page.
+    if (result.orderNumber) {
+      // Remember on-device so the customer can find this order again after
+      // closing the tab (no server-side customer identity exists). The compact
+      // items snapshot powers one-tap reorder from the list.
+      addRecentOrder({
+        boothId,
+        orderNumber: result.orderNumber,
+        customerName: formData.customerName,
+        // The per-order token gates the status page + its polling reads; store it
+        // so a "track your recent order" link can reopen the page later.
+        token: result.accessToken,
+        items: cartItems.map((it) => ({
+          menuItemId: it.menuItemId,
+          quantity: it.quantity,
+          options: it.options,
+        })),
+      });
 
-    router.push(
-      `/order/${result.boothId}/${result.orderNumber}?t=${result.accessToken}`,
-    );
+      router.push(
+        `/order/${result.boothId}/${result.orderNumber}?t=${result.accessToken}`,
+      );
+    } else {
+      router.push(`/order/${result.boothId}/pay?t=${result.accessToken}`);
+    }
   }
 
   const hasItems = cartItems.length > 0;
@@ -423,9 +430,7 @@ export function OrderForm({
     );
   }
 
-  // The trigger just opens the sheet, so it reads as a step, not the final
-  // action — "Get my order number" is reserved for the sheet's own submit,
-  // the moment that phrase is actually true.
+  // The trigger just opens the sheet, so it reads as a step, not the final action.
   let triggerLabel: string;
   if (closed) triggerLabel = "Booth closed";
   else if (!hasItems) triggerLabel = "Add items to order";
@@ -433,9 +438,9 @@ export function OrderForm({
     triggerLabel = `Continue · ${count(itemCount, "item")} · ${formatPrice(total)}`;
   else triggerLabel = `Continue · ${count(itemCount, "item")}`;
 
-  // The sheet already shows the item count/total in its own recap row, so its
-  // submit button repeats only the priming phrase, not the full trigger label.
-  const confirmLabel = submitting ? "Placing order…" : "Get my order number";
+  // Payment-agnostic: whether this booth requires payment isn't known here (decided
+  // server-side in place_order), so the label can't promise a number.
+  const confirmLabel = submitting ? "Placing order…" : "Place order";
 
   // A booth with no menu yet: show a friendly placeholder instead of an empty
   // list under a bare "Menu" heading with a dead "Add items" bar (reads broken).

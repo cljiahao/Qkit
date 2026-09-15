@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import type { Entitlement } from "@/lib/plan";
 import {
@@ -36,10 +36,8 @@ async function removeBoothImages(
   if (error) console.error(`${context} image cleanup failed`, error.message);
 }
 
-// Best-effort, same never-affects-the-result contract as notifyPrintkit
-// (o/[code]/actions.ts). Called by both saveBooth (active: print_enabled) and
-// deleteBooth (active: false, so a deleted booth's location stops counting
-// toward printkit's active-location total for the vendor).
+// Mirrors printkit's location id onto the booth row via service-role
+// (0091 revokes authenticated's write); best-effort, same contract as notifyPrintkit.
 async function syncPrintLocation(
   vendorId: string,
   boothId: string,
@@ -54,11 +52,23 @@ async function syncPrintLocation(
       label,
       active,
     });
-    if (!result.ok)
+    if (!result.ok) {
       console.error(
         `${context}: registerPrintLocation failed`,
         result.status,
         result.error,
+      );
+      return;
+    }
+    const service = await createServiceClient();
+    const { error } = await service
+      .from("booths")
+      .update({ printkit_location_id: result.data.id })
+      .eq("id", boothId);
+    if (error)
+      console.error(
+        `${context}: printkit_location_id mirror update failed`,
+        error.message,
       );
   } catch (err) {
     console.error(`${context}: registerPrintLocation failed`, err);

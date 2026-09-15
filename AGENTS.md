@@ -103,7 +103,7 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   once merqo has its own shared bot (`POST /api/merqo/vendor-connect-token`,
   `POST /api/merqo/notify-vendor`). Migration `0077` drops both `0076`
   tables; `placeOrder`'s vendor alert (`notifyVendorTelegram` in
-  `src/app/o/[code]/actions.ts`) now calls `notifyVendor` in
+  `src/app/o/[code]/notify.ts`) now calls `notifyVendor` in
   `src/lib/merqo-customer-notify.ts` instead of a local lookup + Bot API
   call — same name, same call site, same never-blocks-order-placement
   guarantee, only the internals changed. No data carried over: a vendor's
@@ -424,7 +424,7 @@ settings; a webhook route verifies Telegram's
 `X-Telegram-Bot-Api-Secret-Token` before touching any data) shipped and was
 retired the same day by Phase A2, once the sibling merqo repo shipped a
 shared bot every kit calls into instead of running its own. `placeOrder`
-(`src/app/o/[code]/actions.ts`'s `notifyVendorTelegram`) still fires a
+(`src/app/o/[code]/notify.ts`'s `notifyVendorTelegram`) still fires a
 redundant new-order alert to the booth's vendor, entirely best-effort and
 wrapped so a failure can never affect order placement itself (tested
 explicitly, not just claimed — see `actions.place-order.test.ts`'s "vendor
@@ -437,3 +437,13 @@ still-draft customer-facing
 `2026-07-18-vendor-notification-channels-design.md` (not built here).
 
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration -->
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

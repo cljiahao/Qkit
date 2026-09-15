@@ -11,31 +11,9 @@ import {
 } from "@/lib/admin-vendor-health";
 import { pctChange } from "@/lib/stats";
 import { MS_PER_DAY } from "@/lib/utils";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
 import { Stat } from "../stat";
 import { VendorList, type VendorListItem } from "../vendor-list";
-
-/**
- * merqo owns this table's real generated types — this is a hand-written
- * mirror of the support_messages row shape, not a generated type, since
- * merqo.* is outside qkit's own supabase gen types scope (schema: "qkit").
- * Mirrors the pattern in admin/actions.ts and admin/page.tsx.
- */
-type MerqoSupportMessagesSchema = {
-  merqo: {
-    Tables: {
-      support_messages: {
-        Row: { user_id: string; status: string; kit_slug: string };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
-  };
-};
 
 export const revalidate = 0;
 

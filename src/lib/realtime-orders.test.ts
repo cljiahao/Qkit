@@ -18,6 +18,8 @@ function row(overrides: Partial<Order> = {}): Order {
     payment_status: "not_required",
     payment_method_kind: null,
     paid_at: null,
+    payment_proof_path: null,
+    payment_proof_hash: null,
     print_status: "not_required",
     print_status_updated_at: null,
     created_at: "2026-06-12T04:00:00Z",
@@ -34,6 +36,19 @@ function row(overrides: Partial<Order> = {}): Order {
 }
 
 describe("parseRealtimeOrderEvent", () => {
+  it("accepts a null order_number (payment-required order before claim)", () => {
+    const testRow = row({ order_number: null });
+    const event = parseRealtimeOrderEvent({
+      eventType: "INSERT",
+      new: testRow,
+      old: {},
+    });
+    expect(event).not.toBeNull();
+    expect(
+      event && "order" in event ? event.order.order_number : undefined,
+    ).toBeNull();
+  });
+
   it("parses a valid INSERT into a typed event, stripping access_token", () => {
     const { access_token: _accessToken, ...expected } = row();
     const event = parseRealtimeOrderEvent({

@@ -38,7 +38,9 @@ async function loadDailyOrderNumberBaselines(
     return baselines;
   }
   for (const o of todaysOrders ?? []) {
-    if (!(o.booth_id in baselines)) baselines[o.booth_id] = o.order_number;
+    if (!(o.booth_id in baselines) && o.order_number != null) {
+      baselines[o.booth_id] = o.order_number;
+    }
   }
   return baselines;
 }
@@ -83,7 +85,7 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false });
     ordersErr = error;
     if (error) console.error("dashboard orders read failed", error.message);
-    orders = data ?? [];
+    orders = (data ?? []).filter((o) => o.order_number != null);
   }
 
   // A read error must not masquerade as an empty board — a vendor could think

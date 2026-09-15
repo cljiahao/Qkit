@@ -22,6 +22,38 @@ type MerqoSupportSchema = {
   };
 };
 
+/**
+ * Shape of merqo.support_messages — merqo owns this table's real generated
+ * types; this is a hand-written mirror, not a generated type, since merqo.*
+ * is outside qkit's own supabase gen types scope (schema: "qkit"). Shared by
+ * every admin page/route that reads support messages, each narrowing via its
+ * own `.select(...)` string rather than redeclaring this shape locally.
+ */
+export type MerqoSupportMessagesSchema = {
+  merqo: {
+    Tables: {
+      support_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          kit_slug: string;
+          category: string;
+          body: string;
+          status: string;
+          created_at: string;
+        };
+        Insert: never;
+        Update: { status: string };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
+
 export async function submitSupportMessage<
   Db,
   SchemaName extends string & Exclude<keyof Db, "__InternalSupabase">,

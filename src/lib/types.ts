@@ -64,6 +64,9 @@ export type BoardSettings = {
   // customer's own consent (merqo's, untouched by this). Default true: the
   // customer already asked for this by connecting.
   customer_telegram_notify_enabled: boolean;
+  // Opt-in for pickup-scan QR checkout flow (self-service pickup validation).
+  // Default false: disabled until explicitly enabled by the vendor.
+  pickup_scan_enabled: boolean;
 };
 
 // Falls back to this until migration 0050 (board_settings column) has been
@@ -81,6 +84,7 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   undo_seconds: 4,
   ready_auto_clear_min: 3,
   customer_telegram_notify_enabled: true,
+  pickup_scan_enabled: false,
 };
 
 export type PaymentStatus =
@@ -511,6 +515,7 @@ export interface Database {
           walkup_default: boolean;
           print_enabled: boolean;
           paykit_booking_id: string | null;
+          printkit_location_id: string | null;
         };
         Insert: {
           id?: string;
@@ -530,6 +535,7 @@ export interface Database {
           walkup_default?: boolean;
           print_enabled?: boolean;
           paykit_booking_id?: string | null;
+          printkit_location_id?: string | null;
         };
         Update: {
           id?: string;
@@ -549,6 +555,7 @@ export interface Database {
           walkup_default?: boolean;
           print_enabled?: boolean;
           paykit_booking_id?: string | null;
+          printkit_location_id?: string | null;
         };
         Relationships: [
           {
@@ -563,7 +570,7 @@ export interface Database {
         Row: {
           id: string;
           booth_id: string;
-          order_number: string;
+          order_number: string | null;
           customer_name: string;
           items: Json;
           status: OrderStatus;
@@ -571,6 +578,8 @@ export interface Database {
           payment_status: PaymentStatus;
           payment_method_kind: PaymentKind | null;
           paid_at: string | null;
+          payment_proof_path: string | null;
+          payment_proof_hash: string | null;
           print_status: PrintStatus;
           print_status_updated_at: string | null;
           created_at: string;
@@ -586,7 +595,7 @@ export interface Database {
         Insert: {
           id?: string;
           booth_id: string;
-          order_number: string;
+          order_number: string | null;
           customer_name: string;
           items: Json;
           status?: OrderStatus;
@@ -594,6 +603,8 @@ export interface Database {
           payment_status?: PaymentStatus;
           payment_method_kind?: PaymentKind | null;
           paid_at?: string | null;
+          payment_proof_path?: string | null;
+          payment_proof_hash?: string | null;
           print_status?: PrintStatus;
           print_status_updated_at?: string | null;
           created_at?: string;
@@ -609,7 +620,7 @@ export interface Database {
         Update: {
           id?: string;
           booth_id?: string;
-          order_number?: string;
+          order_number?: string | null;
           customer_name?: string;
           items?: Json;
           status?: OrderStatus;
@@ -617,6 +628,8 @@ export interface Database {
           payment_status?: PaymentStatus;
           payment_method_kind?: PaymentKind | null;
           paid_at?: string | null;
+          payment_proof_path?: string | null;
+          payment_proof_hash?: string | null;
           print_status?: PrintStatus;
           print_status_updated_at?: string | null;
           created_at?: string;
@@ -685,6 +698,10 @@ export interface Database {
     Functions: {
       next_order_number: {
         Args: { p_booth_id: string };
+        Returns: string;
+      };
+      assign_order_number: {
+        Args: { p_order_id: string };
         Returns: string;
       };
       booth_remaining_stock: {
