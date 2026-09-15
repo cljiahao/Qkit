@@ -91,6 +91,20 @@ prompt, metric })`: compact rating widget posting to
   `.svg` sources `unoptimized` (avoids needing the global
   `dangerouslyAllowSVG` flag) while raster uploads still get full
   optimization.
+- `money-input.tsx` — `MoneyInput({ cents, onCommit, ...inputProps })`: a
+  controlled $-amount `<Input>` wrapping `@/hooks/use-money-field`'s
+  `useMoneyField` as its own component, so the hook is always called at a real
+  component's top level — a caller rendering this from inside a `.map()` or a
+  render-prop can't accidentally trip `react-hooks/rules-of-hooks` the way
+  calling the hook directly there would (this is why `menu-editor.tsx`'s
+  per-item Price/Cost fields and `option-groups-editor.tsx`'s `ChoiceRow` both
+  use this component rather than the hook directly).
+- `money-input.dom.test.tsx` — RTL tests: blank for an unset amount, formatted
+  for a set one, the regression this component exists to fix (typing "6.50"
+  left-to-right one key at a time keeps "6.50", not the old caret-reset bug's
+  "6.01"), committing the parsed cents on blur, snapping a value with extra
+  typed precision back to its canonical 2-decimal string on blur, and clearing
+  to blank when the amount is deleted.
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
 - `order-card.tsx` — `OrderCard({ order, displayNumber, boothName, agingMin,
@@ -292,7 +306,9 @@ and is consumed by `src/app/o/[code]/page.tsx`. The `landing-*` family
 sibling `landing/`-`Wordmark` is consumed only by the login page, outside the
 landing route. `order-card.tsx` and
 `dashboard-tour.tsx` are consumed by the vendor dashboard
-(`src/app/dashboard`); `ticket.tsx`/`ticket-section.tsx` are the shared card
+(`src/app/dashboard`); `money-input.tsx` wraps `@/hooks/use-money-field` and is
+consumed by `dashboard/booths/menu-editor.tsx` and
+`dashboard/booths/option-groups-editor.tsx`; `ticket.tsx`/`ticket-section.tsx` are the shared card
 shell used by both the dashboard and the ordering flow. `feedback-form.tsx` posts
 to a server action under `src/app/actions/`. `payment-proof-viewer.tsx`
 (dynamically imported by `order-card.tsx`) calls `src/app/dashboard/

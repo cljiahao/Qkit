@@ -63,6 +63,19 @@ describe("OptionGroupsEditor price input", () => {
     // simplest observable proof is re-querying the input's own value.
     expect(priceInputs[1]).toHaveValue("1.00");
   });
+
+  // Regression: a fully-reformatted-every-keystroke controlled input resets
+  // the caret to the end after each key, so typing "6.50" left-to-right used
+  // to land as "6.01" (each digit appended past the fixed decimal point).
+  // ".00"-ending values like the test above don't expose this.
+  it("keeps the exact typed value when typed left-to-right, one key at a time", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    const priceInputs = screen.getAllByPlaceholderText(/price/i);
+    await user.type(priceInputs[1], "6.50");
+    await user.tab();
+    expect(priceInputs[1]).toHaveValue("6.50");
+  });
 });
 
 describe("OptionGroupsEditor advanced section", () => {

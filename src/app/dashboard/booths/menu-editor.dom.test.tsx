@@ -294,6 +294,21 @@ describe("MenuEditor availability toggle", () => {
   });
 });
 
+describe("MenuEditor price input", () => {
+  // Regression: a fully-reformatted-every-keystroke controlled input resets
+  // the caret to the end after each key, so typing "6.50" left-to-right used
+  // to land as "6.01" (each digit appended past the fixed decimal point).
+  it("keeps the exact typed value when typed left-to-right, one key at a time", async () => {
+    const user = userEvent.setup();
+    render(<Host />);
+    const price = screen.getAllByPlaceholderText("Optional")[0]!;
+    await user.clear(price);
+    await user.type(price, "6.50");
+    await user.tab();
+    expect(price).toHaveValue("6.50");
+  });
+});
+
 // Duplicate/Remove live behind a per-item "More actions" kebab menu.
 async function openItemMenu(user: ReturnType<typeof userEvent.setup>, at = 0) {
   await user.click(

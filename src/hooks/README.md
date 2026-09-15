@@ -58,6 +58,30 @@ order-status page.
   fires `onInsert`, a reconnect (`CLOSED` → `SUBSCRIBED`) triggers a resync that
   keeps the newer of {local, snapshot} per id, and error statuses flip to
   `"disconnected"`.
+- `use-printer-presence.ts` — `usePrinterPresence(vendorId, locationId)` returns
+  a live `boolean`: a read-only subscriber to printkit's own bridge Presence
+  channel (`printkit:presence:<vendorId>:<locationId>`, keyed by printkit's own
+  `print_locations.id`, not qkit's boothId) — mirrors printkit's own
+  `bridge-status.tsx`. Never calls `.track()` itself; only the bridge device
+  publishes presence. `locationId` unset (booth never registered with printkit)
+  always reads offline — that "force false" lives in the hook's own return
+  (`return locationId ? online : false`), not a synchronous `setState` inside
+  the effect, to keep `react-hooks/set-state-in-effect` clean.
+- `use-printer-presence.test.tsx` — mocked-channel tests: no subscribe when
+  `locationId` is unset, subscribes keyed by vendorId+locationId, flips `true`
+  on a presence sync reporting a tracked `bridge`, and unsubscribes on unmount.
+- `use-money-field.ts` — `useMoneyField(cents, onCommit)` returns
+  `{ value, onFocus, onChange, onBlur }` props for a controlled $-amount
+  `<Input>`. Reformats to the canonical 2-decimal string only on blur (or on
+  an external `cents` change while unfocused, adjusted during render per
+  React's own pattern rather than in an effect) instead of on every keystroke
+  — reformatting live resets the caret to the end after each key, so typing
+  "6.50" left-to-right used to land as "6.01" in `menu-editor.tsx`/
+  `option-groups-editor.tsx`'s price/cost inputs (each digit appended past the
+  fixed decimal point). Not consumed directly — see `MoneyInput` in
+  `src/components/README.md`, which wraps it so the hook is always called at a
+  real component's top level even when rendered from inside a `.map()` or a
+  render-prop.
 
 ## Connectivity
 
@@ -73,6 +97,10 @@ order-status page.
   `navigatingAway` from `@merqo/ui`; it is consumed by dashboard and order-flow
   components that submit server actions from a button (menu editing, order
   status transitions, checkout) to derive their disabled/loading state.
+- `use-printer-presence.ts` imports `createClient` from `@/lib/supabase/client`;
+  consumed by `dashboard/booths/printing-section.tsx`.
+- `use-money-field.ts` imports `centsToDollarString`/`parseDollarsToCents` from
+  `@/lib/utils`; consumed only via `@/components/money-input.tsx`'s `MoneyInput`.
 
 ## Parent
 
