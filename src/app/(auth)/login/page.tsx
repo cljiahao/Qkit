@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ElevatedCard } from "@/components/elevated-card";
+import { ElevatedCard } from "@merqo/ui";
 import { Wordmark } from "@/components/landing/wordmark";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";

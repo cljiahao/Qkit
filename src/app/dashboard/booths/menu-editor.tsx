@@ -43,7 +43,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MoneyInput } from "@/components/money-input";
 import {
   Select,
   SelectContent,
@@ -51,7 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImageUploader, InfoTooltip } from "@merqo/ui";
+import { ImageUploader, InfoTooltip, MoneyInput } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@/lib/image-resize";

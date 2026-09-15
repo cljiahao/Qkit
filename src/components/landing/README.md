@@ -23,9 +23,10 @@ inline mark used on the login page.
   link targets.
 - `footer.tsx` — `Footer()`: the site footer, shared by the landing page
   and `/about` (previously inlined in `src/app/page.tsx`, extracted so
-  `/about` could reuse it without duplicating the markup) — wordmark,
-  tagline, copyright line, an "About" link, `@merqo/ui`'s
-  `LegalFooterLinks` (Terms/Privacy), and a "Vendor sign in" link.
+  `/about` could reuse it without duplicating the markup). Since 2026-09-16
+  a thin wrapper around `@merqo/ui`'s own `Footer` (`wordmark`/`tagline`/
+  `kitName` slots) — qkit's copy was found structurally identical to
+  loopkit's and paykit's, differing only in that content, and promoted.
 - `footer.test.tsx` — asserts the wordmark link, tagline, copyright line,
   About link, and Terms/Privacy links.
 - `wordmark.tsx` — `Wordmark({ className })`: the standalone "QKit" mark (no

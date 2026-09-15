@@ -17,8 +17,6 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
   live choice-derived union. Renders nothing for an empty/`undefined` list.
   Used by `order/order-form.tsx`'s menu card row; the dedicated Customize
   sheet keeps its own icon+word badges (see `item-customizer.tsx` below).
-- `back-button.tsx` — `BackButton({ href, label })`: a ghost `Button` wrapping
-  a `Link` with a leading arrow icon, used as consistent page-leave nav.
 - `back-to-top.tsx` — `BackToTop()`: fixed bottom-right scroll-to-top button
   for the landing page, appears past `scrollY > 600`, respects
   `prefers-reduced-motion` for the scroll behavior.
@@ -98,20 +96,6 @@ prompt, metric })`: compact rating widget posting to
   `.svg` sources `unoptimized` (avoids needing the global
   `dangerouslyAllowSVG` flag) while raster uploads still get full
   optimization.
-- `money-input.tsx` — `MoneyInput({ cents, onCommit, ...inputProps })`: a
-  controlled $-amount `<Input>` wrapping `@/hooks/use-money-field`'s
-  `useMoneyField` as its own component, so the hook is always called at a real
-  component's top level — a caller rendering this from inside a `.map()` or a
-  render-prop can't accidentally trip `react-hooks/rules-of-hooks` the way
-  calling the hook directly there would (this is why `menu-editor.tsx`'s
-  per-item Price/Cost fields and `option-groups-editor.tsx`'s `ChoiceRow` both
-  use this component rather than the hook directly).
-- `money-input.dom.test.tsx` — RTL tests: blank for an unset amount, formatted
-  for a set one, the regression this component exists to fix (typing "6.50"
-  left-to-right one key at a time keeps "6.50", not the old caret-reset bug's
-  "6.01"), committing the parsed cents on blur, snapping a value with extra
-  typed precision back to its canonical 2-decimal string on blur, and clearing
-  to blank when the amount is deleted.
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
 - `order-card.tsx` — `OrderCard({ order, displayNumber, boothName, agingMin,
@@ -255,21 +239,16 @@ label })`: stashes a past order's lines via `stashReorder` and navigates to
   `/sw.js` (best-effort) so ready-order notifications can use
   `registration.showNotification` (required on Android Chrome) and the app
   is installable as a PWA.
-- `social-icons.tsx` — `SOCIAL_LINK_FIELDS`: the shared vendor social-link
-  field list (website/instagram/facebook/tiktok) — real brand marks via
-  `@icons-pack/react-simple-icons` (`color="default"`, the platform's
-  official color) for every field but `website`, which uses a generic
-  Lucide `Globe`. Consumed by both `social-links-fields.tsx` (the edit form)
-  and `social-links-row.tsx` (the read-only display).
-- `social-links-fields.tsx` — `SocialLinksFields({ value, onChange,
-idPrefix })`: the vendor profile/booth-edit form inputs for the four social
-  fields, labeled with `social-icons.tsx`'s marks.
-- `social-links-fields.dom.test.tsx` — RTL tests for `SocialLinksFields`.
 - `social-links-row.tsx` — `SocialLinksRow({ links })`: read-only icon row
-  of a vendor's set social links, each on a fixed light chip (not the page's
+  of a vendor's set social links, built on `@merqo/ui`'s `SOCIAL_LINK_FIELDS`
+  (real brand marks via `@icons-pack/react-simple-icons`, `website` gets a
+  generic Lucide `Globe` instead), each on a fixed light chip (not the page's
   theme background) so single-color marks like TikTok's stay legible in
   dark mode too; renders nothing when `links` is empty. Shown on the
-  order-status page footer and on a closed booth's menu-page banner.
+  order-status page footer and on a closed booth's menu-page banner. The
+  matching edit form, `SocialLinksFields`, also now lives in `@merqo/ui` —
+  see `dashboard/booths/social-links-section.tsx` and
+  `dashboard/profile/profile-form.tsx` for its two call sites.
 - `social-links-row.dom.test.tsx` — RTL tests for `SocialLinksRow`'s
   empty/partial-link rendering.
 - `ticket-section.tsx` — `Section({ icon, eyebrow, title, description,
@@ -331,9 +310,9 @@ and is consumed by `src/app/o/[code]/page.tsx`. The `landing-*` family
 sibling `landing/`-`Wordmark` is consumed only by the login page, outside the
 landing route. `order-card.tsx` and
 `dashboard-tour.tsx` are consumed by the vendor dashboard
-(`src/app/dashboard`); `money-input.tsx` wraps `@/hooks/use-money-field` and is
-consumed by `dashboard/booths/menu-editor.tsx` and
-`dashboard/booths/option-groups-editor.tsx`; `ticket.tsx`/`ticket-section.tsx` are the shared card
+(`src/app/dashboard`); `dashboard/booths/menu-editor.tsx` and
+`dashboard/booths/option-groups-editor.tsx` render their Price/Cost fields via
+`@merqo/ui`'s `MoneyInput`, not a local component; `ticket.tsx`/`ticket-section.tsx` are the shared card
 shell used by both the dashboard and the ordering flow. `feedback-form.tsx` posts
 to a server action under `src/app/actions/`. `payment-proof-viewer.tsx`
 (dynamically imported by `order-card.tsx`) calls `src/app/dashboard/

@@ -99,8 +99,6 @@ order-status page.
   status transitions, checkout) to derive their disabled/loading state.
 - `use-printer-presence.ts` imports `createClient` from `@/lib/supabase/client`;
   consumed by `dashboard/booths/printing-section.tsx`.
-- `use-money-field.ts` imports `centsToDollarString`/`parseDollarsToCents` from
-  `@/lib/utils`; consumed only via `@/components/money-input.tsx`'s `MoneyInput`.
 
 ## Parent
 

@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
-import { BackButton } from "@/components/back-button";
+import { BackButton } from "@merqo/ui";
 import { currentPrepEstimate, type StatsOrder } from "@/lib/stats";
 import { SettingsForm } from "./settings-form";
 
@@ -40,7 +41,11 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-lg space-y-8 md:max-w-4xl">
       <header>
         <div className="mb-2 -ml-2.5">
-          <BackButton href="/dashboard" label="Back to board" />
+          <BackButton
+            href="/dashboard"
+            label="Back to board"
+            LinkComponent={Link}
+          />
         </div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Live orders
