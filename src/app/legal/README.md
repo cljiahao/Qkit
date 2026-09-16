@@ -9,8 +9,10 @@ it and, on `accept/`, records the vendor's acceptance with merqo.
 ## Contents
 
 - `terms/page.tsx` — `TermsPage`, a one-line Server Component rendering
-  `@merqo/ui`'s `<LegalDocument doc="terms" />` (the component brings its own
-  `mx-auto max-w-3xl` prose container, so there's no local layout).
+  `@merqo/ui`'s `<LegalDocument doc="terms" kit="qkit" />` (the component
+  brings its own `mx-auto max-w-3xl` prose container, so there's no local
+  layout). The `kit` prop scopes the rendered Annex to qkit's own schedule
+  only, not every sibling kit's.
 - `privacy/page.tsx` — `PrivacyPage`, the same for `<LegalDocument doc="privacy" />`.
 - `accept/page.tsx` — `LegalAcceptPage`. The interstitial
   `requireCurrentLegalAcceptance` (`@/lib/legal-gate`) redirects a signed-in
@@ -30,7 +32,8 @@ it and, on `accept/`, records the vendor's acceptance with merqo.
   `/api/merqo/legal-accept` on merqo once per doc type (`terms`,
   `privacy`) — bearer-authed with `MERQO_CUSTOMER_SECRET`, `kit_slug:
 "qkit"`, each body carrying the SHA-256 of that doc's
-  `getLegalDocSource(...)`. Each call is independent, and merqo maps a
+  `getLegalDocSource(docType, "qkit")` (qkit's own scoped schedule, not the
+  full multi-kit annex). Each call is independent, and merqo maps a
   duplicate `(email, doc_type, doc_version)` to a success, so a conflict
   on one doc never blocks the other. On success it primes the local
   `legal_check_state` cache to `is_current = true` and redirects to a
