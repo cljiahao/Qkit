@@ -23,6 +23,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (bumped to v0.29.1) instead of a qkit-local copy — each was confirmed
   duplicated across 2 or more sibling kits before promoting, no behavior
   change intended.
+- Bumped `@merqo/ui` to `v0.30.0`.
+
+### Fixed
+
+- `/legal/terms` now shows only qkit's own Annex schedule, not every
+  sibling kit's, via `@merqo/ui`'s new per-kit `getLegalDocSource`/
+  `LegalDocument` scoping. `legal/accept/actions.ts`'s recorded
+  `doc_sha256` now hashes that same scoped content.
 - The customer menu page's multi-section jump nav is now a sticky sidebar
   (with a thumbnail from each section's first item, Oddle-style) beside the
   scrolling item list, at every screen size — replacing the old horizontal

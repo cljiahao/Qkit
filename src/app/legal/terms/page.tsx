@@ -1,5 +1,5 @@
 import { LegalDocument } from "@merqo/ui";
 
 export default function TermsPage() {
-  return <LegalDocument doc="terms" />;
+  return <LegalDocument doc="terms" kit="qkit" />;
 }
