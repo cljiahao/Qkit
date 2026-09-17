@@ -1,3 +1,5 @@
+"use client";
+
 import { SOCIAL_LINK_FIELDS } from "@merqo/ui";
 import type { SocialLinks } from "@/lib/types";
 
