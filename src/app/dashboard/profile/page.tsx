@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { BackButton } from "@merqo/ui";
 import { ProfileForm } from "./profile-form";
@@ -20,11 +19,7 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-lg space-y-8 md:max-w-4xl">
       <header>
         <div className="mb-2 -ml-2.5">
-          <BackButton
-            href="/dashboard"
-            label="Back to board"
-            LinkComponent={Link}
-          />
+          <BackButton href="/dashboard" label="Back to board" />
         </div>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Your account
