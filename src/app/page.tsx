@@ -5,7 +5,7 @@ import { Footer } from "@/components/landing/footer";
 import { LandingCta } from "@/components/landing-cta";
 import { HeroPreviewCarousel } from "@/components/hero-preview-carousel";
 import { FeaturedBooths } from "@/components/featured-booths";
-import { BackToTop } from "@/components/back-to-top";
+import { BackToTop } from "@merqo/ui";
 import { Ticket } from "@/components/ticket";
 import { createServerClient } from "@/lib/supabase/server";
 import { DEFAULT_PRICING } from "@/lib/pricing";

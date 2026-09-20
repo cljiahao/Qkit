@@ -14,6 +14,10 @@ Vendor account profile page — stall name, social links, profile icon, display 
 
 Reachable from `dashboard-nav.tsx`'s account menu ("Profile" item). `page.tsx` calls `requireEntitledVendor()` (`@/lib/supabase/get-entitlement`) and renders `profile-form.tsx`, which calls the server actions `updateStallName`/`updateSocialLinks` in `actions.ts` for stall name/social links and the browser Supabase client (`@/lib/supabase/client`) directly for avatar/display-name/password, all validated against schemas in `@/lib/schemas`.
 
+## Shared package note
+
+The avatar upload's resize step now calls `@merqo/ui`'s `resizeToWebp` (v0.31.0). v0.31.1 also fixes a latent bug there: a filename with no dot used to yield the whole name as its extension.
+
 ## Parent
 
 [dashboard](../README.md)

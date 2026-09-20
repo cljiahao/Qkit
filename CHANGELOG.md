@@ -6,6 +6,48 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped `@merqo/ui` to `v0.31.2`. v0.31.0 replaced the package-wide
+  `"use client"` banner with per-module directives, so a plain-data export
+  is a real value inside a Server Component rather than an opaque
+  client-reference stub. That was the root cause of qkit's own 2026-09-18
+  production outage; until now the fixes were workarounds at each call site.
+- Adopted four primitives promoted into `@merqo/ui` v0.31.0, deleting the
+  qkit copies: `safeRedirectPath` and `resizeToWebp` (were
+  `src/lib/safe-redirect.ts` / `image-resize.ts`), `BackToTop` (was
+  `src/components/back-to-top.tsx`) and `GoogleMark` (was
+  `src/app/(auth)/login/google-mark.tsx`).
+- `ticket-section.dom.test.tsx`'s tooltip assertion now expects one matching
+  node instead of two. The radix `@radix-ui/react-tooltip` that `@merqo/ui`
+  bundles moved from 1.2.8 to 1.2.16, which no longer renders a
+  visually-hidden duplicate of the tooltip text. Per the previous comment's
+  own instruction, confirmed the surviving node is the visible one (it
+  carries `role="tooltip"`, `data-state="delayed-open"`, the popper
+  positioning styles and the real `bg-popover` classes) and not the hidden
+  duplicate. The assertion also now checks those attributes directly.
+
+### Fixed
+
+- `resizeToWebp` on a filename with no dot returned the whole name as the
+  extension (a file called `photo` gave `ext: "photo"`). stockkit's copy had
+  guarded this and qkit's had not; fixed upstream in v0.31.1.
+
+### Note
+
+- `order/[boothId]/[orderNumber]/payment-actions.ts` calls `resizeToWebp`
+  from a `"use server"` module. `resizeToWebp` is browser-only (Canvas), so
+  on the server it throws internally and its catch returns the original file
+  — the payment-proof upload succeeds but is never actually resized. This
+  was equally true of the qkit-local copy, so the move changes nothing;
+  recording it rather than leaving a silent no-op. A real server-side resize
+  would need a different implementation.
+- `order/[boothId]/pay/pay-form.tsx` and `[orderNumber]/page.tsx` keep
+  `react-qr-code` rather than `qrSvg`. `qr-image.ts` insets the rasterized
+  PNG ~8% precisely because `react-qr-code` emits zero margin, and bank apps
+  scanning a saved photo can fail on edge-to-edge modules; `qrSvg` emits
+  `margin: 1`, so swapping changes the quiet zone on a live payment path.
+
 ### Added
 
 - Saving a brand-new booth's first menu now lands on its QR page (with a

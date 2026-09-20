@@ -72,3 +72,6 @@ PRODUCT.md
 # secrets). Machine-local — never the same across two developers or CI.
 supabase/.branches
 supabase/.temp
+
+# Local Codex CLI working dir (not part of the project)
+.codex/

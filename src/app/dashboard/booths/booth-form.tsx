@@ -35,7 +35,7 @@ import { ImageUploader } from "@merqo/ui";
 import { Section } from "@/components/ticket-section";
 import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
-import { resizeToWebp } from "@/lib/image-resize";
+import { resizeToWebp } from "@merqo/ui";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { WorkingHoursEditor } from "./working-hours-editor";
 import { PaymentSection } from "./payment-section";

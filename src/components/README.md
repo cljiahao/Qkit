@@ -319,6 +319,10 @@ to a server action under `src/app/actions/`. `payment-proof-viewer.tsx`
 proof-actions.ts` for its signed photo URL and duplicate-hash lookup, and
 loads its self-hosted `tesseract.js` assets from `/public/tesseract`.
 
+## Shared package note
+
+`back-to-top.tsx` moved to `@merqo/ui` (v0.31.0) as `BackToTop` — it was byte-identical across four kits.
+
 ## Parent
 
 [src](../README.md)

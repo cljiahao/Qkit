@@ -66,6 +66,10 @@ successful claim, `pay-form.tsx` navigates to `../{orderNumber}/page.tsx`
 polling and actions happen — nothing links back to this page once an
 order has its number.
 
+## Shared package note
+
+The payment-proof upload's resize step now calls `@merqo/ui`'s `resizeToWebp` (v0.31.0) rather than `@/lib/image-resize`.
+
 ## Parent
 
 [[boothId]](../README.md)

@@ -7,6 +7,21 @@ their order status in realtime. The dashboard onboarding tour's final step
 are optional (Payment, Printing, Booking Status) before they ever create
 their first booth.
 
+`@merqo/ui` is pinned at v0.31.2 (2026-09-19). v0.31.0 replaced the
+package-wide `"use client"` banner with per-module directives, so a
+plain-data export is a real value inside a Server Component rather than an
+opaque client-reference stub — the root cause of qkit's 2026-09-18
+production outage (see
+`docs/meta/2026-09-18-social-links-backbutton-rsc-crash-aar.md`). It also
+promoted four modules qkit had its own copy of: `safeRedirectPath`,
+`resizeToWebp`, `BackToTop` and `GoogleMark`. `src/lib/image-upload-adapter.ts`
+stays local — the Storage bucket and object path are qkit's own. The
+customer payment QRs keep `react-qr-code` rather than `qrSvg`: `qr-image.ts`
+insets the rasterized PNG to restore a quiet zone that `react-qr-code`
+omits, and changing renderers would alter that on a live payment path.
+Which repo uses which shared export is tracked in
+`../merqo-ui/docs/usage-matrix.md`.
+
 ## Stack
 
 Next.js 16 (App Router, Turbopack) · TypeScript · Tailwind v4 · shadcn/ui (new-york) ·

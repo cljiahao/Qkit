@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/utils";
-import { resizeToWebp } from "@/lib/image-resize";
+import { resizeToWebp } from "@merqo/ui";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { claimPayment } from "../[orderNumber]/payment-actions";
 import { renderSvgToPngBlob } from "../[orderNumber]/qr-image";

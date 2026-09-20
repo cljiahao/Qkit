@@ -19,6 +19,10 @@ Vendor sign-in page — combines email/password sign-in, sign-up, Google OAuth, 
 
 Imports `loginSchema`/`LoginInput` from `src/lib/schemas.ts`, the browser Supabase client from `src/lib/supabase/client.ts`, and `useAsyncAction`/`navigatingAway` from `src/hooks/use-async-action.ts`. Successful sign-in/sign-up navigates to `/dashboard` (guarded by `src/proxy.ts`); the reset-request path hands off to `src/app/auth/callback` → `src/app/(auth)/reset-password/`. Google OAuth also flows through `/auth/callback`.
 
+## Shared package note
+
+`google-mark.tsx` moved to `@merqo/ui` (v0.31.0) as `GoogleMark` — it was byte-identical in all five repos.
+
 ## Parent
 
 [(auth)](../README.md)
