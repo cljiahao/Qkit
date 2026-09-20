@@ -44,19 +44,19 @@ describe("Section", () => {
     await user.hover(
       screen.getByRole("button", { name: /more about stall name/i }),
     );
-    // Radix's TooltipContent (@radix-ui/react-tooltip 1.2.8, as currently
-    // pinned in qkit's lockfile) renders the tooltip text twice: once
-    // visibly, and once in a visually-hidden role="tooltip" span used for
-    // the accessible name. Both resolve to the same on-screen tooltip.
-    // Pinned to exactly 2 (not `toBeGreaterThan(0)`) so this test actually
-    // proves the visible tooltip renders on hover, not just that some
-    // matching text exists somewhere (a greater-than-0 check would also
-    // pass if only the visually-hidden duplicate rendered and the visible
-    // content silently failed to show). If @radix-ui/react-tooltip is ever
-    // bumped past 1.2.8 and this duplicate-node behavior goes away, this
-    // will need to become `.toBe(1)` — do not bump the dependency to "fix"
-    // this test without confirming the duplicate node is actually gone.
+    // Radix's TooltipContent used to render the tooltip text twice: once
+    // visibly, and once in a visually-hidden role="tooltip" span for the
+    // accessible name. That duplicate is gone as of the 1.2.16 that
+    // @merqo/ui v0.31.x bundles, so exactly one node is now correct.
+    // Verified, per the previous comment's own instruction, that the
+    // surviving node is the visible one and not the hidden duplicate: it
+    // carries role="tooltip", data-state="delayed-open", the popper
+    // positioning styles and the real bg-popover classes. Still pinned to
+    // an exact count rather than `toBeGreaterThan(0)`, so this keeps
+    // proving the visible tooltip actually renders on hover.
     const matches = await screen.findAllByText("extra detail");
-    expect(matches).toHaveLength(2);
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toHaveAttribute("role", "tooltip");
+    expect(matches[0]).toHaveAttribute("data-state", "delayed-open");
   });
 });

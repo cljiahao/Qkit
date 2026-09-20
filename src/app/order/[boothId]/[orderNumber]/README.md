@@ -281,6 +281,23 @@ called from `../pickup/pickup-scanner.tsx`, the self-checkout pickup kiosk
 — a separate, public entry point that shares this same directory's
 `access_token`-gated trust model but not its route.
 
+## Shared package note
+
+`payment-actions.ts`'s `claimPayment` now calls `@merqo/ui`'s `resizeToWebp`
+(v0.31.0) rather than `@/lib/image-resize`. Note that this call site is
+inside a `"use server"` module, and `resizeToWebp` is browser-only (it uses
+`createImageBitmap` and a `<canvas>`). On the server the attempt throws and
+the function's own catch returns the original file untouched, so the upload
+still succeeds but **no resize actually happens on this path**. That was
+equally true of the qkit-local copy this replaces — the move is
+import-only and changes no behaviour — but it is worth recording rather
+than leaving as a silent no-op. Resizing payment proofs server-side would
+need a different implementation (e.g. sharp), not this one.
+
+The import itself is only legal because `@merqo/ui` v0.31.0 dropped its
+package-wide `"use client"` banner. Under the banner, importing a plain
+function into a server module produced a client-reference stub.
+
 ## Parent
 
 [[boothId]](../README.md)

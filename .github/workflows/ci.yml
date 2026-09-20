@@ -192,12 +192,16 @@ jobs:
       - name: Mutation-test changed src/lib files
         run: |
           git fetch origin "$GITHUB_BASE_REF" --depth=1
-          FILES=$(git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" \
+          # --diff-filter=d drops deleted paths: a PR that only removes a
+          # src/lib file (e.g. code promoted into @merqo/ui along with its
+          # tests) would otherwise hand Stryker a path that no longer
+          # exists, and it exits 1 with "No tests were executed".
+          FILES=$(git diff --name-only --diff-filter=d "origin/$GITHUB_BASE_REF...HEAD" \
             | grep -E '^src/lib/.*\.ts$' \
             | grep -vE '\.test\.ts$|/types\.ts$|/action-result\.ts$' \
             | paste -sd, -)
           if [ -z "$FILES" ]; then
-            echo "No src/lib changes — skipping mutation."
+            echo "No surviving src/lib changes — skipping mutation."
             exit 0
           fi
           echo "Mutating: $FILES"

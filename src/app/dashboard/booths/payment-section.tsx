@@ -14,7 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImageUploader, InfoTooltip } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
-import { resizeToWebp } from "@/lib/image-resize";
+import { resizeToWebp } from "@merqo/ui";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
 import type { PaymentConfig } from "@/lib/types";
 

@@ -105,7 +105,10 @@ vi.mock("@/lib/paykit/client", () => ({
 const { resizeToWebpMock } = vi.hoisted(() => ({
   resizeToWebpMock: vi.fn(),
 }));
-vi.mock("@/lib/image-resize", () => ({ resizeToWebp: resizeToWebpMock }));
+vi.mock("@merqo/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@merqo/ui")>()),
+  resizeToWebp: resizeToWebpMock,
+}));
 
 const { notifyVendorTelegramMock, notifyPrintkitMock } = vi.hoisted(() => ({
   notifyVendorTelegramMock: vi.fn(),

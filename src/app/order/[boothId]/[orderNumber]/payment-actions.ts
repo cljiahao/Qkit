@@ -10,7 +10,7 @@ import {
   unclaimCheckout,
   type CheckoutView,
 } from "@/lib/paykit/client";
-import { resizeToWebp } from "@/lib/image-resize";
+import { resizeToWebp } from "@merqo/ui";
 import { hashBuffer } from "@/lib/hash";
 import { notifyVendorTelegram, notifyPrintkit } from "@/app/o/[code]/notify";
 import type { ActionResult } from "@/lib/action-result";

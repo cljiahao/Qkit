@@ -81,6 +81,10 @@ Vendor booth list, the shared create/edit form and its building-block editors, a
 
 `page.tsx` lists booths (`booth-list.tsx`), which links to `new/` and `[boothId]/`, both of which render the shared `booth-form.tsx` (create vs. edit) built from `working-hours-editor.tsx`, `payment-section.tsx`, `printing-section.tsx`, and `social-links-section.tsx`. `booth-form.tsx` and the `new`/`[boothId]` pages call `saveBooth`/`deleteBooth`/`regenerateShortCode` in `actions.ts`, which enforce the same `@/lib/plan` entitlement caps the editors gate in the UI. `menu-editor.tsx` (itself embedding `option-groups-editor.tsx`, and since 2026-09-02 owning section management too — the standalone `menu-categories-editor.tsx` it used to sit beside is retired) is no longer composed by `booth-form.tsx` directly — it's rendered by `menu-manager.tsx` instead, reached via `[boothId]/menu/`, whose own saves (`saveMenuItems`/`saveMenuCategories` in `actions.ts`) are the sole write paths for `booths.menu_items`/`booths.menu_categories` respectively.
 
+## Shared package note
+
+The booth banner, menu-item and payment-QR uploads now call `@merqo/ui`'s `resizeToWebp` (v0.31.0) rather than `@/lib/image-resize`.
+
 ## Parent
 
 [dashboard](../README.md)

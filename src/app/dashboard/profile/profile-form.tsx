@@ -11,7 +11,7 @@ import { ImageUploader, SocialLinksFields, TwoColumnSections } from "@merqo/ui";
 import { Section } from "@/components/ticket-section";
 import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
-import { resizeToWebp } from "@/lib/image-resize";
+import { resizeToWebp } from "@merqo/ui";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import {

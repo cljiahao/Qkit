@@ -530,6 +530,10 @@ contract) and the admin/vendor stats dashboards. `stuck-orders.ts` feeds the
 feeds `booth-access.ts`'s serveability calculation, mirroring the
 `booth_servable` SQL function in `supabase/migrations/`.
 
+## Shared package note
+
+`safe-redirect.ts` and `image-resize.ts` moved to `@merqo/ui` (v0.31.0) — both were duplicated across all five repos. Import `safeRedirectPath` and `resizeToWebp` from `@merqo/ui` instead. `image-upload-adapter.ts` stays local: the Storage bucket and object path are qkit's own.
+
 ## Parent
 
 [src](../README.md)

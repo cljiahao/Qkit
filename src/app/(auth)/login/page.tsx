@@ -14,7 +14,7 @@ import { Wordmark } from "@/components/landing/wordmark";
 import { createClient } from "@/lib/supabase/client";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
-import { GoogleMark } from "./google-mark";
+import { GoogleMark } from "@merqo/ui";
 
 type Mode = "signin" | "signup";
 

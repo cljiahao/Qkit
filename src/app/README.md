@@ -36,6 +36,10 @@ Next.js App Router tree — every page, layout, route handler, and PWA manifest 
 
 `(auth)/` is the vendor login/reset flow; `dashboard/` is the authenticated vendor area; `legal/` holds the public document pages and the acceptance interstitial the dashboard gate redirects to. `o/` and `order/` are the two customer-facing ordering surfaces (the current short-code entry point and the legacy booth-id route). `admin/` and `api/` are internal/ops surfaces; `actions/` holds server actions shared across routes rather than colocated with one page. `layout.tsx` is the ancestor of every route below; `page.tsx` (the landing page) is the only route directly under `app/` besides the special Next.js files.
 
+## Shared package note
+
+`page.tsx` now imports `BackToTop` from `@merqo/ui` (v0.31.0) rather than a qkit-local copy.
+
 ## Parent
 
 [src](../README.md)

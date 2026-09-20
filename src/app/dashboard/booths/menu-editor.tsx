@@ -53,7 +53,7 @@ import {
 import { ImageUploader, InfoTooltip, MoneyInput } from "@merqo/ui";
 import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
-import { resizeToWebp } from "@/lib/image-resize";
+import { resizeToWebp } from "@merqo/ui";
 import { ProLock } from "@/components/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
