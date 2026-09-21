@@ -68,7 +68,7 @@ order has its number.
 
 ## Shared package note
 
-The payment-proof upload's resize step now calls `@merqo/ui`'s `resizeToWebp` (v0.31.0) rather than `@/lib/image-resize`.
+The payment-proof upload's resize step calls `@merqo/ui`'s `resizeToWebp`, and it is the only resize a proof gets — `claimPayment` is a server action and cannot run a canvas. After resizing, `pay-form.tsx` checks the result against `paymentProofSchema` (the same schema `claimPayment` enforces), so a file the browser could not shrink or re-encode — an oversized image, or a type such as HEIC — is rejected on selection rather than after the upload round trip.
 
 ## Parent
 

@@ -6,6 +6,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Payment-proof storage is now bounded at every layer. The
+  `payment-proofs` bucket had no `file_size_limit` or `allowed_mime_types`
+  (unlike `booth-images`, hardened in `0037`), so nothing in storage capped
+  what one screenshot-paid order could write. Migration `0093` sets a 1 MB
+  limit and JPEG/PNG/WebP only, pinned by two new pgTAP assertions.
+  `claimPayment` now validates the upload against a new
+  `paymentProofSchema` (non-empty, <=1 MB, JPEG/PNG/WebP) before touching
+  anything, and `pay-form.tsx` checks the same schema on selection so a bad
+  file is rejected before the round trip.
+- Removed `claimPayment`'s server-side `resizeToWebp` call. It needs a
+  `<canvas>`, so in a server action it always threw internally and fell back
+  to the original file: a silent no-op. The browser resize in `pay-form.tsx`
+  was, and remains, the one that actually shrinks proofs. The stored
+  extension and content type now come from the file's real MIME type.
+- Bumped `@merqo/ui` to `v0.31.3`: where a browser cannot encode WebP,
+  `canvas.toBlob` silently returns a PNG, which `resizeToWebp` had
+  mislabelled `image/webp`. A PNG of a photo is several times larger than a
+  JPEG, so on such a browser proofs were being stored larger than intended.
+  It now falls back to JPEG and labels the result truthfully.
+
 ### Changed
 
 - Bumped `@merqo/ui` to `v0.31.2`. v0.31.0 replaced the package-wide
