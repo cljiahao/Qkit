@@ -13,7 +13,7 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(117)`, run inside one rolled-back
+- `rls.test.sql` — a single pgTAP file (`plan(123)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
@@ -99,6 +99,9 @@ from the Vitest/Playwright tests elsewhere in the repo.
     one-time `NULL` → assigned transition is permitted; `anon` cannot read
     the `payment-proofs` storage bucket (a real row is seeded first, as the
     privileged role, so the check proves RLS actually filters it out).
+    It also pins the bucket's own limits from migration `0093` (1 MB
+    `file_size_limit`, JPEG/PNG/WebP `allowed_mime_types`), so a later
+    migration cannot quietly loosen them.
 
 ## Connectivity
 

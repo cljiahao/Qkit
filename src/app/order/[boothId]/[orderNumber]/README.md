@@ -283,20 +283,24 @@ called from `../pickup/pickup-scanner.tsx`, the self-checkout pickup kiosk
 
 ## Shared package note
 
-`payment-actions.ts`'s `claimPayment` now calls `@merqo/ui`'s `resizeToWebp`
-(v0.31.0) rather than `@/lib/image-resize`. Note that this call site is
-inside a `"use server"` module, and `resizeToWebp` is browser-only (it uses
-`createImageBitmap` and a `<canvas>`). On the server the attempt throws and
-the function's own catch returns the original file untouched, so the upload
-still succeeds but **no resize actually happens on this path**. That was
-equally true of the qkit-local copy this replaces — the move is
-import-only and changes no behaviour — but it is worth recording rather
-than leaving as a silent no-op. Resizing payment proofs server-side would
-need a different implementation (e.g. sharp), not this one.
+`claimPayment` no longer resizes. It used to call `@merqo/ui`'s
+`resizeToWebp`, which needs `createImageBitmap` and a `<canvas>`, so in
+this `"use server"` module it only ever threw internally and fell back to
+the original file — a silent no-op. The real resize is the browser one in
+`../pay/pay-form.tsx`, the only caller, which shrinks to <=1600px WebP (or
+JPEG where WebP encoding is unsupported, since `@merqo/ui` v0.31.3).
 
-The import itself is only legal because `@merqo/ui` v0.31.0 dropped its
-package-wide `"use client"` banner. Under the banner, importing a plain
-function into a server module produced a client-reference stub.
+What bounds storage server-side is validation, not resizing.
+`claimPayment` checks the file against `paymentProofSchema`
+(`@/lib/schemas`: non-empty, <=1 MB, JPEG/PNG/WebP) before creating a
+client, and stores it under an extension and content type derived from its
+real MIME type. The `payment-proofs` bucket enforces the same limits again
+at the storage layer (migration `0093`), so they hold even for a caller that
+bypasses this action.
+
+(Importing `resizeToWebp` into a server module was only possible at all
+because `@merqo/ui` v0.31.0 dropped its package-wide `"use client"`
+banner; under the banner it resolved to a client-reference stub.)
 
 ## Parent
 
