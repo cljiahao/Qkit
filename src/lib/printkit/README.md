@@ -2,11 +2,12 @@
 
 ## Purpose
 
-Server-only HTTP client for printkit's `/api/v1/print-jobs` (job creation)
-and `/api/v1/print-locations` (location registration) APIs — a separate
+Server-only HTTP client for printkit's `/api/v1/print-jobs` (job creation),
+`/api/v1/print-locations` (location registration) and
+`/api/v1/print-locations/status` (is this booth's printer reachable) APIs — a separate
 sibling kit that bridges an order to a vendor's physical kitchen/receipt
-printer. Status changes flow the other direction (printkit calls qkit's own
-`/api/printkit/print-status` route, not covered by this module).
+printer. Print-job status changes still flow the other direction (printkit calls
+qkit's own `/api/printkit/print-status` route, not covered by this module).
 
 ## Contents
 
@@ -35,6 +36,13 @@ orderNumber})`: fires a job-creation request and returns a
   without throwing — the latter is exactly what happens today against
   printkit's current production deployment, since `/api/v1/print-locations`
   doesn't exist there yet and returns an HTML 404 page).
+
+`getPrinterStatus(boothId)` is the newest of the three: printkit owns
+whether a booth's printer is set up and reachable, for every kind of printer
+it supports, so qkit asks over HTTP instead of subscribing to printkit's own
+realtime channel with qkit's Supabase client. That subscription used to work
+only because the two kits share a Supabase project, and only for a Bluetooth
+bridge; a cloud printer has no bridge to publish presence at all.
 
 ## Connectivity
 

@@ -1,44 +1,56 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PrintingSection } from "./printing-section";
 
-let syncCallback: (() => void) | undefined;
-let presenceState: Record<string, unknown[]>;
-const channelSpy = vi.fn();
+type StatusBody = {
+  reachable: boolean;
+  printer: {
+    display_name: string;
+    state: "online" | "offline" | "not_set_up";
+    hardware_verified: boolean;
+  } | null;
+};
 
-function makeChannel() {
-  const channel = {
-    on: vi.fn((_event: string, _filter: unknown, cb: () => void) => {
-      syncCallback = cb;
-      return channel;
-    }),
-    subscribe: vi.fn(() => channel),
-    unsubscribe: vi.fn(),
-    presenceState: () => presenceState,
-  };
-  return channel;
+function respondsWith(body: StatusBody | null) {
+  const fetchMock = vi.fn(async () =>
+    body
+      ? new Response(JSON.stringify(body))
+      : new Response("{}", { status: 500 }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
 }
 
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({
-    channel: (name: string) => {
-      channelSpy(name);
-      return makeChannel();
-    },
-  }),
-}));
+const ONLINE: StatusBody = {
+  reachable: true,
+  printer: {
+    display_name: "Feie FP-N20H",
+    state: "online",
+    hardware_verified: false,
+  },
+};
+
+const OFFLINE: StatusBody = {
+  reachable: true,
+  printer: {
+    display_name: "Feie FP-N20H",
+    state: "offline",
+    hardware_verified: false,
+  },
+};
+
+const NO_PRINTER: StatusBody = { reachable: true, printer: null };
 
 describe("PrintingSection", () => {
   const originalUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
 
   beforeEach(() => {
-    syncCallback = undefined;
-    presenceState = {};
-    channelSpy.mockReset();
+    respondsWith(NO_PRINTER);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     // process.env.X = undefined stringifies to "undefined" in Node, not
     // unset — delete instead when there was nothing there to restore.
     if (originalUrl === undefined) delete process.env.NEXT_PUBLIC_PRINTKIT_URL;
@@ -47,30 +59,105 @@ describe("PrintingSection", () => {
 
   it("calls onChange with the new value when toggled", () => {
     const onChange = vi.fn();
-    render(<PrintingSection value={false} onChange={onChange} vendorId="v1" />);
+    render(<PrintingSection value={false} onChange={onChange} />);
+
     fireEvent.click(screen.getByRole("switch"));
+
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
   it("reflects a true value as checked", () => {
-    render(<PrintingSection value={true} onChange={vi.fn()} vendorId="v1" />);
+    render(<PrintingSection value={true} onChange={vi.fn()} />);
     expect(screen.getByRole("switch")).toBeChecked();
   });
 
-  it("shows no printer link/hint when print_enabled is off", () => {
+  it("asks printkit nothing until the booth has been saved", () => {
+    const fetchMock = respondsWith(NO_PRINTER);
+    render(<PrintingSection value={false} onChange={vi.fn()} />);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("checks the printer even while printing is off, so the toggle can warn", async () => {
+    const fetchMock = respondsWith(OFFLINE);
+    render(<PrintingSection value={false} onChange={vi.fn()} boothId="b1" />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+  });
+
+  it("reads this booth's status through qkit, never printkit directly", async () => {
+    const fetchMock = respondsWith(ONLINE);
     render(
-      <PrintingSection
-        value={false}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="b1"
-      />,
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
     );
-    expect(screen.queryByText(/printer/i)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/printkit/printer-status?booth=booth-42",
+        expect.anything(),
+      );
+    });
+  });
+
+  it("names the connected printer", async () => {
+    respondsWith(ONLINE);
+    render(
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
+    );
+
+    expect(await screen.findByText("Printer connected")).toBeInTheDocument();
+    expect(screen.getByText("Feie FP-N20H")).toBeInTheDocument();
+  });
+
+  it("warns that orders will not print when no printer is set up", async () => {
+    respondsWith(NO_PRINTER);
+    render(
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
+    );
+
+    expect(
+      await screen.findByText(/no printer is set up for this booth yet/i),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms before turning printing on while the printer is offline", async () => {
+    const onChange = vi.fn();
+    const fetchMock = respondsWith(OFFLINE);
+    render(
+      <PrintingSection value={false} onChange={onChange} boothId="booth-42" />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("switch"));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole("button", { name: /turn on anyway/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("turns printing on without asking when the printer is online", async () => {
+    const onChange = vi.fn();
+    const fetchMock = respondsWith(ONLINE);
+    render(
+      <PrintingSection value={false} onChange={onChange} boothId="booth-42" />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    fireEvent.click(screen.getByRole("switch"));
+
+    expect(onChange).toHaveBeenCalledWith(true);
   });
 
   it("prompts to save the booth first when enabled but unsaved", () => {
-    render(<PrintingSection value={true} onChange={vi.fn()} vendorId="v1" />);
+    render(<PrintingSection value={true} onChange={vi.fn()} />);
+
     expect(
       screen.getByText(
         "Save this booth first to choose its printer in printkit.",
@@ -78,236 +165,54 @@ describe("PrintingSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("links to printkit's bridge page for this booth, keyed by booth id", () => {
+  it("links to printkit's printers page", () => {
     process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.test";
     render(
-      <PrintingSection
-        value={true}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-      />,
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
     );
+
     const link = screen.getByRole("link", {
       name: "Choose the printer for this booth →",
     });
     expect(link).toHaveAttribute(
       "href",
-      "https://printkit.test/dashboard/bridge?booth=booth-42",
+      "https://printkit.test/dashboard/printers",
     );
     expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("explains that a Bluetooth printer needs a second device", () => {
+    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.test";
+    render(
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
+    );
+
+    expect(screen.getByText(/works with just your iPad/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "read why" })).toHaveAttribute(
+      "href",
+      "https://printkit.test/guides/bluetooth-printers",
+    );
   });
 
   it("falls back to a not-configured hint when printkit's URL is unset", () => {
     delete process.env.NEXT_PUBLIC_PRINTKIT_URL;
     render(
-      <PrintingSection
-        value={true}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-      />,
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
     );
+
     expect(
       screen.getByText("Printing isn't configured yet."),
     ).toBeInTheDocument();
   });
 
-  it("shows a printkit dashboard link regardless of the switch value", () => {
-    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.test";
-    render(<PrintingSection value={false} onChange={vi.fn()} vendorId="v1" />);
-    expect(
-      screen.getByRole("link", { name: "Manage printers in printkit ↗" }),
-    ).toHaveAttribute("href", "https://printkit.test/dashboard");
-  });
-
-  it("hides the printkit dashboard link when its URL is unset", () => {
-    delete process.env.NEXT_PUBLIC_PRINTKIT_URL;
-    render(<PrintingSection value={false} onChange={vi.fn()} vendorId="v1" />);
-    expect(
-      screen.queryByRole("link", { name: /manage printers/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("hides the dashboard link once the booth-scoped link is available", () => {
-    process.env.NEXT_PUBLIC_PRINTKIT_URL = "https://printkit.test";
+  it("says printkit is unreachable rather than claiming no printer", async () => {
+    respondsWith(null);
     render(
-      <PrintingSection
-        value={true}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-      />,
+      <PrintingSection value={true} onChange={vi.fn()} boothId="booth-42" />,
     );
+
     expect(
-      screen.getByRole("link", {
-        name: "Choose the printer for this booth →",
-      }),
+      await screen.findByText(/can't reach printkit/i),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: /manage printers/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows live PrinterStatus once a printkit location id exists", () => {
-    render(
-      <PrintingSection
-        value={true}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    expect(screen.getByRole("status")).toBeInTheDocument();
-  });
-
-  it("shows no PrinterStatus before a printkit location id exists", () => {
-    render(
-      <PrintingSection
-        value={true}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-      />,
-    );
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  it("warns that no printer is set up when printing is on but never registered", () => {
-    render(
-      <PrintingSection
-        value={true}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-      />,
-    );
-    expect(
-      screen.getByText(/no printer is set up for this booth yet/i),
-    ).toBeInTheDocument();
-  });
-
-  it("does not show the not-set-up warning once a printer is registered", () => {
-    render(
-      <PrintingSection
-        value={true}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    expect(
-      screen.queryByText(/no printer is set up for this booth yet/i),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not show the not-set-up warning while the switch is off", () => {
-    render(
-      <PrintingSection
-        value={false}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-      />,
-    );
-    expect(
-      screen.queryByText(/no printer is set up for this booth yet/i),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows no PrinterStatus while the switch is off, even with a location id", () => {
-    render(
-      <PrintingSection
-        value={false}
-        onChange={vi.fn()}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  it("confirms before turning on when a registered printer isn't connected", () => {
-    const onChange = vi.fn();
-    render(
-      <PrintingSection
-        value={false}
-        onChange={onChange}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    fireEvent.click(screen.getByRole("switch"));
-    expect(onChange).not.toHaveBeenCalled();
-    expect(screen.getByText("No printer connected")).toBeInTheDocument();
-  });
-
-  it("turns on anyway once confirmed in the dialog", () => {
-    const onChange = vi.fn();
-    render(
-      <PrintingSection
-        value={false}
-        onChange={onChange}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(screen.getByRole("button", { name: /turn on anyway/i }));
-    expect(onChange).toHaveBeenCalledWith(true);
-  });
-
-  it("does not turn on when the confirm dialog is cancelled", () => {
-    const onChange = vi.fn();
-    render(
-      <PrintingSection
-        value={false}
-        onChange={onChange}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it("turns on directly with no confirm dialog once the printer is connected", () => {
-    const onChange = vi.fn();
-    render(
-      <PrintingSection
-        value={false}
-        onChange={onChange}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    presenceState = { bridge: [{ online: true }] };
-    act(() => syncCallback?.());
-    fireEvent.click(screen.getByRole("switch"));
-    expect(onChange).toHaveBeenCalledWith(true);
-    expect(screen.queryByText("No printer connected")).not.toBeInTheDocument();
-  });
-
-  it("turns off directly with no confirm dialog even when disconnected", () => {
-    const onChange = vi.fn();
-    render(
-      <PrintingSection
-        value={true}
-        onChange={onChange}
-        vendorId="v1"
-        boothId="booth-42"
-        printkitLocationId="loc-1"
-      />,
-    );
-    fireEvent.click(screen.getByRole("switch"));
-    expect(onChange).toHaveBeenCalledWith(false);
   });
 });

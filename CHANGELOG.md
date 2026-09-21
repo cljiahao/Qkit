@@ -6,8 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `GET /api/printkit/printer-status`, so the booth page can ask printkit
+  whether a booth's printer is set up and reachable without the
+  `PRINTKIT_KIT_SECRET` ever reaching the browser. A printkit outage answers
+  "can't check right now" rather than "no printer", because only one of those
+  should worry a vendor mid-service.
+- `getPrinterStatus` in `src/lib/printkit/client.ts`, and
+  `usePrinterStatus` in `src/hooks/`, replacing `use-printer-presence.ts`.
+
 ### Changed
 
+- The booth Printing section now reports the booth's printer from printkit
+  over HTTP, instead of subscribing to printkit's realtime presence channel
+  with qkit's own Supabase client. printkit now supports printers that reach
+  it by themselves (a cloud printer, a 4G printer), and those have no bridge
+  device to publish presence at all, so the old signal could only ever see a
+  Bluetooth bridge. The section names the printer, tells "no printer set up"
+  apart from "offline" apart from "can't reach printkit", and, while no
+  printer is set up, explains in one line that a self-connecting printer
+  works with just an iPad, linking to printkit's Bluetooth guide for why the
+  alternative needs a second device. `PrintingSection` no longer takes
+  `vendorId` or `printkit_location_id`.
 - Bumped `@merqo/ui` to `v0.31.2`. v0.31.0 replaced the package-wide
   `"use client"` banner with per-module directives, so a plain-data export
   is a real value inside a Server Component rather than an opaque

@@ -13,16 +13,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { usePrinterPresence } from "@/hooks/use-printer-presence";
+import { usePrinterStatus } from "@/hooks/use-printer-status";
 import { PrinterStatus } from "./printer-status";
 
-// Keyed by booth id, printkit's own source_ref — no fallback host, same as src/lib/printkit/client.ts.
-function printerLinkFor(boothId: string): string | null {
+// No fallback host, same as src/lib/printkit/client.ts.
+function printkitLink(path: string): string | null {
   const printkitUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
   if (!printkitUrl) return null;
-  const url = new URL("/dashboard/bridge", printkitUrl);
-  url.searchParams.set("booth", boothId);
-  return url.toString();
+  return new URL(path, printkitUrl).toString();
 }
 
 function printerHint(boothId: string | undefined): string {
@@ -31,39 +29,31 @@ function printerHint(boothId: string | undefined): string {
     : "Save this booth first to choose its printer in printkit.";
 }
 
-// General entry point for setting up printkit before flipping the switch on.
-function printkitDashboardLink(): string | null {
-  const printkitUrl = process.env.NEXT_PUBLIC_PRINTKIT_URL;
-  if (!printkitUrl) return null;
-  return new URL("/dashboard", printkitUrl).toString();
-}
-
 export function PrintingSection({
   value,
   onChange,
   boothId,
-  vendorId,
-  printkitLocationId,
 }: {
   value: boolean;
   onChange: (v: boolean) => void;
   // Unset until the booth is saved and registered with printkit.
   boothId?: string;
-  vendorId: string;
-  // Unset until a save's registerPrintLocation call has succeeded at least
-  // once — see syncPrintLocation in dashboard/booths/actions.ts.
-  printkitLocationId?: string | null;
 }) {
-  const online = usePrinterPresence(vendorId, printkitLocationId);
+  // Polled even while printing is off: the toggle guard below needs to know
+  // whether a printer exists before it lets printing be turned on.
+  const status = usePrinterStatus(boothId);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const printerLink = value && boothId ? printerLinkFor(boothId) : null;
-  const dashboardLink = printkitDashboardLink();
 
-  // A first-time enable has no printkit_location_id yet, so there's nothing
-  // live to check -- only interrupt turning ON when a printer was registered
-  // before but isn't connected right now.
+  const hasPrinter = status.kind === "printer";
+  const online = hasPrinter && status.printer.state === "online";
+  const choosePrinterLink = printkitLink("/dashboard/printers");
+  const guideLink = printkitLink("/guides/bluetooth-printers");
+
+  // Only interrupt turning printing ON when a printer exists but isn't
+  // reachable. A booth with no printer yet has nothing to warn about: the
+  // banner below already says what to do next.
   function handleToggle(next: boolean) {
-    if (next && printkitLocationId && !online) {
+    if (next && hasPrinter && !online) {
       setConfirmOpen(true);
       return;
     }
@@ -86,8 +76,10 @@ export function PrintingSection({
           aria-label="Print via printkit"
         />
       </div>
-      {value && printkitLocationId && <PrinterStatus online={online} />}
-      {value && boothId && !printkitLocationId && (
+
+      {value && boothId && <PrinterStatus view={status} />}
+
+      {value && boothId && status.kind === "none" && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
           <TriangleAlert
             className="mt-0.5 size-4 shrink-0 text-amber-600"
@@ -99,44 +91,58 @@ export function PrintingSection({
           </span>
         </div>
       )}
+
       {value && (
         <p className="px-1 text-sm text-muted-foreground">
-          {printerLink ? (
+          {choosePrinterLink ? (
             <a
-              href={printerLink}
+              href={choosePrinterLink}
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-primary hover:underline"
             >
-              Choose the printer for this booth →
+              {hasPrinter
+                ? "Manage this booth's printer in printkit →"
+                : "Choose the printer for this booth →"}
             </a>
           ) : (
             printerHint(boothId)
           )}
         </p>
       )}
-      {/* Redundant once the booth-scoped deep link above is available — it
-          already does more (skips the picker). Only the general fallback. */}
-      {!printerLink && dashboardLink && (
+
+      {value && !hasPrinter && (
         <p className="px-1 text-sm text-muted-foreground">
-          <a
-            href={dashboardLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary hover:underline"
-          >
-            Manage printers in printkit ↗
-          </a>
+          A printer that connects to the internet by itself works with just your
+          iPad. Bluetooth printers need a phone or a Raspberry Pi next to them
+          all day
+          {guideLink ? (
+            <>
+              {" "}
+              <a
+                href={guideLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary hover:underline"
+              >
+                read why
+              </a>
+              .
+            </>
+          ) : (
+            "."
+          )}
         </p>
       )}
+
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>No printer connected</AlertDialogTitle>
+            <AlertDialogTitle>Printer offline</AlertDialogTitle>
             <AlertDialogDescription>
-              This booth&apos;s printer isn&apos;t online right now. Orders will
-              wait in Incoming until you connect one, or you can turn this on
-              anyway and connect it later.
+              This booth&apos;s printer isn&apos;t reachable right now. Orders
+              will wait in Incoming until it comes back, or you can turn this on
+              anyway and sort the printer out later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
