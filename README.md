@@ -7,6 +7,12 @@ their order status in realtime. The dashboard onboarding tour's final step
 are optional (Payment, Printing, Booking Status) before they ever create
 their first booth.
 
+Booth-image orphan cleanup (`src/lib/booth-images.ts`) now parses storage URLs
+with `@merqo/ui`'s shared `storagePathFromPublicUrl` instead of a local copy.
+Replacing a payment QR image in the booth Payment section also deletes the old
+image now; that cleanup lives in paykit's vendor config API, which this form
+saves through.
+
 `@merqo/ui` bumped to v0.31.4 (2026-09-22), for its new
 `storagePathFromPublicUrl`. Replacing or removing a profile icon now deletes the
 old image from storage (`removeReplacedAvatar` in

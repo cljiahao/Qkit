@@ -56,11 +56,13 @@ factories, respectively).
   oklch palette (`BOOTH_COLORS`) so a booth's accent dot is stable without a DB
   column.
 - `booth-color.test.ts` — tests hash stability/distribution.
-- `booth-images.ts` — `storagePathFromPublicUrl`, `boothImagePaths`,
-  `orphanedImagePaths`: extract in-bucket storage paths from booth-images
-  public URLs and diff before/after booth state to find storage objects safe to
-  delete after an image swap or booth deletion.
-- `booth-images.test.ts` — tests URL parsing and orphan-path diffing.
+- `booth-images.ts` — `boothImagePaths`, `orphanedImagePaths`: extract
+  in-bucket storage paths from booth-images public URLs and diff before/after
+  booth state to find storage objects safe to delete after an image swap or
+  booth deletion. URL-to-path parsing is `@merqo/ui`'s shared
+  `storagePathFromPublicUrl` (this file carried its own copy until
+  2026-09-22); the shared one also rejects a path with an empty segment.
+- `booth-images.test.ts` — tests path extraction and orphan-path diffing.
 - `brand-icon.tsx` — `brandIcon(size)` React element plus `BRAND_EMBER`/
   `BRAND_OAT` color constants; renders the "Q" app mark for `ImageResponse`-
   generated favicon/manifest/apple-touch icons.

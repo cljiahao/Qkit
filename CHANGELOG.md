@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- `src/lib/booth-images.ts` now uses `@merqo/ui`'s shared
+  `storagePathFromPublicUrl` instead of its own copy. Behaviour for real
+  uploads is unchanged; the shared parser additionally rejects a path with an
+  empty segment, so a malformed URL can never target the wrong object.
+- Replacing or clearing a payment QR image from the booth Payment section now
+  deletes the old image. The fix lives in paykit's config API, which this form
+  saves through, so no qkit code changed for it.
+
 ### Fixed
 
 - Replacing or removing a profile icon no longer leaves the old image in storage.
