@@ -146,6 +146,31 @@ function PrintBadge({ status }: { status: BoardOrder["print_status"] }) {
   );
 }
 
+/**
+ * Ticket-aging tone + elapsed minutes. `nowMs` is null before mount (see
+ * useNow), which yields no label and a "fresh" tone. Pending is pre-arrival
+ * (arrival-confirmation booth, customer hasn't tapped "I'm here" yet), so it
+ * is forced "fresh" too: nothing is cooking or waiting yet, and a pending
+ * order must never get the amber/red wash meant for food getting cold.
+ */
+function ticketAge(
+  nowMs: number | null,
+  createdAt: string,
+  status: OrderStatus,
+  agingMin: number | undefined,
+  overdueMin: number | undefined,
+): { tone: AgeTone; ageMins: number | null } {
+  if (nowMs == null) return { tone: "fresh", ageMins: null };
+  const elapsedMs = nowMs - Date.parse(createdAt);
+  return {
+    tone:
+      status === "pending"
+        ? "fresh"
+        : orderAgeTone(elapsedMs, agingMin, overdueMin),
+    ageMins: elapsedMinutes(elapsedMs),
+  };
+}
+
 function ageToneClass(tone: AgeTone): string {
   if (tone === "overdue") return "text-status-cancelled";
   if (tone === "aging") return "text-status-aging";
@@ -293,18 +318,16 @@ export function OrderCard({
 
   // Ticket aging: tick the clock each 30s (only while live) so the vendor sees
   // at a glance how long an order has waited against a ~10-min prep target.
+  // nowMs is null until mounted (hydration-safe, see useNow): the card SSRs
+  // with no elapsed label and a "fresh" tone, then fills in on the client.
   const nowMs = useNow(30_000, !isTerminal(status));
-  const elapsedMs = nowMs - Date.parse(order.created_at);
-  // Pending is pre-arrival (arrival-confirmation booth, customer hasn't
-  // tapped "I'm here" yet) — nothing is cooking or waiting yet, so the
-  // ticket-aging clock's premise doesn't apply. Force "fresh" instead of
-  // running the elapsed time through orderAgeTone, so a pending order never
-  // gets the amber/red attention wash meant for food getting cold.
-  const tone: AgeTone =
-    status === "pending"
-      ? "fresh"
-      : orderAgeTone(elapsedMs, agingMin, overdueMin);
-  const ageMins = elapsedMinutes(elapsedMs);
+  const { tone, ageMins } = ticketAge(
+    nowMs,
+    order.created_at,
+    status,
+    agingMin,
+    overdueMin,
+  );
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
   // What's actually printed on this ticket — the daily-reset display number
@@ -885,7 +908,7 @@ export function OrderCard({
         )}
 
         <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 font-mono text-[0.7rem] text-muted-foreground">
-          {!closed ? (
+          {!closed && ageMins != null ? (
             <span
               className={cn(
                 "inline-flex items-center gap-1 font-semibold tabular-nums",

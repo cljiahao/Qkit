@@ -31,6 +31,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The live order board no longer logs React hydration error #418 on load.
+  `useNow` seeded its clock from `Date.now()` during render, so the server HTML
+  and the browser's hydrating render computed different elapsed "Nm" labels on
+  order cards whenever a minute passed between them (or the clocks differed).
+  `useNow` now returns `null` until mounted and sets the clock in an effect,
+  the same pattern the queue display and order-status page already use.
+  `OrderCard` renders no elapsed label (and a "fresh" tone) until then, and
+  `PassCountdown` holds its line with a non-breaking space. Ticking and the
+  `enabled` flag are unchanged.
 - Replacing or removing a profile icon no longer leaves the old image in storage.
   `ImageUploader` names every upload randomly and nothing ever deleted the object
   it replaced, so each change orphaned one file. The save handler now deletes the
