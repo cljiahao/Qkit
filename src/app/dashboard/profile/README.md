@@ -18,6 +18,10 @@ Reachable from `dashboard-nav.tsx`'s account menu ("Profile" item). `page.tsx` c
 
 The avatar upload's resize step now calls `@merqo/ui`'s `resizeToWebp` (v0.31.0). v0.31.1 also fixes a latent bug there: a filename with no dot used to yield the whole name as its extension.
 
+## Replaced-avatar cleanup
+
+The avatar save handler deletes the image it orphans: after a successful save, the previous avatar (including on Remove); after a failed save, the fresh upload, which is then referenced nowhere. On a failed save it also restores the previous avatar in state rather than keep showing an image that was never saved.
+
 ## Parent
 
 [dashboard](../README.md)

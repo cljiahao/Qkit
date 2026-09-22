@@ -6,8 +6,139 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- Added rate limits to several previously-uncapped paths: an authenticated
+  vendor's own upgrade-request action, the `/api/v1/sales/summary` export,
+  and the customer order-status page's polling reads (`getOrderStatus`,
+  `getWaitEstimate`, `getPaymentStatus`) and pre-claim checkout lookup —
+  none were a cross-tenant or authorization gap, but all were previously
+  uncapped self-inflicted-load or load-amplification surfaces.
+- `notifyVendorTelegram`/`notifyPrintkit` (`src/app/o/[code]/actions.ts`)
+  were exported from a `"use server"` file, making each independently
+  callable as its own client-invokable Server Action regardless of the fact
+  that only `placeOrder`/`claimPayment` were ever meant to call them —
+  bypassing all of `placeOrder`'s own validation and rate limiting. Moved
+  both to a plain module (`src/app/o/[code]/notify.ts`, no `"use server"`
+  directive). `notifyPrintkit` also no longer trusts a caller-supplied
+  `customerName`; it now prints the order's own stored name.
+- `qkit.place_walkup_order`'s `EXECUTE` grant was left at the default
+  `PUBLIC` (includes `anon`); revoked, matching every other write RPC in
+  this schema (migration `0089`). Not exploitable today — the function's
+  own `vendor_id = auth.uid()` check already rejects an anonymous caller —
+  fixed as defense-in-depth consistency.
+- Bumped `next` to `16.3.4` (`eslint-config-next` to match) and refreshed
+  `browserslist` to `4.28.9`. Clears two critical Next.js RCE advisories
+  (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4), a high `sharp`/libheif
+  advisory (`sharp` resolves to `0.35.4` via next), and the long-standing
+  high `browserslist` advisory (GHSA-73wf-gq98-2v4g) that earlier PRs this
+  cycle had merged past under admin override. The `pnpm audit` high gate is
+  now clean.
+- Dropped `output: "standalone"` from `next.config.ts`. qkit deploys only
+  to Vercel, which bundles functions itself and does not use the standalone
+  output, and under `next` 16.3.x that config also made Vercel's build
+  finalizer look for a server trace file it no longer writes there.
+- Bumped `vitest` and `@vitest/coverage-v8` to `4.1.11` (from `3.2.6`).
+  Clears GHSA-82fw-gwwq-j7x9 (`@vitest/mocker` path traversal / arbitrary
+  file read, patched only in `4.1.11`) and, via `fast-uri` `4.1.4`, four
+  high `fast-uri` advisories (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc,
+  GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) reaching in through
+  `@stryker-mutator/vitest-runner`. The `qs` override is raised to
+  `>=6.16.0` (two moderate advisories via `@stryker-mutator/core`), leaving
+  the dependency audit clean at every level.
+  `src/lib/order-alerts.test.ts`'s `AudioContext` constructor mock switched
+  from an arrow to a `function` expression: `vitest` 4 no longer lets an
+  arrow `vi.fn()` be `new`-ed.
+- **Customer reviews can no longer be forged for a booth you never ordered
+  from.** `submit_feedback` accepted a 1-5★ rating against any `booth_id` +
+  `order_number` with no proof of an order (the only throttle was a spoofable,
+  fail-open per-IP limit), so a booth's public rating could be review-bombed at
+  scale. Customer feedback now carries the order's per-order access token, and
+  the RPC rejects any review whose `(booth_id, order_number, access_token)`
+  doesn't match a real order — the same unguessable token the status page
+  already requires. Vendor feedback (stamped from the signed-in id) is
+  unchanged. (Migration `0048`.)
+- **Closed 7 open high-severity Dependabot alerts**, all transitive
+  dev/build-tool dependencies (via eslint/vitest/stryker/next's own postcss
+  pipeline), none reachable from runtime app code: `postcss` (path traversal
+  in source-map auto-loading), `fast-uri` (host confusion via IDN/backslash,
+  2 advisories), `js-yaml` (quadratic-CPU DoS via YAML merge-key chains),
+  and `brace-expansion` (exponential-time DoS, 3 separate vulnerable major
+  lines). Force-patched via `pnpm-workspace.yaml` overrides, same pattern
+  already used for postcss/undici/vite/qs/sharp.
+- **Booth-image storage hardened.** The `booth-images` bucket now enforces a
+  size cap and an image-only MIME allowlist at the bucket (previously only the
+  client checked), and replacing/removing an image or deleting a booth now
+  reclaims the orphaned storage objects instead of leaking them.
+- **Vendors can no longer self-escalate to Pro.** `vendors_self_update` was
+  row-scoped with no column limit, so a vendor could `UPDATE vendors SET
+plan='pro'` on their own row via a direct PostgREST call — a free→pro
+  escalation. Column-level `UPDATE(plan)` is now revoked from `anon` +
+  `authenticated`; only the admin action (service role) writes `plan`. Same
+  migration adds the missing `WITH CHECK` to the `vendors`, `booths`, and
+  `purchase_requests` UPDATE policies (a policy with only `USING` doesn't
+  constrain the result row, so an update could move a row out of the caller's
+  ownership — e.g. re-point a booth to another vendor). Migration `0035`.
+- **Order-path hardening extended to the `authenticated` role.** Phase A closed
+  the customer write path for `anon` only, but sign-up is open — so any logged-in
+  JWT still bypassed all of it: the permissive `orders_public_insert` /
+  `booths_public_read` / `feedback_public_insert` policies had no `TO` clause
+  (they applied to `authenticated` too) and the Phase-A `REVOKE`s named only
+  `anon`. A logged-in vendor could forge orders, read **every** servable booth's
+  `cost_cents` + `short_code` cross-vendor, forge competitor reviews, and burn
+  any booth's `order_seq`. Migration `0033` drops the three dead permissive
+  policies, revokes the direct grants from **both** roles, routes public feedback
+  through a new `submit_feedback` `SECURITY DEFINER` RPC (re-derives `vendor_id`
+  from the caller's own session), and hardens `place_order` against the
+  direct-RPC path that skips the server action: re-derives each item name from
+  the stored menu, validates + caps chosen options against the item's option
+  groups, rejects an all-zero-quantity cart, caps the line count, and carries a
+  booth-scoped flood guard inside the RPC. pgTAP asserts every path is denied to
+  a non-owner `authenticated` session.
+- **Customer order path enforced in Postgres, not just the app.** Previously the
+  public anon key could POST directly to PostgREST and bypass every app-layer
+  guard (rate limit, servability, stock, cost snapshot) and read private booth
+  columns (`cost_cents`, the QR token). Now two `SECURITY DEFINER` RPCs are the
+  only public surface — `get_booth_for_order` (returns a public-safe projection,
+  never `cost_cents`/`short_code`) and `place_order` (atomic, server-priced,
+  idempotent) — and direct anon `SELECT booths` / `INSERT orders` /
+  `EXECUTE next_order_number` are revoked. `place_order` re-prices from the
+  stored menu (forged client prices can't survive) and dedupes on an idempotency
+  key (no double-order on flaky Wi-Fi). pgTAP encodes the contract.
+- **Vendor order path enforced in Postgres too.** The order board mutated orders
+  directly from the browser, guarded only by an `orders_vendor_update` policy
+  that had `USING` but no `WITH CHECK` and no column restriction — so a tampered
+  vendor session (or a direct PostgREST call with the vendor JWT) could forge
+  `total_cents`/`items`, rewrite `order_number`/`customer_name`, or re-point an
+  order to another booth. Now the three mutations go through validated server
+  actions (`advanceOrder`/`confirmOrderPayment`/`cancelOrder`), the update policy
+  carries a `WITH CHECK` (result row must still be the vendor's), and a
+  `BEFORE UPDATE` trigger freezes the financial/identity columns (`booth_id`,
+  `order_number`, `customer_name`, `items`, `total_cents`, `created_at`,
+  `idempotency_key`, `payment_method_kind`) — a vendor UPDATE may only move the
+  state machine. Migration `0032`; pgTAP encodes the freeze + `WITH CHECK`.
+- CI security scanning (`.github/workflows/security.yml`): gitleaks v3 secret
+  scan, CodeQL (javascript-typescript, security-extended), and a `pnpm audit`
+  high/critical gate.
+- `.github/dependabot.yml`: security-updates only (npm + github-actions);
+  version-update PRs disabled (`open-pull-requests-limit: 0`).
+- Removed `axios` — an unused production dependency carrying a high-severity
+  `form-data` advisory (GHSA-hmw2-7cc7-3qxx). Production `pnpm audit` is clean at
+  the high gate. The audit gate runs `--prod` (shipped code); a full audit runs
+  informationally (dev-toolchain transitive vulns tracked by Dependabot).
+
 ### Fixed
 
+- Replacing or removing a profile icon no longer leaves the old image in storage.
+  `ImageUploader` names every upload randomly and nothing ever deleted the object
+  it replaced, so each change orphaned one file. The save handler now deletes the
+  previous avatar after a successful save, and deletes the fresh upload after a
+  failed one, via a new best-effort `removeReplacedAvatar` in
+  `src/lib/image-upload-adapter.ts`. It checks all three public avatar buckets,
+  since all five apps share one signed-in user and one `avatar_url`, and ignores
+  OAuth provider pictures. A failed save also now restores the previous avatar
+  instead of showing one that was never saved.
+- Bumped `@merqo/ui` to `v0.31.4`, which adds `storagePathFromPublicUrl`.
 - Payment-proof storage is now bounded at every layer. The
   `payment-proofs` bucket had no `file_size_limit` or `allowed_mime_types`
   (unlike `booth-images`, hardened in `0037`), so nothing in storage capped
@@ -27,70 +158,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   mislabelled `image/webp`. A PNG of a photo is several times larger than a
   JPEG, so on such a browser proofs were being stored larger than intended.
   It now falls back to JPEG and labels the result truthfully.
-
-### Changed
-
-- Bumped `@merqo/ui` to `v0.31.2`. v0.31.0 replaced the package-wide
-  `"use client"` banner with per-module directives, so a plain-data export
-  is a real value inside a Server Component rather than an opaque
-  client-reference stub. That was the root cause of qkit's own 2026-09-18
-  production outage; until now the fixes were workarounds at each call site.
-- Adopted four primitives promoted into `@merqo/ui` v0.31.0, deleting the
-  qkit copies: `safeRedirectPath` and `resizeToWebp` (were
-  `src/lib/safe-redirect.ts` / `image-resize.ts`), `BackToTop` (was
-  `src/components/back-to-top.tsx`) and `GoogleMark` (was
-  `src/app/(auth)/login/google-mark.tsx`).
-- `ticket-section.dom.test.tsx`'s tooltip assertion now expects one matching
-  node instead of two. The radix `@radix-ui/react-tooltip` that `@merqo/ui`
-  bundles moved from 1.2.8 to 1.2.16, which no longer renders a
-  visually-hidden duplicate of the tooltip text. Per the previous comment's
-  own instruction, confirmed the surviving node is the visible one (it
-  carries `role="tooltip"`, `data-state="delayed-open"`, the popper
-  positioning styles and the real `bg-popover` classes) and not the hidden
-  duplicate. The assertion also now checks those attributes directly.
-
-### Fixed
-
 - `resizeToWebp` on a filename with no dot returned the whole name as the
   extension (a file called `photo` gave `ext: "photo"`). stockkit's copy had
   guarded this and qkit's had not; fixed upstream in v0.31.1.
-
-### Note
-
-- `order/[boothId]/[orderNumber]/payment-actions.ts` calls `resizeToWebp`
-  from a `"use server"` module. `resizeToWebp` is browser-only (Canvas), so
-  on the server it throws internally and its catch returns the original file
-  — the payment-proof upload succeeds but is never actually resized. This
-  was equally true of the qkit-local copy, so the move changes nothing;
-  recording it rather than leaving a silent no-op. A real server-side resize
-  would need a different implementation.
-- `order/[boothId]/pay/pay-form.tsx` and `[orderNumber]/page.tsx` keep
-  `react-qr-code` rather than `qrSvg`. `qr-image.ts` insets the rasterized
-  PNG ~8% precisely because `react-qr-code` emits zero margin, and bank apps
-  scanning a saved photo can fail on edge-to-edge modules; `qrSvg` emits
-  `margin: 1`, so swapping changes the quiet zone on a live payment path.
-
-### Added
-
-- Saving a brand-new booth's first menu now lands on its QR page (with a
-  "here's your QR to start taking orders" toast) instead of the plain
-  booth-edit page — nothing previously nudged a first-time vendor toward
-  actually sharing their QR after finishing setup.
-- A warning banner on the booth's Printing toggle when printing is on but
-  no printer has ever been registered for that booth — previously this
-  state only showed a plain, easy-to-miss link.
-
-### Changed
-
-- `BackButton`, `ElevatedCard`, `SOCIAL_LINK_FIELDS`/`SocialLinksFields`,
-  `MoneyInput`, and the landing `Footer` now come from `@merqo/ui`
-  (bumped to v0.29.1) instead of a qkit-local copy — each was confirmed
-  duplicated across 2 or more sibling kits before promoting, no behavior
-  change intended.
-- Bumped `@merqo/ui` to `v0.30.0`.
-
-### Fixed
-
 - `/legal/terms` now shows only qkit's own Annex schedule, not every
   sibling kit's, via `@merqo/ui`'s new per-kit `getLegalDocSource`/
   `LegalDocument` scoping. `legal/accept/actions.ts`'s recorded
@@ -109,9 +179,243 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   matching every other rush-hour action on the card — it was the only one
   still gated behind a confirm dialog, and a mis-bump has no real
   consequence (an order just preps slightly out of its natural order).
+- A printed order label showed the raw, permanent order number, not the
+  vendor-facing daily-reset number the board/TV display/customer status
+  page all show when `board_settings.daily_order_number_reset` is on —
+  the two numbers' last digits could disagree, undermining the physical
+  pickup-shelf-slot workflow above.
+- `merqoBaseUrl()`'s hardcoded fallback (`legal-gate.ts`, `legal/accept/
+actions.ts`, `merqo-customer-notify.ts`) pointed at a stale, pre-custom-
+  domain `.vercel.app` host that now 404s on every route, including `/`.
+  merqo's real production host is `www.merqo.io` (confirmed live).
+  `MERQO_BASE_URL` was never set as a Vercel env override on any kit, so
+  every kit→merqo call relying on this fallback (legal-accept/
+  legal-status, and the previously-silent customer-Telegram-connect
+  calls) has been hitting a dead host in production. Fixed the fallback
+  literal here; also needs `MERQO_BASE_URL` set explicitly to the real
+  host in Vercel (Production + Preview) as the primary, immediate fix —
+  the code fallback is defense-in-depth for whichever environment
+  forgets it.
+- The vendor's "Mark paid & start" review action now confirms via paykit
+  before marking the local order confirmed, matching the existing
+  `confirmOrderPayment` action; it previously skipped paykit entirely,
+  leaving a payment-first order's paykit transaction stuck at `claimed`.
+- `authenticated`'s `UPDATE` grant on `orders` is column-scoped (migration
+  `0088`) so a vendor's own client can no longer set a still-unassigned
+  `order_number` directly, bypassing `qkit.assign_order_number`.
+- The checkout sheet's submit button no longer promises "Get my order
+  number" on a payment-required booth, where the number isn't assigned
+  until after payment is claimed; it now reads "Place order".
+- "Mark paid & start"'s undo no longer reverts `payment_status` back —
+  paykit's own confirm already happened for real and can't be undone, so
+  the previous undo left qkit's local mirror disagreeing with paykit
+  forever. Undo now only un-starts the order (back to pending); payment
+  stays confirmed, same no-refund-rail principle `cancelOrder` already
+  applies. Also: a lost-race 0-rows result from "Mark paid & start" itself
+  no longer blindly reports failure or success — it re-checks whether the
+  order actually reached the confirmed+advanced state before deciding.
+  Undoing now also confirms this in a toast ("Payment stays confirmed.
+  Refund via paykit if needed."), so a vendor doesn't assume Undo also
+  unconfirmed the payment.
+- Dragging a menu item toward a different section snapped it back to its
+  original slot mid-drag (the drop itself still worked, but it looked
+  broken) — `useSortable`'s own transform only repositions within its own
+  list, so it reset outside one. Added a `DragOverlay`: a floating clone
+  that actually follows the pointer across sections, with the original
+  row dimmed in place instead.
+- A handful of leftover em dashes in user-facing copy across the booths
+  dashboard (the "Duplicate" button's tooltip, the event-mode create page's
+  description) — replaced with plain punctuation.
+- Menu CSV import preview silently omitted each row's description (the
+  import itself always carried it through correctly — the preview list
+  just under-displayed it) — now shows `Name (description) $price`.
+- Menu-manager's CSV-format explanation was a permanent 4-line paragraph
+  under the "Menu" heading — moved into an `InfoTooltip` (same one-sentence-
+  behind-`(i)` pattern `payment-section.tsx`/`settings-form.tsx` already
+  use), wrapped to a fixed width so it reads as short lines instead of one
+  unbroken one.
+- 5 leftover em dashes in user-facing copy (the platform-banner placeholder
+  and its helper text, a settings tooltip, the customer Telegram-connect
+  blurb) — replaced with plain punctuation, now caught for good by a new
+  ESLint gate (see AGENTS.md's "No-em-dash hard gate" note).
+- Printing section showed two printkit links stacked once a booth had
+  printing on and was saved: the booth-scoped "Choose the printer for this
+  booth →" deep link, and a general "Manage printers in printkit ↗" link
+  right under it, doing the same job worse (no auto-selected booth). The
+  general link now only shows when the booth-scoped one isn't available.
+- `OptionGroupsEditor`'s per-choice "Advanced" (cost + allergens) moved from
+  an inline accordion to a `Dialog` — leaving several choices' panels open
+  at once (easy to do, nothing auto-closed them) turned the editor unreadable
+  fast. The trigger grows a small dot once a choice has a cost or an
+  allergen set, so that's still visible without opening every dialog. Group
+  headers and their choices were also hard to tell apart (same input size,
+  no separation) — the header row is now weighted `font-medium` and the
+  choices sit indented in their own tinted sub-panel underneath it.
+- `/admin` (the admin overview) returned a 500 for every admin: `page.tsx`
+  is a Server Component and passed `formatAction={humanizeAction}` — a
+  function — straight to `@merqo/ui`'s `AuditLogTable`, which is a Client
+  Component (the package ships as one all-`"use client"` bundle), and React
+  cannot serialize a function across the server→client boundary. The
+  callback now lives in a small `"use client"` wrapper
+  (`src/app/admin/audit-log.tsx`, `AdminAuditLog`); the page hands over only
+  the serializable `entries` array. Broken since the `AuditLogTable`
+  adoption; not caught earlier because `/admin` is dynamic, so the build
+  never renders it.
+- `/dashboard/stats` had the same latent crash from the `MarginTable` →
+  `@merqo/ui` `DataTable` adoption — `columns` (with `cell`/`getRowKey`
+  functions) was passed from a Server Component. `margin-table.tsx` is now
+  `"use client"`. It only surfaced for a Pro vendor who had entered per-item
+  costs, so it had not yet been hit in production.
+- Cards were visually indistinguishable from the page background in light
+  mode — the Market Ochre rebrand set `--card`/`--popover` to the exact
+  same OKLCH value as `--background`. Restored a distinct, lighter card
+  treatment in light mode (`src/app/globals.css`); dark mode already
+  differentiated the two, and got a further brightness bump for better
+  contrast.
+- Browser-tab title now uses the cross-kit "Name | Tagline" Title Case
+  format: "Qkit | Live Queueing" (was "qkit: live queueing"). PWA-chrome
+  title updated to match.
+- `.husky/lib/pre-commit.sh` used `xargs -d '\n'`, a GNU-only flag not
+  supported by BSD xargs (macOS default) — broke every local commit
+  touching staged .ts/.tsx/.js/.mjs/.cjs or .json/.md/.css files. Swapped
+  for portable `tr '\n' '\0' | xargs -0`.
+- **`docs/constitution.md` renamed to `docs/CONSTITUTION.md`** to match
+  templateCentral's canonical convention (and every other harness reference
+  to it — `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/*`). The
+  lowercase filename was a local deviation; `protect-files.sh`'s ask-gate and
+  `session-context.sh`'s re-injection now point at the correct case again.
+- **Double-spaced button labels ("New order", "Booths · 3/5 open").**
+  Both buttons split their label across several elements (an icon, plain
+  text, a couple of responsive-hide spans) as direct children of a flex
+  container with `gap-2` — the gap applies between every child, so it added
+  extra space between words on top of the literal spaces already in the
+  text, on the live order board's "New order" and booth-status buttons.
+  Each label is now one child instead of several, so the gap only fires
+  once, between the icon and the label.
+- **Profile page's two-column layout desynced under a tall card.** A raw
+  CSS grid tracks row height to its tallest cell, so once "Social &
+  website" outgrew "Stall name," every row after it started late in both
+  columns, leaving a visible gap under the shorter cards below. Switched to
+  two independent stacking columns — the same fix already applied to the
+  board-settings page.
+- **A free item in an otherwise-priced order showed "$0.00" instead of
+  "Free"**, on both the customer order-status page and the vendor live
+  board/completed-orders card. Two layers: the UI's price column was gated
+  on the order having _any_ priced item, not on the line itself; and
+  underneath that, `place_order` coalesced an unset menu-item price to `0`
+  and always stored `price_cents` on the order snapshot, so the "genuinely
+  free" vs "explicitly $0.00" distinction was already gone by the time the
+  order was placed — the UI fix alone had nothing to key off. `place_order`
+  now omits `price_cents` entirely for an unset price (migration `0055`),
+  mirroring how `cost_cents` already worked.
+- **Price/Cost menu-item fields on the booth edit form truncated their own
+  placeholder** ("Price (optiona…") — narrowed to "Price (opt.)"/"Cost
+  (opt.)" and widened the field slightly.
+- **Social link icons now show each platform's real logo and brand color**
+  instead of generic Lucide glyphs (TikTok was a plain music-note icon, not
+  the TikTok mark). Instagram/Facebook/TikTok now render via Simple Icons
+  (`@icons-pack/react-simple-icons`) on a fixed light chip so the marks stay
+  legible in dark mode too; used on both the vendor profile form and every
+  customer-facing social row.
+- **Vendor stats reviews scale with your own data, not the whole platform.** The
+  reviews query leaned on RLS alone to scope to your booths and had no
+  `feedback(booth_id)` index, so it walked platform-wide customer feedback each
+  stats load. It now filters `.in("booth_id", …)` against a new
+  `feedback(booth_id, created_at DESC)` index (migration `0049`), and the 500-row
+  cap applies to your reviews instead of silently dropping yours past the
+  platform's newest 500.
+- **More of the UI respects reduced-motion and screen readers.** Under
+  `prefers-reduced-motion` the always-on `animate-ping`/`pulse`/`spin` utilities
+  (the live board's pulsing "active" dot, skeleton shimmers, spinners) now stop
+  looping instead of running for a whole shift. Added missing accessible names:
+  the working-hours time inputs (per weekday "opens"/"closes"), the support and
+  feedback textareas, the support category radiogroup, and the order-card age
+  chip now announces its overdue/aging state instead of conveying it by colour
+  alone.
+- **The landing page no longer overflows sideways on mobile.** The hero
+  order-chit carousel's scroll track had no width constraint, so as a grid child
+  (`min-width: auto`) it reported its full four-board width as its minimum and
+  stretched the whole document past the viewport — the page rendered ~744px wide
+  on a 375px phone, letting you pinch-zoom out and throwing every section's width
+  off. Constraining the track with `min-w-0` / `w-full` lets it clip and scroll
+  as intended; the document now matches the viewport exactly.
+- **Dashboard nav reads clearly on a phone.** The burger and the account avatar
+  used to sit crammed together on the right as two look-alike icon buttons. They
+  now split to opposite ends — navigation burger far left, account far right
+  (the standard hamburger-left / account-right mobile pattern) — with the avatar
+  staying visible at every width since it's a high-frequency action. The hero
+  order-chit carousel also tightens its padding on small screens and gives its
+  dots a comfortable touch target.
+- **Subscription revenue isn't double-counted** when an admin re-submits (or
+  double-clicks) an already-Pro vendor — the payment is recorded only on a real
+  free→Pro transition.
+- **Entitlement drift closed.** The booth-create gate (`can_create_booth`)
+  checked a license's `expires_at` but not `valid_from`, while serveability
+  (`booth_servable`) checked both — so a vendor with a **future-dated** pass
+  could create extra booths that then couldn't serve. Both now share one
+  `vendor_entitled()` predicate. (Migration 0038.)
+- **The anonymous ordering funnel survives an auth outage.** The session
+  middleware resolved the user on every request, so a Supabase auth hiccup could
+  500 the public `/o` / `/order` pages that need no login. It now resolves the
+  user only on protected routes (and degrades to a `/login` redirect instead of
+  a 500 if auth is unreachable) — the customer funnel skips the auth round-trip
+  entirely.
+- **The payment QR now has a fallback** when the image can't load (flaky wifi)
+  instead of leaving the customer stuck with no way to pay.
+- **Input bounds:** menu prices/costs are capped (a forged price can't overflow
+  the order total), the cart is capped at 50 lines, and the status page
+  validates its route params — matching the database-side guards.
+- **Backend read errors no longer masquerade as empty/expired states.** A DB
+  error while placing an order, resolving a booth code, or loading the vendor
+  board is now logged and shown honestly — a distinct "try again" screen for a
+  code that failed to resolve (instead of "QR expired", which looped a customer
+  whose code was valid), and a retry banner on the dashboard (instead of a
+  cheery empty "All clear" board that hid in-flight orders).
+- **Accessibility:** the customer's live order-status and payment states are
+  screen-reader live regions (announces "ready for pickup" / "payment
+  confirmed"), and menu option choices expose radio/checkbox semantics instead
+  of conveying selection by colour alone.
+- **Order-board actions guard against concurrent status changes.** Advance,
+  cancel, and confirm-payment updated an order by id using the status they had
+  read — so a cancel racing an advance-to-completed could resurrect a cancelled
+  order back into revenue and stock. Each update now also matches on the
+  read status/payment_status; a concurrent change makes it a no-op and the
+  action reports "Order changed — please refresh." rather than clobbering.
+- **Dead customer order links resurrected.** Phase A moved the customer entry
+  route to `/o/{short_code}` and removed `/order/{boothId}`, but the vendor
+  "Copy order link" button, the reorder button, and the status page's "Order
+  again" link still pointed at the removed route (404). The copy-link now yields
+  the canonical `/o/{short_code}`, and a redirect shim at `/order/{boothId}`
+  resolves a booth's current code and forwards to `/o/{code}` — also rescuing any
+  previously printed/shared `/order/{boothId}` link. Reorder still seeds the cart
+  (its sessionStorage handoff is booth-keyed and survives the redirect).
+- **Stock oversell race in `place_order` closed.** The stock gate read remaining
+  stock and passed _before_ acquiring the per-booth `order_seq` lock (the sold
+  counter is bumped only in an AFTER-INSERT trigger), so two concurrent last-unit
+  orders could both pass and oversell. The gate now runs after the lock —
+  serializing concurrent orders on a booth — and checks the same pooled,
+  clamped quantities the counter applies (one shared `order_item_quantities()`
+  rule, replacing three subtly-different clamps). Migration `0034`.
+- **Gross margin no longer reads 100% for every no-cost vendor.** `place_order`
+  wrote `cost_cents: 0` for every item, even ones with no cost set, so the margin
+  stats treated the cost as "present" and reported `profit == revenue` (100%
+  margin) on the dashboard, the `SalesSummaryV1.gross_margin` API field, and the
+  CSV export. It now omits `cost_cents` for a no-cost item (a genuine cost of 0
+  is preserved and still counts). Migration `0033`.
+- **`/api/v1/sales/summary` fails loud on a DB read error.** It discarded the
+  Supabase `error` on both reads, so a transient failure returned a `200` with
+  `{revenue: 0, …}` — a downstream consumer would silently under-invoice. It now
+  logs and returns `503` on either read error.
 
 ### Added
 
+- Saving a brand-new booth's first menu now lands on its QR page (with a
+  "here's your QR to start taking orders" toast) instead of the plain
+  booth-edit page — nothing previously nudged a first-time vendor toward
+  actually sharing their QR after finishing setup.
+- A warning banner on the booth's Printing toggle when printing is on but
+  no printer has ever been registered for that booth — previously this
+  state only showed a plain, easy-to-miss link.
 - The Booths page now has its own dashboard tour (anchored on "New booth"),
   instead of the tour button always redirecting to `/dashboard` regardless
   of which page you were on. Built on `@merqo/ui`'s new `DashboardTours`
@@ -168,141 +472,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The order number's trailing digit is now visually emphasized (`OrderCard`,
   the TV/queue display), for a vendor using a physical pickup-shelf-slot
   system (bubble-tea-chain style — slotting an order by its last digit).
-
-### Security
-
-- Added rate limits to several previously-uncapped paths: an authenticated
-  vendor's own upgrade-request action, the `/api/v1/sales/summary` export,
-  and the customer order-status page's polling reads (`getOrderStatus`,
-  `getWaitEstimate`, `getPaymentStatus`) and pre-claim checkout lookup —
-  none were a cross-tenant or authorization gap, but all were previously
-  uncapped self-inflicted-load or load-amplification surfaces.
-
-### Fixed
-
-- A printed order label showed the raw, permanent order number, not the
-  vendor-facing daily-reset number the board/TV display/customer status
-  page all show when `board_settings.daily_order_number_reset` is on —
-  the two numbers' last digits could disagree, undermining the physical
-  pickup-shelf-slot workflow above.
-- `merqoBaseUrl()`'s hardcoded fallback (`legal-gate.ts`, `legal/accept/
-actions.ts`, `merqo-customer-notify.ts`) pointed at a stale, pre-custom-
-  domain `.vercel.app` host that now 404s on every route, including `/`.
-  merqo's real production host is `www.merqo.io` (confirmed live).
-  `MERQO_BASE_URL` was never set as a Vercel env override on any kit, so
-  every kit→merqo call relying on this fallback (legal-accept/
-  legal-status, and the previously-silent customer-Telegram-connect
-  calls) has been hitting a dead host in production. Fixed the fallback
-  literal here; also needs `MERQO_BASE_URL` set explicitly to the real
-  host in Vercel (Production + Preview) as the primary, immediate fix —
-  the code fallback is defense-in-depth for whichever environment
-  forgets it.
-- The vendor's "Mark paid & start" review action now confirms via paykit
-  before marking the local order confirmed, matching the existing
-  `confirmOrderPayment` action; it previously skipped paykit entirely,
-  leaving a payment-first order's paykit transaction stuck at `claimed`.
-- `authenticated`'s `UPDATE` grant on `orders` is column-scoped (migration
-  `0088`) so a vendor's own client can no longer set a still-unassigned
-  `order_number` directly, bypassing `qkit.assign_order_number`.
-- The checkout sheet's submit button no longer promises "Get my order
-  number" on a payment-required booth, where the number isn't assigned
-  until after payment is claimed; it now reads "Place order".
-- "Mark paid & start"'s undo no longer reverts `payment_status` back —
-  paykit's own confirm already happened for real and can't be undone, so
-  the previous undo left qkit's local mirror disagreeing with paykit
-  forever. Undo now only un-starts the order (back to pending); payment
-  stays confirmed, same no-refund-rail principle `cancelOrder` already
-  applies. Also: a lost-race 0-rows result from "Mark paid & start" itself
-  no longer blindly reports failure or success — it re-checks whether the
-  order actually reached the confirmed+advanced state before deciding.
-  Undoing now also confirms this in a toast ("Payment stays confirmed.
-  Refund via paykit if needed."), so a vendor doesn't assume Undo also
-  unconfirmed the payment.
-
-### Changed
-
-- `src/lib/printkit/client.ts`'s two functions now share one request helper
-  (`printkitRequest`, mirroring paykit's own) instead of duplicating the
-  fetch/timeout/error-handling logic.
-- `src/lib/merqo-customer-notify.ts`'s three functions now share one fetch
-  helper, and `mintCustomerConnectToken` Zod-validates its response body
-  instead of trusting an unchecked cast.
-- The six admin pages/routes reading `merqo.support_messages` now import one
-  shared `MerqoSupportMessagesSchema` type (`src/lib/merqo-support.ts`)
-  instead of each redeclaring their own narrowed copy.
-
-### Security
-
-- `notifyVendorTelegram`/`notifyPrintkit` (`src/app/o/[code]/actions.ts`)
-  were exported from a `"use server"` file, making each independently
-  callable as its own client-invokable Server Action regardless of the fact
-  that only `placeOrder`/`claimPayment` were ever meant to call them —
-  bypassing all of `placeOrder`'s own validation and rate limiting. Moved
-  both to a plain module (`src/app/o/[code]/notify.ts`, no `"use server"`
-  directive). `notifyPrintkit` also no longer trusts a caller-supplied
-  `customerName`; it now prints the order's own stored name.
-- `qkit.place_walkup_order`'s `EXECUTE` grant was left at the default
-  `PUBLIC` (includes `anon`); revoked, matching every other write RPC in
-  this schema (migration `0089`). Not exploitable today — the function's
-  own `vendor_id = auth.uid()` check already rejects an anonymous caller —
-  fixed as defense-in-depth consistency.
-- Bumped `next` to `16.3.4` (`eslint-config-next` to match) and refreshed
-  `browserslist` to `4.28.9`. Clears two critical Next.js RCE advisories
-  (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4), a high `sharp`/libheif
-  advisory (`sharp` resolves to `0.35.4` via next), and the long-standing
-  high `browserslist` advisory (GHSA-73wf-gq98-2v4g) that earlier PRs this
-  cycle had merged past under admin override. The `pnpm audit` high gate is
-  now clean.
-- Dropped `output: "standalone"` from `next.config.ts`. qkit deploys only
-  to Vercel, which bundles functions itself and does not use the standalone
-  output, and under `next` 16.3.x that config also made Vercel's build
-  finalizer look for a server trace file it no longer writes there.
-- Bumped `vitest` and `@vitest/coverage-v8` to `4.1.11` (from `3.2.6`).
-  Clears GHSA-82fw-gwwq-j7x9 (`@vitest/mocker` path traversal / arbitrary
-  file read, patched only in `4.1.11`) and, via `fast-uri` `4.1.4`, four
-  high `fast-uri` advisories (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc,
-  GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) reaching in through
-  `@stryker-mutator/vitest-runner`. The `qs` override is raised to
-  `>=6.16.0` (two moderate advisories via `@stryker-mutator/core`), leaving
-  the dependency audit clean at every level.
-  `src/lib/order-alerts.test.ts`'s `AudioContext` constructor mock switched
-  from an arrow to a `function` expression: `vitest` 4 no longer lets an
-  arrow `vi.fn()` be `new`-ed.
-
-### Changed
-
-- Onboarding tour's final step now tells a vendor which booth-page
-  sections are optional (Payment, Printing, Booking Status) before they
-  create their first booth, instead of leaving them to discover it
-  section by section.
-- Booth settings' Paykit booking ID field now links out to paykit's
-  bookings list ("Find or create a booking in paykit"), so a vendor
-  linking a booth to a booking doesn't have to already know paykit
-  exists as a separate product and go find it unprompted.
-
-### Added
-
 - `/about`, a public "Why Merqo" page rendering `@merqo/ui`'s shared
   `AboutMerqo` origin-story component, linked from the landing `Nav` and
   a new `Footer` component (extracted from `src/app/page.tsx`'s
   previously-inlined footer markup so `/about` could reuse it). `Nav`'s
   "FAQ" link now points at the absolute `/#faq` instead of a bare `#faq`
   fragment, since it renders on `/about` too, not just `/`.
-
-### Changed
-
-- Dropped the required typed legal-name field from terms/privacy
-  acceptance — a plain ToS/Privacy clickwrap doesn't need a signatory
-  name for evidentiary strength beyond the existing (vendor_email,
-  auth_uid, doc_type, doc_version, ip, user_agent, timestamp) record kept
-  on merqo. `@merqo/ui` bumped to `v0.25.0` (`v0.24.0`:
-  `TermsAcceptanceCheckbox` no longer takes `legalName`/
-  `onLegalNameChange`; `v0.25.0`: a pre-lawyer-review legal-wording pass,
-  the new `AboutMerqo` component, and a "← Back" button on every
-  `/legal/*` page).
-
-### Added
-
 - Legal-document gate. `/legal/terms` and `/legal/privacy` render the shared
   `@merqo/ui` documents (also linked from the landing footer), and a signed-in
   vendor whose accepted terms/privacy versions are behind `@merqo/ui`'s
@@ -480,128 +655,6 @@ available`, matching each item by exact name to update in place rather
   primitive as its Duplicate/Remove neighbors (was a hand-rolled `button`
   with its own near-but-not-quite-matching hover/focus styling).
 
-### Fixed
-
-- Dragging a menu item toward a different section snapped it back to its
-  original slot mid-drag (the drop itself still worked, but it looked
-  broken) — `useSortable`'s own transform only repositions within its own
-  list, so it reset outside one. Added a `DragOverlay`: a floating clone
-  that actually follows the pointer across sections, with the original
-  row dimmed in place instead.
-- A handful of leftover em dashes in user-facing copy across the booths
-  dashboard (the "Duplicate" button's tooltip, the event-mode create page's
-  description) — replaced with plain punctuation.
-- Menu CSV import preview silently omitted each row's description (the
-  import itself always carried it through correctly — the preview list
-  just under-displayed it) — now shows `Name (description) $price`.
-- Menu-manager's CSV-format explanation was a permanent 4-line paragraph
-  under the "Menu" heading — moved into an `InfoTooltip` (same one-sentence-
-  behind-`(i)` pattern `payment-section.tsx`/`settings-form.tsx` already
-  use), wrapped to a fixed width so it reads as short lines instead of one
-  unbroken one.
-- 5 leftover em dashes in user-facing copy (the platform-banner placeholder
-  and its helper text, a settings tooltip, the customer Telegram-connect
-  blurb) — replaced with plain punctuation, now caught for good by a new
-  ESLint gate (see AGENTS.md's "No-em-dash hard gate" note).
-- Printing section showed two printkit links stacked once a booth had
-  printing on and was saved: the booth-scoped "Choose the printer for this
-  booth →" deep link, and a general "Manage printers in printkit ↗" link
-  right under it, doing the same job worse (no auto-selected booth). The
-  general link now only shows when the booth-scoped one isn't available.
-- `OptionGroupsEditor`'s per-choice "Advanced" (cost + allergens) moved from
-  an inline accordion to a `Dialog` — leaving several choices' panels open
-  at once (easy to do, nothing auto-closed them) turned the editor unreadable
-  fast. The trigger grows a small dot once a choice has a cost or an
-  allergen set, so that's still visible without opening every dialog. Group
-  headers and their choices were also hard to tell apart (same input size,
-  no separation) — the header row is now weighted `font-medium` and the
-  choices sit indented in their own tinted sub-panel underneath it.
-
-### Changed
-
-- Menu item card's Available/Duplicate/Delete cluster: Available stays its
-  own standalone toggle, Duplicate and Remove now live behind a "More
-  actions" kebab menu instead of two more equal-weight icon buttons next to
-  it. Grouping a state (Available) with two actions as three identical
-  icons was the actual issue, not their individual styling.
-- Menu item card field order and layout, grounded in Deliveroo/Square/Toast's
-  own item-form conventions: "Section" now sits right after name/description
-  (was below Price/Cost); Price, Cost, and Sold-out limit collapse into one
-  compact three-column row, each with a real persistent label instead of
-  placeholder-only text (which disappears once filled in, leaving a bare
-  number) and its longer explanation behind a tap `InfoTooltip` instead of a
-  permanent caption paragraph repeated on every item. The Available/
-  Duplicate/Delete action column goes horizontal at tablet+ width instead of
-  always stacking three icons tall.
-- `booth-form.tsx`'s "Order flow" section: both controls are now `Switch`
-  ("Hold prep until the customer arrives" was a `Checkbox`, inconsistent
-  with its neighbor "Default to walk-up order entry") — standardized to
-  match every other standalone on/off feature toggle in the app.
-- Stats dashboard's margin table (`MarginTable`, `/dashboard/stats`) now
-  renders through the shared `@merqo/ui` `DataTable` component instead of
-  hand-rolled JSX, matching the `AuditLogTable` adoption pattern already
-  used in `/admin` — same columns (Item/Sold/Profit/Margin), cell
-  formatting, and profit-descending sort, rendering only.
-- Bumped `@merqo/ui` to v0.22.1: `OrderStatusBadge` now renders through the
-  new shared `StatusBadge` component (extracted from this file, chosen as
-  the design target over other kits' plain shadcn `Badge` uses) instead of
-  its own hand-rolled markup — qkit's `STATUS_CONFIG` label/colour map is
-  unchanged and passed through as the `config` prop, so rendered output is
-  identical.
-- Admin console: the audit-trail viewer and pricing form now render through
-  the shared `@merqo/ui` `AuditLogTable`/`PricingForm` components instead of
-  hand-rolled JSX, matching loopkit/paykit/stockkit's admin consoles (same
-  underlying data and actions, rendering only); `pricing-form.tsx` is
-  renamed to `pricing-section.tsx` (`PricingSection`) to match paykit's
-  naming, and the audit log no longer paginates client-side (the shared
-  component renders every fetched row, same as its sibling-kit usage).
-- Booth settings: "Hold prep until the customer arrives" and "Default to
-  walk-up order entry" moved out of "Hours & availability" into their own
-  "Order flow" section (they're about how an order is entered/prepped, not
-  when the booth is open), the em dash in the walk-up copy is gone, and
-  Printing now shows a "Choose the printer for this booth →" link once
-  printing is on and the booth is saved, deep-linking into printkit's
-  bridge page for that specific booth. The single-column mobile layout now
-  stacks Menu right after Hours/Order flow instead of at the very bottom,
-  above Payment/Printing/Social links; the two-column tablet/desktop
-  layout is unchanged.
-- Bumped `@merqo/ui` to v0.20.0: the stats strip's `StatTile` now wraps the
-  new shared `StatTile`/`DeltaPill` content instead of a fully local
-  implementation — no visible change, qkit's own card shell (border,
-  fade-rise animation, ember `primary` accent) is unchanged.
-- Bumped `@merqo/ui` to v0.19.0: the account menu's theme control now sits
-  behind a collapsed "Theme · {current}" submenu instead of three
-  always-expanded radio options.
-- Cleaned up the dashboard onboarding tour copy (`src/components/tour-steps.ts`):
-  removed em dashes and the trailing arrow from the desktop step text, and
-  added a small inline "example order" preview card to the first step (new
-  `.tour-example` CSS in `src/app/globals.css`) so a new vendor can see what
-  a real order looks like before any orders exist.
-- That "example order" preview's status pill now renders the real
-  `OrderStatusBadge` component instead of a hand-copied color/label — the
-  hand copy had already drifted (it used the primary color, not the real
-  `status-preparing` token).
-
-### Fixed
-
-- `/admin` (the admin overview) returned a 500 for every admin: `page.tsx`
-  is a Server Component and passed `formatAction={humanizeAction}` — a
-  function — straight to `@merqo/ui`'s `AuditLogTable`, which is a Client
-  Component (the package ships as one all-`"use client"` bundle), and React
-  cannot serialize a function across the server→client boundary. The
-  callback now lives in a small `"use client"` wrapper
-  (`src/app/admin/audit-log.tsx`, `AdminAuditLog`); the page hands over only
-  the serializable `entries` array. Broken since the `AuditLogTable`
-  adoption; not caught earlier because `/admin` is dynamic, so the build
-  never renders it.
-- `/dashboard/stats` had the same latent crash from the `MarginTable` →
-  `@merqo/ui` `DataTable` adoption — `columns` (with `cell`/`getRowKey`
-  functions) was passed from a Server Component. `margin-table.tsx` is now
-  `"use client"`. It only surfaced for a Pro vendor who had entered per-item
-  costs, so it had not yet been hit in production.
-
-### Added
-
 - printkit print-job integration: a new `orders.print_status` enum column
   (`not_required`|`queued`|`sent`|`printed`|`failed`, migration 0081).
   `placeOrder` now fires an outbound job-creation call to printkit's
@@ -689,100 +742,6 @@ available`, matching each item by exact name to update in place rather
   straight to another kit's dashboard — SSO via the shared `.merqo.io`
   cookie already signs them in there too, so this is purely an in-product
   navigation affordance, no new backend.
-
-### Fixed
-
-- Cards were visually indistinguishable from the page background in light
-  mode — the Market Ochre rebrand set `--card`/`--popover` to the exact
-  same OKLCH value as `--background`. Restored a distinct, lighter card
-  treatment in light mode (`src/app/globals.css`); dark mode already
-  differentiated the two, and got a further brightness bump for better
-  contrast.
-
-### Removed
-
-- **qkit's own Telegram bot (Phase A)** — retired the same day it shipped,
-  in favor of merqo's shared Telegram bot (Phase A2). Deleted
-  `src/app/api/telegram/webhook/`, `src/lib/telegram.ts`, the dashboard
-  settings "Connect Telegram" section (`telegram-section.tsx`/
-  `telegram-actions.ts`), and the `qkit.vendor_telegram`/
-  `qkit.telegram_link_tokens` tables (migration `0077` drops what `0076`
-  created); dropped `TELEGRAM_BOT_TOKEN`/`TELEGRAM_BOT_USERNAME`/
-  `TELEGRAM_WEBHOOK_SECRET` from `.env.example`. `placeOrder`'s vendor
-  order-alert keeps its name/call site but now calls merqo's
-  `POST /api/merqo/notify-vendor` (`notifyVendor` in
-  `src/lib/merqo-customer-notify.ts`) instead of running a local bot.
-  **Any vendor who'd already linked qkit's own bot must reconnect once via
-  merqo's `/profile` page** — a Telegram `chat_id` is scoped to a
-  (bot, user) pair, so the old link is meaningless under a different bot.
-  This is an expected, already-approved consequence of the retirement, not
-  a regression.
-
-### Changed
-
-- Second-pass frontend-design/impeccable critique, hunting for what the
-  first pass missed: the app's dark theme (a full `.dark` palette in
-  `globals.css`, contrast-audited as recently as the previous entry) was
-  completely unreachable — no theme toggle and no OS-preference detection
-  ever applied the `.dark` class, so every `dark:`-variant style in the
-  codebase was dead code and vendors got the light theme regardless of
-  their device setting, including at night-market events. Root layout now
-  applies `.dark` from `prefers-color-scheme` via a `beforeInteractive`
-  script (no FOUC) and keeps listening for a live day→night switch. Also
-  found the payment-status badge and its "Mark as paid"/"Confirm payment
-  received" buttons (`order-card.tsx`, plus the identical duplicated map
-  in the landing hero's `landing-ticket.tsx`) using raw `bg-blue-600`/
-  `bg-emerald-600` Tailwind colors with no dark-mode pairing, instead of
-  this project's own `--status-*` design-token convention — replaced with
-  new `--status-payment-claimed`/`--status-payment-confirmed` tokens
-  (light + dark). And the global 404 page's copy ("Scan the booth's QR
-  code again to start a fresh order") was shown even when a vendor or
-  admin hit a stale link inside `/dashboard` or `/admin` (e.g. a deleted
-  booth's edit page) — added segment-scoped `not-found.tsx` pages with
-  vendor/admin-appropriate copy for those two trees.
-- Design pass from a completed frontend-design/impeccable critique: the
-  dashboard toolbar's "New order" button is now the visually primary action,
-  matching its usage frequency in queue-heavy event mode; removed the
-  confusing "The pass" eyebrow above the order board heading (read as a
-  plan-tier label, not load-bearing copy); MOAT and pricing cards now use
-  the Ticket motif consistently with How-it-works instead of drifting to
-  plain bordered divs; the order card's number/name (the most-scanned
-  element) is no longer wrapped in a dashed "empty state" border, with the
-  bump affordance moved to its own icon chip so reading and acting are
-  visually distinct; and the landing trust strip now uses a perforated
-  ticket-stub treatment instead of generic pill badges.
-- **Bumped `@merqo/ui` to v0.10.0** and wired its new optional
-  `LinkComponent` prop (`next/link`'s `Link`) into `dashboard-nav.tsx`'s
-  `<DashboardNav>` call site. Previously `DashboardNav`/`AccountMenu` hardcoded
-  a plain `<a>` for internal nav, forcing a full page reload on every click —
-  root-caused elsewhere in the family as the reason an onboarding tour's
-  nav-link spotlight step could abort an unawaited "mark tour seen" write
-  mid-flight, so the tour kept re-triggering. `DashboardNav` forwards
-  `LinkComponent` down to its composed `AccountMenu` internally, and qkit has
-  no standalone `AccountMenu` usage, so this one wiring point covers both.
-
-- **Payments now route through paykit**, the Merqo family's shared payment
-  kit, instead of qkit's own local PayNow/QR code. Vendors' "quick add
-  PayNow" section now saves to paykit's vendor-scoped config instead of
-  writing the full config to `booths.payment`; the customer checkout panel,
-  "I've paid" claim, and the vendor's "Confirm payment" tap now all call
-  paykit's checkout/claim/confirm API (new `src/lib/paykit/client.ts`) —
-  same rendered QR/link/image experience as before. New env vars
-  `PAYKIT_KIT_SECRET`/`NEXT_PUBLIC_PAYKIT_URL`. This is a local-only cutover
-  for now: paykit hasn't minted a production bearer key for qkit yet, so
-  `PAYKIT_KIT_SECRET` ships unset and every payment call degrades to a clear
-  error until that key exists. One deliberate feature drop: the customer's
-  "Tapped by mistake? Undo" (unclaim) button is gone — paykit has no
-  endpoint to reverse a claim.
-
-### Removed
-
-- **`src/lib/payments/`** (the local EMVCo PayNow QR builder and
-  pointer/PayNow/Stripe render-adapter) — dead code once the paykit cutover
-  above moved checkout rendering to paykit's API.
-
-### Added
-
 - **"Save QR image" on the customer order page's payment panel**, plus
   clearer same-device PayNow instructions. A QR checkout previously had no
   reliable way for the customer to hand the code to a banking app on the
@@ -878,228 +837,174 @@ available`, matching each item by exact name to update in place rather
   (`get_booth_for_order` now resolves and returns `social_links`, migration
   `0053`).
 
-### Security
-
-- **Customer reviews can no longer be forged for a booth you never ordered
-  from.** `submit_feedback` accepted a 1-5★ rating against any `booth_id` +
-  `order_number` with no proof of an order (the only throttle was a spoofable,
-  fail-open per-IP limit), so a booth's public rating could be review-bombed at
-  scale. Customer feedback now carries the order's per-order access token, and
-  the RPC rejects any review whose `(booth_id, order_number, access_token)`
-  doesn't match a real order — the same unguessable token the status page
-  already requires. Vendor feedback (stamped from the signed-in id) is
-  unchanged. (Migration `0048`.)
-- **Closed 7 open high-severity Dependabot alerts**, all transitive
-  dev/build-tool dependencies (via eslint/vitest/stryker/next's own postcss
-  pipeline), none reachable from runtime app code: `postcss` (path traversal
-  in source-map auto-loading), `fast-uri` (host confusion via IDN/backslash,
-  2 advisories), `js-yaml` (quadratic-CPU DoS via YAML merge-key chains),
-  and `brace-expansion` (exponential-time DoS, 3 separate vulnerable major
-  lines). Force-patched via `pnpm-workspace.yaml` overrides, same pattern
-  already used for postcss/undici/vite/qs/sharp.
-
-### Fixed
-
-- Browser-tab title now uses the cross-kit "Name | Tagline" Title Case
-  format: "Qkit | Live Queueing" (was "qkit: live queueing"). PWA-chrome
-  title updated to match.
-- `.husky/lib/pre-commit.sh` used `xargs -d '\n'`, a GNU-only flag not
-  supported by BSD xargs (macOS default) — broke every local commit
-  touching staged .ts/.tsx/.js/.mjs/.cjs or .json/.md/.css files. Swapped
-  for portable `tr '\n' '\0' | xargs -0`.
-- **`docs/constitution.md` renamed to `docs/CONSTITUTION.md`** to match
-  templateCentral's canonical convention (and every other harness reference
-  to it — `AGENTS.md`, `.claude/settings.json`, `.claude/hooks/*`). The
-  lowercase filename was a local deviation; `protect-files.sh`'s ask-gate and
-  `session-context.sh`'s re-injection now point at the correct case again.
-- **Double-spaced button labels ("New order", "Booths · 3/5 open").**
-  Both buttons split their label across several elements (an icon, plain
-  text, a couple of responsive-hide spans) as direct children of a flex
-  container with `gap-2` — the gap applies between every child, so it added
-  extra space between words on top of the literal spaces already in the
-  text, on the live order board's "New order" and booth-status buttons.
-  Each label is now one child instead of several, so the gap only fires
-  once, between the icon and the label.
-- **Profile page's two-column layout desynced under a tall card.** A raw
-  CSS grid tracks row height to its tallest cell, so once "Social &
-  website" outgrew "Stall name," every row after it started late in both
-  columns, leaving a visible gap under the shorter cards below. Switched to
-  two independent stacking columns — the same fix already applied to the
-  board-settings page.
-- **A free item in an otherwise-priced order showed "$0.00" instead of
-  "Free"**, on both the customer order-status page and the vendor live
-  board/completed-orders card. Two layers: the UI's price column was gated
-  on the order having _any_ priced item, not on the line itself; and
-  underneath that, `place_order` coalesced an unset menu-item price to `0`
-  and always stored `price_cents` on the order snapshot, so the "genuinely
-  free" vs "explicitly $0.00" distinction was already gone by the time the
-  order was placed — the UI fix alone had nothing to key off. `place_order`
-  now omits `price_cents` entirely for an unset price (migration `0055`),
-  mirroring how `cost_cents` already worked.
-- **Price/Cost menu-item fields on the booth edit form truncated their own
-  placeholder** ("Price (optiona…") — narrowed to "Price (opt.)"/"Cost
-  (opt.)" and widened the field slightly.
-- **Social link icons now show each platform's real logo and brand color**
-  instead of generic Lucide glyphs (TikTok was a plain music-note icon, not
-  the TikTok mark). Instagram/Facebook/TikTok now render via Simple Icons
-  (`@icons-pack/react-simple-icons`) on a fixed light chip so the marks stay
-  legible in dark mode too; used on both the vendor profile form and every
-  customer-facing social row.
-- **Vendor stats reviews scale with your own data, not the whole platform.** The
-  reviews query leaned on RLS alone to scope to your booths and had no
-  `feedback(booth_id)` index, so it walked platform-wide customer feedback each
-  stats load. It now filters `.in("booth_id", …)` against a new
-  `feedback(booth_id, created_at DESC)` index (migration `0049`), and the 500-row
-  cap applies to your reviews instead of silently dropping yours past the
-  platform's newest 500.
-- **More of the UI respects reduced-motion and screen readers.** Under
-  `prefers-reduced-motion` the always-on `animate-ping`/`pulse`/`spin` utilities
-  (the live board's pulsing "active" dot, skeleton shimmers, spinners) now stop
-  looping instead of running for a whole shift. Added missing accessible names:
-  the working-hours time inputs (per weekday "opens"/"closes"), the support and
-  feedback textareas, the support category radiogroup, and the order-card age
-  chip now announces its overdue/aging state instead of conveying it by colour
-  alone.
-- **The landing page no longer overflows sideways on mobile.** The hero
-  order-chit carousel's scroll track had no width constraint, so as a grid child
-  (`min-width: auto`) it reported its full four-board width as its minimum and
-  stretched the whole document past the viewport — the page rendered ~744px wide
-  on a 375px phone, letting you pinch-zoom out and throwing every section's width
-  off. Constraining the track with `min-w-0` / `w-full` lets it clip and scroll
-  as intended; the document now matches the viewport exactly.
-- **Dashboard nav reads clearly on a phone.** The burger and the account avatar
-  used to sit crammed together on the right as two look-alike icon buttons. They
-  now split to opposite ends — navigation burger far left, account far right
-  (the standard hamburger-left / account-right mobile pattern) — with the avatar
-  staying visible at every width since it's a high-frequency action. The hero
-  order-chit carousel also tightens its padding on small screens and gives its
-  dots a comfortable touch target.
-- **Subscription revenue isn't double-counted** when an admin re-submits (or
-  double-clicks) an already-Pro vendor — the payment is recorded only on a real
-  free→Pro transition.
-- **Entitlement drift closed.** The booth-create gate (`can_create_booth`)
-  checked a license's `expires_at` but not `valid_from`, while serveability
-  (`booth_servable`) checked both — so a vendor with a **future-dated** pass
-  could create extra booths that then couldn't serve. Both now share one
-  `vendor_entitled()` predicate. (Migration 0038.)
-- **The anonymous ordering funnel survives an auth outage.** The session
-  middleware resolved the user on every request, so a Supabase auth hiccup could
-  500 the public `/o` / `/order` pages that need no login. It now resolves the
-  user only on protected routes (and degrades to a `/login` redirect instead of
-  a 500 if auth is unreachable) — the customer funnel skips the auth round-trip
-  entirely.
-- **The payment QR now has a fallback** when the image can't load (flaky wifi)
-  instead of leaving the customer stuck with no way to pay.
-- **Input bounds:** menu prices/costs are capped (a forged price can't overflow
-  the order total), the cart is capped at 50 lines, and the status page
-  validates its route params — matching the database-side guards.
-- **Backend read errors no longer masquerade as empty/expired states.** A DB
-  error while placing an order, resolving a booth code, or loading the vendor
-  board is now logged and shown honestly — a distinct "try again" screen for a
-  code that failed to resolve (instead of "QR expired", which looped a customer
-  whose code was valid), and a retry banner on the dashboard (instead of a
-  cheery empty "All clear" board that hid in-flight orders).
-- **Accessibility:** the customer's live order-status and payment states are
-  screen-reader live regions (announces "ready for pickup" / "payment
-  confirmed"), and menu option choices expose radio/checkbox semantics instead
-  of conveying selection by colour alone.
-- **Order-board actions guard against concurrent status changes.** Advance,
-  cancel, and confirm-payment updated an order by id using the status they had
-  read — so a cancel racing an advance-to-completed could resurrect a cancelled
-  order back into revenue and stock. Each update now also matches on the
-  read status/payment_status; a concurrent change makes it a no-op and the
-  action reports "Order changed — please refresh." rather than clobbering.
-- **Dead customer order links resurrected.** Phase A moved the customer entry
-  route to `/o/{short_code}` and removed `/order/{boothId}`, but the vendor
-  "Copy order link" button, the reorder button, and the status page's "Order
-  again" link still pointed at the removed route (404). The copy-link now yields
-  the canonical `/o/{short_code}`, and a redirect shim at `/order/{boothId}`
-  resolves a booth's current code and forwards to `/o/{code}` — also rescuing any
-  previously printed/shared `/order/{boothId}` link. Reorder still seeds the cart
-  (its sessionStorage handoff is booth-keyed and survives the redirect).
-- **Stock oversell race in `place_order` closed.** The stock gate read remaining
-  stock and passed _before_ acquiring the per-booth `order_seq` lock (the sold
-  counter is bumped only in an AFTER-INSERT trigger), so two concurrent last-unit
-  orders could both pass and oversell. The gate now runs after the lock —
-  serializing concurrent orders on a booth — and checks the same pooled,
-  clamped quantities the counter applies (one shared `order_item_quantities()`
-  rule, replacing three subtly-different clamps). Migration `0034`.
-- **Gross margin no longer reads 100% for every no-cost vendor.** `place_order`
-  wrote `cost_cents: 0` for every item, even ones with no cost set, so the margin
-  stats treated the cost as "present" and reported `profit == revenue` (100%
-  margin) on the dashboard, the `SalesSummaryV1.gross_margin` API field, and the
-  CSV export. It now omits `cost_cents` for a no-cost item (a genuine cost of 0
-  is preserved and still counts). Migration `0033`.
-- **`/api/v1/sales/summary` fails loud on a DB read error.** It discarded the
-  Supabase `error` on both reads, so a transient failure returned a `200` with
-  `{revenue: 0, …}` — a downstream consumer would silently under-invoice. It now
-  logs and returns `503` on either read error.
-
-### Security
-
-- **Booth-image storage hardened.** The `booth-images` bucket now enforces a
-  size cap and an image-only MIME allowlist at the bucket (previously only the
-  client checked), and replacing/removing an image or deleting a booth now
-  reclaims the orphaned storage objects instead of leaking them.
-- **Vendors can no longer self-escalate to Pro.** `vendors_self_update` was
-  row-scoped with no column limit, so a vendor could `UPDATE vendors SET
-plan='pro'` on their own row via a direct PostgREST call — a free→pro
-  escalation. Column-level `UPDATE(plan)` is now revoked from `anon` +
-  `authenticated`; only the admin action (service role) writes `plan`. Same
-  migration adds the missing `WITH CHECK` to the `vendors`, `booths`, and
-  `purchase_requests` UPDATE policies (a policy with only `USING` doesn't
-  constrain the result row, so an update could move a row out of the caller's
-  ownership — e.g. re-point a booth to another vendor). Migration `0035`.
-- **Order-path hardening extended to the `authenticated` role.** Phase A closed
-  the customer write path for `anon` only, but sign-up is open — so any logged-in
-  JWT still bypassed all of it: the permissive `orders_public_insert` /
-  `booths_public_read` / `feedback_public_insert` policies had no `TO` clause
-  (they applied to `authenticated` too) and the Phase-A `REVOKE`s named only
-  `anon`. A logged-in vendor could forge orders, read **every** servable booth's
-  `cost_cents` + `short_code` cross-vendor, forge competitor reviews, and burn
-  any booth's `order_seq`. Migration `0033` drops the three dead permissive
-  policies, revokes the direct grants from **both** roles, routes public feedback
-  through a new `submit_feedback` `SECURITY DEFINER` RPC (re-derives `vendor_id`
-  from the caller's own session), and hardens `place_order` against the
-  direct-RPC path that skips the server action: re-derives each item name from
-  the stored menu, validates + caps chosen options against the item's option
-  groups, rejects an all-zero-quantity cart, caps the line count, and carries a
-  booth-scoped flood guard inside the RPC. pgTAP asserts every path is denied to
-  a non-owner `authenticated` session.
-- **Customer order path enforced in Postgres, not just the app.** Previously the
-  public anon key could POST directly to PostgREST and bypass every app-layer
-  guard (rate limit, servability, stock, cost snapshot) and read private booth
-  columns (`cost_cents`, the QR token). Now two `SECURITY DEFINER` RPCs are the
-  only public surface — `get_booth_for_order` (returns a public-safe projection,
-  never `cost_cents`/`short_code`) and `place_order` (atomic, server-priced,
-  idempotent) — and direct anon `SELECT booths` / `INSERT orders` /
-  `EXECUTE next_order_number` are revoked. `place_order` re-prices from the
-  stored menu (forged client prices can't survive) and dedupes on an idempotency
-  key (no double-order on flaky Wi-Fi). pgTAP encodes the contract.
-- **Vendor order path enforced in Postgres too.** The order board mutated orders
-  directly from the browser, guarded only by an `orders_vendor_update` policy
-  that had `USING` but no `WITH CHECK` and no column restriction — so a tampered
-  vendor session (or a direct PostgREST call with the vendor JWT) could forge
-  `total_cents`/`items`, rewrite `order_number`/`customer_name`, or re-point an
-  order to another booth. Now the three mutations go through validated server
-  actions (`advanceOrder`/`confirmOrderPayment`/`cancelOrder`), the update policy
-  carries a `WITH CHECK` (result row must still be the vendor's), and a
-  `BEFORE UPDATE` trigger freezes the financial/identity columns (`booth_id`,
-  `order_number`, `customer_name`, `items`, `total_cents`, `created_at`,
-  `idempotency_key`, `payment_method_kind`) — a vendor UPDATE may only move the
-  state machine. Migration `0032`; pgTAP encodes the freeze + `WITH CHECK`.
-- CI security scanning (`.github/workflows/security.yml`): gitleaks v3 secret
-  scan, CodeQL (javascript-typescript, security-extended), and a `pnpm audit`
-  high/critical gate.
-- `.github/dependabot.yml`: security-updates only (npm + github-actions);
-  version-update PRs disabled (`open-pull-requests-limit: 0`).
-- Removed `axios` — an unused production dependency carrying a high-severity
-  `form-data` advisory (GHSA-hmw2-7cc7-3qxx). Production `pnpm audit` is clean at
-  the high gate. The audit gate runs `--prod` (shipped code); a full audit runs
-  informationally (dev-toolchain transitive vulns tracked by Dependabot).
-
 ### Changed
 
+- Bumped `@merqo/ui` to `v0.31.2`. v0.31.0 replaced the package-wide
+  `"use client"` banner with per-module directives, so a plain-data export
+  is a real value inside a Server Component rather than an opaque
+  client-reference stub. That was the root cause of qkit's own 2026-09-18
+  production outage; until now the fixes were workarounds at each call site.
+- Adopted four primitives promoted into `@merqo/ui` v0.31.0, deleting the
+  qkit copies: `safeRedirectPath` and `resizeToWebp` (were
+  `src/lib/safe-redirect.ts` / `image-resize.ts`), `BackToTop` (was
+  `src/components/back-to-top.tsx`) and `GoogleMark` (was
+  `src/app/(auth)/login/google-mark.tsx`).
+- `ticket-section.dom.test.tsx`'s tooltip assertion now expects one matching
+  node instead of two. The radix `@radix-ui/react-tooltip` that `@merqo/ui`
+  bundles moved from 1.2.8 to 1.2.16, which no longer renders a
+  visually-hidden duplicate of the tooltip text. Per the previous comment's
+  own instruction, confirmed the surviving node is the visible one (it
+  carries `role="tooltip"`, `data-state="delayed-open"`, the popper
+  positioning styles and the real `bg-popover` classes) and not the hidden
+  duplicate. The assertion also now checks those attributes directly.
+- `BackButton`, `ElevatedCard`, `SOCIAL_LINK_FIELDS`/`SocialLinksFields`,
+  `MoneyInput`, and the landing `Footer` now come from `@merqo/ui`
+  (bumped to v0.29.1) instead of a qkit-local copy — each was confirmed
+  duplicated across 2 or more sibling kits before promoting, no behavior
+  change intended.
+- Bumped `@merqo/ui` to `v0.30.0`.
+- `src/lib/printkit/client.ts`'s two functions now share one request helper
+  (`printkitRequest`, mirroring paykit's own) instead of duplicating the
+  fetch/timeout/error-handling logic.
+- `src/lib/merqo-customer-notify.ts`'s three functions now share one fetch
+  helper, and `mintCustomerConnectToken` Zod-validates its response body
+  instead of trusting an unchecked cast.
+- The six admin pages/routes reading `merqo.support_messages` now import one
+  shared `MerqoSupportMessagesSchema` type (`src/lib/merqo-support.ts`)
+  instead of each redeclaring their own narrowed copy.
+- Onboarding tour's final step now tells a vendor which booth-page
+  sections are optional (Payment, Printing, Booking Status) before they
+  create their first booth, instead of leaving them to discover it
+  section by section.
+- Booth settings' Paykit booking ID field now links out to paykit's
+  bookings list ("Find or create a booking in paykit"), so a vendor
+  linking a booth to a booking doesn't have to already know paykit
+  exists as a separate product and go find it unprompted.
+- Dropped the required typed legal-name field from terms/privacy
+  acceptance — a plain ToS/Privacy clickwrap doesn't need a signatory
+  name for evidentiary strength beyond the existing (vendor_email,
+  auth_uid, doc_type, doc_version, ip, user_agent, timestamp) record kept
+  on merqo. `@merqo/ui` bumped to `v0.25.0` (`v0.24.0`:
+  `TermsAcceptanceCheckbox` no longer takes `legalName`/
+  `onLegalNameChange`; `v0.25.0`: a pre-lawyer-review legal-wording pass,
+  the new `AboutMerqo` component, and a "← Back" button on every
+  `/legal/*` page).
+- Menu item card's Available/Duplicate/Delete cluster: Available stays its
+  own standalone toggle, Duplicate and Remove now live behind a "More
+  actions" kebab menu instead of two more equal-weight icon buttons next to
+  it. Grouping a state (Available) with two actions as three identical
+  icons was the actual issue, not their individual styling.
+- Menu item card field order and layout, grounded in Deliveroo/Square/Toast's
+  own item-form conventions: "Section" now sits right after name/description
+  (was below Price/Cost); Price, Cost, and Sold-out limit collapse into one
+  compact three-column row, each with a real persistent label instead of
+  placeholder-only text (which disappears once filled in, leaving a bare
+  number) and its longer explanation behind a tap `InfoTooltip` instead of a
+  permanent caption paragraph repeated on every item. The Available/
+  Duplicate/Delete action column goes horizontal at tablet+ width instead of
+  always stacking three icons tall.
+- `booth-form.tsx`'s "Order flow" section: both controls are now `Switch`
+  ("Hold prep until the customer arrives" was a `Checkbox`, inconsistent
+  with its neighbor "Default to walk-up order entry") — standardized to
+  match every other standalone on/off feature toggle in the app.
+- Stats dashboard's margin table (`MarginTable`, `/dashboard/stats`) now
+  renders through the shared `@merqo/ui` `DataTable` component instead of
+  hand-rolled JSX, matching the `AuditLogTable` adoption pattern already
+  used in `/admin` — same columns (Item/Sold/Profit/Margin), cell
+  formatting, and profit-descending sort, rendering only.
+- Bumped `@merqo/ui` to v0.22.1: `OrderStatusBadge` now renders through the
+  new shared `StatusBadge` component (extracted from this file, chosen as
+  the design target over other kits' plain shadcn `Badge` uses) instead of
+  its own hand-rolled markup — qkit's `STATUS_CONFIG` label/colour map is
+  unchanged and passed through as the `config` prop, so rendered output is
+  identical.
+- Admin console: the audit-trail viewer and pricing form now render through
+  the shared `@merqo/ui` `AuditLogTable`/`PricingForm` components instead of
+  hand-rolled JSX, matching loopkit/paykit/stockkit's admin consoles (same
+  underlying data and actions, rendering only); `pricing-form.tsx` is
+  renamed to `pricing-section.tsx` (`PricingSection`) to match paykit's
+  naming, and the audit log no longer paginates client-side (the shared
+  component renders every fetched row, same as its sibling-kit usage).
+- Booth settings: "Hold prep until the customer arrives" and "Default to
+  walk-up order entry" moved out of "Hours & availability" into their own
+  "Order flow" section (they're about how an order is entered/prepped, not
+  when the booth is open), the em dash in the walk-up copy is gone, and
+  Printing now shows a "Choose the printer for this booth →" link once
+  printing is on and the booth is saved, deep-linking into printkit's
+  bridge page for that specific booth. The single-column mobile layout now
+  stacks Menu right after Hours/Order flow instead of at the very bottom,
+  above Payment/Printing/Social links; the two-column tablet/desktop
+  layout is unchanged.
+- Bumped `@merqo/ui` to v0.20.0: the stats strip's `StatTile` now wraps the
+  new shared `StatTile`/`DeltaPill` content instead of a fully local
+  implementation — no visible change, qkit's own card shell (border,
+  fade-rise animation, ember `primary` accent) is unchanged.
+- Bumped `@merqo/ui` to v0.19.0: the account menu's theme control now sits
+  behind a collapsed "Theme · {current}" submenu instead of three
+  always-expanded radio options.
+- Cleaned up the dashboard onboarding tour copy (`src/components/tour-steps.ts`):
+  removed em dashes and the trailing arrow from the desktop step text, and
+  added a small inline "example order" preview card to the first step (new
+  `.tour-example` CSS in `src/app/globals.css`) so a new vendor can see what
+  a real order looks like before any orders exist.
+- That "example order" preview's status pill now renders the real
+  `OrderStatusBadge` component instead of a hand-copied color/label — the
+  hand copy had already drifted (it used the primary color, not the real
+  `status-preparing` token).
+- Second-pass frontend-design/impeccable critique, hunting for what the
+  first pass missed: the app's dark theme (a full `.dark` palette in
+  `globals.css`, contrast-audited as recently as the previous entry) was
+  completely unreachable — no theme toggle and no OS-preference detection
+  ever applied the `.dark` class, so every `dark:`-variant style in the
+  codebase was dead code and vendors got the light theme regardless of
+  their device setting, including at night-market events. Root layout now
+  applies `.dark` from `prefers-color-scheme` via a `beforeInteractive`
+  script (no FOUC) and keeps listening for a live day→night switch. Also
+  found the payment-status badge and its "Mark as paid"/"Confirm payment
+  received" buttons (`order-card.tsx`, plus the identical duplicated map
+  in the landing hero's `landing-ticket.tsx`) using raw `bg-blue-600`/
+  `bg-emerald-600` Tailwind colors with no dark-mode pairing, instead of
+  this project's own `--status-*` design-token convention — replaced with
+  new `--status-payment-claimed`/`--status-payment-confirmed` tokens
+  (light + dark). And the global 404 page's copy ("Scan the booth's QR
+  code again to start a fresh order") was shown even when a vendor or
+  admin hit a stale link inside `/dashboard` or `/admin` (e.g. a deleted
+  booth's edit page) — added segment-scoped `not-found.tsx` pages with
+  vendor/admin-appropriate copy for those two trees.
+- Design pass from a completed frontend-design/impeccable critique: the
+  dashboard toolbar's "New order" button is now the visually primary action,
+  matching its usage frequency in queue-heavy event mode; removed the
+  confusing "The pass" eyebrow above the order board heading (read as a
+  plan-tier label, not load-bearing copy); MOAT and pricing cards now use
+  the Ticket motif consistently with How-it-works instead of drifting to
+  plain bordered divs; the order card's number/name (the most-scanned
+  element) is no longer wrapped in a dashed "empty state" border, with the
+  bump affordance moved to its own icon chip so reading and acting are
+  visually distinct; and the landing trust strip now uses a perforated
+  ticket-stub treatment instead of generic pill badges.
+- **Bumped `@merqo/ui` to v0.10.0** and wired its new optional
+  `LinkComponent` prop (`next/link`'s `Link`) into `dashboard-nav.tsx`'s
+  `<DashboardNav>` call site. Previously `DashboardNav`/`AccountMenu` hardcoded
+  a plain `<a>` for internal nav, forcing a full page reload on every click —
+  root-caused elsewhere in the family as the reason an onboarding tour's
+  nav-link spotlight step could abort an unawaited "mark tour seen" write
+  mid-flight, so the tour kept re-triggering. `DashboardNav` forwards
+  `LinkComponent` down to its composed `AccountMenu` internally, and qkit has
+  no standalone `AccountMenu` usage, so this one wiring point covers both.
+
+- **Payments now route through paykit**, the Merqo family's shared payment
+  kit, instead of qkit's own local PayNow/QR code. Vendors' "quick add
+  PayNow" section now saves to paykit's vendor-scoped config instead of
+  writing the full config to `booths.payment`; the customer checkout panel,
+  "I've paid" claim, and the vendor's "Confirm payment" tap now all call
+  paykit's checkout/claim/confirm API (new `src/lib/paykit/client.ts`) —
+  same rendered QR/link/image experience as before. New env vars
+  `PAYKIT_KIT_SECRET`/`NEXT_PUBLIC_PAYKIT_URL`. This is a local-only cutover
+  for now: paykit hasn't minted a production bearer key for qkit yet, so
+  `PAYKIT_KIT_SECRET` ships unset and every payment call degrades to a clear
+  error until that key exists. One deliberate feature drop: the customer's
+  "Tapped by mistake? Undo" (unclaim) button is gone — paykit has no
+  endpoint to reverse a claim.
 - Migrated git hooks from lefthook to husky — lefthook's unsigned
   `lefthook.exe` is unconditionally blocked by Windows Smart App Control on
   this machine; husky has no native binary. Same checks, same rigor.
@@ -1184,6 +1089,43 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 - Upgraded Next.js 15 → 16.2.7 (Turbopack). Renamed `src/middleware.ts` →
   `src/proxy.ts` (`export proxy`); switched the `check` script from `next lint`
   (removed in 16) to the ESLint CLI with `eslint-config-next`'s flat config.
+
+### Removed
+
+- **qkit's own Telegram bot (Phase A)** — retired the same day it shipped,
+  in favor of merqo's shared Telegram bot (Phase A2). Deleted
+  `src/app/api/telegram/webhook/`, `src/lib/telegram.ts`, the dashboard
+  settings "Connect Telegram" section (`telegram-section.tsx`/
+  `telegram-actions.ts`), and the `qkit.vendor_telegram`/
+  `qkit.telegram_link_tokens` tables (migration `0077` drops what `0076`
+  created); dropped `TELEGRAM_BOT_TOKEN`/`TELEGRAM_BOT_USERNAME`/
+  `TELEGRAM_WEBHOOK_SECRET` from `.env.example`. `placeOrder`'s vendor
+  order-alert keeps its name/call site but now calls merqo's
+  `POST /api/merqo/notify-vendor` (`notifyVendor` in
+  `src/lib/merqo-customer-notify.ts`) instead of running a local bot.
+  **Any vendor who'd already linked qkit's own bot must reconnect once via
+  merqo's `/profile` page** — a Telegram `chat_id` is scoped to a
+  (bot, user) pair, so the old link is meaningless under a different bot.
+  This is an expected, already-approved consequence of the retirement, not
+  a regression.
+- **`src/lib/payments/`** (the local EMVCo PayNow QR builder and
+  pointer/PayNow/Stripe render-adapter) — dead code once the paykit cutover
+  above moved checkout rendering to paykit's API.
+
+### Note
+
+- `order/[boothId]/[orderNumber]/payment-actions.ts` calls `resizeToWebp`
+  from a `"use server"` module. `resizeToWebp` is browser-only (Canvas), so
+  on the server it throws internally and its catch returns the original file
+  — the payment-proof upload succeeds but is never actually resized. This
+  was equally true of the qkit-local copy, so the move changes nothing;
+  recording it rather than leaving a silent no-op. A real server-side resize
+  would need a different implementation.
+- `order/[boothId]/pay/pay-form.tsx` and `[orderNumber]/page.tsx` keep
+  `react-qr-code` rather than `qrSvg`. `qr-image.ts` insets the rasterized
+  PNG ~8% precisely because `react-qr-code` emits zero margin, and bank apps
+  scanning a saved photo can fail on edge-to-edge modules; `qrSvg` emits
+  `margin: 1`, so swapping changes the quiet zone on a live payment path.
 
 ## [0.1.1] - 2026-08-27
 
