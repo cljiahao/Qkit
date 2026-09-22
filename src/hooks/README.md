@@ -27,7 +27,13 @@ order-status page.
 - `use-now.ts` — `useNow(intervalMs, enabled=true)`: client-only hook that
   re-renders every `intervalMs` with `Date.now()`, driving "time ago"/countdown
   UI; `enabled=false` stops the ticking (e.g. once an order reaches a terminal
-  status). Marked `"use client"`.
+  status). Returns `number | null`: `null` on the server and on the hydrating
+  render, then the clock is set in an effect, so SSR'd elapsed labels can never
+  mismatch on hydration (React #418). Consumers render a stable placeholder
+  while it is `null`. Marked `"use client"`.
+- `use-now.dom.test.tsx` — SSR renders `null` without calling `Date.now()`;
+  the clock is set on mount and ticks per interval; `enabled=false` sets it
+  once without ticking.
 - `use-polling.ts` — `usePolling(tick, { intervalMs, enabled })`: runs `tick` on
   an interval only while the tab is visible, pausing on `visibilitychange` when
   hidden and firing an immediate tick when the tab regains focus (also covers

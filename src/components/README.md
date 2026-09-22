@@ -162,7 +162,10 @@ selected, onToggleSelect })`: the
   disabled once already bumped.
   In multi-booth view, a full-width banner above the header shows the booth
   name next to a `boothColor()` dot. One "attention wash" background at a
-  time, prioritized overdue > payment-claimed > aging. A closed card whose
+  time, prioritized overdue > payment-claimed > aging. The footer's elapsed
+  "Nm" label and the aging tone come from `useNow`, which is `null` until
+  mount, so the card SSRs with no label and a "fresh" tone and fills both in on
+  the client (no hydration text mismatch). A closed card whose
   `order.auto_completed` is true (the ready-order auto-clear sweep, not a
   vendor's own "Mark Picked Up" tap, completed it) shows a "Restore to
   ready" button calling `restoreAutoCompleted` — this is where the

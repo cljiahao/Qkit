@@ -909,3 +909,48 @@ describe("OrderCard — restore auto-completed", () => {
     );
   });
 });
+
+describe("OrderCard — hydration", () => {
+  it("hydrates without a text mismatch when the clock moves between server and client render", async () => {
+    const { renderToString } = await import("react-dom/server");
+    const { hydrateRoot } = await import("react-dom/client");
+    const { act } = await import("react");
+    const created = Date.parse("2026-09-22T00:00:00Z");
+    const order = makeOrder({ created_at: new Date(created).toISOString() });
+    const tree = (
+      <TooltipProvider>
+        <OrderCard order={order} />
+      </TooltipProvider>
+    );
+
+    // Server renders at +5 min; the browser hydrates a minute later. Before the
+    // fix useNow() seeded Date.now() in render, so the two "Nm" labels differed
+    // (React #418, the production dashboard console error).
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(created + 5 * 60_000);
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(tree);
+    document.body.appendChild(container);
+    // No clock on the server: the elapsed label waits for the client clock.
+    expect(
+      container.querySelector('[title="Time since the order arrived"]'),
+    ).toBeNull();
+
+    nowSpy.mockReturnValue(created + 6 * 60_000);
+    const onRecoverableError = vi.fn();
+    const root = hydrateRoot(container, tree, { onRecoverableError });
+    await act(async () => {});
+
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    // After mount the effect sets the clock and the real elapsed label appears.
+    expect(
+      container.querySelector('[title="Time since the order arrived"]'),
+    ).toHaveAttribute(
+      "aria-label",
+      expect.stringMatching(/^6 minutes since arrival/),
+    );
+
+    act(() => root.unmount());
+    container.remove();
+    nowSpy.mockRestore();
+  });
+});
