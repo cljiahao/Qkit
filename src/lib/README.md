@@ -62,7 +62,14 @@ factories, respectively).
   booth deletion. URL-to-path parsing is `@merqo/ui`'s shared
   `storagePathFromPublicUrl` (this file carried its own copy until
   2026-09-22); the shared one also rejects a path with an empty segment.
-- `booth-images.test.ts` — tests path extraction and orphan-path diffing.
+  `uploadedPaths(urls)` maps any other URLs (avatar, paykit QR) to paths the
+  same way, and `unsavedUploadPaths(folder, objects, referenced, nowMs,
+graceMs)` picks the objects in a vendor folder that nothing references and
+  that are older than `UNSAVED_UPLOAD_GRACE_MS` (24h): uploads from a form the
+  vendor never saved. Used by `dashboard/booths/sweep-unsaved-uploads.ts`.
+- `booth-images.test.ts` — tests path extraction, orphan-path diffing, and the
+  unsaved-upload selection (grace boundary, referenced objects kept, folders
+  and bad timestamps skipped).
 - `brand-icon.tsx` — `brandIcon(size)` React element plus `BRAND_EMBER`/
   `BRAND_OAT` color constants; renders the "Q" app mark for `ImageResponse`-
   generated favicon/manifest/apple-touch icons.

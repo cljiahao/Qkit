@@ -45,3 +45,47 @@ export function orphanedImagePaths(
   const keep = new Set(boothImagePaths(after));
   return boothImagePaths(before).filter((p) => !keep.has(p));
 }
+
+/** Default age before an unreferenced upload counts as abandoned. */
+export const UNSAVED_UPLOAD_GRACE_MS = 24 * 60 * 60 * 1000;
+
+type StoredObject = { name: string; created_at?: string | null };
+
+/**
+ * Every uploaded-object path the given URLs point at in the booth-images
+ * bucket (a vendor's avatar or paykit QR image, say). Non-uploads map to
+ * nothing, same as boothImagePaths.
+ */
+export function uploadedPaths(urls: (string | null | undefined)[]): string[] {
+  const paths: string[] = [];
+  for (const u of urls) {
+    const p = storagePathFromPublicUrl(u, BUCKET);
+    if (p) paths.push(p);
+  }
+  return paths;
+}
+
+/**
+ * Objects in a vendor's `folder` that nothing references and that are older
+ * than `graceMs`: uploads the vendor made in a form they never saved. The
+ * grace window keeps an upload sitting in a still-open, unsaved form safe.
+ * Sub-folders and objects with no timestamp are never selected.
+ */
+export function unsavedUploadPaths(
+  folder: string,
+  objects: StoredObject[],
+  referenced: Iterable<string>,
+  nowMs: number,
+  graceMs: number = UNSAVED_UPLOAD_GRACE_MS,
+): string[] {
+  const keep = new Set(referenced);
+  const out: string[] = [];
+  for (const obj of objects) {
+    if (!obj.created_at) continue;
+    const created = Date.parse(obj.created_at);
+    if (Number.isNaN(created) || nowMs - created < graceMs) continue;
+    const path = `${folder}/${obj.name}`;
+    if (!keep.has(path)) out.push(path);
+  }
+  return out;
+}

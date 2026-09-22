@@ -11,6 +11,18 @@ import {
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
+// after() needs a live request scope; run the callback inline instead.
+vi.mock("next/server", () => ({
+  after: (fn: () => unknown) => void fn(),
+}));
+
+const { sweepUnsavedUploadsMock } = vi.hoisted(() => ({
+  sweepUnsavedUploadsMock: vi.fn(),
+}));
+vi.mock("./sweep-unsaved-uploads", () => ({
+  sweepUnsavedUploads: sweepUnsavedUploadsMock,
+}));
+
 const { upsertVendorConfigMock } = vi.hoisted(() => ({
   upsertVendorConfigMock: vi.fn(),
 }));
@@ -196,6 +208,37 @@ beforeEach(() => {
   registerPrintLocationMock.mockReset().mockResolvedValue({
     ok: true,
     data: { id: "loc-1" },
+  });
+  sweepUnsavedUploadsMock.mockReset().mockResolvedValue(undefined);
+});
+
+describe("unsaved-upload sweep scheduling", () => {
+  it("sweeps the vendor's folder after a successful booth save", async () => {
+    const res = await saveBooth(makeBooth());
+    expect(res.success).toBe(true);
+    expect(sweepUnsavedUploadsMock).toHaveBeenCalledTimes(1);
+    expect(sweepUnsavedUploadsMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: "v1" }),
+    );
+  });
+
+  it("does not sweep when the booth save fails", async () => {
+    h.state.insertResult = { data: null, error: { message: "boom" } };
+    const res = await saveBooth(makeBooth());
+    expect(res.success).toBe(false);
+    expect(sweepUnsavedUploadsMock).not.toHaveBeenCalled();
+  });
+
+  it("sweeps after a successful menu save, not after a rejected one", async () => {
+    h.state.prevResult = { data: { menu_items: [] } };
+    expect((await saveMenuItems(BOOTH_ID, [makeItem()])).success).toBe(true);
+    expect(sweepUnsavedUploadsMock).toHaveBeenCalledTimes(1);
+
+    sweepUnsavedUploadsMock.mockClear();
+    h.state.updateResult = { data: null, error: { message: "boom" } };
+    expect((await saveMenuItems(BOOTH_ID, [makeItem()])).success).toBe(false);
+    expect(sweepUnsavedUploadsMock).not.toHaveBeenCalled();
   });
 });
 
