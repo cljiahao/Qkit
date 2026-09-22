@@ -7,6 +7,12 @@ their order status in realtime. The dashboard onboarding tour's final step
 are optional (Payment, Printing, Booking Status) before they ever create
 their first booth.
 
+`@merqo/ui` bumped to v0.31.4 (2026-09-22), for its new
+`storagePathFromPublicUrl`. Replacing or removing a profile icon now deletes the
+old image from storage (`removeReplacedAvatar` in
+`src/lib/image-upload-adapter.ts`); before this, every avatar change orphaned one
+file, because `ImageUploader` names each upload randomly.
+
 `@merqo/ui` is pinned at v0.31.3 (2026-09-22). v0.31.0 replaced the
 package-wide `"use client"` banner with per-module directives, so a
 plain-data export is a real value inside a Server Component rather than an
