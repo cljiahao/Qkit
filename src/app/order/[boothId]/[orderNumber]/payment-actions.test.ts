@@ -102,14 +102,6 @@ vi.mock("@/lib/paykit/client", () => ({
   unclaimCheckout: unclaimCheckoutMock,
 }));
 
-const { resizeToWebpMock } = vi.hoisted(() => ({
-  resizeToWebpMock: vi.fn(),
-}));
-vi.mock("@merqo/ui", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@merqo/ui")>()),
-  resizeToWebp: resizeToWebpMock,
-}));
-
 const { notifyVendorTelegramMock, notifyPrintkitMock } = vi.hoisted(() => ({
   notifyVendorTelegramMock: vi.fn(),
   notifyPrintkitMock: vi.fn(),
@@ -123,17 +115,21 @@ const BOOTH = "00000000-0000-4000-8000-000000000001";
 const ORDER = "A17";
 const TOKEN = "11111111-2222-4333-8444-555555555555";
 
-// The exact bytes claimPayment's mocked resizeToWebp hands back -- used both
-// as the upload payload and to independently compute the expected
-// payment_proof_hash via the real (unmocked) hashBuffer, so the assertion
-// verifies real hashing behavior rather than re-asserting a mocked value.
+// The bytes of the proof as pay-form.tsx sends it: already resized to WebP
+// in the browser. claimPayment uploads them unchanged, so they are both the
+// upload payload and the input for independently computing the expected
+// payment_proof_hash via the real (unmocked) hashBuffer.
 const PHOTO_BYTES = "resized-photo-bytes";
 function expectedHash(bytes: string): string {
   return createHash("sha256").update(Buffer.from(bytes)).digest("hex");
 }
 
-function fakeFile(): File {
-  return new File(["raw-upload-bytes"], "proof.jpg", { type: "image/jpeg" });
+function fakeFile(
+  bytes: BlobPart = PHOTO_BYTES,
+  type = "image/webp",
+  name = "proof.webp",
+): File {
+  return new File([bytes], name, { type });
 }
 
 beforeEach(() => {
@@ -186,11 +182,6 @@ beforeEach(() => {
       claimedAt: null,
       confirmedAt: null,
     },
-  });
-  resizeToWebpMock.mockReset().mockResolvedValue({
-    blob: new Blob([PHOTO_BYTES], { type: "image/webp" }),
-    ext: "webp",
-    type: "image/webp",
   });
   notifyVendorTelegramMock.mockReset().mockResolvedValue(undefined);
   notifyPrintkitMock.mockReset().mockResolvedValue(undefined);
@@ -273,6 +264,51 @@ describe("claimPayment (photo required, deferred numbering)", () => {
       error: "A payment screenshot is required.",
     });
     expect(createServiceClientMock).not.toHaveBeenCalled();
+  });
+
+  // Size and type are checked before any client, rate-limit hit or storage
+  // write, so a bad upload costs nothing. The bucket enforces the same limits
+  // again at the storage layer (migration 0093).
+  it.each([
+    ["an empty file", fakeFile(""), "The payment screenshot is empty."],
+    [
+      "a file over 1 MB",
+      fakeFile(new Uint8Array(1024 * 1024 + 1)),
+      "That image is too large. Try a screenshot instead of a photo.",
+    ],
+    [
+      "a non-image",
+      fakeFile("%PDF-1.7", "application/pdf", "proof.pdf"),
+      "Upload a screenshot or photo (JPEG, PNG or WebP).",
+    ],
+    [
+      "an image type the bucket rejects",
+      fakeFile("heic-bytes", "image/heic", "IMG_0001.HEIC"),
+      "Upload a screenshot or photo (JPEG, PNG or WebP).",
+    ],
+  ])("rejects %s before touching storage", async (_label, file, error) => {
+    const result = await claimPayment(BOOTH, TOKEN, file);
+    expect(result).toEqual({ success: false, error });
+    expect(createServiceClientMock).not.toHaveBeenCalled();
+    expect(storageUploadMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts exactly 1 MB", async () => {
+    await claimPayment(BOOTH, TOKEN, fakeFile(new Uint8Array(1024 * 1024)));
+    expect(storageUploadMock).toHaveBeenCalled();
+  });
+
+  it("stores a JPEG proof as .jpg with its real content type", async () => {
+    await claimPayment(
+      BOOTH,
+      TOKEN,
+      fakeFile(PHOTO_BYTES, "image/jpeg", "proof.jpg"),
+    );
+    expect(storageUploadMock).toHaveBeenCalledWith(
+      "v1/o1.jpg",
+      expect.anything(),
+      { upsert: true, contentType: "image/jpeg" },
+    );
   });
 
   it("rejects an invalid booth id before creating the client", async () => {

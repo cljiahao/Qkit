@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/utils";
+import { paymentProofSchema } from "@/lib/schemas";
 import { resizeToWebp } from "@merqo/ui";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { claimPayment } from "../[orderNumber]/payment-actions";
@@ -76,16 +77,27 @@ export function PayForm({
     const selected = e.target.files?.[0];
     if (!selected) return;
     setPhotoError(null);
-    // Shrink before upload; claimPayment resizes again, but this saves bandwidth on the way there.
+    // This is the only resize a payment proof gets: claimPayment is a server
+    // action and cannot run the canvas-based resizeToWebp.
     const resized = await resizeToWebp(selected, 1600);
-    setPhoto(
+    const proof =
       resized.blob instanceof File
         ? resized.blob
         : new File([resized.blob], selected.name, {
             type: resized.type,
             lastModified: selected.lastModified,
-          }),
-    );
+          });
+    // Same schema claimPayment enforces, checked here so an unsupported or
+    // oversized file is rejected before the upload round trip.
+    const checked = paymentProofSchema.safeParse(proof);
+    if (!checked.success) {
+      setPhoto(null);
+      setPhotoError(
+        checked.error.issues[0]?.message ?? "Invalid payment screenshot.",
+      );
+      return;
+    }
+    setPhoto(proof);
   }
 
   function submit() {

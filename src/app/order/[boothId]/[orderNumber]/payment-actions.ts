@@ -3,14 +3,19 @@
 import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { parseOrderRef, parsePreClaimRef } from "@/lib/schemas";
+import {
+  PAYMENT_PROOF_EXTENSIONS,
+  parseOrderRef,
+  parsePreClaimRef,
+  paymentProofSchema,
+  type PaymentProofType,
+} from "@/lib/schemas";
 import {
   createCheckout,
   claimCheckout,
   unclaimCheckout,
   type CheckoutView,
 } from "@/lib/paykit/client";
-import { resizeToWebp } from "@merqo/ui";
 import { hashBuffer } from "@/lib/hash";
 import { notifyVendorTelegram, notifyPrintkit } from "@/app/o/[code]/notify";
 import type { ActionResult } from "@/lib/action-result";
@@ -173,6 +178,13 @@ export async function claimPayment(
   if (!photo) {
     return { success: false, error: "A payment screenshot is required." };
   }
+  const proof = paymentProofSchema.safeParse(photo);
+  if (!proof.success) {
+    return {
+      success: false,
+      error: proof.error.issues[0]?.message ?? "Invalid payment screenshot.",
+    };
+  }
 
   const parsed = parsePreClaimRef(boothId, token);
   if (!parsed.ok)
@@ -210,14 +222,18 @@ export async function claimPayment(
     .maybeSingle();
   if (!booth?.vendor_id) return { success: false, error: "Invalid order" };
 
-  const resized = await resizeToWebp(photo, 1600);
-  const buffer = await resized.blob.arrayBuffer();
+  // No resize here. pay-form.tsx already resized to <=1600px WebP/JPEG in
+  // the browser; resizeToWebp needs a <canvas>, so calling it again in this
+  // server action only ever threw internally and fell back to the original
+  // file. paymentProofSchema above is what bounds the size server-side.
+  const contentType = proof.data.type as PaymentProofType;
+  const buffer = await proof.data.arrayBuffer();
   const hash = await hashBuffer(buffer);
-  const path = `${booth.vendor_id}/${order.id}.${resized.ext}`;
+  const path = `${booth.vendor_id}/${order.id}.${PAYMENT_PROOF_EXTENSIONS[contentType]}`;
 
   const { error: uploadError } = await supabase.storage
     .from("payment-proofs")
-    .upload(path, buffer, { upsert: true, contentType: resized.type });
+    .upload(path, buffer, { upsert: true, contentType });
   if (uploadError) {
     console.error("claimPayment: proof upload failed", uploadError.message);
     return { success: false, error: "Could not upload photo. Try again." };

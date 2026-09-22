@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(121);
+select plan(123);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -1131,6 +1131,20 @@ select is_empty(
   'anon cannot read payment-proofs bucket objects'
 );
 reset role;
+
+-- storage: payment-proofs enforces its own size and MIME limits (migration
+-- 0093), so an upload that skips the browser resize and claimPayment's
+-- validation is still bounded at the storage layer.
+select is(
+  (select file_size_limit from storage.buckets where id = 'payment-proofs'),
+  1048576::bigint,
+  'payment-proofs caps objects at 1 MB'
+);
+select is(
+  (select allowed_mime_types from storage.buckets where id = 'payment-proofs'),
+  array['image/jpeg', 'image/png', 'image/webp']::text[],
+  'payment-proofs accepts only JPEG, PNG and WebP'
+);
 
 select * from finish();
 rollback;

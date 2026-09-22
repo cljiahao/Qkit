@@ -96,6 +96,42 @@ describe("PayForm", () => {
     expect(pushMock).toHaveBeenCalledWith("/order/b1/0007?t=t1");
   });
 
+  // jsdom has no canvas, so resizeToWebp passes the original file through,
+  // which is exactly the case this guards: a file the browser could not
+  // shrink or re-encode. Uses image types, since the input's accept="image/*"
+  // would stop user-event uploading anything else.
+  it.each([
+    [
+      "an image type storage rejects",
+      new File(["heic"], "IMG_0001.HEIC", { type: "image/heic" }),
+      /JPEG, PNG or WebP/,
+    ],
+    [
+      "a file over 1 MB",
+      new File([new Uint8Array(1024 * 1024 + 1)], "big.png", {
+        type: "image/png",
+      }),
+      /too large/,
+    ],
+  ])(
+    "rejects %s on selection, without calling claimPayment",
+    async (_label, file, message) => {
+      const user = userEvent.setup();
+      render(
+        <PayForm
+          boothId="b1"
+          token="t1"
+          amountCents={550}
+          checkout={QR_CHECKOUT}
+        />,
+      );
+      await user.upload(screen.getByLabelText(/upload/i), file);
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /i've paid/i }));
+      expect(claimPaymentMock).not.toHaveBeenCalled();
+    },
+  );
+
   it("shows a toast and does not redirect when claimPayment fails", async () => {
     claimPaymentMock.mockResolvedValueOnce({
       success: false,
