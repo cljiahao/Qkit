@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
@@ -16,10 +17,11 @@ import type { MenuCategory } from "@/lib/types";
 import {
   boothImagePaths,
   orphanedImagePaths,
-  unsavedUploadPaths,
+  failedSaveUploadPaths,
 } from "@/lib/booth-images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
 import { registerPrintLocation } from "@/lib/printkit/client";
+import { sweepUnsavedUploads } from "./sweep-unsaved-uploads";
 import type { ActionResult } from "@/lib/action-result";
 import type { Database, PaymentKind } from "@/lib/types";
 
@@ -308,7 +310,7 @@ async function discardUnsavedUploads(
   if (!user) return;
   await removeBoothImages(
     supabase,
-    unsavedUploadPaths(parsed.data, user.id, persisted),
+    failedSaveUploadPaths(parsed.data, user.id, persisted),
     "saveBooth",
   );
 }
@@ -377,7 +379,7 @@ async function persistBooth(
   };
 
   const result = await upsertBoothRow(supabase, row, data.boothId, user.id);
-  if (result.success)
+  if (result.success) {
     await syncPrintLocation(
       user.id,
       result.boothId,
@@ -385,6 +387,10 @@ async function persistBooth(
       data.print_enabled,
       "saveBooth",
     );
+    // Reclaim uploads from forms this vendor abandoned; runs after the
+    // response so the save never waits on it.
+    after(() => sweepUnsavedUploads(supabase, user));
+  }
   return result;
 }
 
@@ -433,6 +439,7 @@ export async function saveMenuItems(
     orphanedImagePaths(prev, { menu_items }),
     "saveMenuItems",
   );
+  after(() => sweepUnsavedUploads(supabase, user));
   return { success: true };
 }
 

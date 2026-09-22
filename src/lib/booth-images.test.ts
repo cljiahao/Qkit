@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   boothImagePaths,
   orphanedImagePaths,
+  failedSaveUploadPaths,
   unsavedUploadPaths,
+  uploadedPaths,
+  UNSAVED_UPLOAD_GRACE_MS,
 } from "./booth-images";
 
 const BASE = "https://proj.supabase.co/storage/v1/object/public/booth-images/";
@@ -62,10 +65,10 @@ describe("orphanedImagePaths", () => {
   });
 });
 
-describe("unsavedUploadPaths", () => {
+describe("failedSaveUploadPaths", () => {
   it("returns the vendor's own uploads that nothing persisted, deduped", () => {
     expect(
-      unsavedUploadPaths(
+      failedSaveUploadPaths(
         [`${BASE}v1/a.webp`, `${BASE}v1/b.webp`, `${BASE}v1/a.webp`],
         "v1",
         new Set([`${BASE}v1/b.webp`]),
@@ -75,7 +78,7 @@ describe("unsavedUploadPaths", () => {
 
   it("drops another vendor's folder, other buckets and external URLs", () => {
     expect(
-      unsavedUploadPaths(
+      failedSaveUploadPaths(
         [
           `${BASE}v2/a.webp`,
           "https://proj.supabase.co/storage/v1/object/public/vendor-images/v1/x.webp",
@@ -85,5 +88,81 @@ describe("unsavedUploadPaths", () => {
         new Set(),
       ),
     ).toEqual([]);
+  });
+});
+
+describe("uploadedPaths", () => {
+  it("keeps only booth-images uploads", () => {
+    expect(
+      uploadedPaths([
+        `${BASE}v1/avatar.webp`,
+        "https://lh3.googleusercontent.com/a/photo",
+        null,
+        undefined,
+        `${BASE}v1/qr.webp`,
+      ]),
+    ).toEqual(["v1/avatar.webp", "v1/qr.webp"]);
+  });
+});
+
+describe("unsavedUploadPaths", () => {
+  const NOW = Date.parse("2026-09-22T12:00:00Z");
+  const old = "2026-09-21T11:59:59Z"; // just over 24h before NOW
+  const recent = "2026-09-22T11:00:00Z"; // 1h before NOW
+
+  it("selects unreferenced objects older than the grace window", () => {
+    expect(
+      unsavedUploadPaths(
+        "v1",
+        [
+          { name: "kept.webp", created_at: old },
+          { name: "abandoned.webp", created_at: old },
+        ],
+        ["v1/kept.webp"],
+        NOW,
+      ),
+    ).toEqual(["v1/abandoned.webp"]);
+  });
+
+  it("spares uploads still inside the grace window", () => {
+    expect(
+      unsavedUploadPaths(
+        "v1",
+        [{ name: "fresh.webp", created_at: recent }],
+        [],
+        NOW,
+      ),
+    ).toEqual([]);
+  });
+
+  it("treats an object exactly at the grace boundary as abandoned", () => {
+    expect(
+      unsavedUploadPaths(
+        "v1",
+        [{ name: "edge.webp", created_at: "2026-09-22T11:00:00Z" }],
+        [],
+        NOW,
+        60 * 60 * 1000,
+      ),
+    ).toEqual(["v1/edge.webp"]);
+  });
+
+  it("skips folders and objects without a usable timestamp", () => {
+    expect(
+      unsavedUploadPaths(
+        "v1",
+        [
+          { name: "sub", created_at: null },
+          { name: "no-ts.webp" },
+          { name: "bad-ts.webp", created_at: "not a date" },
+        ],
+        [],
+        NOW,
+      ),
+    ).toEqual([]);
+  });
+
+  it("defaults the grace window to 24 hours", () => {
+    expect(UNSAVED_UPLOAD_GRACE_MS).toBe(24 * 60 * 60 * 1000);
   });
 });

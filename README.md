@@ -19,6 +19,12 @@ Replacing a payment QR image in the booth Payment section also deletes the old
 image now; that cleanup lives in paykit's vendor config API, which this form
 saves through.
 
+Images uploaded into a booth, menu or payment form the vendor never saved are
+now reclaimed too: after each booth or menu save, `sweepUnsavedUploads`
+(`src/app/dashboard/booths/sweep-unsaved-uploads.ts`) deletes objects in the
+vendor's `booth-images` folder older than 24h that no booth, avatar or paykit
+payment QR references.
+
 `@merqo/ui` bumped to v0.31.4 (2026-09-22), for its new
 `storagePathFromPublicUrl`. Replacing or removing a profile icon now deletes the
 old image from storage (`removeReplacedAvatar` in
