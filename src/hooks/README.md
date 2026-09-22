@@ -58,18 +58,18 @@ order-status page.
   fires `onInsert`, a reconnect (`CLOSED` → `SUBSCRIBED`) triggers a resync that
   keeps the newer of {local, snapshot} per id, and error statuses flip to
   `"disconnected"`.
-- `use-printer-presence.ts` — `usePrinterPresence(vendorId, locationId)` returns
-  a live `boolean`: a read-only subscriber to printkit's own bridge Presence
-  channel (`printkit:presence:<vendorId>:<locationId>`, keyed by printkit's own
-  `print_locations.id`, not qkit's boothId) — mirrors printkit's own
-  `bridge-status.tsx`. Never calls `.track()` itself; only the bridge device
-  publishes presence. `locationId` unset (booth never registered with printkit)
-  always reads offline — that "force false" lives in the hook's own return
-  (`return locationId ? online : false`), not a synchronous `setState` inside
-  the effect, to keep `react-hooks/set-state-in-effect` clean.
-- `use-printer-presence.test.tsx` — mocked-channel tests: no subscribe when
-  `locationId` is unset, subscribes keyed by vendorId+locationId, flips `true`
-  on a presence sync reporting a tracked `bridge`, and unsubscribes on unmount.
+- `use-printer-status.ts` — `usePrinterStatus(boothId)` returns a small view
+  of this booth's printer as printkit reports it: `loading`, `unreachable`,
+  `none` (no printer set up), or `printer` with its name and whether it is
+  online. It polls qkit's own `/api/printkit/printer-status` route every 30
+  seconds rather than calling printkit directly, because the printkit bearer
+  secret must never reach the browser. It replaced a realtime presence
+  subscription that only a Bluetooth bridge could ever feed: printkit now
+  owns printer health for every kind of printer, including cloud and 4G
+  printers that have no bridge at all.
+  Its behaviour is covered from the outside, in
+  `dashboard/booths/printing-section.dom.test.tsx`, since what matters is
+  what a vendor sees on the booth page rather than the hook's own shape.
 - `use-money-field.ts` — `useMoneyField(cents, onCommit)` returns
   `{ value, onFocus, onChange, onBlur }` props for a controlled $-amount
   `<Input>`. Reformats to the canonical 2-decimal string only on blur (or on
@@ -97,7 +97,7 @@ order-status page.
   `navigatingAway` from `@merqo/ui`; it is consumed by dashboard and order-flow
   components that submit server actions from a button (menu editing, order
   status transitions, checkout) to derive their disabled/loading state.
-- `use-printer-presence.ts` imports `createClient` from `@/lib/supabase/client`;
+- `use-printer-status.ts` calls qkit's own `/api/printkit/printer-status` route;
   consumed by `dashboard/booths/printing-section.tsx`.
 
 ## Parent
