@@ -1,34 +1,25 @@
 import { describe, it, expect } from "vitest";
-import {
-  storagePathFromPublicUrl,
-  boothImagePaths,
-  orphanedImagePaths,
-} from "./booth-images";
+import { boothImagePaths, orphanedImagePaths } from "./booth-images";
 
 const BASE = "https://proj.supabase.co/storage/v1/object/public/booth-images/";
 
-describe("storagePathFromPublicUrl", () => {
-  it("extracts the in-bucket path from an uploaded object URL", () => {
-    expect(storagePathFromPublicUrl(`${BASE}vendor1/abc.webp`)).toBe(
-      "vendor1/abc.webp",
-    );
-  });
-
-  it("decodes percent-encoded segments", () => {
-    expect(storagePathFromPublicUrl(`${BASE}vendor1/a%20b.webp`)).toBe(
-      "vendor1/a b.webp",
-    );
-  });
-
-  it("returns null for seed art, external URLs, and junk", () => {
-    expect(storagePathFromPublicUrl("/seed/coffee.png")).toBeNull();
-    expect(storagePathFromPublicUrl("https://example.com/x.png")).toBeNull();
-    expect(storagePathFromPublicUrl("")).toBeNull();
-    expect(storagePathFromPublicUrl(`${BASE}`)).toBeNull();
-  });
-});
-
 describe("boothImagePaths", () => {
+  it("decodes percent-encoded paths and ignores other buckets", () => {
+    expect(
+      boothImagePaths({
+        image_url: `${BASE}vendor1/a%20b.webp`,
+        menu_items: [
+          {
+            image_url:
+              "https://proj.supabase.co/storage/v1/object/public/vendor-images/v1/x.webp",
+          },
+          { image_url: "https://example.com/x.png" },
+          { image_url: BASE },
+        ],
+      }),
+    ).toEqual(["vendor1/a b.webp"]);
+  });
+
   it("collects the banner and each menu item photo, deduped, uploads only", () => {
     const paths = boothImagePaths({
       image_url: `${BASE}v1/banner.webp`,

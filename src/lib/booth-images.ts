@@ -4,25 +4,12 @@
 // a booth, leaves the old object behind. saveBooth/deleteBooth use these to
 // remove the objects a booth no longer references.
 
-const PUBLIC_MARKER = "/storage/v1/object/public/booth-images/";
+import { storagePathFromPublicUrl } from "@merqo/ui";
 
-/**
- * Extract the in-bucket path ("{vendorId}/{file}") from a booth-images public
- * URL. Returns null for anything that isn't an uploaded object — seed art
- * (`/seed/...`), external URLs, or a malformed value — so those are never
- * targeted for deletion.
- */
-export function storagePathFromPublicUrl(url: string): string | null {
-  const i = url.indexOf(PUBLIC_MARKER);
-  if (i === -1) return null;
-  const path = url.slice(i + PUBLIC_MARKER.length);
-  if (!path) return null;
-  try {
-    return decodeURIComponent(path);
-  } catch {
-    return null;
-  }
-}
+// A banner or menu photo that is not an uploaded booth-images object (seed art
+// under `/seed/...`, an external URL, junk) maps to null, so it is never
+// targeted for deletion.
+const BUCKET = "booth-images";
 
 type ImageRow = {
   image_url?: string | null;
@@ -44,7 +31,7 @@ export function boothImagePaths(row: ImageRow): string[] {
   }
   const paths = new Set<string>();
   for (const u of urls) {
-    const p = storagePathFromPublicUrl(u);
+    const p = storagePathFromPublicUrl(u, BUCKET);
     if (p) paths.add(p);
   }
   return [...paths];
