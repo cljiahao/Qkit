@@ -18,6 +18,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Images uploaded into a booth, menu or payment form that the vendor never
+  saved are now deleted instead of staying in storage forever. Each upload is
+  written the moment it's picked, so an abandoned form left an object nothing
+  referenced, and save-time cleanup only knew about images that were once
+  saved. After a successful `saveBooth` or `saveMenuItems`, a new
+  `sweepUnsavedUploads` (run with `after()`, so saves don't wait) lists the
+  vendor's `booth-images` folder and removes objects older than 24 hours that
+  none of their booths, their avatar, or their paykit payment QR reference. If
+  paykit or the booths read is unavailable the sweep skips entirely, so a live
+  QR is never deleted.
 - The live order board no longer logs React hydration error #418 on load.
   `useNow` seeded its clock from `Date.now()` during render, so the server HTML
   and the browser's hydrating render computed different elapsed "Nm" labels on
