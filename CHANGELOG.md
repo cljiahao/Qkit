@@ -6,6 +6,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Picking a booth banner, menu photo or payment QR and then leaving the form
+  without saving no longer leaves the image in storage. These uploaders now
+  use `@merqo/ui` v0.32.0's `deferUpload`: a picked image is resized and
+  previewed locally, and only uploaded when the vendor clicks Save
+  (`commitPendingImages`). If the save then fails, the images it uploaded are
+  deleted: by the menu manager and booth form in the browser
+  (`removeUnsavedImages`) for failures before anything is written, and by
+  `saveBooth` itself for failures inside the action, since only it knows
+  whether the payment QR already reached paykit before a later step failed.
+- Bumped `@merqo/ui` to `v0.32.0`.
+
 ### Changed
 
 - `src/lib/booth-images.ts` now uses `@merqo/ui`'s shared

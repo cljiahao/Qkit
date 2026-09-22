@@ -58,3 +58,25 @@ export async function removeReplacedAvatar(
     return;
   }
 }
+
+/**
+ * Best-effort delete of booth-images uploads that no save ended up using: a
+ * form committed its pending images on submit, then an upload or the save
+ * itself failed before anything referenced them. Only for saves that write
+ * nothing on failure; `saveBooth` cleans up its own, because a failed save
+ * there can still have stored the payment QR in paykit. Never throws, and the
+ * bucket's owner-folder DELETE policy bounds what it can remove.
+ */
+export async function removeUnsavedImages(
+  urls: readonly string[],
+): Promise<void> {
+  const paths = urls.flatMap((url) => {
+    const path = storagePathFromPublicUrl(url, "booth-images");
+    return path ? [path] : [];
+  });
+  if (paths.length === 0) return;
+  await createClient()
+    .storage.from("booth-images")
+    .remove(paths)
+    .catch(() => undefined);
+}

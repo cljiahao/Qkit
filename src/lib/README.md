@@ -544,6 +544,18 @@ feeds `booth-access.ts`'s serveability calculation, mirroring the
 
 `image-upload-adapter.ts` also exports `removeReplacedAvatar(url)`, a best-effort delete of an avatar image that is no longer referenced. `ImageUploader` writes every upload under a fresh random name, so without it each avatar change left the previous image in storage forever. It checks every public avatar bucket (`booth-images`, `vendor-images`, `vendor-avatars`), because all five Merqo apps share one signed-in user and so one `avatar_url`, which may have been set from any of them. It uses `@merqo/ui`'s `storagePathFromPublicUrl`, so an OAuth provider picture (a Google profile photo) is never treated as ours to delete, and it never throws. Each bucket's owner-folder DELETE policy still bounds what a vendor can remove.
 
+## Deferred-upload cleanup
+
+The booth banner, menu photo and payment QR uploaders run in `@merqo/ui`'s
+`deferUpload` mode, so an image reaches storage only when its form saves.
+Two helpers delete what a failed save uploaded:
+`removeUnsavedImages(urls)` in `image-upload-adapter.ts` is the browser-side,
+best-effort delete for failures before anything is written, and
+`unsavedUploadPaths(urls, vendorId, persisted)` in `booth-images.ts` is the
+pure filter `saveBooth` uses server-side. The filter only ever returns
+booth-images objects in the vendor's own folder, since the list comes from
+the client, and skips anything in `persisted`.
+
 ## Parent
 
 [src](../README.md)

@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Upload } from "lucide-react";
-import { InfoTooltip } from "@merqo/ui";
+import {
+  commitPendingImages,
+  InfoTooltip,
+  PendingImageUploadError,
+} from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { MenuEditor } from "./menu-editor";
 import { saveMenuCategories, saveMenuItems } from "./actions";
+import { removeUnsavedImages } from "@/lib/image-upload-adapter";
 import { sanitizeOptionGroups, type MenuItemFormInput } from "@/lib/schemas";
 import {
   menuItemsToCsv,
@@ -153,14 +158,35 @@ export function MenuManager({
       option_groups: sanitizeOptionGroups(it.option_groups),
     }));
     return runSave(async () => {
+      // Item photos defer their uploads until here, so abandoning the editor
+      // leaves nothing in storage.
+      let committed;
+      try {
+        committed = await commitPendingImages(
+          sanitized.map((it) => it.image_url ?? null),
+        );
+      } catch (error) {
+        if (error instanceof PendingImageUploadError)
+          void removeUnsavedImages(error.uploaded);
+        toast.error("Could not upload a photo. Try again.");
+        return;
+      }
+      const withPhotos = sanitized.map((it, index) => ({
+        ...it,
+        image_url: committed.urls[index] ?? null,
+      }));
       const [itemsResult, categoriesResult] = await Promise.all([
-        saveMenuItems(boothId, sanitized),
+        saveMenuItems(boothId, withPhotos),
         saveMenuCategories(boothId, categories),
       ]);
       if (!itemsResult.success) {
+        // saveMenuItems writes nothing when it fails, so every photo this
+        // save uploaded is unreferenced.
+        void removeUnsavedImages(committed.uploaded);
         toast.error(itemsResult.error);
         return;
       }
+      setItems(withPhotos);
       if (!categoriesResult.success) {
         toast.error(categoriesResult.error);
         return;

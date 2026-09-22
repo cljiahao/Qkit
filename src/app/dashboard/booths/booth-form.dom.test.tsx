@@ -69,6 +69,7 @@ describe("BoothForm walk-up-default toggle", () => {
 
     expect(saveBooth).toHaveBeenCalledWith(
       expect.objectContaining({ walkup_default: false }),
+      [],
     );
   });
 
@@ -87,6 +88,7 @@ describe("BoothForm walk-up-default toggle", () => {
 
     expect(saveBooth).toHaveBeenCalledWith(
       expect.objectContaining({ walkup_default: true }),
+      [],
     );
   });
 
@@ -161,6 +163,7 @@ describe("BoothForm walk-up-default toggle", () => {
 
     expect(saveBooth).toHaveBeenCalledWith(
       expect.objectContaining({ boothId: BOOTH_ID, walkup_default: false }),
+      [],
     );
     expect(toastError).not.toHaveBeenCalled();
   });
@@ -200,6 +203,7 @@ describe("BoothForm paykit booking id", () => {
 
     expect(saveBooth).toHaveBeenCalledWith(
       expect.objectContaining({ paykit_booking_id: "book-42" }),
+      [],
     );
   });
 

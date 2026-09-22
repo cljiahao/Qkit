@@ -350,6 +350,7 @@ export function PaymentSection({
                 onUpload={uploadQkitImage}
                 resizeImage={resizeToWebp}
                 imageComponent={MediaImage}
+                deferUpload
               />
               <p className="text-xs text-muted-foreground">
                 A static QR you already have: your GrabPay, PayLah, or bank QR

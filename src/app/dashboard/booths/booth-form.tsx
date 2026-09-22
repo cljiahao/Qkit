@@ -31,10 +31,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ImageUploader } from "@merqo/ui";
+import {
+  commitPendingImages,
+  ImageUploader,
+  PendingImageUploadError,
+} from "@merqo/ui";
 import { Section } from "@/components/ticket-section";
 import { MediaImage } from "@/components/media-image";
-import { uploadQkitImage } from "@/lib/image-upload-adapter";
+import {
+  removeUnsavedImages,
+  uploadQkitImage,
+} from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@merqo/ui";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { WorkingHoursEditor } from "./working-hours-editor";
@@ -79,6 +86,33 @@ interface Props {
     // mean here.
     bookingStatus?: BookingStatus | null;
   };
+}
+
+function qrImageOf(payment: PaymentConfig | null): string | null {
+  return payment?.kind === "pointer" ? (payment.qr_image_url ?? null) : null;
+}
+
+function withQrImage(
+  payment: PaymentConfig | null,
+  qrImageUrl: string | null,
+): PaymentConfig | null {
+  if (payment?.kind !== "pointer") return payment;
+  return { ...payment, qr_image_url: qrImageUrl ?? undefined };
+}
+
+/**
+ * Uploads the form's pending images. On an upload failure, deletes whatever
+ * did upload, tells the vendor, and returns null so the save stops.
+ */
+async function commitImages(values: (string | null)[]) {
+  try {
+    return await commitPendingImages(values);
+  } catch (error) {
+    if (error instanceof PendingImageUploadError)
+      void removeUnsavedImages(error.uploaded);
+    toast.error("Could not upload the image. Try again.");
+    return null;
+  }
 }
 
 export function BoothForm({
@@ -132,29 +166,35 @@ export function BoothForm({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const candidate = {
-      boothId: initial?.boothId,
-      name,
-      image_url: imageUrl,
-      is_active: isActive,
-      hours,
-      payment,
-      social_links: socialLinks,
-      requires_arrival_confirm: requiresArrivalConfirm,
-      walkup_default: walkupDefault,
-      print_enabled: printEnabled,
-      paykit_booking_id: paykitBookingId,
-    };
-    const parsed = boothFormSchema.safeParse(candidate);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Check the form");
-      return;
-    }
-
     const isCreate = !initial?.boothId;
 
     return runSave(async () => {
-      const result = await saveBooth(parsed.data);
+      // The banner and QR uploaders defer their uploads, so a vendor who
+      // picks an image and leaves without saving leaves nothing in storage.
+      const committed = await commitImages([imageUrl, qrImageOf(payment)]);
+      if (!committed) return;
+      const [committedBanner, committedQr] = committed.urls;
+      const candidate = {
+        boothId: initial?.boothId,
+        name,
+        image_url: committedBanner ?? null,
+        is_active: isActive,
+        hours,
+        payment: withQrImage(payment, committedQr ?? null),
+        social_links: socialLinks,
+        requires_arrival_confirm: requiresArrivalConfirm,
+        walkup_default: walkupDefault,
+        print_enabled: printEnabled,
+        paykit_booking_id: paykitBookingId,
+      };
+      const parsed = boothFormSchema.safeParse(candidate);
+      if (!parsed.success) {
+        void removeUnsavedImages(committed.uploaded);
+        toast.error(parsed.error.issues[0]?.message ?? "Check the form");
+        return;
+      }
+
+      const result = await saveBooth(parsed.data, committed.uploaded);
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -235,6 +275,7 @@ export function BoothForm({
                 resizeImage={resizeToWebp}
                 imageComponent={MediaImage}
                 variant="banner"
+                deferUpload
               />
             </div>
           </Section>

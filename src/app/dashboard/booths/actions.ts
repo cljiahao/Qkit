@@ -13,7 +13,11 @@ import {
   type MenuItemFormInput,
 } from "@/lib/schemas";
 import type { MenuCategory } from "@/lib/types";
-import { boothImagePaths, orphanedImagePaths } from "@/lib/booth-images";
+import {
+  boothImagePaths,
+  orphanedImagePaths,
+  unsavedUploadPaths,
+} from "@/lib/booth-images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
 import { registerPrintLocation } from "@/lib/printkit/client";
 import type { ActionResult } from "@/lib/action-result";
@@ -270,8 +274,48 @@ export async function regenerateShortCode(
   return { success: true };
 }
 
+// Bounds the client-supplied list of images a save uploaded. A booth form
+// commits at most a banner and a payment QR.
+const freshUploadsSchema = z.array(z.string().max(2048)).max(10);
+
+/**
+ * Save the booth form. `freshUploads` lists the images the form uploaded for
+ * this save (its pending banner/QR, committed on submit); if the save fails,
+ * the ones nothing references are deleted here rather than by the client,
+ * because only this action knows whether the payment QR already reached
+ * paykit before a later step failed.
+ */
 export async function saveBooth(
   input: BoothFormInput,
+  freshUploads: string[] = [],
+): Promise<SaveBoothResult> {
+  const persisted = new Set<string>();
+  const result = await persistBooth(input, persisted);
+  if (!result.success) await discardUnsavedUploads(freshUploads, persisted);
+  return result;
+}
+
+async function discardUnsavedUploads(
+  freshUploads: unknown,
+  persisted: ReadonlySet<string>,
+) {
+  const parsed = freshUploadsSchema.safeParse(freshUploads);
+  if (!parsed.success || parsed.data.length === 0) return;
+  const supabase = await createServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await removeBoothImages(
+    supabase,
+    unsavedUploadPaths(parsed.data, user.id, persisted),
+    "saveBooth",
+  );
+}
+
+async function persistBooth(
+  input: BoothFormInput,
+  persisted: Set<string>,
 ): Promise<SaveBoothResult> {
   const parsed = boothFormSchema.safeParse(input);
   if (!parsed.success)
@@ -315,6 +359,8 @@ export async function saveBooth(
         success: false,
         error: `Could not save payment settings: ${result.error}`,
       };
+    if (data.payment.kind === "pointer" && data.payment.qr_image_url)
+      persisted.add(data.payment.qr_image_url);
   }
 
   const row = {
