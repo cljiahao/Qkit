@@ -384,8 +384,6 @@ export function BoothForm({
               value={printEnabled}
               onChange={setPrintEnabled}
               boothId={initial?.boothId}
-              vendorId={vendorId}
-              printkitLocationId={initial?.printkit_location_id}
             />
           </Section>
 

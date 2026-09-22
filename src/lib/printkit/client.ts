@@ -19,6 +19,21 @@ const createPrintJobResponseSchema = z.object({ id: z.string() });
 const registerLocationResponseSchema = z.object({ id: z.string() });
 const errorBodySchema = z.object({ error: z.string() });
 
+const printerStatusSchema = z.object({
+  printer: z
+    .object({
+      display_name: z.string(),
+      catalog_id: z.string(),
+      connector: z.string(),
+      state: z.enum(["online", "offline", "not_set_up"]),
+      last_seen_at: z.string().nullable(),
+      hardware_verified: z.boolean(),
+    })
+    .nullable(),
+});
+
+export type PrinterStatusBody = z.infer<typeof printerStatusSchema>;
+
 /**
  * Shared fetch: bearer-authenticates as `qkit`, validates the response body
  * against `schema`, and never throws — every failure mode (missing secret,
@@ -127,6 +142,21 @@ export async function createPrintJob(args: {
       location_ref: args.boothId,
     }),
   });
+}
+
+/**
+ * Whether this booth has a printer in printkit, and whether it is reachable
+ * right now. printkit owns that fact for every kind of printer (cloud, 4G,
+ * Bluetooth bridge), so qkit reads it over HTTP rather than subscribing to
+ * printkit's own realtime channel with qkit's Supabase client.
+ */
+export async function getPrinterStatus(
+  boothId: string,
+): Promise<PrintkitResult<PrinterStatusBody>> {
+  return printkitRequest(
+    `/api/v1/print-locations/status?source_ref=${encodeURIComponent(boothId)}`,
+    printerStatusSchema,
+  );
 }
 
 export async function registerPrintLocation(args: {

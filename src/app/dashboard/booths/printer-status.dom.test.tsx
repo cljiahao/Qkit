@@ -4,19 +4,59 @@ import { describe, it, expect } from "vitest";
 import { PrinterStatus } from "./printer-status";
 
 describe("PrinterStatus", () => {
-  it("shows offline when online is false", () => {
-    render(<PrinterStatus online={false} />);
-    expect(screen.getByText("No printer connected")).toBeInTheDocument();
-    expect(
-      screen.getByText(/open the bridge on your printing device/i),
-    ).toBeInTheDocument();
+  it("names the printer and says it is connected", () => {
+    render(
+      <PrinterStatus
+        view={{
+          kind: "printer",
+          printer: {
+            displayName: "Feie FP-N20H",
+            state: "online",
+            hardwareVerified: false,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Printer connected")).toBeInTheDocument();
+    expect(screen.getByText("Feie FP-N20H")).toBeInTheDocument();
+    expect(screen.queryByText(/switch it on/i)).not.toBeInTheDocument();
   });
 
-  it("shows online when online is true", () => {
-    render(<PrinterStatus online={true} />);
-    expect(screen.getByText("Printer connected")).toBeInTheDocument();
-    expect(
-      screen.queryByText(/open the bridge on your printing device/i),
-    ).not.toBeInTheDocument();
+  it("says what to do when the printer is offline", () => {
+    render(
+      <PrinterStatus
+        view={{
+          kind: "printer",
+          printer: {
+            displayName: "Star mC-Label2",
+            state: "offline",
+            hardwareVerified: false,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Printer offline")).toBeInTheDocument();
+    expect(screen.getByText(/switch it on/i)).toBeInTheDocument();
+  });
+
+  it("distinguishes a booth with no printer from an offline one", () => {
+    render(<PrinterStatus view={{ kind: "none" }} />);
+
+    expect(screen.getByText(/no printer set up/i)).toBeInTheDocument();
+    expect(screen.queryByText("Printer offline")).not.toBeInTheDocument();
+  });
+
+  it("says printkit is unreachable without blaming the printer", () => {
+    render(<PrinterStatus view={{ kind: "unreachable" }} />);
+
+    expect(screen.getByText(/can't reach printkit/i)).toBeInTheDocument();
+  });
+
+  it("shows a checking state while the first read is in flight", () => {
+    render(<PrinterStatus view={{ kind: "loading" }} />);
+
+    expect(screen.getByText(/checking the printer/i)).toBeInTheDocument();
   });
 });
