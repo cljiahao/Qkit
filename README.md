@@ -7,6 +7,12 @@ their order status in realtime. The dashboard onboarding tour's final step
 are optional (Payment, Printing, Booking Status) before they ever create
 their first booth.
 
+`@merqo/ui` bumped to v0.32.0 (2026-09-22). Booth banners, menu photos and
+the payment QR now upload only when the vendor clicks Save (`deferUpload` +
+`commitPendingImages`), so abandoning a form leaves nothing in storage; a
+failed save deletes what it uploaded. Profile icons still upload on pick,
+because picking one is the save.
+
 Booth-image orphan cleanup (`src/lib/booth-images.ts`) now parses storage URLs
 with `@merqo/ui`'s shared `storagePathFromPublicUrl` instead of a local copy.
 Replacing a payment QR image in the booth Payment section also deletes the old

@@ -46,6 +46,26 @@ export function orphanedImagePaths(
   return boothImagePaths(before).filter((p) => !keep.has(p));
 }
 
+/**
+ * In-bucket paths of the images a failed save uploaded and nothing now
+ * references, so they can be deleted. `urls` comes from the client, so only
+ * booth-images objects inside the vendor's own folder are ever returned;
+ * `persisted` holds any URL a partly-completed save did write.
+ */
+export function failedSaveUploadPaths(
+  urls: readonly string[],
+  vendorId: string,
+  persisted: ReadonlySet<string>,
+): string[] {
+  const paths = new Set<string>();
+  for (const url of urls) {
+    if (persisted.has(url)) continue;
+    const path = storagePathFromPublicUrl(url, BUCKET);
+    if (path && path.split("/")[0] === vendorId) paths.add(path);
+  }
+  return [...paths];
+}
+
 /** Default age before an unreferenced upload counts as abandoned. */
 export const UNSAVED_UPLOAD_GRACE_MS = 24 * 60 * 60 * 1000;
 

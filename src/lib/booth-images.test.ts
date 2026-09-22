@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   boothImagePaths,
   orphanedImagePaths,
+  failedSaveUploadPaths,
   unsavedUploadPaths,
   uploadedPaths,
   UNSAVED_UPLOAD_GRACE_MS,
@@ -61,6 +62,32 @@ describe("orphanedImagePaths", () => {
   it("returns nothing when the image set is unchanged", () => {
     const row = { image_url: `${BASE}v1/b.webp`, menu_items: [] };
     expect(orphanedImagePaths(row, row)).toEqual([]);
+  });
+});
+
+describe("failedSaveUploadPaths", () => {
+  it("returns the vendor's own uploads that nothing persisted, deduped", () => {
+    expect(
+      failedSaveUploadPaths(
+        [`${BASE}v1/a.webp`, `${BASE}v1/b.webp`, `${BASE}v1/a.webp`],
+        "v1",
+        new Set([`${BASE}v1/b.webp`]),
+      ),
+    ).toEqual(["v1/a.webp"]);
+  });
+
+  it("drops another vendor's folder, other buckets and external URLs", () => {
+    expect(
+      failedSaveUploadPaths(
+        [
+          `${BASE}v2/a.webp`,
+          "https://proj.supabase.co/storage/v1/object/public/vendor-images/v1/x.webp",
+          "https://example.com/x.png",
+        ],
+        "v1",
+        new Set(),
+      ),
+    ).toEqual([]);
   });
 });
 

@@ -75,6 +75,7 @@ const h = vi.hoisted(() => {
     updateSpy: vi.fn(),
     deleteSpy: vi.fn(),
     neqSpy: vi.fn(),
+    removeSpy: vi.fn(),
   };
 });
 
@@ -147,7 +148,12 @@ vi.mock("@/lib/supabase/server", () => {
         },
       }),
       storage: {
-        from: () => ({ remove: () => Promise.resolve({ error: null }) }),
+        from: (bucket: string) => ({
+          remove: (paths: string[]) => {
+            h.removeSpy(bucket, paths);
+            return Promise.resolve({ error: null });
+          },
+        }),
       },
     });
   return {
@@ -193,6 +199,7 @@ beforeEach(() => {
   h.updateSpy.mockReset();
   h.deleteSpy.mockReset();
   h.neqSpy.mockReset();
+  h.removeSpy.mockReset();
   h.state.count = 0;
   h.state.countError = null;
   h.state.insertResult = { data: { id: "b-new" }, error: null };
@@ -471,6 +478,79 @@ describe("saveBooth — payment (paykit cutover)", () => {
     });
     expect(h.insertSpy).not.toHaveBeenCalled();
     expect(h.updateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveBooth — unsaved upload cleanup", () => {
+  const PUBLIC = "https://abc.supabase.co/storage/v1/object/public";
+  const BANNER = `${PUBLIC}/booth-images/v1/banner.webp`;
+  const QR = `${PUBLIC}/booth-images/v1/qr.webp`;
+  const pointer = {
+    kind: "pointer" as const,
+    label: "PayLah",
+    qr_image_url: QR,
+  };
+
+  it("deletes nothing when the save succeeds", async () => {
+    const res = await saveBooth(
+      makeBooth({ image_url: BANNER, payment: pointer }),
+      [BANNER, QR],
+    );
+    expect(res.success).toBe(true);
+    expect(h.removeSpy).not.toHaveBeenCalled();
+  });
+
+  it("deletes every fresh upload when paykit rejects the config", async () => {
+    upsertVendorConfigMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      error: "Upstream unavailable",
+    });
+    const res = await saveBooth(
+      makeBooth({ image_url: BANNER, payment: pointer }),
+      [BANNER, QR],
+    );
+    expect(res.success).toBe(false);
+    expect(h.removeSpy).toHaveBeenCalledWith("booth-images", [
+      "v1/banner.webp",
+      "v1/qr.webp",
+    ]);
+  });
+
+  it("keeps the QR paykit already stored when the booth write fails after it", async () => {
+    h.state.insertResult = { data: null, error: { message: "boom" } };
+    const res = await saveBooth(
+      makeBooth({ image_url: BANNER, payment: pointer }),
+      [BANNER, QR],
+    );
+    expect(res.success).toBe(false);
+    expect(h.removeSpy).toHaveBeenCalledWith("booth-images", [
+      "v1/banner.webp",
+    ]);
+  });
+
+  it("deletes fresh uploads when validation fails", async () => {
+    const res = await saveBooth(makeBooth({ name: "" }), [BANNER]);
+    expect(res.success).toBe(false);
+    expect(h.removeSpy).toHaveBeenCalledWith("booth-images", [
+      "v1/banner.webp",
+    ]);
+  });
+
+  it("never deletes outside the vendor's own booth-images folder", async () => {
+    h.state.insertResult = { data: null, error: { message: "boom" } };
+    await saveBooth(makeBooth(), [
+      `${PUBLIC}/booth-images/v2/theirs.webp`,
+      `${PUBLIC}/vendor-images/v1/other-bucket.webp`,
+      "https://example.com/x.webp",
+    ]);
+    expect(h.removeSpy).not.toHaveBeenCalled();
+  });
+
+  it("ignores a malformed fresh-upload list", async () => {
+    h.state.insertResult = { data: null, error: { message: "boom" } };
+    await saveBooth(makeBooth(), "not-a-list" as unknown as string[]);
+    expect(h.removeSpy).not.toHaveBeenCalled();
   });
 });
 

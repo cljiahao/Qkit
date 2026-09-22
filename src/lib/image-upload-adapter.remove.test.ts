@@ -12,7 +12,10 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({ storage: { from: fromMock } }),
 }));
 
-import { removeReplacedAvatar } from "./image-upload-adapter";
+import {
+  removeReplacedAvatar,
+  removeUnsavedImages,
+} from "./image-upload-adapter";
 
 const PUBLIC = "https://abc.supabase.co/storage/v1/object/public";
 
@@ -53,6 +56,36 @@ describe("removeReplacedAvatar", () => {
     removeMock.mockRejectedValueOnce(new Error("network down"));
     await expect(
       removeReplacedAvatar(`${PUBLIC}/vendor-avatars/v1/old.webp`),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe("removeUnsavedImages", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes booth-images uploads in one call", async () => {
+    await removeUnsavedImages([
+      `${PUBLIC}/booth-images/v1/a.webp`,
+      `${PUBLIC}/booth-images/v1/b.webp`,
+    ]);
+    expect(fromMock).toHaveBeenCalledWith("booth-images");
+    expect(removeMock).toHaveBeenCalledWith(["v1/a.webp", "v1/b.webp"]);
+  });
+
+  it("does nothing when no URL is a booth-images upload", async () => {
+    await removeUnsavedImages([
+      "https://example.com/x.png",
+      `${PUBLIC}/vendor-images/v1/x.webp`,
+    ]);
+    expect(removeMock).not.toHaveBeenCalled();
+  });
+
+  it("never throws, even when the delete itself fails", async () => {
+    removeMock.mockRejectedValueOnce(new Error("network down"));
+    await expect(
+      removeUnsavedImages([`${PUBLIC}/booth-images/v1/a.webp`]),
     ).resolves.toBeUndefined();
   });
 });

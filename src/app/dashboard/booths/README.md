@@ -83,6 +83,32 @@ Vendor booth list, the shared create/edit form and its building-block editors, a
 
 `page.tsx` lists booths (`booth-list.tsx`), which links to `new/` and `[boothId]/`, both of which render the shared `booth-form.tsx` (create vs. edit) built from `working-hours-editor.tsx`, `payment-section.tsx`, `printing-section.tsx`, and `social-links-section.tsx`. `booth-form.tsx` and the `new`/`[boothId]` pages call `saveBooth`/`deleteBooth`/`regenerateShortCode` in `actions.ts`, which enforce the same `@/lib/plan` entitlement caps the editors gate in the UI. `menu-editor.tsx` (itself embedding `option-groups-editor.tsx`, and since 2026-09-02 owning section management too — the standalone `menu-categories-editor.tsx` it used to sit beside is retired) is no longer composed by `booth-form.tsx` directly — it's rendered by `menu-manager.tsx` instead, reached via `[boothId]/menu/`, whose own saves (`saveMenuItems`/`saveMenuCategories` in `actions.ts`) are the sole write paths for `booths.menu_items`/`booths.menu_categories` respectively.
 
+## Deferred image uploads
+
+`booth-form.tsx` (banner), `payment-section.tsx` (payment QR) and
+`menu-editor.tsx` (item photos) pass `deferUpload` to `ImageUploader`: a
+picked image is previewed from a local `blob:` URL and nothing is uploaded.
+On Save, `booth-form.tsx` and `menu-manager.tsx` call `commitPendingImages`,
+then validate and save with the returned public URLs.
+
+- An upload failure stops the save and deletes whatever did upload.
+- `booth-form.tsx` also deletes the fresh uploads if validation fails.
+  Otherwise it passes them to `saveBooth(input, freshUploads)`, which deletes
+  the ones nothing references if it fails. The cleanup lives in the action
+  because `saveBooth` writes the payment config to paykit before the booth
+  row, so a later failure can leave the new QR already saved in paykit.
+- `menu-manager.tsx` deletes its fresh uploads in the browser when
+  `saveMenuItems` fails, because that action writes nothing on failure.
+
+Deferred upload is the main defence against abandoned uploads.
+`sweep-unsaved-uploads.ts` stays as a backstop for what it cannot cover: a
+tab closed after an upload finished but before its save landed, and objects
+uploaded before deferred upload shipped.
+
+Covered by `booth-form.images.dom.test.tsx`,
+`menu-manager.images.dom.test.tsx` and the `saveBooth — unsaved upload
+cleanup` block in `actions.test.ts`.
+
 ## Shared package note
 
 The booth banner, menu-item and payment-QR uploads now call `@merqo/ui`'s `resizeToWebp` (v0.31.0) rather than `@/lib/image-resize`.
