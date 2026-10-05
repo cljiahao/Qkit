@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- Bumped `next` 16.3.4 to 16.3.8 for GHSA-vcvr-r3jv-pc5j, a critical remote
+  code execution in `next/og`'s `ImageResponse` affecting `>=16.2.0 <16.3.6`.
+  qkit renders its icons through `ImageResponse` (`src/app/apple-icon.tsx`,
+  `src/app/icon.tsx`, `src/app/icon-192/route.tsx`,
+  `src/app/icon-512/route.tsx`), so this was reachable rather than theoretical. `eslint-config-next` moved with it to stay in step.
+  `pnpm audit --prod --audit-level=high` had been failing on every PR.
+
 ### Fixed
 
 - Picking a booth banner, menu photo or payment QR and then leaving the form
