@@ -51,7 +51,10 @@ const TOKEN = "00000000-0000-4000-8000-000000000002";
 const VENDOR_ID = "00000000-0000-4000-8000-000000000003";
 const ORDER_NUMBER = "1";
 
-function makeOrder(status: OrderStatus) {
+// Fresh by default: an order older than STALE_ORDER_VIEW_HOURS renders the
+// "older order" notice instead of the live affordances (see resolveStaleView
+// in page.tsx), which is its own describe block below.
+function makeOrder(status: OrderStatus, createdAt = new Date().toISOString()) {
   return {
     id: "00000000-0000-4000-8000-000000000004",
     booth_id: BOOTH_ID,
@@ -62,7 +65,7 @@ function makeOrder(status: OrderStatus) {
     customer_name: "Alex",
     items: [],
     total_cents: 0,
-    created_at: "2026-08-16T00:00:00Z",
+    created_at: createdAt,
   };
 }
 
@@ -130,8 +133,11 @@ beforeEach(() => {
     .mockResolvedValue(new Headers({ host: "booth.merqo.io" }));
 });
 
-async function renderPage(status: OrderStatus) {
-  maybeSingle.mockResolvedValue({ data: makeOrder(status), error: null });
+async function renderPage(status: OrderStatus, createdAt?: string) {
+  maybeSingle.mockResolvedValue({
+    data: makeOrder(status, createdAt),
+    error: null,
+  });
   const jsx = await OrderStatusPage({
     params: Promise.resolve({ boothId: BOOTH_ID, orderNumber: ORDER_NUMBER }),
     searchParams: Promise.resolve({ t: TOKEN }),
@@ -155,6 +161,33 @@ describe("OrderStatusPage — TelegramConnect gating", () => {
       expect(screen.queryByTestId("telegram-connect")).not.toBeInTheDocument();
     },
   );
+});
+
+describe("OrderStatusPage — reopened older order", () => {
+  // A repeat customer's browser restores an earlier visit's status URL, which
+  // otherwise renders as a live order: a big number the stall is not calling,
+  // and a status that will never change (Kessie's AAR, order 65).
+  const LAST_MONTH = "2026-08-16T00:00:00Z";
+
+  it("tells the customer the order is an older one and offers a new order", async () => {
+    await renderPage("preparing", LAST_MONTH);
+    expect(screen.getByText("This is an older order")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /order again from this stall/i }),
+    ).toHaveAttribute("href", `/order/${BOOTH_ID}`);
+  });
+
+  it("hides the Telegram connect offer, which could not reach them anyway", async () => {
+    await renderPage("preparing", LAST_MONTH);
+    expect(screen.queryByTestId("telegram-connect")).not.toBeInTheDocument();
+  });
+
+  it("says nothing about an order placed minutes ago", async () => {
+    await renderPage("preparing");
+    expect(
+      screen.queryByText("This is an older order"),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("OrderStatusPage — pending-payment redirect guard", () => {
