@@ -90,6 +90,12 @@ function byOrderNumber(pattern: string | RegExp) {
 }
 const ORDER_NUMBER_OPTS = { selector: "p" };
 
+// DEFAULT_BOARD_SETTINGS has daily_order_number_reset on (migration 0067 turned
+// it on vendor-wide), so any test rendering those settings sees per-day ranks
+// (#001) rather than the raw order_number (#0001), the same as the customer's
+// status page and the printed label. Tests that care about the raw number pass
+// the setting off explicitly.
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(toggleBoothActive).mockResolvedValue({ success: true });
@@ -122,14 +128,14 @@ describe("RealtimeOrderBoard sort toggle", () => {
 
     const numbersInOrder = () =>
       screen
-        .getAllByText(byOrderNumber(/^#000[12]$/), ORDER_NUMBER_OPTS)
+        .getAllByText(byOrderNumber(/^#00[12]$/), ORDER_NUMBER_OPTS)
         .map((el) => el.textContent);
 
-    expect(numbersInOrder()).toEqual(["#0001", "#0002"]);
+    expect(numbersInOrder()).toEqual(["#001", "#002"]);
 
     await user.click(screen.getByRole("button", { name: "Latest" }));
 
-    expect(numbersInOrder()).toEqual(["#0002", "#0001"]);
+    expect(numbersInOrder()).toEqual(["#002", "#001"]);
   });
 });
 
@@ -153,6 +159,60 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
     expect(
       screen.getByText(byOrderNumber("#0847"), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
+  });
+
+  it("derives its own baseline when the board was opened before the day's first order", () => {
+    // The server page has no baseline to send for a booth with no order yet
+    // (staff open the board while setting up, which is the normal case at an
+    // event). The board must still show the daily rank the customer's status
+    // page, the TV display and the printed label each compute per request.
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "b", order_number: "0848" }),
+          order({ id: "a", order_number: "0847" }),
+          order({ id: "none", order_number: null }),
+        ]}
+        boardSettings={{
+          ...DEFAULT_BOARD_SETTINGS,
+          daily_order_number_reset: true,
+        }}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByText(byOrderNumber("#001"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(byOrderNumber("#002"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0847"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
+  });
+
+  it("derives a baseline per booth, not one across booths", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={[
+          ...BOOTHS,
+          { id: "b2", name: "Teh Tarik Stand", is_active: true, open: true },
+        ]}
+        initialOrders={[
+          order({ id: "a", booth_id: "b1", order_number: "0847" }),
+          order({ id: "b", booth_id: "b2", order_number: "0901" }),
+        ]}
+        boardSettings={{
+          ...DEFAULT_BOARD_SETTINGS,
+          daily_order_number_reset: true,
+        }}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getAllByText(byOrderNumber("#001"), ORDER_NUMBER_OPTS),
+    ).toHaveLength(2);
   });
 
   it("shows the daily-reset display number when a baseline is supplied", () => {
@@ -489,10 +549,10 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
 
     await user.click(screen.getByRole("button", { name: /^select$/i }));
     await user.click(
-      screen.getByRole("checkbox", { name: /select order #0001/i }),
+      screen.getByRole("checkbox", { name: /select order #001/i }),
     );
     await user.click(
-      screen.getByRole("checkbox", { name: /select order #0002/i }),
+      screen.getByRole("checkbox", { name: /select order #002/i }),
     );
 
     const markReadyButton = screen.getByRole("button", {
@@ -571,10 +631,10 @@ describe("RealtimeOrderBoard payment filter", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.queryByText(byOrderNumber(/#0001/), ORDER_NUMBER_OPTS),
+      screen.queryByText(byOrderNumber(/#001/), ORDER_NUMBER_OPTS),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(byOrderNumber(/#0002/), ORDER_NUMBER_OPTS),
+      screen.getByText(byOrderNumber(/#002/), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
   });
 
@@ -597,7 +657,7 @@ describe("RealtimeOrderBoard payment filter", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.getByText(byOrderNumber(/#0001/), ORDER_NUMBER_OPTS),
+      screen.getByText(byOrderNumber(/#001/), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
   });
 });
