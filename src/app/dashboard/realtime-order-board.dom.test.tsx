@@ -177,6 +177,117 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
   });
 });
 
+describe("RealtimeOrderBoard phone section switcher", () => {
+  function twoSections() {
+    return [
+      order({ id: "in", order_number: "0020", status: "pending" }),
+      order({ id: "acc", order_number: "0021", status: "preparing" }),
+    ];
+  }
+
+  it("offers both sections with their counts, so neither can be missed", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={twoSections()}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByRole("tab", { name: "Incoming (1)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "Accepted (1)" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("switches which section a phone shows", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={twoSections()}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(screen.getByRole("tab", { name: "Accepted (1)" }));
+    expect(screen.getByRole("tab", { name: "Accepted (1)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("does not offer a switch when only one section has orders", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[order({ id: "in", status: "pending" })]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+});
+
+describe("RealtimeOrderBoard passed-over orders", () => {
+  // A barista calls a number across a noisy counter, nobody marks it, and a
+  // later order goes out first (Kessie's AAR, issue #5).
+  it("flags an order a later one has already passed", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({
+            id: "ten",
+            order_number: "0010",
+            status: "preparing",
+            created_at: "2026-10-06T04:10:00Z",
+          }),
+          order({
+            id: "fifteen",
+            order_number: "0015",
+            status: "ready",
+            created_at: "2026-10-06T04:15:00Z",
+          }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getAllByText("Passed over")).toHaveLength(1);
+  });
+
+  it("flags nothing while the queue is served in order", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({
+            id: "ten",
+            order_number: "0010",
+            status: "ready",
+            created_at: "2026-10-06T04:10:00Z",
+          }),
+          order({
+            id: "fifteen",
+            order_number: "0015",
+            status: "preparing",
+            created_at: "2026-10-06T04:15:00Z",
+          }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText("Passed over")).not.toBeInTheDocument();
+  });
+});
+
 describe("RealtimeOrderBoard booth active toggle", () => {
   it("shows a single booth's open/pause toggle inline, no modal needed", () => {
     render(
@@ -522,8 +633,14 @@ describe("RealtimeOrderBoard incoming/accepted split", () => {
       { wrapper: TooltipProvider },
     );
 
-    expect(screen.getByText("Incoming (1)")).toBeInTheDocument();
-    expect(screen.getByText("Accepted (1)")).toBeInTheDocument();
+    // Each label appears twice now: the section heading, and the phone-only
+    // SectionSwitcher tab. Query the headings specifically.
+    expect(
+      screen.getByRole("heading", { name: "Incoming (1)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Accepted (1)" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /start now/i }),
     ).toBeInTheDocument();

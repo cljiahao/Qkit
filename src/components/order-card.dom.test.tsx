@@ -188,6 +188,69 @@ describe("OrderCard", () => {
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
   });
 
+  it("shows every customisation without a tap, so writing an order costs no clicks", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          items: [
+            {
+              menuItemId: "m1",
+              name: "Iced Latte",
+              price_cents: 650,
+              quantity: 1,
+              options: [
+                { group: "Size", choice: "Large" },
+                { group: "Milk", choice: "Oat" },
+                { group: "Sweetness", choice: "25 percent" },
+              ],
+            },
+          ],
+          total_cents: 650,
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText("Large")).toBeInTheDocument();
+    expect(screen.getByText("Oat")).toBeInTheDocument();
+    expect(screen.getByText("25 percent")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /hide options/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("still lets a vendor fold the customisations down to one summary line", async () => {
+    const user = userEvent.setup();
+    render(
+      <OrderCard
+        order={makeOrder({
+          items: [
+            {
+              menuItemId: "m1",
+              name: "Iced Latte",
+              price_cents: 650,
+              quantity: 1,
+              options: [
+                { group: "Size", choice: "Large" },
+                { group: "Milk", choice: "Oat" },
+              ],
+            },
+          ],
+          total_cents: 650,
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+
+    await user.click(screen.getByRole("button", { name: /hide options/i }));
+
+    // The per-group list gives way to formatOptions' single summary line.
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+    expect(
+      screen.getByRole("button", { name: /show options/i }),
+    ).toBeInTheDocument();
+  });
+
   it("advances preparing -> ready instantly, showing Undo rather than a confirm gate", async () => {
     const user = userEvent.setup();
     advanceOrder.mockResolvedValue({ success: true, status: "ready" });

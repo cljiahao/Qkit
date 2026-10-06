@@ -170,6 +170,39 @@ export type AgeSortOrder = "earliest" | "latest";
  * next — is a separate concern; see `ordersAheadOf`, which stays
  * status-aware for the customer-facing wait estimate.) Pure + non-mutating.
  */
+/**
+ * Orders that a later order has already overtaken: still being worked on, while
+ * something ordered after them is already ready or collected.
+ *
+ * A barista calls "number 10 is done" across a noisy counter and the person on
+ * the board does not hear it, so 10 never gets marked while 15 does. Nothing on
+ * the board said so: a card that has sat there unmarked looks much like one just
+ * started, and the customer for 10 is left waiting on a screen that never
+ * changes. Scoped per booth, since two booths number and serve independently,
+ * and compared on created_at, which is the order the counter works in.
+ *
+ * Returns ids rather than a mutated list so the caller can flag a card without
+ * disturbing sortActiveOrders' own ordering, including a manual priority bump.
+ */
+export function overtakenOrderIds(orders: BoardOrder[]): Set<string> {
+  const newestDoneAt = new Map<string, number>();
+  for (const o of orders) {
+    if (o.status !== "ready" && o.status !== "completed") continue;
+    const at = new Date(o.created_at).getTime();
+    const seen = newestDoneAt.get(o.booth_id);
+    if (seen == null || at > seen) newestDoneAt.set(o.booth_id, at);
+  }
+
+  const overtaken = new Set<string>();
+  for (const o of orders) {
+    if (isTerminal(o.status) || o.status === "ready") continue;
+    const cutoff = newestDoneAt.get(o.booth_id);
+    if (cutoff == null) continue;
+    if (new Date(o.created_at).getTime() < cutoff) overtaken.add(o.id);
+  }
+  return overtaken;
+}
+
 export function sortActiveOrders(
   orders: BoardOrder[],
   order: AgeSortOrder = "earliest",
