@@ -1151,19 +1151,19 @@ select is(
 -- insert path. Counted in cups (the sum of item quantities), not orders.
 insert into qkit.booths (id, vendor_id, name, is_active, daily_cup_cap)
 values
-  ('00000000-0000-0000-0000-0000000b0004',
+  ('00000000-0000-0000-0000-0000000b0009',
    '00000000-0000-0000-0000-00000000000a', 'Capped Booth', true, 5);
 
 select lives_ok(
   $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
-     values ('00000000-0000-0000-0000-0000000b0004', 'C-001', 'Cust',
+     values ('00000000-0000-0000-0000-0000000b0009', 'C-001', 'Cust',
              '[{"menuItemId":"m1","name":"Kopi","quantity":4}]'::jsonb, 400) $$,
   'an order within the cup cap is accepted'
 );
 
 select throws_ok(
   $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
-     values ('00000000-0000-0000-0000-0000000b0004', 'C-002', 'Cust',
+     values ('00000000-0000-0000-0000-0000000b0009', 'C-002', 'Cust',
              '[{"menuItemId":"m1","name":"Kopi","quantity":2}]'::jsonb, 200) $$,
   'P0001',
   NULL,
@@ -1172,19 +1172,19 @@ select throws_ok(
 
 select lives_ok(
   $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
-     values ('00000000-0000-0000-0000-0000000b0004', 'C-003', 'Cust',
+     values ('00000000-0000-0000-0000-0000000b0009', 'C-003', 'Cust',
              '[{"menuItemId":"m1","name":"Kopi","quantity":1}]'::jsonb, 100) $$,
   'an order that exactly fills the cup cap is accepted'
 );
 
 select is(
-  qkit.booth_cups_today('00000000-0000-0000-0000-0000000b0004'),
+  qkit.booth_cups_today('00000000-0000-0000-0000-0000000b0009'),
   5,
   'booth_cups_today sums item quantities, not order rows'
 );
 
 select is(
-  qkit.booth_cups_left('00000000-0000-0000-0000-0000000b0004'),
+  qkit.booth_cups_left('00000000-0000-0000-0000-0000000b0009'),
   0,
   'booth_cups_left reaches zero once the cap is full'
 );
@@ -1192,10 +1192,10 @@ select is(
 -- Cancelling an order returns its cups: a vendor who voids a mistake should
 -- not lose stock to it.
 update qkit.orders set status = 'cancelled'
-where booth_id = '00000000-0000-0000-0000-0000000b0004' and order_number = 'C-001';
+where booth_id = '00000000-0000-0000-0000-0000000b0009' and order_number = 'C-001';
 
 select is(
-  qkit.booth_cups_today('00000000-0000-0000-0000-0000000b0004'),
+  qkit.booth_cups_today('00000000-0000-0000-0000-0000000b0009'),
   1,
   'a cancelled order releases its cups'
 );
