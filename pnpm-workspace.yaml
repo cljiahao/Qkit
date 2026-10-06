@@ -19,6 +19,7 @@ allowBuilds:
 #   qs               GHSA-x5fp-wj9c-mxmx + GHSA-4mjr-xmp4-gh2g (dev: via stryker>typed-rest-client; prototype pollution / ReDoS)
 #   js-yaml          GHSA-mh29-5h37-fv8m  (dev: via stryker; YAML merge-key quadratic CPU DoS)
 #   brace-expansion  GHSA-v6h2-p8h4-qcjw  (dev: via eslint/vitest/stryker's minimatch; 3 vulnerable major lines)
+#   source-map-js    GHSA-68fv-2mgg-jv7q  (via next>postcss; event-loop DoS through indexed source-map section offsets)
 overrides:
   postcss@<8.5.23: ">=8.5.23"
   undici@<7.29.0: ">=7.29.0 <8"
@@ -31,3 +32,4 @@ overrides:
   brace-expansion@<1.1.16: ">=1.1.16 <2"
   brace-expansion@>=2.0.0 <2.1.2: ">=2.1.2 <3"
   brace-expansion@>=3.0.0 <5.0.7: ">=5.0.7"
+  source-map-js@<1.2.2: ">=1.2.2"
