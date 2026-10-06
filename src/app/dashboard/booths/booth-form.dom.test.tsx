@@ -125,6 +125,7 @@ describe("BoothForm walk-up-default toggle", () => {
           print_enabled: false,
           printkit_location_id: null,
           paykit_booking_id: null,
+          daily_cup_cap: null,
         }}
       />,
     );
@@ -155,6 +156,7 @@ describe("BoothForm walk-up-default toggle", () => {
           print_enabled: false,
           printkit_location_id: null,
           paykit_booking_id: null,
+          daily_cup_cap: null,
         }}
       />,
     );
@@ -227,6 +229,7 @@ describe("BoothForm paykit booking id", () => {
           print_enabled: false,
           printkit_location_id: null,
           paykit_booking_id: "book-42",
+          daily_cup_cap: null,
           bookingStatus: {
             bookingId: "book-42",
             status: "fully_paid",
@@ -302,6 +305,7 @@ describe("BoothForm menu section", () => {
           print_enabled: false,
           printkit_location_id: null,
           paykit_booking_id: null,
+          daily_cup_cap: null,
         }}
       />,
     );
@@ -332,10 +336,79 @@ describe("BoothForm menu section", () => {
           print_enabled: false,
           printkit_location_id: null,
           paykit_booking_id: null,
+          daily_cup_cap: null,
         }}
       />,
     );
     const link = screen.getByRole("link", { name: /4 items/ });
     expect(link).toHaveAttribute("href", `/dashboard/booths/${BOOTH_ID}/menu`);
+  });
+});
+
+describe("BoothForm daily cup cap", () => {
+  const CAP_LABEL = "Stop after this many cups each day";
+
+  it("submits null when left blank, meaning no limit", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    expect(saveBooth).toHaveBeenCalledWith(
+      expect.objectContaining({ daily_cup_cap: null }),
+      [],
+    );
+  });
+
+  it("submits the number the vendor typed", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.type(screen.getByLabelText(CAP_LABEL), "200");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    expect(saveBooth).toHaveBeenCalledWith(
+      expect.objectContaining({ daily_cup_cap: 200 }),
+      [],
+    );
+  });
+
+  it("prefills a booth's saved cap when editing", () => {
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+        initial={{
+          boothId: BOOTH_ID,
+          name: "Ice Cream Cart",
+          image_url: null,
+          is_active: true,
+          hours: null,
+          menuItemCount: 0,
+          payment: null,
+          social_links: null,
+          requires_arrival_confirm: false,
+          walkup_default: false,
+          print_enabled: false,
+          printkit_location_id: null,
+          paykit_booking_id: null,
+          daily_cup_cap: 200,
+        }}
+      />,
+    );
+    expect(screen.getByLabelText(CAP_LABEL)).toHaveValue(200);
   });
 });

@@ -526,6 +526,7 @@ export interface Database {
           print_enabled: boolean;
           paykit_booking_id: string | null;
           printkit_location_id: string | null;
+          daily_cup_cap: number | null;
         };
         Insert: {
           id?: string;
@@ -546,6 +547,7 @@ export interface Database {
           print_enabled?: boolean;
           paykit_booking_id?: string | null;
           printkit_location_id?: string | null;
+          daily_cup_cap?: number | null;
         };
         Update: {
           id?: string;
@@ -566,6 +568,7 @@ export interface Database {
           print_enabled?: boolean;
           paykit_booking_id?: string | null;
           printkit_location_id?: string | null;
+          daily_cup_cap?: number | null;
         };
         Relationships: [
           {
@@ -721,6 +724,14 @@ export interface Database {
       booth_servable: {
         Args: { p_booth_id: string };
         Returns: boolean;
+      };
+      booth_cups_today: {
+        Args: { p_booth_id: string };
+        Returns: number;
+      };
+      booth_cups_left: {
+        Args: { p_booth_id: string };
+        Returns: number | null;
       };
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number };

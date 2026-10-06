@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A booth can stop taking orders after a set number of cups each day
+  (`booths.daily_cup_cap`, migration 0094). An event working to a fixed stock
+  ("200 cups, then we stop") previously had only `booths.hours`, a wall-clock
+  close, and an order count is not a cup count: one order can carry four or
+  five cups, so capping orders either turns customers away early or blows past
+  the stock. The cap counts the sum of item quantities over the day's
+  non-cancelled orders, resets at SGT midnight, and is enforced by the
+  `orders_daily_cup_cap` trigger rather than in app code, so every insert path
+  is covered. The trigger takes a per-booth advisory lock, so two customers
+  checking out on the last cups cannot both pass. Cancelling an order returns
+  its cups. The customer's menu page says how many cups are left under ten and
+  shows "Sold out for today" at zero (`booth_cups_left`, readable by anon and
+  exposing nothing but that number); the vendor's board shows a `132/200 cups`
+  counter per capped booth, amber inside the last tenth.
+
 ### Security
 
 - Bumped `next` 16.3.4 to 16.3.8 for GHSA-vcvr-r3jv-pc5j, a critical remote

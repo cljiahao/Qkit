@@ -81,6 +81,7 @@ interface Props {
     print_enabled: boolean;
     printkit_location_id: string | null;
     paykit_booking_id: string | null;
+    daily_cup_cap: number | null;
     // Fetched server-side (paykit's GET /api/v1/bookings/{id}) — see
     // BookingStatusSection's own doc comment for what null vs. undefined
     // mean here.
@@ -147,6 +148,12 @@ export function BoothForm({
   const [paykitBookingId, setPaykitBookingId] = useState<string | null>(
     initial?.paykit_booking_id ?? null,
   );
+  // Kept as the raw text the vendor typed, so clearing the field reads as
+  // "no cap" rather than 0. Converted at submit, the same convention as
+  // board_settings.default_prep_minutes in the dashboard settings form.
+  const [dailyCupCap, setDailyCupCap] = useState(
+    initial?.daily_cup_cap != null ? String(initial.daily_cup_cap) : "",
+  );
   const { pending: saving, run: runSave } = useAsyncAction();
   const { pending: deleting, run: runDelete } = useAsyncAction();
 
@@ -186,6 +193,8 @@ export function BoothForm({
         walkup_default: walkupDefault,
         print_enabled: printEnabled,
         paykit_booking_id: paykitBookingId,
+        daily_cup_cap:
+          dailyCupCap.trim() === "" ? null : Number(dailyCupCap.trim()),
       };
       const parsed = boothFormSchema.safeParse(candidate);
       if (!parsed.success) {
@@ -358,6 +367,27 @@ export function BoothForm({
                 checked={walkupDefault}
                 onCheckedChange={setWalkupDefault}
                 aria-label="Default to walk-up order entry"
+              />
+            </div>
+
+            <div className="rounded-xl border border-border bg-card px-4 py-3">
+              <Label htmlFor="daily-cup-cap" className="text-sm font-medium">
+                Stop after this many cups each day
+              </Label>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Counts cups, not orders, so one order of four still counts four.
+                Leave blank for no limit. Resets at midnight.
+              </p>
+              <Input
+                id="daily-cup-cap"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={100000}
+                placeholder="No limit"
+                value={dailyCupCap}
+                onChange={(e) => setDailyCupCap(e.target.value)}
+                className="mt-2 max-w-40"
               />
             </div>
 

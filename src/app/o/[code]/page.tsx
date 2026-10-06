@@ -34,6 +34,31 @@ const boothForOrder = z.object({
   social_links: z.unknown(),
 });
 
+/**
+ * Cups the booth can still serve today, or null when it has no cap
+ * (booths.daily_cup_cap, migration 0094). Read separately from
+ * get_booth_for_order so that RPC's public-safe shape stays as it is, and
+ * degraded to null on any failure: the orders_daily_cup_cap trigger is the
+ * real limit, so a failure here costs a warning, never correctness.
+ */
+async function loadCupsLeft(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  boothId: string,
+): Promise<number | null> {
+  const { data, error } = await supabase.rpc("booth_cups_left", {
+    p_booth_id: boothId,
+  });
+  if (error) {
+    console.error("booth_cups_left failed", error.message);
+    return null;
+  }
+  return typeof data === "number" ? data : null;
+}
+
+// Below this many cups left, the page says how many are left. Above it the
+// number is noise: nobody queues differently at 40 cups remaining.
+const LOW_STOCK_CUPS = 10;
+
 export default async function OrderEntryPage({ params }: Props) {
   const { code } = await params;
   const supabase = await createServerClient();
@@ -60,8 +85,22 @@ export default async function OrderEntryPage({ params }: Props) {
   const reopen = open
     ? null
     : nextOpenLabel({ is_active: booth.is_active, hours }, nowIso);
-  const closed = !open || !booth.servable;
+  const cupsLeft = await loadCupsLeft(supabase, booth.booth_id);
+  const soldOutToday = cupsLeft === 0;
+  const closed = !open || !booth.servable || soldOutToday;
   const remaining = parseRemaining(booth.remaining);
+  // Three closed reasons, most specific first: the day's cups are gone, the
+  // booth is paused, or it is simply outside opening hours.
+  let closedTitle = "Closed right now";
+  let closedDetail = `${reopen ?? "Not taking orders at the moment."} You can browse the menu below.`;
+  if (soldOutToday) {
+    closedTitle = "Sold out for today";
+    closedDetail =
+      "They have served everything they had for today. You can still browse the menu below.";
+  } else if (!booth.servable) {
+    closedTitle = "Not taking orders";
+    closedDetail = "This booth isn't accepting orders right now.";
+  }
   const socialLinks = parseSocialLinks(booth.social_links);
 
   return (
@@ -93,12 +132,10 @@ export default async function OrderEntryPage({ params }: Props) {
         {closed && (
           <div className="mb-7 rounded-xl border border-status-cancelled/30 bg-status-cancelled/10 px-4 py-3 text-center">
             <p className="font-display text-lg font-semibold text-status-cancelled">
-              {!booth.servable ? "Not taking orders" : "Closed right now"}
+              {closedTitle}
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {!booth.servable
-                ? "This booth isn't accepting orders right now."
-                : `${reopen ?? "Not taking orders at the moment."} You can browse the menu below.`}
+              {closedDetail}
             </p>
             {Object.keys(socialLinks).length > 0 && (
               <div className="mt-3 flex flex-col items-center gap-2">
@@ -111,6 +148,16 @@ export default async function OrderEntryPage({ params }: Props) {
           </div>
         )}
       </div>
+      {cupsLeft != null && cupsLeft > 0 && cupsLeft <= LOW_STOCK_CUPS && (
+        <div className="mb-7 rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center md:mx-auto md:max-w-lg">
+          <p className="text-sm font-semibold">
+            Only {cupsLeft} {cupsLeft === 1 ? "cup" : "cups"} left today
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Once they are gone this stall stops taking orders until tomorrow.
+          </p>
+        </div>
+      )}
       <OrderForm
         code={code}
         boothId={booth.booth_id}

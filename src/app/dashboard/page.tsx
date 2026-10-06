@@ -18,6 +18,36 @@ export const revalidate = 0;
  * this is one extra query total, not one per booth, and skipped entirely
  * when the setting is off (the common case).
  */
+/**
+ * Cups committed today per booth, for the booths that have a cap
+ * (booths.daily_cup_cap, migration 0094). One RPC per capped booth, and a
+ * vendor has a handful of booths at most; booths with no cap cost nothing.
+ * Decorative: the orders_daily_cup_cap trigger is the real limit, so a
+ * failure here hides the counter rather than affecting what can be ordered.
+ */
+async function loadCupsToday(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  boothIds: string[],
+): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  const results = await Promise.all(
+    boothIds.map(async (id) => {
+      const { data, error } = await supabase.rpc("booth_cups_today", {
+        p_booth_id: id,
+      });
+      if (error) {
+        console.error("dashboard booth_cups_today failed", error.message);
+        return null;
+      }
+      return typeof data === "number" ? ([id, data] as const) : null;
+    }),
+  );
+  for (const row of results) {
+    if (row) counts[row[0]] = row[1];
+  }
+  return counts;
+}
+
 async function loadDailyOrderNumberBaselines(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   boothIds: string[],
@@ -54,7 +84,7 @@ export default async function DashboardPage() {
 
   const { data: booths, error: boothErr } = await supabase
     .from("booths")
-    .select("id, name, is_active, hours, walkup_default")
+    .select("id, name, is_active, hours, walkup_default, daily_cup_cap")
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: true });
   if (boothErr) console.error("dashboard booths read failed", boothErr.message);
@@ -70,9 +100,15 @@ export default async function DashboardPage() {
       nowIso,
     ),
     walkup_default: b.walkup_default,
+    daily_cup_cap: b.daily_cup_cap,
+    cups_today: cupsToday[b.id] ?? 0,
   }));
 
   const boothIds = (booths ?? []).map((b) => b.id);
+  const cupsToday = await loadCupsToday(
+    supabase,
+    (booths ?? []).filter((b) => b.daily_cup_cap != null).map((b) => b.id),
+  );
 
   let orders: BoardOrder[] = [];
   let ordersErr = null;

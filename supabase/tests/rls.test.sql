@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(123);
+select plan(131);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -1144,6 +1144,73 @@ select is(
   (select allowed_mime_types from storage.buckets where id = 'payment-proofs'),
   array['image/jpeg', 'image/png', 'image/webp']::text[],
   'payment-proofs accepts only JPEG, PNG and WebP'
+);
+
+-- booths.daily_cup_cap (migration 0094): the cap is enforced by the
+-- orders_daily_cup_cap trigger, not by app code, so it must hold for every
+-- insert path. Counted in cups (the sum of item quantities), not orders.
+insert into qkit.booths (id, vendor_id, name, is_active, daily_cup_cap)
+values
+  ('00000000-0000-0000-0000-0000000b0004',
+   '00000000-0000-0000-0000-00000000000a', 'Capped Booth', true, 5);
+
+select lives_ok(
+  $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
+     values ('00000000-0000-0000-0000-0000000b0004', 'C-001', 'Cust',
+             '[{"menuItemId":"m1","name":"Kopi","quantity":4}]'::jsonb, 400) $$,
+  'an order within the cup cap is accepted'
+);
+
+select throws_ok(
+  $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
+     values ('00000000-0000-0000-0000-0000000b0004', 'C-002', 'Cust',
+             '[{"menuItemId":"m1","name":"Kopi","quantity":2}]'::jsonb, 200) $$,
+  'P0001',
+  NULL,
+  'an order that would cross the cup cap is refused'
+);
+
+select lives_ok(
+  $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
+     values ('00000000-0000-0000-0000-0000000b0004', 'C-003', 'Cust',
+             '[{"menuItemId":"m1","name":"Kopi","quantity":1}]'::jsonb, 100) $$,
+  'an order that exactly fills the cup cap is accepted'
+);
+
+select is(
+  qkit.booth_cups_today('00000000-0000-0000-0000-0000000b0004'),
+  5,
+  'booth_cups_today sums item quantities, not order rows'
+);
+
+select is(
+  qkit.booth_cups_left('00000000-0000-0000-0000-0000000b0004'),
+  0,
+  'booth_cups_left reaches zero once the cap is full'
+);
+
+-- Cancelling an order returns its cups: a vendor who voids a mistake should
+-- not lose stock to it.
+update qkit.orders set status = 'cancelled'
+where booth_id = '00000000-0000-0000-0000-0000000b0004' and order_number = 'C-001';
+
+select is(
+  qkit.booth_cups_today('00000000-0000-0000-0000-0000000b0004'),
+  1,
+  'a cancelled order releases its cups'
+);
+
+select is(
+  qkit.booth_cups_left('00000000-0000-0000-0000-0000000b0001'),
+  NULL,
+  'booth_cups_left is null for a booth with no cap'
+);
+
+select lives_ok(
+  $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
+     values ('00000000-0000-0000-0000-0000000b0001', 'A-900', 'Cust',
+             '[{"menuItemId":"m1","name":"Kopi","quantity":99}]'::jsonb, 9900) $$,
+  'a booth with no cap is never limited'
 );
 
 select * from finish();

@@ -69,6 +69,11 @@ type BoothView = {
   // and call sites need no changes; a booth without it behaves exactly as
   // before (never auto-opens the walk-up dialog).
   walkup_default?: boolean;
+  // Daily cup cap (booths.daily_cup_cap, migration 0094) and the cups already
+  // committed today, both optional: a booth with no cap, and every existing
+  // test fixture and call site, simply shows no cup counter.
+  daily_cup_cap?: number | null;
+  cups_today?: number;
 };
 
 interface Props {
@@ -188,6 +193,30 @@ function BoothToggle({
   );
 }
 
+// Cups committed today against the booth's own cap, for a stall working to a
+// fixed stock ("200 cups, then we stop"). Counts cups, not orders, matching
+// the orders_daily_cup_cap trigger, since one order can carry four or five.
+// Amber inside the last CUP_WARN_FRACTION of the cap, so staff see the line
+// coming while there is still time to tell the queue. Renders nothing for a
+// booth with no cap, which is every booth by default.
+const CUP_WARN_FRACTION = 0.1;
+
+function CupCount({ cap, used }: { cap?: number | null; used?: number }) {
+  if (cap == null) return null;
+  const served = used ?? 0;
+  const low = cap - served <= Math.ceil(cap * CUP_WARN_FRACTION);
+  return (
+    <span
+      className={cn(
+        "shrink-0 font-mono text-xs",
+        low ? "font-semibold text-status-aging" : "text-muted-foreground",
+      )}
+    >
+      {served}/{cap} cups
+    </span>
+  );
+}
+
 // One booth's row — shared between the solo inline case (a single-booth
 // vendor, no need for a modal over one toggle) and the multi-booth status
 // dialog below. The header's own compact case (a booth already selected via
@@ -215,6 +244,7 @@ function BoothRow({
         />
       )}
       <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
+      <CupCount cap={b.daily_cup_cap} used={b.cups_today} />
       {/* Manually active but outside scheduled hours: customers still see
           it closed. A distinct state from the toggle itself, worth
           surfacing so the vendor isn't confused about why orders still
