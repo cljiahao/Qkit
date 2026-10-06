@@ -277,7 +277,12 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
 - `orders.ts` — order-board core: `BOARD_ORDER_COLUMNS` (explicit column list
   excluding `access_token`), `TERMINAL_STATUSES`/`isTerminal`, `ADVANCE` (legal
   forward-status map + button label), `orderAgeTone`/`elapsedMinutes`/
-  `elapsedLabel`, `buildAdvancePatch` (status transition patch, auto-confirming
+  `elapsedLabel` (minutes, then hours, then days past two days),
+  `overtakenOrderIds(orders)` (ids of in-progress orders that a later order from
+  the same booth has already overtaken, compared on `created_at` and scoped per
+  booth: the board badges these, since an order nobody marked while later ones
+  went out leaves its customer waiting on a screen that never changes),
+  `buildAdvancePatch` (status transition patch, auto-confirming
   payment on completion), `sortActiveOrders` (vendor-board display sort,
   status-agnostic by design — a bumped order leads, then every order by
   `created_at`; takes an `AgeSortOrder`, `"earliest"` default or `"latest"`),
