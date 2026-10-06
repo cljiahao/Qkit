@@ -135,6 +135,14 @@ reachable from anything in the customer order flow, and carries no token.
 service-client-bypasses-RLS pattern `../[orderNumber]/status-actions.ts`
 uses, just without a per-order secret gating it.
 
+A collected order keeps its place on the screen for `COLLECTED_GRACE_MS` (10
+minutes), still shown as ready. `board_settings.ready_auto_clear_min` marks an
+order collected whether or not anyone picked it up, so dropping it the moment
+it goes terminal could blank a number while the cup was still on the shelf, and
+a customer who was not watching their phone at that moment had nothing left to
+check. Past the window it drops off, so the screen does not accumulate a whole
+service. An order with no `completed_at` is dropped rather than pinned up.
+
 ## Parent
 
 [[boothId]](../README.md)
