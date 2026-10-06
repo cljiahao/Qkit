@@ -13,9 +13,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reaches production through `next` > `postcss`. Range-scoped in
   `pnpm-workspace.yaml` like the other force-patched transitives, so it clears
   itself once `postcss` ships the patched version.
-
-### Security
-
 - Bumped `next` 16.3.4 to 16.3.8 for GHSA-vcvr-r3jv-pc5j, a critical remote
   code execution in `next/og`'s `ImageResponse` affecting `>=16.2.0 <16.3.6`.
   qkit renders its icons through `ImageResponse` (`src/app/apple-icon.tsx`,
@@ -37,6 +34,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `isStaleOrderView` in `src/lib/orders.ts`; `elapsedLabel` also counts in days
   past two days, rather than reporting an order as "700 hr ago".
 
+- The vendor order board now shows the same per-day order number as every
+  customer-facing surface when it was opened before the day's first order. The
+  daily order-number reset (`board_settings.daily_order_number_reset`, on by
+  default since migration 0067) rebases each order to its rank within the SGT
+  day. The board read that baseline once, server-side, at page load, so a board
+  opened while staff were still setting up had no baseline for the booth and
+  showed permanent numbers (`#0847`) for the whole service, while the customer's
+  status page, the TV queue display and the printed label each recomputed the
+  rank (`#001`) live per request. Staff were calling a number no customer was
+  holding. `RealtimeOrderBoard` now latches the lowest `order_number` it has
+  seen per booth as a fallback baseline when the server had none.
 - Picking a booth banner, menu photo or payment QR and then leaving the form
   without saving no longer leaves the image in storage. These uploaders now
   use `@merqo/ui` v0.32.0's `deferUpload`: a picked image is resized and
