@@ -89,6 +89,12 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: true });
   if (boothErr) console.error("dashboard booths read failed", boothErr.message);
 
+  const boothIds = (booths ?? []).map((b) => b.id);
+  const cupsToday = await loadCupsToday(
+    supabase,
+    (booths ?? []).filter((b) => b.daily_cup_cap != null).map((b) => b.id),
+  );
+
   // Open/closed as of this request (SGT); revalidate=0 re-evaluates on nav.
   const nowIso = new Date().toISOString();
   const boothViews = (booths ?? []).map((b) => ({
@@ -103,12 +109,6 @@ export default async function DashboardPage() {
     daily_cup_cap: b.daily_cup_cap,
     cups_today: cupsToday[b.id] ?? 0,
   }));
-
-  const boothIds = (booths ?? []).map((b) => b.id);
-  const cupsToday = await loadCupsToday(
-    supabase,
-    (booths ?? []).filter((b) => b.daily_cup_cap != null).map((b) => b.id),
-  );
 
   let orders: BoardOrder[] = [];
   let ordersErr = null;

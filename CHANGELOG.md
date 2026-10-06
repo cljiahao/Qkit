@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- Raised the `sharp` override to `>=0.35.5` for GHSA-wq5f-xc86-pv6w, a
+  high-severity vulnerability in its librsvg dependency. It reaches production
+  through `next`'s optional `sharp` peer, and it was failing
+  `pnpm audit --prod --audit-level=high` on every PR.
+
+### Fixed
+
+- The vendor order board loaded again. `/dashboard` threw
+  `ReferenceError: Cannot access 'cupsToday' before initialization` on every
+  request: the booth `.map` that builds `boothViews` reads `cupsToday`, which
+  was declared below it. `tsc` does not catch that, since the read is inside a
+  closure rather than in the same scope, so it only showed up as a 500 in the
+  Vercel runtime log and a minified React error in the browser. The cup counts
+  are now read before the views that use them.
+
 ### Added
 
 - A booth can stop taking orders after a set number of cups each day
