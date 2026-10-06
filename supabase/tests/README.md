@@ -112,6 +112,12 @@ from the root `AGENTS.md` ("RLS isolation: `supabase/tests/rls.test.sql` via
 `../migrations/`. Independent of the Next.js app and the Vitest/Playwright
 suites — it tests the database layer in isolation.
 
+It also covers the non-RLS database rules that app code cannot be trusted to
+enforce, currently the `orders_daily_cup_cap` trigger from `0094`: an order
+within the cap, one that would cross it, one that exactly fills it, cups
+counted rather than orders, a cancelled order releasing its cups, and a booth
+with no cap staying unlimited.
+
 ## Parent
 
 [supabase](../README.md)

@@ -389,6 +389,44 @@ describe("RealtimeOrderBoard passed-over orders", () => {
   });
 });
 
+describe("RealtimeOrderBoard cup cap counter", () => {
+  it("shows cups served against the booth's cap", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={[{ ...BOOTHS[0], daily_cup_cap: 200, cups_today: 132 }]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText("132/200 cups")).toBeInTheDocument();
+  });
+
+  it("shows nothing for a booth with no cap", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText(/cups$/)).not.toBeInTheDocument();
+  });
+
+  it("warns inside the last tenth of the cap, so staff can tell the queue", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={[{ ...BOOTHS[0], daily_cup_cap: 200, cups_today: 185 }]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText("185/200 cups")).toHaveClass("text-status-aging");
+  });
+});
+
 describe("RealtimeOrderBoard booth active toggle", () => {
   it("shows a single booth's open/pause toggle inline, no modal needed", () => {
     render(

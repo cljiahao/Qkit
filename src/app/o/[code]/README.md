@@ -105,6 +105,14 @@ the current (non-legacy) customer ordering entry point.
   two-pane sidebar layout has room beside the item list on tablet/desktop;
   the header/hero-image/closed-banner block stays wrapped in its own
   `md:max-w-lg` so it doesn't stretch wide alongside the wider menu below.
+  `loadCupsLeft` calls `booth_cups_left` (migration `0094`) for the booth's
+  remaining cups today, or null when it has no cap: zero makes the page read
+  "Sold out for today" and closes ordering, and anything up to
+  `LOW_STOCK_CUPS` (10) shows an "Only N cups left today" note above
+  `OrderForm`, so nobody builds a cart only to be refused by the
+  `orders_daily_cup_cap` trigger at checkout. Read separately from
+  `get_booth_for_order` to leave that RPC's public-safe shape alone, and
+  degraded to null on any failure, since the trigger is the real limit.
 - `loading.tsx` — animated skeleton (title bar + 5 placeholder menu rows)
   shown while `page.tsx`'s server fetch resolves — the QR-scan hot path,
   where event-site network can be slow.

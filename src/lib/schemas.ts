@@ -446,6 +446,19 @@ export const boothFormSchema = z.object({
   // Vendor-pasted paykit booking id, event-mode booths only. Unvalidated
   // against paykit at write time — just stored. See migration 0083.
   paykit_booking_id: z.string().trim().max(200).nullable().default(null),
+  // Cups the booth will serve in one SGT day; null = no cap. Counted as the
+  // sum of item quantities, not orders, since one order can carry several
+  // cups. Enforced in Postgres by the orders_daily_cup_cap trigger, so this
+  // bound is a form guard, not the limit itself. See migration 0094.
+  // The form sends null for a blank field (same convention as
+  // board_settings.default_prep_minutes), not an empty string.
+  daily_cup_cap: z
+    .number()
+    .int()
+    .positive()
+    .max(100_000)
+    .nullable()
+    .default(null),
 });
 
 /** Parse a JSONB hours value; any malformed shape degrades to null (open). */
