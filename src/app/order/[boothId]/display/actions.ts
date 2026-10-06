@@ -21,6 +21,19 @@ type ActiveOrderRow = {
   priority_bumped_at: string | null;
 };
 
+/**
+ * How long a number stays on the screen after it was marked collected.
+ *
+ * A customer who was not looking at their phone the moment it turned ready had
+ * nothing to check: the number left the screen as soon as it was marked
+ * collected, and board_settings.ready_auto_clear_min marks one collected
+ * whether or not anyone picked it up, so a number could vanish with the cup
+ * still sitting on the shelf. Staff then field "is mine ready?" all service.
+ * The number stays up for this long afterwards, which is its honest state:
+ * still on the shelf, come and take it.
+ */
+const COLLECTED_GRACE_MS = 10 * 60_000;
+
 // Same ordering as sortActiveOrders (@/lib/orders) — a bumped order first
 // (most-recently-bumped leading), then oldest-created first. Reimplemented
 // on this narrower row shape rather than imported, since sortActiveOrders is
@@ -97,9 +110,11 @@ export async function getBoothQueueDisplay(
 
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
-    .select("order_number, status, created_at, priority_bumped_at")
+    .select(
+      "order_number, status, created_at, priority_bumped_at, completed_at",
+    )
     .eq("booth_id", boothId)
-    .not("status", "in", "(completed,cancelled)")
+    .not("status", "eq", "cancelled")
     .or("payment_status.neq.pending,source.neq.qr");
   if (ordersError) {
     console.error(
@@ -109,12 +124,23 @@ export async function getBoothQueueDisplay(
     return null;
   }
 
-  const nonNullOrders = (orders ?? []).filter(
-    (o): o is typeof o & { order_number: string } => o.order_number != null,
-  );
+  // A collected order keeps its place on the screen for COLLECTED_GRACE_MS,
+  // shown as ready, which is what it still is from the customer's side: the cup
+  // is on the shelf. Past that it drops off, so the screen does not fill up
+  // with a whole service's numbers.
+  const cutoff = Date.now() - COLLECTED_GRACE_MS;
+  const nonNullOrders = (orders ?? [])
+    .filter(
+      (o): o is typeof o & { order_number: string } => o.order_number != null,
+    )
+    .filter((o) => {
+      if (o.status !== "completed") return true;
+      const at = o.completed_at == null ? NaN : Date.parse(o.completed_at);
+      return Number.isNaN(at) ? false : at >= cutoff;
+    });
   return sortForDisplay(nonNullOrders).map((o) => ({
     orderNumber: o.order_number,
     displayNumber: displayOrderNumber(o.order_number, baseline),
-    status: o.status,
+    status: o.status === "completed" ? "ready" : o.status,
   }));
 }
