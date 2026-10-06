@@ -22,6 +22,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   display" and says in its tooltip that a spare phone or tablet works as the
   second screen, which is the answer when a laptop will not extend onto a
   monitor.
+- Order cards show every customisation without a tap. Options were collapsed to
+  one truncated line behind a "Show options" button, so whoever writes the order
+  onto a cup paid one tap per order, over a hundred across a service, for text
+  the card had room to print. They now start shown and the toggle folds them
+  away instead. The customer name and item names wrap rather than truncate: a
+  cut-off name is what staff write on the cup and call out.
+- On a phone the board offers a switch between Incoming and Accepted, each with
+  its count. Stacked on a narrow screen, Accepted sat under however many
+  Incoming cards there were, so staff accepted an order on the board, could not
+  find it on their phone, and read that as the two devices being out of sync.
+  The tablet and desktop two-column layout is unchanged.
+
+### Added
+
+- An order card carries a "Passed over" badge when a later order from the same
+  booth is already ready or collected (`overtakenOrderIds` in
+  `src/lib/orders.ts`). A barista calls a number across a noisy counter, nobody
+  hears it, and the order is never marked while later ones are: the customer
+  waits on a screen that never changes, and nothing on the board said so. A
+  badge rather than a third column, since counter space is tight, and the card
+  colours staff already read are untouched.
 
 ### Security
 

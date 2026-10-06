@@ -98,9 +98,18 @@ prompt, metric })`: compact rating widget posting to
   optimization.
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
-- `order-card.tsx` — `OrderCard({ order, displayNumber, boothName, agingMin,
+- `order-card.tsx` — `OrderCard({ order, displayNumber, overtaken, boothName, agingMin,
 overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs, selectable,
-selected, onToggleSelect })`: the
+selected, onToggleSelect })`. Item options start expanded, not collapsed behind
+  "Show options": whoever writes the order onto a cup needs every
+  customisation, and a collapsed card cost one tap per order, over a hundred in
+  a service. The toggle remains, for a vendor scanning numbers rather than
+  making drinks. The customer name and item names wrap rather than truncate,
+  since a cut-off name is what gets written on the cup and called out. With
+  `overtaken` (from `overtakenOrderIds` in `@/lib/orders`, set by the board) the
+  card carries a "Passed over" badge: a later order from the same booth is
+  already out, so this one was probably finished without anyone marking it. The
+  rest: the
   vendor dashboard's live order ticket — status/payment badges (plus a
   "Print failed" badge, `PrintBadge`, when `order.print_status === "failed"`
   — silent for `queued`/`sent`/`printed`/`not_required`, set via printkit's
