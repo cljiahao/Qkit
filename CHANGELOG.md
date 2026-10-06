@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- Raised the `sharp` override to `>=0.35.5` for GHSA-wq5f-xc86-pv6w, a
+  high-severity vulnerability in its librsvg dependency. It reaches production
+  through `next`'s optional `sharp` peer, and it was failing
+  `pnpm audit --prod --audit-level=high` on every PR.
+
 ### Fixed
 
 - The vendor order board loaded again. `/dashboard` threw
