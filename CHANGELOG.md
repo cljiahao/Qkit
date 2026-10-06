@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- The board's own daily-number baseline now counts only orders placed today,
+  the same SGT window the server-side query uses. An order still in progress
+  from an earlier day became the baseline and rebased itself to `#001`, while
+  the customer's status page, the TV queue display and the printed label all
+  still showed its permanent number, since none of them can rebase an order
+  that predates today's first. Seen on production: the board read `#001` for an
+  order the queue display read `002`.
+
 ### Changed
 
 - Order cards show every customisation without a tap. Options were collapsed to

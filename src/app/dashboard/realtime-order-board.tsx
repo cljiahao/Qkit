@@ -41,6 +41,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
+import { sgtStartOfDayIso } from "@/lib/tz";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
 import {
@@ -557,8 +558,14 @@ export function RealtimeOrderBoard({
   const seenFirstNumbers = useMemo(() => {
     const lowest: Record<string, string> = {};
     if (!boardSettings.daily_order_number_reset) return lowest;
+    // Only today's orders count, the same SGT window the server query uses. An
+    // order still in progress from an earlier day would otherwise become the
+    // baseline and rebase itself to #001, while the customer's status page, the
+    // TV display and the printed label all still show its permanent number.
+    const dayStart = Date.parse(sgtStartOfDayIso());
     for (const o of orders) {
       if (o.order_number == null) continue;
+      if (Date.parse(o.created_at) < dayStart) continue;
       const seen = lowest[o.booth_id];
       if (seen == null || Number(o.order_number) < Number(seen)) {
         lowest[o.booth_id] = o.order_number;
