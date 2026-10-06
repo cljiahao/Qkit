@@ -25,6 +25,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- Pinned `source-map-js` to `>=1.2.2` for GHSA-68fv-2mgg-jv7q, a high-severity
+  event-loop denial of service through indexed source-map section offsets. It
+  reaches production through `next` > `postcss`. Range-scoped in
+  `pnpm-workspace.yaml` like the other force-patched transitives, so it clears
+  itself once `postcss` ships the patched version.
+
+### Security
+
 - Bumped `next` 16.3.4 to 16.3.8 for GHSA-vcvr-r3jv-pc5j, a critical remote
   code execution in `next/og`'s `ImageResponse` affecting `>=16.2.0 <16.3.6`.
   qkit renders its icons through `ImageResponse` (`src/app/apple-icon.tsx`,
