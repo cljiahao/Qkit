@@ -132,6 +132,66 @@ describe("getBoothQueueDisplay", () => {
     ]);
   });
 
+  it("keeps a just-collected number on the screen, shown as ready", async () => {
+    // ready_auto_clear_min marks an order collected whether or not anyone
+    // picked it up, so dropping it immediately can blank a number while the cup
+    // is still on the shelf.
+    const active = [
+      {
+        order_number: "0001",
+        status: "completed",
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+        completed_at: new Date(Date.now() - 60_000).toISOString(),
+      },
+    ];
+    fromMock
+      .mockReturnValueOnce(chain({ data: { vendor_id: VENDOR }, error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }));
+
+    const res = await getBoothQueueDisplay(BOOTH);
+    expect(res).toEqual([
+      { orderNumber: "0001", displayNumber: "0001", status: "ready" },
+    ]);
+  });
+
+  it("drops a collected number once its grace window has passed", async () => {
+    const active = [
+      {
+        order_number: "0001",
+        status: "completed",
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+        completed_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+      },
+    ];
+    fromMock
+      .mockReturnValueOnce(chain({ data: { vendor_id: VENDOR }, error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }));
+
+    expect(await getBoothQueueDisplay(BOOTH)).toEqual([]);
+  });
+
+  it("drops a collected order with no completed_at rather than pinning it up", async () => {
+    const active = [
+      {
+        order_number: "0001",
+        status: "completed",
+        created_at: "2026-06-12T10:00:00Z",
+        priority_bumped_at: null,
+        completed_at: null,
+      },
+    ];
+    fromMock
+      .mockReturnValueOnce(chain({ data: { vendor_id: VENDOR }, error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }));
+
+    expect(await getBoothQueueDisplay(BOOTH)).toEqual([]);
+  });
+
   it("puts a priority-bumped order first even if it's newer", async () => {
     const active = [
       {

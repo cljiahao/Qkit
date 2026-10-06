@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -40,10 +41,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
+import { sgtStartOfDayIso } from "@/lib/tz";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
 import {
   displayOrderNumber,
+  overtakenOrderIds,
   isTerminal,
   sortActiveOrders,
   type AgeSortOrder,
@@ -80,12 +83,17 @@ interface Props {
   loadError?: boolean;
   // Each booth's first order_number of the SGT day, keyed by booth id — only
   // populated (by the server page) when boardSettings.daily_order_number_reset
-  // is on; empty otherwise, which naturally makes displayOrderNumber fall
-  // back to each order's real, permanent number.
+  // is on. A booth is missing from it when it had no order yet at page load;
+  // the board then falls back to the first number it sees live (see
+  // seenFirstNumbers). With the setting off the map stays empty and no fallback
+  // is computed, so every card shows its real, permanent number.
   dailyOrderNumberBaselines?: Record<string, string>;
 }
 
 type BoothFilter = "all" | string;
+
+// Which of the two board sections a phone-width screen is showing.
+type PhoneSection = "incoming" | "accepted";
 
 // One board column (Incoming or Accepted). `solo` means the other column is
 // empty — spans both grid tracks and gets the fuller card-grid breakpoints,
@@ -95,16 +103,27 @@ function OrderSection({
   orders,
   solo,
   showHeader,
+  hiddenOnPhone = false,
   renderCard,
 }: {
   label: string;
   orders: BoardOrder[];
   solo: boolean;
   showHeader: boolean;
+  // Below `sm` the two sections share one narrow column, so only the one the
+  // SectionSwitcher has selected is shown. Hidden with a class rather than by
+  // not rendering, so the same markup serves both layouts and nothing depends
+  // on measuring the viewport.
+  hiddenOnPhone?: boolean;
   renderCard: (order: BoardOrder) => ReactNode;
 }) {
   return (
-    <section className={solo ? "sm:col-span-2" : undefined}>
+    <section
+      className={cn(
+        solo && "sm:col-span-2",
+        hiddenOnPhone && "hidden sm:block",
+      )}
+    >
       {showHeader && (
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {label} ({orders.length})
@@ -121,6 +140,58 @@ function OrderSection({
         {orders.map(renderCard)}
       </div>
     </section>
+  );
+}
+
+/**
+ * Phone-only switch between Incoming and Accepted.
+ *
+ * Stacked on a narrow screen, Accepted sits under however many Incoming cards
+ * there are, which during a rush is well past the fold: staff accepted an order
+ * on the board, could not find it on their phone, and read that as the two
+ * devices being out of sync (Kessie's AAR, issue #3). Each side carries its
+ * count, so neither can look empty, and the tablet/desktop two-column layout is
+ * untouched.
+ */
+function SectionSwitcher({
+  value,
+  onChange,
+  incomingCount,
+  acceptedCount,
+}: {
+  value: PhoneSection;
+  onChange: (next: PhoneSection) => void;
+  incomingCount: number;
+  acceptedCount: number;
+}) {
+  const tabs: { key: PhoneSection; label: string; count: number }[] = [
+    { key: "incoming", label: "Incoming", count: incomingCount },
+    { key: "accepted", label: "Accepted", count: acceptedCount },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Which orders to show"
+      className="mb-5 flex gap-1 rounded-full border border-border bg-card p-1 sm:hidden"
+    >
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          role="tab"
+          aria-selected={value === tab.key}
+          onClick={() => onChange(tab.key)}
+          className={cn(
+            "flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+            value === tab.key
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground",
+          )}
+        >
+          {tab.label} ({tab.count})
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -364,6 +435,7 @@ export function RealtimeOrderBoard({
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
   const [filter, setFilter] = useState<BoothFilter>("all");
   const [sortOrder, setSortOrder] = useState<AgeSortOrder>("earliest");
+  const [phoneSection, setPhoneSection] = useState<PhoneSection>("incoming");
   // Optimistic is_active overrides, keyed by booth id — instant toggle
   // feedback ahead of the server round-trip/router.refresh(). Deliberately
   // keyed on the FULL `booths` prop, not visibleBooths: a paused booth with
@@ -467,6 +539,41 @@ export function RealtimeOrderBoard({
     handleNewOrder,
   );
 
+  // dailyOrderNumberBaselines is each booth's first order_number of the SGT
+  // day, read once by the server page. It has no entry for a booth that had no
+  // order yet when the board was opened, which is the normal case at an event:
+  // staff open the board while setting up. Fall back to the lowest
+  // order_number this board has seen for the booth, so that window is covered
+  // too. Without it the whole service runs on permanent numbers (#0847) while
+  // the customer's status page, the TV queue display and the printed label each
+  // recompute the daily rank (#001) live per request, and staff call a number
+  // no customer is holding.
+  // Derived from the full `orders` list, not just the cards on screen: a
+  // terminal or hidden pending-payment order still counts towards the day's
+  // first number, which is what the server-side query counts too. The list is
+  // append-only in practice (useRealtimeOrders merges rather than replaces, and
+  // terminal orders are filtered at render), so this does not drift upwards as
+  // the day's early orders clear. A realtime DELETE of the day's first order
+  // would move it, which no code path in qkit does.
+  const seenFirstNumbers = useMemo(() => {
+    const lowest: Record<string, string> = {};
+    if (!boardSettings.daily_order_number_reset) return lowest;
+    // Only today's orders count, the same SGT window the server query uses. An
+    // order still in progress from an earlier day would otherwise become the
+    // baseline and rebase itself to #001, while the customer's status page, the
+    // TV display and the printed label all still show its permanent number.
+    const dayStart = Date.parse(sgtStartOfDayIso());
+    for (const o of orders) {
+      if (o.order_number == null) continue;
+      if (Date.parse(o.created_at) < dayStart) continue;
+      const seen = lowest[o.booth_id];
+      if (seen == null || Number(o.order_number) < Number(seen)) {
+        lowest[o.booth_id] = o.order_number;
+      }
+    }
+    return lowest;
+  }, [orders, boardSettings.daily_order_number_reset]);
+
   // Auto-clear sweep for stale 'ready' orders (board_settings.
   // ready_auto_clear_min) — a plain periodic tick, not tied to any local
   // state. The board's own realtime channel (useRealtimeOrders above)
@@ -498,6 +605,13 @@ export function RealtimeOrderBoard({
     ),
     sortOrder,
   );
+  // Ids of orders a later one has already overtaken: still in progress while
+  // something ordered after them is out (see overtakenOrderIds). Computed over
+  // the whole realtime list, not just `active`, so a ready order that has since
+  // been cleared off the board still counts as having overtaken the ones before
+  // it.
+  const overtaken = overtakenOrderIds(orders);
+
   const activeCountFor = (id: string) =>
     active.filter((o) => o.booth_id === id).length;
 
@@ -558,8 +672,11 @@ export function RealtimeOrderBoard({
         order={order}
         displayNumber={displayOrderNumber(
           order.order_number,
-          dailyOrderNumberBaselines[order.booth_id] ?? null,
+          dailyOrderNumberBaselines[order.booth_id] ??
+            seenFirstNumbers[order.booth_id] ??
+            null,
         )}
+        overtaken={overtaken.has(order.id)}
         boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
         agingMin={boardSettings.aging_min}
         overdueMin={boardSettings.overdue_min}
@@ -828,26 +945,42 @@ export function RealtimeOrderBoard({
           </p>
         </Ticket>
       ) : (
-        <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-2">
-          {incoming.length > 0 && (
-            <OrderSection
-              label="Incoming"
-              orders={incoming}
-              solo={accepted.length === 0}
-              showHeader
-              renderCard={renderCard}
+        <>
+          {incoming.length > 0 && accepted.length > 0 && (
+            <SectionSwitcher
+              value={phoneSection}
+              onChange={setPhoneSection}
+              incomingCount={incoming.length}
+              acceptedCount={accepted.length}
             />
           )}
-          {accepted.length > 0 && (
-            <OrderSection
-              label="Accepted"
-              orders={accepted}
-              solo={incoming.length === 0}
-              showHeader={incoming.length > 0}
-              renderCard={renderCard}
-            />
-          )}
-        </div>
+          <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-2">
+            {incoming.length > 0 && (
+              <OrderSection
+                label="Incoming"
+                orders={incoming}
+                solo={accepted.length === 0}
+                showHeader
+                hiddenOnPhone={
+                  accepted.length > 0 && phoneSection !== "incoming"
+                }
+                renderCard={renderCard}
+              />
+            )}
+            {accepted.length > 0 && (
+              <OrderSection
+                label="Accepted"
+                orders={accepted}
+                solo={incoming.length === 0}
+                showHeader={incoming.length > 0}
+                hiddenOnPhone={
+                  incoming.length > 0 && phoneSection !== "accepted"
+                }
+                renderCard={renderCard}
+              />
+            )}
+          </div>
+        </>
       )}
 
       <WalkupOrderDialog

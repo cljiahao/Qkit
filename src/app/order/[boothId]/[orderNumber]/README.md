@@ -93,7 +93,17 @@ surfaces a loyalty "earn a stamp" link once the order completes.
 - `order-status-poller.dom.test.tsx` — RTL tests covering the poll loop,
   status transitions, the ready-state alert/notification/title-flash paths,
   and the enable-alerts permission flow.
-- `page.tsx` — `OrderStatusPage` (route entry, `revalidate=0`): validates
+- `page.tsx` — `OrderStatusPage` (route entry, `revalidate=0`). `resolveStaleView`
+  (wrapping `isStaleOrderView` in `@/lib/orders`, kept out of the component body
+  because reading the clock during render trips `react-hooks/purity`) flags a
+  view of an order placed more than `STALE_ORDER_VIEW_HOURS` ago: a repeat
+  customer's browser can restore an earlier visit's status URL, and the page
+  then looks live while showing a number the stall is not calling (once the
+  daily rank would be non-positive, `displayOrderNumber` returns the raw
+  permanent `order_number`) for a row the vendor is not working on. Such a view
+  renders an "This is an older order" block with the placed date and a link to
+  `/order/{boothId}`, and skips the `TelegramConnect` offer. It otherwise
+  validates
   `boothId`/`orderNumber`/the `?t=` access token, reads the order + booth in
   parallel via the **service client** (customers are unauthenticated; the
   token match is what authorizes the read, not RLS), distinguishes a real
@@ -301,6 +311,13 @@ bypasses this action.
 (Importing `resizeToWebp` into a server module was only possible at all
 because `@merqo/ui` v0.31.0 dropped its package-wide `"use client"`
 banner; under the banner it resolved to a client-reference stub.)
+
+The header's sub-line says what the page will do ("Keep this page open. It turns
+to Ready when your order is up.") rather than only what to remember. At NCS
+customers queued back up at the counter to ask whether theirs was ready,
+because nothing told them the page changes by itself, and the chime, desktop
+notification and title flash `OrderStatusPoller` already fires only help
+someone who knows to leave it open.
 
 ## Parent
 

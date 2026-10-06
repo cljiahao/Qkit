@@ -38,7 +38,7 @@ linked to directly by `placeOrder`'s result regardless of entry route, unless
 `placeOrder` returns a null `orderNumber` (a payment-required order deferred
 until claim), in which case `OrderForm` redirects to `pay/` instead.
 `display/` is linked to from `src/app/dashboard/booths/booth-list.tsx`'s
-"Open TV display" button, not from anything in the customer order flow.
+"Open the customer queue display" button, not from anything in the customer order flow.
 `pickup/` is set up once per booth at the physical pickup shelf, out of
 band, and calls into `[orderNumber]/collect-actions.ts`. `pay/` redirects to
 `[orderNumber]/` itself, once `claimPayment` succeeds and assigns a number.

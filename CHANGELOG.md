@@ -8,6 +8,91 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The board's own daily-number baseline now counts only orders placed today,
+  the same SGT window the server-side query uses. An order still in progress
+  from an earlier day became the baseline and rebased itself to `#001`, while
+  the customer's status page, the TV queue display and the printed label all
+  still showed its permanent number, since none of them can rebase an order
+  that predates today's first. Seen on production: the board read `#001` for an
+  order the queue display read `002`.
+
+### Changed
+
+- The customer's order page now says what it will do, "Keep this page open. It
+  turns to Ready when your order is up.", instead of only "Remember this number
+  for pickup". The chime, desktop notification and title flash
+  `OrderStatusPoller` already fires only help someone who knows to leave the
+  page open, so customers queued back up at the counter to ask.
+- A collected order keeps its place on the customer queue display for ten
+  minutes, still shown as ready. `board_settings.ready_auto_clear_min` marks an
+  order collected whether or not anyone picked it up, so a number could vanish
+  from the screen while the cup was still on the shelf, leaving a customer who
+  was not watching their phone at that moment with nothing to check.
+- The booth list's queue-display button is labelled "Open the customer queue
+  display" and says in its tooltip that a spare phone or tablet works as the
+  second screen, which is the answer when a laptop will not extend onto a
+  monitor.
+- Order cards show every customisation without a tap. Options were collapsed to
+  one truncated line behind a "Show options" button, so whoever writes the order
+  onto a cup paid one tap per order, over a hundred across a service, for text
+  the card had room to print. They now start shown and the toggle folds them
+  away instead. The customer name and item names wrap rather than truncate: a
+  cut-off name is what staff write on the cup and call out.
+- On a phone the board offers a switch between Incoming and Accepted, each with
+  its count. Stacked on a narrow screen, Accepted sat under however many
+  Incoming cards there were, so staff accepted an order on the board, could not
+  find it on their phone, and read that as the two devices being out of sync.
+  The tablet and desktop two-column layout is unchanged.
+
+### Added
+
+- An order card carries a "Passed over" badge when a later order from the same
+  booth is already ready or collected (`overtakenOrderIds` in
+  `src/lib/orders.ts`). A barista calls a number across a noisy counter, nobody
+  hears it, and the order is never marked while later ones are: the customer
+  waits on a screen that never changes, and nothing on the board said so. A
+  badge rather than a third column, since counter space is tight, and the card
+  colours staff already read are untouched.
+
+### Security
+
+- Pinned `source-map-js` to `>=1.2.2` for GHSA-68fv-2mgg-jv7q, a high-severity
+  event-loop denial of service through indexed source-map section offsets. It
+  reaches production through `next` > `postcss`. Range-scoped in
+  `pnpm-workspace.yaml` like the other force-patched transitives, so it clears
+  itself once `postcss` ships the patched version.
+- Bumped `next` 16.3.4 to 16.3.8 for GHSA-vcvr-r3jv-pc5j, a critical remote
+  code execution in `next/og`'s `ImageResponse` affecting `>=16.2.0 <16.3.6`.
+  qkit renders its icons through `ImageResponse` (`src/app/apple-icon.tsx`,
+  `src/app/icon.tsx`, `src/app/icon-192/route.tsx`,
+  `src/app/icon-512/route.tsx`), so this was reachable rather than theoretical. `eslint-config-next` moved with it to stay in step.
+  `pnpm audit --prod --audit-level=high` had been failing on every PR.
+
+### Fixed
+
+- A customer whose phone reopens an old order-status URL now sees that it is an
+  older order, with the date it was placed and a link to order again, instead of
+  a page that looks live. A repeat customer's browser can restore an earlier
+  visit's URL (history, a restored tab, a home-screen shortcut); the page then
+  showed a big number the stall was not calling, since `displayOrderNumber`
+  returns the raw permanent `order_number` once the daily rank would be
+  non-positive, and a status that would never change, because the order the
+  customer was actually queued for is a different row. The Telegram connect
+  offer is hidden on such a view, which could not have reached them. New
+  `isStaleOrderView` in `src/lib/orders.ts`; `elapsedLabel` also counts in days
+  past two days, rather than reporting an order as "700 hr ago".
+
+- The vendor order board now shows the same per-day order number as every
+  customer-facing surface when it was opened before the day's first order. The
+  daily order-number reset (`board_settings.daily_order_number_reset`, on by
+  default since migration 0067) rebases each order to its rank within the SGT
+  day. The board read that baseline once, server-side, at page load, so a board
+  opened while staff were still setting up had no baseline for the booth and
+  showed permanent numbers (`#0847`) for the whole service, while the customer's
+  status page, the TV queue display and the printed label each recomputed the
+  rank (`#001`) live per request. Staff were calling a number no customer was
+  holding. `RealtimeOrderBoard` now latches the lowest `order_number` it has
+  seen per booth as a fallback baseline when the server had none.
 - Picking a booth banner, menu photo or payment QR and then leaving the form
   without saving no longer leaves the image in storage. These uploaders now
   use `@merqo/ui` v0.32.0's `deferUpload`: a picked image is resized and

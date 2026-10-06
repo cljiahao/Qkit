@@ -277,7 +277,12 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
 - `orders.ts` — order-board core: `BOARD_ORDER_COLUMNS` (explicit column list
   excluding `access_token`), `TERMINAL_STATUSES`/`isTerminal`, `ADVANCE` (legal
   forward-status map + button label), `orderAgeTone`/`elapsedMinutes`/
-  `elapsedLabel`, `buildAdvancePatch` (status transition patch, auto-confirming
+  `elapsedLabel` (minutes, then hours, then days past two days),
+  `overtakenOrderIds(orders)` (ids of in-progress orders that a later order from
+  the same booth has already overtaken, compared on `created_at` and scoped per
+  booth: the board badges these, since an order nobody marked while later ones
+  went out leaves its customer waiting on a screen that never changes),
+  `buildAdvancePatch` (status transition patch, auto-confirming
   payment on completion), `sortActiveOrders` (vendor-board display sort,
   status-agnostic by design — a bumped order leads, then every order by
   `created_at`; takes an `AgeSortOrder`, `"earliest"` default or `"latest"`),
@@ -293,7 +298,13 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   `created_at` relative to a caller-supplied baseline, never a live recount;
   zero-padded to 3 digits like a ticket counter ("003"), growing past that
   rather than truncating; falls back to the real number when there's no
-  baseline), `needsPaymentReview(status, paymentStatus)` (pure: whether a
+  baseline, or when the rank would be non-positive because the order predates
+  the baseline), `isStaleOrderView(createdAt, nowMs)` + `STALE_ORDER_VIEW_HOURS`
+  (whether an order-status page is being viewed more than 12 hours after the
+  order was placed, which is how a browser-restored URL from a repeat
+  customer's earlier visit shows up; 12 hours rather than the SGT day boundary
+  so a late-night order checked after midnight is not called stale),
+  `needsPaymentReview(status, paymentStatus)` (pure: whether a
   still-`pending` order with an outstanding payment claim needs
   `OrderCard`'s merged "Mark paid & start" review action instead of separate
   confirm-payment/advance buttons — keyed on order state, not `order.source`,
