@@ -40,10 +40,16 @@ import {
   revertPaymentAndStart,
   restoreAutoCompleted,
 } from "@/app/dashboard/order-actions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { sgtClock, shortDateTime } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import {
+  AlertTriangle,
   Banknote,
   ChevronDown,
   Clock,
@@ -226,6 +232,7 @@ function shouldUnconfirmOnUndo(pending: PendingUndo): boolean {
 export function OrderCard({
   order,
   displayNumber,
+  overtaken = false,
   boothName,
   agingMin,
   overdueMin,
@@ -243,6 +250,10 @@ export function OrderCard({
   // order_number when omitted (e.g. the completed-orders history list, which
   // deliberately never gets one; see its own README for why).
   displayNumber?: string;
+  // A later order from the same booth is already ready or collected, so this
+  // one may have been finished without anyone marking it (see
+  // overtakenOrderIds in @/lib/orders).
+  overtaken?: boolean;
   boothName?: string;
   // Vendor-configurable board_settings thresholds (see /dashboard/settings).
   // Fall through to orderAgeTone's own defaults when not supplied.
@@ -301,7 +312,12 @@ export function OrderCard({
   const [bumpedLocally, setBumpedLocally] = useState(false);
   const bumped = bumpedLocally || order.priority_bumped_at != null;
   const { pending: updating, run } = useAsyncAction();
-  const [expanded, setExpanded] = useState(false);
+  // Options start shown. Whoever is writing the order onto a cup needs every
+  // customisation to hand, and a collapsed card made that one tap per order:
+  // over a hundred taps across a service, for text the card had the room to
+  // print all along. The toggle stays, so a vendor scanning for numbers rather
+  // than making drinks can still fold them away.
+  const [expanded, setExpanded] = useState(true);
   const [proofExpanded, setProofExpanded] = useState(false);
 
   // A just-tapped advanceStatus sits here until the undo window closes (timer
@@ -608,9 +624,30 @@ export function OrderCard({
                 />
               )}
             </div>
-            <p className="truncate text-sm text-muted-foreground">
+            {/* Wrapped, not truncated: this name is what staff write on the
+                cup and call out, so a cut-off one is a mix-up waiting to
+                happen. */}
+            <p className="text-sm break-words text-muted-foreground">
               {order.customer_name}
             </p>
+            {/* A later order is already out, so this one was probably finished
+                without anyone marking it. Deliberately a badge on the card
+                rather than a third board column: counter space is tight, and
+                the card colours staff already read stay as they are. */}
+            {overtaken && !closed && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-status-aging/40 bg-status-aging/10 px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-status-aging uppercase">
+                    <AlertTriangle className="size-3" aria-hidden="true" />
+                    Passed over
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  A later order is already ready. Check whether this one is done
+                  and nobody marked it.
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <OrderStatusBadge status={status} />
@@ -633,7 +670,7 @@ export function OrderCard({
           {items.map((item, i) => (
             <div key={i} className="text-sm">
               <div className="flex justify-between gap-2">
-                <span className="truncate">
+                <span className="min-w-0 break-words">
                   <span className="font-mono text-muted-foreground">
                     {item.quantity}×
                   </span>{" "}
@@ -662,7 +699,7 @@ export function OrderCard({
                     ))}
                   </ul>
                 ) : (
-                  <p className="truncate pl-5 text-xs text-muted-foreground">
+                  <p className="pl-5 text-xs break-words text-muted-foreground">
                     {formatOptions(item.options)}
                   </p>
                 ))}

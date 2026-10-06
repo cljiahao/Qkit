@@ -45,6 +45,7 @@ import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
 import {
   displayOrderNumber,
+  overtakenOrderIds,
   isTerminal,
   sortActiveOrders,
   type AgeSortOrder,
@@ -90,6 +91,9 @@ interface Props {
 
 type BoothFilter = "all" | string;
 
+// Which of the two board sections a phone-width screen is showing.
+type PhoneSection = "incoming" | "accepted";
+
 // One board column (Incoming or Accepted). `solo` means the other column is
 // empty — spans both grid tracks and gets the fuller card-grid breakpoints,
 // since it then has the whole board's width to itself.
@@ -98,16 +102,27 @@ function OrderSection({
   orders,
   solo,
   showHeader,
+  hiddenOnPhone = false,
   renderCard,
 }: {
   label: string;
   orders: BoardOrder[];
   solo: boolean;
   showHeader: boolean;
+  // Below `sm` the two sections share one narrow column, so only the one the
+  // SectionSwitcher has selected is shown. Hidden with a class rather than by
+  // not rendering, so the same markup serves both layouts and nothing depends
+  // on measuring the viewport.
+  hiddenOnPhone?: boolean;
   renderCard: (order: BoardOrder) => ReactNode;
 }) {
   return (
-    <section className={solo ? "sm:col-span-2" : undefined}>
+    <section
+      className={cn(
+        solo && "sm:col-span-2",
+        hiddenOnPhone && "hidden sm:block",
+      )}
+    >
       {showHeader && (
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {label} ({orders.length})
@@ -124,6 +139,58 @@ function OrderSection({
         {orders.map(renderCard)}
       </div>
     </section>
+  );
+}
+
+/**
+ * Phone-only switch between Incoming and Accepted.
+ *
+ * Stacked on a narrow screen, Accepted sits under however many Incoming cards
+ * there are, which during a rush is well past the fold: staff accepted an order
+ * on the board, could not find it on their phone, and read that as the two
+ * devices being out of sync (Kessie's AAR, issue #3). Each side carries its
+ * count, so neither can look empty, and the tablet/desktop two-column layout is
+ * untouched.
+ */
+function SectionSwitcher({
+  value,
+  onChange,
+  incomingCount,
+  acceptedCount,
+}: {
+  value: PhoneSection;
+  onChange: (next: PhoneSection) => void;
+  incomingCount: number;
+  acceptedCount: number;
+}) {
+  const tabs: { key: PhoneSection; label: string; count: number }[] = [
+    { key: "incoming", label: "Incoming", count: incomingCount },
+    { key: "accepted", label: "Accepted", count: acceptedCount },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Which orders to show"
+      className="mb-5 flex gap-1 rounded-full border border-border bg-card p-1 sm:hidden"
+    >
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          role="tab"
+          aria-selected={value === tab.key}
+          onClick={() => onChange(tab.key)}
+          className={cn(
+            "flex-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+            value === tab.key
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground",
+          )}
+        >
+          {tab.label} ({tab.count})
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -367,6 +434,7 @@ export function RealtimeOrderBoard({
   const boothName = new Map(booths.map((b) => [b.id, b.name]));
   const [filter, setFilter] = useState<BoothFilter>("all");
   const [sortOrder, setSortOrder] = useState<AgeSortOrder>("earliest");
+  const [phoneSection, setPhoneSection] = useState<PhoneSection>("incoming");
   // Optimistic is_active overrides, keyed by booth id — instant toggle
   // feedback ahead of the server round-trip/router.refresh(). Deliberately
   // keyed on the FULL `booths` prop, not visibleBooths: a paused booth with
@@ -530,6 +598,13 @@ export function RealtimeOrderBoard({
     ),
     sortOrder,
   );
+  // Ids of orders a later one has already overtaken: still in progress while
+  // something ordered after them is out (see overtakenOrderIds). Computed over
+  // the whole realtime list, not just `active`, so a ready order that has since
+  // been cleared off the board still counts as having overtaken the ones before
+  // it.
+  const overtaken = overtakenOrderIds(orders);
+
   const activeCountFor = (id: string) =>
     active.filter((o) => o.booth_id === id).length;
 
@@ -594,6 +669,7 @@ export function RealtimeOrderBoard({
             seenFirstNumbers[order.booth_id] ??
             null,
         )}
+        overtaken={overtaken.has(order.id)}
         boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
         agingMin={boardSettings.aging_min}
         overdueMin={boardSettings.overdue_min}
@@ -862,26 +938,42 @@ export function RealtimeOrderBoard({
           </p>
         </Ticket>
       ) : (
-        <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-2">
-          {incoming.length > 0 && (
-            <OrderSection
-              label="Incoming"
-              orders={incoming}
-              solo={accepted.length === 0}
-              showHeader
-              renderCard={renderCard}
+        <>
+          {incoming.length > 0 && accepted.length > 0 && (
+            <SectionSwitcher
+              value={phoneSection}
+              onChange={setPhoneSection}
+              incomingCount={incoming.length}
+              acceptedCount={accepted.length}
             />
           )}
-          {accepted.length > 0 && (
-            <OrderSection
-              label="Accepted"
-              orders={accepted}
-              solo={incoming.length === 0}
-              showHeader={incoming.length > 0}
-              renderCard={renderCard}
-            />
-          )}
-        </div>
+          <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-2">
+            {incoming.length > 0 && (
+              <OrderSection
+                label="Incoming"
+                orders={incoming}
+                solo={accepted.length === 0}
+                showHeader
+                hiddenOnPhone={
+                  accepted.length > 0 && phoneSection !== "incoming"
+                }
+                renderCard={renderCard}
+              />
+            )}
+            {accepted.length > 0 && (
+              <OrderSection
+                label="Accepted"
+                orders={accepted}
+                solo={incoming.length === 0}
+                showHeader={incoming.length > 0}
+                hiddenOnPhone={
+                  incoming.length > 0 && phoneSection !== "accepted"
+                }
+                renderCard={renderCard}
+              />
+            )}
+          </div>
+        </>
       )}
 
       <WalkupOrderDialog

@@ -13,6 +13,7 @@ import {
   estimateRangeLabel,
   queuePositionLabel,
   displayOrderNumber,
+  overtakenOrderIds,
   isStaleOrderView,
   STALE_ORDER_VIEW_HOURS,
   splitTrailingDigit,
@@ -548,5 +549,68 @@ describe("needsPaymentReview", () => {
   it("is false for a non-pending status regardless of payment status", () => {
     expect(needsPaymentReview("preparing", "claimed")).toBe(false);
     expect(needsPaymentReview("ready", "pending")).toBe(false);
+  });
+});
+
+describe("overtakenOrderIds", () => {
+  function o(id: string, status: OrderStatus, minute: number, boothId = "b1") {
+    return order({
+      id,
+      booth_id: boothId,
+      status,
+      created_at: `2026-10-06T04:${String(minute).padStart(2, "0")}:00Z`,
+    });
+  }
+
+  it("flags an in-progress order that a later one has already passed", () => {
+    const ids = overtakenOrderIds([
+      o("ten", "preparing", 10),
+      o("fifteen", "ready", 15),
+    ]);
+    expect([...ids]).toEqual(["ten"]);
+  });
+
+  it("counts a collected order as having passed the ones before it", () => {
+    const ids = overtakenOrderIds([
+      o("ten", "preparing", 10),
+      o("fifteen", "completed", 15),
+    ]);
+    expect(ids.has("ten")).toBe(true);
+  });
+
+  it("flags nothing while the queue is being served in order", () => {
+    const ids = overtakenOrderIds([
+      o("ten", "ready", 10),
+      o("fifteen", "preparing", 15),
+    ]);
+    expect(ids.size).toBe(0);
+  });
+
+  it("never flags an order that is itself ready, cancelled or collected", () => {
+    const ids = overtakenOrderIds([
+      o("five", "ready", 5),
+      o("six", "cancelled", 6),
+      o("seven", "completed", 7),
+      o("twenty", "ready", 20),
+    ]);
+    expect(ids.size).toBe(0);
+  });
+
+  it("keeps booths separate, since each numbers and serves on its own", () => {
+    const ids = overtakenOrderIds([
+      o("a-ten", "preparing", 10, "b1"),
+      o("b-fifteen", "ready", 15, "b2"),
+    ]);
+    expect(ids.size).toBe(0);
+  });
+
+  it("flags every order behind the newest one that is out", () => {
+    const ids = overtakenOrderIds([
+      o("eight", "pending", 8),
+      o("ten", "preparing", 10),
+      o("twelve", "ready", 12),
+      o("fourteen", "preparing", 14),
+    ]);
+    expect([...ids].sort()).toEqual(["eight", "ten"]);
   });
 });
