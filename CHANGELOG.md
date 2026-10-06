@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The customer's order page now says what it will do, "Keep this page open. It
+  turns to Ready when your order is up.", instead of only "Remember this number
+  for pickup". The chime, desktop notification and title flash
+  `OrderStatusPoller` already fires only help someone who knows to leave the
+  page open, so customers queued back up at the counter to ask.
+- A collected order keeps its place on the customer queue display for ten
+  minutes, still shown as ready. `board_settings.ready_auto_clear_min` marks an
+  order collected whether or not anyone picked it up, so a number could vanish
+  from the screen while the cup was still on the shelf, leaving a customer who
+  was not watching their phone at that moment with nothing to check.
+- The booth list's queue-display button is labelled "Open the customer queue
+  display" and says in its tooltip that a spare phone or tablet works as the
+  second screen, which is the answer when a laptop will not extend onto a
+  monitor.
+
 ### Security
 
 - Pinned `source-map-js` to `>=1.2.2` for GHSA-68fv-2mgg-jv7q, a high-severity

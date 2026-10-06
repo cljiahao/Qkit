@@ -17,7 +17,9 @@ describe("BoothList", () => {
   it("links the TV display button to the booth's public display route in a new tab", () => {
     render(<BoothList booths={[BOOTH]} />);
 
-    const link = screen.getByRole("link", { name: "Open TV display" });
+    const link = screen.getByRole("link", {
+      name: "Open the customer queue display",
+    });
     expect(link).toHaveAttribute("href", "/order/b1/display");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");

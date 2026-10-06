@@ -302,6 +302,13 @@ bypasses this action.
 because `@merqo/ui` v0.31.0 dropped its package-wide `"use client"`
 banner; under the banner it resolved to a client-reference stub.)
 
+The header's sub-line says what the page will do ("Keep this page open. It turns
+to Ready when your order is up.") rather than only what to remember. At NCS
+customers queued back up at the counter to ask whether theirs was ready,
+because nothing told them the page changes by itself, and the chime, desktop
+notification and title flash `OrderStatusPoller` already fires only help
+someone who knows to leave it open.
+
 ## Parent
 
 [[boothId]](../README.md)

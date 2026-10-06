@@ -113,7 +113,8 @@ export function BoothList({ booths }: { booths: BoothRow[] }) {
                   size="sm"
                   variant="outline"
                   className="rounded-lg"
-                  aria-label="Open TV display"
+                  aria-label="Open the customer queue display"
+                  title="Open the customer queue display. It is a normal web page, so a spare phone or tablet works as the second screen when a monitor will not extend."
                 >
                   <Link
                     href={`/order/${booth.id}/display`}

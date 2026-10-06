@@ -248,8 +248,11 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           <p className="mt-3 text-muted-foreground">
             for {order.customer_name}
           </p>
+          {/* Says what will happen, not just what to remember: at NCS every
+              customer came back to the counter to ask whether theirs was
+              ready, because nothing told them the page changes by itself. */}
           <p className="mt-1 text-xs font-medium text-muted-foreground">
-            Remember this number for pickup
+            Keep this page open. It turns to Ready when your order is up.
           </p>
         </header>
 
