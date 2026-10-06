@@ -115,8 +115,39 @@ export function elapsedLabel(elapsedMs: number): string {
   if (min < 1) return "just now";
   if (min < 60) return `${min} min ago`;
   const hrs = Math.floor(min / 60);
+  // Past two days, count days. An order reopened weeks later (see
+  // isStaleOrderView) otherwise reads as "700 hr ago", which a person has to
+  // divide in their head before realising the order is not today's.
+  if (hrs >= 48) {
+    const days = Math.floor(hrs / 24);
+    return `${days} days ago`;
+  }
   const rem = min % 60;
   return rem === 0 ? `${hrs} hr ago` : `${hrs} hr ${rem} min ago`;
+}
+
+/** Hours after which a reopened order-status page counts as a stale view. */
+export const STALE_ORDER_VIEW_HOURS = 12;
+
+/**
+ * Whether an order-status page is being viewed long after the order was
+ * placed. A repeat customer's browser can restore an earlier visit's status
+ * URL (history, a restored tab, a home-screen shortcut), and that page still
+ * looks live: a big number, a status line, a progress bar, for an order the
+ * vendor served weeks ago. The customer then waits for a screen that will
+ * never change, and the vendor has no way to reach them, since the order they
+ * are actually queued for is a different row. The number looks wrong too:
+ * displayOrderNumber returns the raw, permanent order_number whenever the
+ * daily rank would be non-positive, so the page shows a 4-digit number beside
+ * a vendor board counting 001, 002, 003.
+ *
+ * 12 hours rather than "before the start of the SGT day", so an order placed
+ * at 23:50 and checked at 00:10 is not called stale.
+ */
+export function isStaleOrderView(createdAt: string, nowMs: number): boolean {
+  const placed = Date.parse(createdAt);
+  if (Number.isNaN(placed)) return false;
+  return nowMs - placed > STALE_ORDER_VIEW_HOURS * 60 * 60_000;
 }
 
 /**

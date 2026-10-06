@@ -19,8 +19,8 @@ import {
   parseSocialLinks,
   resolveSocialLinks,
 } from "@/lib/schemas";
-import { displayOrderNumber, isTerminal } from "@/lib/orders";
-import { sgtStartOfDayIso } from "@/lib/tz";
+import { displayOrderNumber, isStaleOrderView, isTerminal } from "@/lib/orders";
+import { sgtStartOfDayIso, shortDateTime } from "@/lib/tz";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
@@ -70,6 +70,21 @@ async function loadVendorProfile(
  * here degrades to the real order_number / QR-off rather than breaking the
  * page — same philosophy as loadVendorProfile above.
  */
+/**
+ * A repeat customer's browser can restore an earlier visit's status URL, so
+ * this page can be a live-looking view of an order served weeks ago (see
+ * isStaleOrderView in @/lib/orders). The number shown is then that old order's
+ * permanent one, which will not match the number the vendor is calling, and
+ * marking today's order ready changes nothing on it.
+ *
+ * Kept out of the component body because reading the clock during render is
+ * impure (react-hooks/purity), even in a server component that renders once
+ * per request.
+ */
+function resolveStaleView(createdAt: string): boolean {
+  return isStaleOrderView(createdAt, Date.now());
+}
+
 async function resolveOrderDisplay(
   supabase: Awaited<ReturnType<typeof createServiceClient>>,
   boothId: string,
@@ -224,6 +239,8 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
       ? `${await resolveOrigin()}/order/${boothId}/${orderNumber}?t=${token}`
       : null;
 
+  const staleView = resolveStaleView(order.created_at);
+
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
 
@@ -255,6 +272,28 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             Keep this page open. It turns to Ready when your order is up.
           </p>
         </header>
+
+        {staleView && (
+          <>
+            <div className="perforation" />
+            <div className="px-6 py-5 text-center">
+              <p className="text-sm font-semibold text-foreground">
+                This is an older order
+              </p>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Placed {shortDateTime(order.created_at)}. Your phone reopened
+                it, so this is not a new order and the number above is not the
+                one the stall is calling.
+              </p>
+              <Link
+                href={`/order/${boothId}`}
+                className="mt-3 inline-flex text-xs font-semibold text-primary underline underline-offset-4"
+              >
+                Order again from this stall
+              </Link>
+            </div>
+          </>
+        )}
 
         <div className="perforation" />
 
@@ -292,8 +331,11 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
 
         {/* The connect button only makes sense while the order is still
             waiting — once it's ready/completed/cancelled, there's nothing
-            left to notify about, or the moment already passed. */}
-        {!isTerminal(order.status) &&
+            left to notify about, or the moment already passed. A stale view
+            (staleView) is the same case: that order's moment passed weeks
+            ago, and the one the customer is waiting for is a different row. */}
+        {!staleView &&
+          !isTerminal(order.status) &&
           order.status !== "ready" &&
           booth?.vendor_id && (
             <TelegramConnect orderId={order.id} vendorId={booth.vendor_id} />
