@@ -27,10 +27,10 @@ type ActiveOrderRow = {
  * A customer who was not looking at their phone the moment it turned ready had
  * nothing to check: the number left the screen as soon as it was marked
  * collected, and board_settings.ready_auto_clear_min marks one collected
- * whether or not anyone picked it up, so a number could vanish while the cup
- * was still on the shelf. Staff then field "is mine ready?" all service. The
- * number stays up for this long after that, which is the honest state: still
- * on the shelf, come and take it.
+ * whether or not anyone picked it up, so a number could vanish with the cup
+ * still sitting on the shelf. Staff then field "is mine ready?" all service.
+ * The number stays up for this long afterwards, which is its honest state:
+ * still on the shelf, come and take it.
  */
 const COLLECTED_GRACE_MS = 10 * 60_000;
 
