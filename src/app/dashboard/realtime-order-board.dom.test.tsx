@@ -91,10 +91,10 @@ function byOrderNumber(pattern: string | RegExp) {
 const ORDER_NUMBER_OPTS = { selector: "p" };
 
 // DEFAULT_BOARD_SETTINGS has daily_order_number_reset on (migration 0067 turned
-// it on vendor-wide), so any test rendering those settings sees per-day ranks
-// (#001) rather than the raw order_number (#0001), the same as the customer's
-// status page and the printed label. Tests that care about the raw number pass
-// the setting off explicitly.
+// it on vendor-wide), but the board only rebases orders placed today, matching
+// the server-side baseline query. order()'s default created_at is an earlier
+// day, so those cards show the raw order_number (#0001); the daily-reset tests
+// below pass today's timestamp, or a baseline, to see a rank (#001).
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -128,14 +128,14 @@ describe("RealtimeOrderBoard sort toggle", () => {
 
     const numbersInOrder = () =>
       screen
-        .getAllByText(byOrderNumber(/^#00[12]$/), ORDER_NUMBER_OPTS)
+        .getAllByText(byOrderNumber(/^#000[12]$/), ORDER_NUMBER_OPTS)
         .map((el) => el.textContent);
 
-    expect(numbersInOrder()).toEqual(["#001", "#002"]);
+    expect(numbersInOrder()).toEqual(["#0001", "#0002"]);
 
     await user.click(screen.getByRole("button", { name: "Latest" }));
 
-    expect(numbersInOrder()).toEqual(["#002", "#001"]);
+    expect(numbersInOrder()).toEqual(["#0002", "#0001"]);
   });
 });
 
@@ -161,6 +161,8 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
     ).toBeInTheDocument();
   });
 
+  const TODAY = new Date().toISOString();
+
   it("derives its own baseline when the board was opened before the day's first order", () => {
     // The server page has no baseline to send for a booth with no order yet
     // (staff open the board while setting up, which is the normal case at an
@@ -170,9 +172,9 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
       <RealtimeOrderBoard
         booths={BOOTHS}
         initialOrders={[
-          order({ id: "b", order_number: "0848" }),
-          order({ id: "a", order_number: "0847" }),
-          order({ id: "none", order_number: null }),
+          order({ id: "b", order_number: "0848", created_at: TODAY }),
+          order({ id: "a", order_number: "0847", created_at: TODAY }),
+          order({ id: "none", order_number: null, created_at: TODAY }),
         ]}
         boardSettings={{
           ...DEFAULT_BOARD_SETTINGS,
@@ -192,6 +194,35 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("ignores an order carried over from an earlier day", () => {
+    // Its permanent number is what the customer's status page, the TV display
+    // and the printed label all show for it, since none of them can rebase an
+    // order that predates today's first.
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({
+            id: "yesterday",
+            order_number: "0002",
+            created_at: "2026-06-12T04:00:00Z",
+          }),
+        ]}
+        boardSettings={{
+          ...DEFAULT_BOARD_SETTINGS,
+          daily_order_number_reset: true,
+        }}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#001"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
+  });
+
   it("derives a baseline per booth, not one across booths", () => {
     render(
       <RealtimeOrderBoard
@@ -200,8 +231,18 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
           { id: "b2", name: "Teh Tarik Stand", is_active: true, open: true },
         ]}
         initialOrders={[
-          order({ id: "a", booth_id: "b1", order_number: "0847" }),
-          order({ id: "b", booth_id: "b2", order_number: "0901" }),
+          order({
+            id: "a",
+            booth_id: "b1",
+            order_number: "0847",
+            created_at: TODAY,
+          }),
+          order({
+            id: "b",
+            booth_id: "b2",
+            order_number: "0901",
+            created_at: TODAY,
+          }),
         ]}
         boardSettings={{
           ...DEFAULT_BOARD_SETTINGS,
@@ -234,6 +275,117 @@ describe("RealtimeOrderBoard daily order-number reset", () => {
     expect(
       screen.queryByText(byOrderNumber("#0847"), ORDER_NUMBER_OPTS),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("RealtimeOrderBoard phone section switcher", () => {
+  function twoSections() {
+    return [
+      order({ id: "in", order_number: "0020", status: "pending" }),
+      order({ id: "acc", order_number: "0021", status: "preparing" }),
+    ];
+  }
+
+  it("offers both sections with their counts, so neither can be missed", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={twoSections()}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByRole("tab", { name: "Incoming (1)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "Accepted (1)" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("switches which section a phone shows", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={twoSections()}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(screen.getByRole("tab", { name: "Accepted (1)" }));
+    expect(screen.getByRole("tab", { name: "Accepted (1)" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("does not offer a switch when only one section has orders", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[order({ id: "in", status: "pending" })]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+});
+
+describe("RealtimeOrderBoard passed-over orders", () => {
+  // A barista calls a number across a noisy counter, nobody marks it, and a
+  // later order goes out first (Kessie's AAR, issue #5).
+  it("flags an order a later one has already passed", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({
+            id: "ten",
+            order_number: "0010",
+            status: "preparing",
+            created_at: "2026-10-06T04:10:00Z",
+          }),
+          order({
+            id: "fifteen",
+            order_number: "0015",
+            status: "ready",
+            created_at: "2026-10-06T04:15:00Z",
+          }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getAllByText("Passed over")).toHaveLength(1);
+  });
+
+  it("flags nothing while the queue is served in order", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({
+            id: "ten",
+            order_number: "0010",
+            status: "ready",
+            created_at: "2026-10-06T04:10:00Z",
+          }),
+          order({
+            id: "fifteen",
+            order_number: "0015",
+            status: "preparing",
+            created_at: "2026-10-06T04:15:00Z",
+          }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText("Passed over")).not.toBeInTheDocument();
   });
 });
 
@@ -587,10 +739,10 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
 
     await user.click(screen.getByRole("button", { name: /^select$/i }));
     await user.click(
-      screen.getByRole("checkbox", { name: /select order #001/i }),
+      screen.getByRole("checkbox", { name: /select order #0001/i }),
     );
     await user.click(
-      screen.getByRole("checkbox", { name: /select order #002/i }),
+      screen.getByRole("checkbox", { name: /select order #0002/i }),
     );
 
     const markReadyButton = screen.getByRole("button", {
@@ -620,8 +772,14 @@ describe("RealtimeOrderBoard incoming/accepted split", () => {
       { wrapper: TooltipProvider },
     );
 
-    expect(screen.getByText("Incoming (1)")).toBeInTheDocument();
-    expect(screen.getByText("Accepted (1)")).toBeInTheDocument();
+    // Each label appears twice now: the section heading, and the phone-only
+    // SectionSwitcher tab. Query the headings specifically.
+    expect(
+      screen.getByRole("heading", { name: "Incoming (1)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Accepted (1)" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /start now/i }),
     ).toBeInTheDocument();
@@ -669,10 +827,10 @@ describe("RealtimeOrderBoard payment filter", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.queryByText(byOrderNumber(/#001/), ORDER_NUMBER_OPTS),
+      screen.queryByText(byOrderNumber(/#0001/), ORDER_NUMBER_OPTS),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(byOrderNumber(/#002/), ORDER_NUMBER_OPTS),
+      screen.getByText(byOrderNumber(/#0002/), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
   });
 
@@ -695,7 +853,7 @@ describe("RealtimeOrderBoard payment filter", () => {
       { wrapper: TooltipProvider },
     );
     expect(
-      screen.getByText(byOrderNumber(/#001/), ORDER_NUMBER_OPTS),
+      screen.getByText(byOrderNumber(/#0001/), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
   });
 });
