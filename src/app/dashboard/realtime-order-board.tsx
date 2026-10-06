@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -80,8 +81,10 @@ interface Props {
   loadError?: boolean;
   // Each booth's first order_number of the SGT day, keyed by booth id — only
   // populated (by the server page) when boardSettings.daily_order_number_reset
-  // is on; empty otherwise, which naturally makes displayOrderNumber fall
-  // back to each order's real, permanent number.
+  // is on. A booth is missing from it when it had no order yet at page load;
+  // the board then falls back to the first number it sees live (see
+  // seenFirstNumbers). With the setting off the map stays empty and no fallback
+  // is computed, so every card shows its real, permanent number.
   dailyOrderNumberBaselines?: Record<string, string>;
 }
 
@@ -467,6 +470,35 @@ export function RealtimeOrderBoard({
     handleNewOrder,
   );
 
+  // dailyOrderNumberBaselines is each booth's first order_number of the SGT
+  // day, read once by the server page. It has no entry for a booth that had no
+  // order yet when the board was opened, which is the normal case at an event:
+  // staff open the board while setting up. Fall back to the lowest
+  // order_number this board has seen for the booth, so that window is covered
+  // too. Without it the whole service runs on permanent numbers (#0847) while
+  // the customer's status page, the TV queue display and the printed label each
+  // recompute the daily rank (#001) live per request, and staff call a number
+  // no customer is holding.
+  // Derived from the full `orders` list, not just the cards on screen: a
+  // terminal or hidden pending-payment order still counts towards the day's
+  // first number, which is what the server-side query counts too. The list is
+  // append-only in practice (useRealtimeOrders merges rather than replaces, and
+  // terminal orders are filtered at render), so this does not drift upwards as
+  // the day's early orders clear. A realtime DELETE of the day's first order
+  // would move it, which no code path in qkit does.
+  const seenFirstNumbers = useMemo(() => {
+    const lowest: Record<string, string> = {};
+    if (!boardSettings.daily_order_number_reset) return lowest;
+    for (const o of orders) {
+      if (o.order_number == null) continue;
+      const seen = lowest[o.booth_id];
+      if (seen == null || Number(o.order_number) < Number(seen)) {
+        lowest[o.booth_id] = o.order_number;
+      }
+    }
+    return lowest;
+  }, [orders, boardSettings.daily_order_number_reset]);
+
   // Auto-clear sweep for stale 'ready' orders (board_settings.
   // ready_auto_clear_min) — a plain periodic tick, not tied to any local
   // state. The board's own realtime channel (useRealtimeOrders above)
@@ -558,7 +590,9 @@ export function RealtimeOrderBoard({
         order={order}
         displayNumber={displayOrderNumber(
           order.order_number,
-          dailyOrderNumberBaselines[order.booth_id] ?? null,
+          dailyOrderNumberBaselines[order.booth_id] ??
+            seenFirstNumbers[order.booth_id] ??
+            null,
         )}
         boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
         agingMin={boardSettings.aging_min}
