@@ -376,6 +376,7 @@ async function persistBooth(
     walkup_default: data.walkup_default,
     print_enabled: data.print_enabled,
     paykit_booking_id: data.paykit_booking_id,
+    daily_cup_cap: data.daily_cup_cap,
   };
 
   const result = await upsertBoothRow(supabase, row, data.boothId, user.id);

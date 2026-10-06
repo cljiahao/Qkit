@@ -17,6 +17,8 @@ function messageFor(raw: string): string {
   if (raw.includes("ORDER_UNAUTHORIZED")) return "Not your booth.";
   if (raw.includes("ORDER_SOLD_OUT") || raw.includes("ORDER_ITEM_UNAVAILABLE"))
     return "An item just sold out. Adjust the order.";
+  if (raw.includes("ORDER_CAP_REACHED"))
+    return "This booth has hit its cup limit for today. Raise or clear the limit in booth settings to keep serving.";
   if (raw.includes("ORDER_RATE_LIMITED"))
     return "Too many orders too fast. Wait a moment and try again.";
   return "Could not place order. Please try again.";

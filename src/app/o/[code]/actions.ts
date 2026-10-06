@@ -25,6 +25,8 @@ function messageFor(raw: string): string {
     return "This booth isn't taking orders right now";
   if (raw.includes("ORDER_SOLD_OUT") || raw.includes("ORDER_ITEM_UNAVAILABLE"))
     return "Sorry — an item just sold out. Please adjust your order.";
+  if (raw.includes("ORDER_CAP_REACHED"))
+    return "This stall has served everything it had for today.";
   if (raw.includes("ORDER_RATE_LIMITED"))
     return "Too many orders too fast — wait a moment and try again.";
   return "Could not place order. Please try again.";

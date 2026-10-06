@@ -10,7 +10,7 @@ ever edited after landing — a later migration corrects an earlier one.
 
 ## Contents
 
-94 files, `0000` through `0093`. Read in full: `0000`, `0001`, `0010`, `0030`,
+95 files, `0000` through `0094`. Read in full: `0000`, `0001`, `0010`, `0030`,
 and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
 schema evolved in five broad waves:
 
@@ -330,6 +330,7 @@ realtime-order-board.tsx`; changes neither `place_order` nor
 - `0091_restrict_printkit_location_id_writes.sql` — `printkit_location_id` is server-assigned only, but `authenticated`'s table-level `UPDATE` on `booths` let a vendor set it directly. Same fix shape as `0088`'s `orders.order_number` lockdown; `syncPrintLocation` now writes it via the service-role client instead.
 - `0092_vendor_tours_seen.sql` — adds `vendors.tours_seen` (JSONB map of tour id to ISO timestamp) so each dashboard page tour has its own "seen" state for `@merqo/ui`'s `DashboardTours`, backfilling `{orders: tour_seen_at}` so vendors who saw the original tour are not shown it again.
 - `0093_payment_proofs_bucket_limits.sql` — gives the `payment-proofs` bucket (created unbounded in `0087`) a 1 MB `file_size_limit` and a JPEG/PNG/WebP `allowed_mime_types`, the same hardening `booth-images` got in `0037`. Every screenshot-paid order writes one object here, so an unbounded bucket grows with order volume; before this the only bound was the app layer (the browser resize, and Next's default 1 MB Server Action body limit). Matches `claimPayment`'s `PAYMENT_PROOF_MAX_BYTES`.
+- `0094_booth_daily_cup_cap.sql` — adds `booths.daily_cup_cap` (nullable; NULL means no cap), `qkit.booth_cups_today`/`qkit.booth_cups_left` and the `orders_daily_cup_cap` BEFORE INSERT trigger, so a booth working to a fixed stock stops at a cup count rather than only at a wall-clock time (`booths.hours`). Counts the sum of item quantities over the day's non-cancelled orders, SGT day, since one order can carry several cups. The trigger holds a transaction-scoped advisory lock keyed on the booth and counts inline rather than calling the STABLE `booth_cups_today`, whose snapshot predates the lock; without that, two checkouts racing for the last cups would both pass. `booth_cups_left` is granted to `anon` so the customer menu page can say how many are left without exposing the cap or any order.
 
 ## Connectivity
 
