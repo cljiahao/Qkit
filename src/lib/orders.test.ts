@@ -14,6 +14,8 @@ import {
   queuePositionLabel,
   displayOrderNumber,
   overtakenOrderIds,
+  isStaleOrderView,
+  STALE_ORDER_VIEW_HOURS,
   splitTrailingDigit,
   needsPaymentReview,
 } from "./orders";
@@ -250,6 +252,46 @@ describe("elapsedLabel", () => {
     expect(elapsedLabel(60 * 60_000)).toBe("1 hr ago");
     expect(elapsedLabel(80 * 60_000)).toBe("1 hr 20 min ago");
     expect(elapsedLabel(125 * 60_000)).toBe("2 hr 5 min ago");
+    expect(elapsedLabel(47 * 60 * 60_000)).toBe("47 hr ago");
+  });
+
+  it("switches to days at two days", () => {
+    expect(elapsedLabel(48 * 60 * 60_000)).toBe("2 days ago");
+    expect(elapsedLabel(700 * 60 * 60_000)).toBe("29 days ago");
+  });
+});
+
+describe("isStaleOrderView", () => {
+  const placed = "2026-10-05T04:00:00Z";
+  const placedMs = Date.parse(placed);
+
+  it("is false for an order placed minutes ago", () => {
+    expect(isStaleOrderView(placed, placedMs + 5 * 60_000)).toBe(false);
+  });
+
+  it("is false across midnight SGT, so a late-night order stays current", () => {
+    // 23:50 SGT placed, checked 00:10 SGT: a different calendar day, 20
+    // minutes old.
+    expect(
+      isStaleOrderView(
+        "2026-10-05T15:50:00Z",
+        Date.parse("2026-10-05T16:10:00Z"),
+      ),
+    ).toBe(false);
+  });
+
+  it("is true once the order is older than the stale window", () => {
+    expect(
+      isStaleOrderView(
+        placed,
+        placedMs + (STALE_ORDER_VIEW_HOURS + 1) * 3_600_000,
+      ),
+    ).toBe(true);
+    expect(isStaleOrderView(placed, placedMs + 700 * 3_600_000)).toBe(true);
+  });
+
+  it("is false for an unparseable timestamp rather than warning wrongly", () => {
+    expect(isStaleOrderView("not a date", placedMs)).toBe(false);
   });
 });
 
