@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
   // dev server, so keep it off entirely.
   devIndicators: false,
 
+  // sharp is pulled in only as next's optional peer dep (pnpm auto-installs
+  // it); Vercel's own image-optimization infra never needs it in the
+  // function bundle (no custom images.loader here, so optimization already
+  // runs through Vercel, not self-hosted sharp). Left in node_modules,
+  // Next's file tracer bundles sharp's native binary into every route
+  // function -- excluding it here is Vercel's documented fix for that.
+  outputFileTracingExcludes: {
+    "*": ["node_modules/@img/**", "node_modules/sharp/**"],
+  },
+
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "127.0.0.1", port: "54321" },
