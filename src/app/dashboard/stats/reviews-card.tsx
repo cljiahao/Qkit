@@ -8,6 +8,15 @@ import type { BoothReviews, ReviewSummary } from "@/lib/reviews";
 
 const PAGE = 5;
 
+// Stands in for a booth with no reviews yet, so BoothDetail always has a
+// summary to render.
+const empty: ReviewSummary = {
+  count: 0,
+  average: null,
+  distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  recent: [],
+};
+
 // Renders fractional stars: 4.5 → four full + one half (not rounded up to 5).
 function Stars({ value }: { value: number }) {
   return (
@@ -258,10 +267,3 @@ export function ReviewsCard({
     </section>
   );
 }
-
-const empty: ReviewSummary = {
-  count: 0,
-  average: null,
-  distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-  recent: [],
-};

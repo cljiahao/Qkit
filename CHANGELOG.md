@@ -61,6 +61,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The repository moved from the `cljiahao` GitHub account to the `merqo-io` organization. `@merqo/ui` now installs from `github:merqo-io/merqo-ui` at the same tag, with the lockfile and tarball URLs updated to match.
 - The `secret scan (gitleaks)` CI job runs the pinned gitleaks release binary, verified against the release checksum, instead of `gitleaks-action`. The action is free only for personal-account repos and needs a paid license on organization-owned ones, so every run failed after the move to `merqo-io`. It scans the PR commits, or the pushed range on `main`.
+- `pnpm check` now fails on a `const` or `let` read before its declaration
+  (`@typescript-eslint/no-use-before-define`, variables only). A closure that
+  reads a binding declared below it is a temporal-dead-zone crash at request
+  time, and `tsc` does not flag it; one took the vendor order board down in
+  production with the build and every test green. Functions and types stay
+  exempt, since hoisted helpers below their use are the house style, and test
+  files are exempt because `vi.mock` factories read fixtures declared below
+  them by design. Three existing cases were reordered to comply:
+  `NOTE_SPACING`/`PEAK_GAIN` in `src/lib/order-alerts.ts` and `empty` in
+  `src/app/dashboard/stats/reviews-card.tsx`.
 
 ### Security
 
