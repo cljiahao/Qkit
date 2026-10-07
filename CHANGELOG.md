@@ -6,6 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The repository moved from the `cljiahao` GitHub account to the `merqo-io` organization. `@merqo/ui` now installs from `github:merqo-io/merqo-ui` at the same tag, with the lockfile and tarball URLs updated to match.
+- The `secret scan (gitleaks)` CI job runs the pinned gitleaks release binary, verified against the release checksum, instead of `gitleaks-action`. The action is free only for personal-account repos and needs a paid license on organization-owned ones, so every run failed after the move to `merqo-io`. It scans the PR commits, or the pushed range on `main`.
+
 ### Security
 
 - Raised the `sharp` override to `>=0.35.5` for GHSA-wq5f-xc86-pv6w, a
@@ -1425,5 +1430,5 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 - Upgraded `@supabase/ssr` 0.6 → 0.10 for `@supabase/supabase-js` 2.107 type
   compatibility (older ssr made every typed query resolve to `never`).
 
-[Unreleased]: https://github.com/cljiahao/qkit/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/cljiahao/qkit/releases/tag/v0.1.0
+[Unreleased]: https://github.com/merqo-io/qkit/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/merqo-io/qkit/releases/tag/v0.1.0
