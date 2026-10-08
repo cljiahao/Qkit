@@ -9,7 +9,7 @@ import {
 import type { MenuItemFormInput } from "./schemas";
 
 const HEADER =
-  "name,description,price,cost,available,group_name,group_type,choice_label,choice_price";
+  "name,description,price,cost,available,group_name,group_type,choice_label,choice_price,choice_code";
 
 const item = (patch: Partial<MenuItemFormInput> = {}): MenuItemFormInput => ({
   id: "1",
@@ -40,17 +40,17 @@ describe("menuItemsToCsv", () => {
   });
   it("writes a header row plus one row per item, no trailing columns for a plain item", () => {
     const csv = menuItemsToCsv([item()]);
-    expect(csv).toBe(`${HEADER}\nKopi O,,1.80,,true,,,,`);
+    expect(csv).toBe(`${HEADER}\nKopi O,,1.80,,true,,,,,`);
   });
 
   it("omits price/cost for an item with neither", () => {
     const csv = menuItemsToCsv([item({ price_cents: undefined })]);
-    expect(csv).toContain("Kopi O,,,,true,,,,");
+    expect(csv).toContain("Kopi O,,,,true,,,,,");
   });
 
   it("writes cost when set", () => {
     const csv = menuItemsToCsv([item({ cost_cents: 60 })]);
-    expect(csv).toContain("Kopi O,,1.80,0.60,true,,,,");
+    expect(csv).toContain("Kopi O,,1.80,0.60,true,,,,,");
   });
 
   it("writes a continuation row per choice, grouped under the item", () => {
@@ -71,8 +71,8 @@ describe("menuItemsToCsv", () => {
     ]);
     const lines = csv.split("\n");
     expect(lines).toHaveLength(4);
-    expect(lines[2]).toBe(",,,,,Style,one,Regular,");
-    expect(lines[3]).toBe(",,,,,Style,one,Oat Milk,0.50");
+    expect(lines[2]).toBe(",,,,,Style,one,Regular,,");
+    expect(lines[3]).toBe(",,,,,Style,one,Oat Milk,0.50,");
   });
 
   it("marks a multi-select group's type as any", () => {
@@ -88,7 +88,7 @@ describe("menuItemsToCsv", () => {
         ],
       }),
     ]);
-    expect(csv).toContain(",,,,,Add-ons,any,Extra shot,");
+    expect(csv).toContain(",,,,,Add-ons,any,Extra shot,,");
   });
 
   it("quotes a description containing a comma", () => {
@@ -290,5 +290,66 @@ describe("optionGroupsFromCsvChoices", () => {
     const groups = optionGroupsFromCsvChoices([choice()]);
     expect(groups[0]!.id).toBeTruthy();
     expect(groups[0]!.choices[0]!.id).toBeTruthy();
+  });
+});
+
+describe("choice short codes", () => {
+  const withCode = (code?: string): MenuItemFormInput =>
+    item({
+      option_groups: [
+        {
+          id: "g1",
+          label: "Sugar",
+          multiple: false,
+          choices: [
+            { id: "c1", label: "Less sugar", ...(code ? { code } : {}) },
+          ],
+        },
+      ],
+    });
+
+  it("exports a choice's short code in the last column", () => {
+    const lines = menuItemsToCsv([withCode("LS")]).split("\n");
+    expect(lines[2]).toBe(",,,,,Sugar,one,Less sugar,,LS");
+  });
+
+  it("round-trips a short code through export and import", () => {
+    const [row] = csvToMenuItems(menuItemsToCsv([withCode("LS")]));
+    expect(row!.choices[0]!.choiceCode).toBe("LS");
+    expect(optionGroupsFromCsvChoices(row!.choices)[0]!.choices[0]!.code).toBe(
+      "LS",
+    );
+  });
+
+  it("leaves a choice with no code printing in full", () => {
+    const [row] = csvToMenuItems(menuItemsToCsv([withCode()]));
+    expect(row!.choices[0]).not.toHaveProperty("choiceCode");
+    expect(
+      optionGroupsFromCsvChoices(row!.choices)[0]!.choices[0],
+    ).not.toHaveProperty("code");
+  });
+
+  it("still reads a file exported before the column existed", () => {
+    const rows = csvToMenuItems(
+      "name,description,price,cost,available,group_name,group_type,choice_label,choice_price\nKopi,,1.40,,true,,,,\n,,,,,Sugar,one,Less sugar,0.20",
+    );
+    expect(rows[0]!.error).toBeUndefined();
+    expect(rows[0]!.choices[0]).toEqual({
+      groupName: "Sugar",
+      groupType: "one",
+      choiceLabel: "Less sugar",
+      choicePrice_cents: 20,
+    });
+  });
+
+  it("trims a code and flags one longer than the ticket allows", () => {
+    const rows = csvToMenuItems(
+      `${HEADER}\nKopi,,1.40,,true,,,,,\n,,,,,Sugar,one,Less sugar,, LS \n,,,,,Sugar,one,No sugar,,NOSUGAR`,
+    );
+    expect(rows[0]!.choices[0]!.choiceCode).toBe("LS");
+    expect(rows[0]!.choices[1]!.error).toBe(
+      'Row 4: Short code "NOSUGAR" is longer than 6 characters',
+    );
+    expect(rows[0]!.choices[1]).not.toHaveProperty("choiceCode");
   });
 });

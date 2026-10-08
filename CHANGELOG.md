@@ -8,6 +8,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The landing page's sample order tickets match the ticket vendors now work
+  from: a large number and name, options always visible, one attention line
+  in place of the payment badges, and no "Show options" control or prices.
 - The booth's daily limit is worded as items, not cups, everywhere a vendor or
   customer reads it ("Stop after this many items each day", "132/200 items",
   "Only 3 items left today"). It always counted every item the booth sells,
@@ -50,6 +53,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The menu CSV has a `choice_code` column, so short codes for the order ticket
+  can be set in bulk and survive an export and re-import. It is the last
+  column: a file exported before it existed still imports unchanged, and a
+  blank cell leaves the choice printing in full. A code longer than 6
+  characters is reported against its row.
 - The live board has a "Customer screen" button for the big-number queue
   display. It opens the display in its own window to drag onto a TV, monitor
   or an iPad used as an extended display, in any browser, and shows a code to

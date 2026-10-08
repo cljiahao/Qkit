@@ -152,8 +152,12 @@ graceMs)` picks the objects in a vendor folder that nothing references and
   secret).
 - `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`/
   `optionGroupsFromCsvChoices(choices)`: the qkit-side of the menu-manager's
-  CSV bulk export/import, 9 fixed columns —
-  `name,description,price,cost,available,group_name,group_type,choice_label,choice_price`
+  CSV bulk export/import, 10 fixed columns —
+  `name,description,price,cost,available,group_name,group_type,choice_label,choice_price,choice_code`
+  (`choice_code` is the choice's short code on the order ticket, at most
+  `OPTION_CODE_MAX` characters; it is last so a file exported before it
+  existed still imports unchanged, and a blank cell leaves the choice printing
+  in full)
   (`cost` added 2026-09-01, the item's own private `cost_cents`; the last 4
   customization columns added the same day; dollars not cents for
   spreadsheet readability; choice-level cost delta and allergens are
