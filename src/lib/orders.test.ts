@@ -5,8 +5,8 @@ import {
   orderAgeTone,
   elapsedMinutes,
   elapsedLabel,
-  orderProgressIndex,
-  ORDER_PROGRESS_SEGMENTS,
+  orderStageIndex,
+  ORDER_STAGES,
   buildAdvancePatch,
   ordersAheadOf,
   estimateLabel,
@@ -295,30 +295,30 @@ describe("isStaleOrderView", () => {
   });
 });
 
-describe("orderProgressIndex", () => {
-  it("lights the first segment for the earliest states", () => {
-    expect(orderProgressIndex("pending")).toBe(0);
-    expect(orderProgressIndex("confirmed")).toBe(0);
+describe("orderStageIndex", () => {
+  it("puts both early states on Received", () => {
+    expect(orderStageIndex("pending")).toBe(0);
+    expect(orderStageIndex("confirmed")).toBe(0);
   });
 
-  it("advances through preparing and ready/completed", () => {
-    expect(orderProgressIndex("preparing")).toBe(1);
-    expect(orderProgressIndex("ready")).toBe(2);
-    expect(orderProgressIndex("completed")).toBe(2);
+  it("gives Preparing, Ready and Collected a stage each", () => {
+    expect(orderStageIndex("preparing")).toBe(1);
+    expect(orderStageIndex("ready")).toBe(2);
+    // Collected is its own stage, not folded into Ready: a collected order must
+    // not look like one still waiting on the shelf.
+    expect(orderStageIndex("completed")).toBe(3);
   });
 
-  it("has no progress for a cancelled order, and fits the segment count", () => {
-    expect(orderProgressIndex("cancelled")).toBe(-1);
-    // Every non-cancelled index is a valid segment slot.
-    for (const s of [
+  it("keeps a cancelled order off the track, and every other index on it", () => {
+    expect(orderStageIndex("cancelled")).toBe(-1);
+    for (const status of [
       "pending",
       "confirmed",
       "preparing",
       "ready",
       "completed",
     ] as const) {
-      expect(orderProgressIndex(s)).toBeLessThan(ORDER_PROGRESS_SEGMENTS);
-      expect(orderProgressIndex(s)).toBeGreaterThanOrEqual(0);
+      expect(orderStageIndex(status)).toBeLessThan(ORDER_STAGES.length);
     }
   });
 });

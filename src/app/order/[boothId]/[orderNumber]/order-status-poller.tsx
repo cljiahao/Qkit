@@ -2,12 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, BellRing } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  Check,
+  ChefHat,
+  ClipboardCheck,
+  ShoppingBag,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { toast } from "sonner";
 import { usePolling } from "@/hooks/use-polling";
-import { OrderStatusBadge } from "@/components/order-status-badge";
+import { cn } from "@/lib/utils";
 import {
   fireReadyNotification,
   isNotifySupported,
@@ -25,9 +32,10 @@ import {
   elapsedLabel,
   estimateRangeLabel,
   isTerminal,
-  orderProgressIndex,
+  orderStageIndex,
   queuePositionLabel,
-  ORDER_PROGRESS_SEGMENTS,
+  ORDER_STAGES,
+  type OrderStage,
 } from "@/lib/orders";
 import type { OrderStatus } from "@/lib/types";
 
@@ -59,13 +67,35 @@ interface Props {
   requiresArrivalConfirm: boolean;
 }
 
-const STATUS_MESSAGE: Record<OrderStatus, string> = {
-  pending: "Waiting for you to arrive",
-  confirmed: "Your order has been confirmed",
-  preparing: "Your order is being prepared",
-  ready: "Your order is ready for pickup!",
-  completed: "Order complete, enjoy!",
-  cancelled: "Your order was cancelled",
+// What the page says at each status: a headline naming where things stand, and
+// one line of what to do about it. Written as the stall talking ("we're making
+// it"), not as a system reporting a field, and never more than the customer
+// can act on right now.
+const STATUS_COPY: Record<OrderStatus, { headline: string; detail: string }> = {
+  pending: {
+    headline: "We've got your order",
+    detail: "The stall will start on it shortly.",
+  },
+  confirmed: {
+    headline: "We've got your order",
+    detail: "The stall will start on it shortly.",
+  },
+  preparing: {
+    headline: "We're making it now",
+    detail: "Stay close. This page turns to Ready the moment it is.",
+  },
+  ready: {
+    headline: "It's ready",
+    detail: "Come to the counter and collect it.",
+  },
+  completed: {
+    headline: "Collected. Enjoy!",
+    detail: "Thanks for ordering.",
+  },
+  cancelled: {
+    headline: "This order was cancelled",
+    detail: "Nothing more will happen with it.",
+  },
 };
 
 // Overrides for the same statuses while payment is still outstanding — the
@@ -73,54 +103,100 @@ const STATUS_MESSAGE: Record<OrderStatus, string> = {
 // settled when it isn't. "completed"/"cancelled" aren't listed: a completed
 // order's payment auto-confirms, and a cancelled order never solicits
 // payment (see order-status page's showPay gate).
-const AWAITING_PAYMENT_MESSAGE: Partial<Record<OrderStatus, string>> = {
-  confirmed: "Confirmed, please pay to start your order",
-  preparing: "Being prepared, please complete your payment",
-  ready: "Ready for pickup, please pay before you collect",
+const AWAITING_PAYMENT_COPY: Partial<
+  Record<OrderStatus, { headline: string; detail: string }>
+> = {
+  confirmed: {
+    headline: "Pay to start your order",
+    detail: "The stall begins once your payment is in.",
+  },
+  preparing: {
+    headline: "We're making it now",
+    detail: "Please complete your payment while you wait.",
+  },
+  ready: {
+    headline: "It's ready",
+    detail: "Please pay before you collect.",
+  },
 };
 
-// A 'pending' order needs a self-start button only when the booth waits on
-// the customer's own "I'm here" tap; the no-printer accept gate (0086) is
-// vendor-only, so that variant is passive text with nothing to tap.
-function PendingOrder({
-  displayNumber,
-  requiresArrivalConfirm,
-  confirming,
-  onConfirmArrival,
-}: {
-  displayNumber: string;
-  requiresArrivalConfirm: boolean;
-  confirming: boolean;
-  onConfirmArrival: () => void;
-}) {
+const STAGE_LABEL: Record<OrderStage, string> = {
+  received: "Received",
+  preparing: "Preparing",
+  ready: "Ready",
+  collected: "Collected",
+};
+
+const STAGE_ICON: Record<OrderStage, typeof Check> = {
+  received: ClipboardCheck,
+  preparing: ChefHat,
+  ready: BellRing,
+  collected: ShoppingBag,
+};
+
+/**
+ * The order's four stages on one line, all visible from the start so the
+ * finish is in sight the whole wait. Stages already reached are filled; the
+ * one the order is on carries the stage's own icon and a slow pulse; the rest
+ * are outlines. "Received" is reached the moment the page loads, so the track
+ * never opens empty: a wait that has visibly begun is easier to sit through
+ * than one that looks like nothing has happened yet.
+ */
+function StageTrack({ status }: { status: OrderStatus }) {
+  const current = orderStageIndex(status);
   return (
-    <div className="space-y-5 px-6 py-6 text-center">
-      <div className="flex justify-center">
-        <OrderStatusBadge status="pending" />
-      </div>
-      <p className="font-display text-xl font-semibold">
-        You&apos;re order #{displayNumber}.{" "}
-        {requiresArrivalConfirm
-          ? "We start making it fresh once you're at the counter."
-          : "We've got it, the stall will start on it shortly."}
-      </p>
-      {requiresArrivalConfirm && (
-        <>
-          <p className="text-sm text-muted-foreground">
-            Tap below when you arrive to pick up.
-          </p>
-          <Button
-            type="button"
-            size="lg"
-            className="h-14 w-full rounded-xl text-base font-semibold"
-            onClick={onConfirmArrival}
-            disabled={confirming}
+    <ol aria-label="Order progress" className="flex items-start">
+      {ORDER_STAGES.map((stage, i) => {
+        const reached = i <= current;
+        const isCurrent = i === current;
+        const Icon = i < current ? Check : STAGE_ICON[stage];
+        return (
+          <li
+            key={stage}
+            aria-current={isCurrent ? "step" : undefined}
+            className="relative flex flex-1 flex-col items-center gap-2"
           >
-            {confirming ? "Starting…" : "I'm here, start my order"}
-          </Button>
-        </>
-      )}
-    </div>
+            {/* The connector into this stage, drawn behind the node. */}
+            {i > 0 && (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "absolute top-5 right-1/2 left-[-50%] h-0.5 -translate-y-1/2",
+                  reached ? "bg-primary" : "bg-border",
+                )}
+              />
+            )}
+            <span className="relative z-10 flex size-10 items-center justify-center">
+              {isCurrent && status !== "completed" && (
+                <span
+                  aria-hidden="true"
+                  className="stage-pulse absolute inset-0 rounded-full bg-primary/35"
+                />
+              )}
+              <span
+                className={cn(
+                  "relative flex size-10 items-center justify-center rounded-full border-2 transition-colors",
+                  reached
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground",
+                )}
+              >
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+            </span>
+            <span
+              className={cn(
+                "text-xs leading-tight",
+                isCurrent ? "font-bold text-foreground" : "font-medium",
+                !reached && "text-muted-foreground",
+              )}
+            >
+              {STAGE_LABEL[stage]}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -265,124 +341,177 @@ export function OrderStatusPoller({
   }, [status, boothName, orderNumber]);
 
   const cancelled = status === "cancelled";
-  const idx = orderProgressIndex(status);
+  const ready = status === "ready";
   const elapsed =
     nowMs != null ? elapsedLabel(nowMs - Date.parse(placedAt)) : null;
 
-  // Offer to arm alerts while still waiting — moot once ready/done. Shown even
-  // where notifications aren't supported (iOS Safari), because the tap is also
-  // what unlocks sound. Hidden once armed or once permission is already granted.
-  const waiting = status !== "ready" && !isTerminal(status);
-  const canArm = waiting && !armed && permission !== "granted";
-  const willNotify = waiting && (armed || permission === "granted");
-  // Be honest about what they'll get: a system popup only where supported.
-  const notifyWorks = isNotifySupported() && permission === "granted";
+  const waiting = !ready && !isTerminal(status);
 
-  if (status === "pending") {
-    return (
-      <PendingOrder
-        displayNumber={displayNumber}
-        requiresArrivalConfirm={requiresArrivalConfirm}
-        confirming={confirming}
-        onConfirmArrival={onConfirmArrival}
-      />
-    );
-  }
+  // A pending order at a booth that waits for the customer needs their tap to
+  // start; a pending order waiting on the vendor's own accept (no printer,
+  // 0086) has nothing for the customer to do.
+  const needsArrival = status === "pending" && requiresArrivalConfirm;
+  const copy = statusCopy(status, {
+    needsArrival,
+    awaitingPayment,
+    displayNumber,
+  });
 
   return (
-    <div className="space-y-5 px-6 py-6 text-center">
-      <div className="flex justify-center">
-        <OrderStatusBadge status={status} />
+    <div className="space-y-6 px-6 py-7 text-center">
+      {!cancelled && <StageTrack status={status} />}
+
+      {/* Ready takes over the block: it is the moment the whole page exists
+          for, so it is the one state drawn in its own colour and at full
+          size. */}
+      <div
+        className={cn(
+          "space-y-1.5",
+          ready &&
+            "fade-rise rounded-2xl border-2 border-status-ready bg-status-ready/10 px-4 py-5",
+        )}
+      >
+        {/* Live region: the status text is always mounted and only its text
+            changes on poll, so a screen reader announces the transition (e.g.
+            "It's ready") without a visual cue (SC 4.1.3). */}
+        <p
+          role="status"
+          aria-live="polite"
+          className={cn(
+            "font-display font-semibold text-balance",
+            ready ? "text-3xl text-status-ready" : "text-2xl",
+          )}
+        >
+          {copy.headline}
+        </p>
+        <p
+          className={cn(
+            "text-sm text-balance",
+            ready ? "font-medium text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {copy.detail}
+        </p>
       </div>
 
-      {!cancelled && (
-        <div className="flex items-center gap-1.5">
-          {Array.from({ length: ORDER_PROGRESS_SEGMENTS }, (_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 flex-1 rounded-full transition-colors ${
-                i <= idx ? "bg-primary" : "bg-border"
-              }`}
-            />
-          ))}
-        </div>
+      {needsArrival && (
+        <Button
+          type="button"
+          size="lg"
+          className="h-14 w-full rounded-xl text-base font-semibold"
+          onClick={onConfirmArrival}
+          disabled={confirming}
+        >
+          {confirming ? "Starting…" : "I'm here, start my order"}
+        </Button>
       )}
 
-      {/* Live region: the status text is always mounted and only its text
-          changes on poll, so a screen reader announces the transition (e.g.
-          "ready for pickup") without a visual cue (SC 4.1.3). */}
-      <p
-        role="status"
-        aria-live="polite"
-        className={`font-display text-xl font-semibold ${
-          status === "ready" ? "text-status-ready" : ""
-        }`}
-      >
-        {awaitingPayment
-          ? (AWAITING_PAYMENT_MESSAGE[status] ?? STATUS_MESSAGE[status])
-          : STATUS_MESSAGE[status]}
-      </p>
+      {waiting && !needsArrival && <WaitEstimate wait={wait} />}
+
+      <ReadyAlerts
+        waiting={waiting}
+        armed={armed}
+        permission={permission}
+        requesting={requesting}
+        onEnable={onEnableAlerts}
+      />
 
       {!cancelled && elapsed && (
-        <p className="-mt-2 text-xs text-muted-foreground">Placed {elapsed}</p>
-      )}
-
-      {/* Only meaningful while still waiting — once ready, "please collect
-          now" replaces any ETA; a terminal/cancelled order has none either.
-          Prominent (not small body text) and range-based rather than a
-          precise countdown: waiting-line research says uncertainty is what
-          makes a wait feel worse, not the wait itself, so a visible-but-
-          honest estimate beats hiding it or over-promising a single number.
-          Falls back to queue position instead of showing nothing when
-          there's not enough recent history for a time estimate yet. */}
-      {waiting && wait && (
-        <div className="mx-auto inline-flex flex-col items-center gap-0.5 rounded-xl bg-primary/[0.06] px-5 py-3">
-          <p className="text-[0.65rem] font-semibold tracking-[0.15em] text-muted-foreground uppercase">
-            {wait.seconds !== null ? "Estimated wait" : "In the queue"}
-          </p>
-          <p className="font-display text-2xl font-bold text-primary">
-            {wait.seconds !== null
-              ? estimateRangeLabel(wait.seconds)
-              : queuePositionLabel(wait.ordersAhead)}
-          </p>
-        </div>
-      )}
-
-      {status === "ready" && (
-        <div className="flex flex-col items-center gap-2">
-          {/* Ticket-stamp reveal for the payoff moment; .fade-rise already
-              no-ops under prefers-reduced-motion. */}
-          <span className="fade-rise inline-block -rotate-3 rounded-md border-2 border-status-ready px-4 py-1.5 font-display text-2xl font-bold uppercase tracking-[0.2em] text-status-ready">
-            Ready
-          </span>
-          <p className="text-sm font-medium text-status-ready">
-            {awaitingPayment
-              ? `Please pay before you collect order #${displayNumber}`
-              : `Order #${displayNumber} ready, please collect now`}
-          </p>
-        </div>
-      )}
-
-      {canArm && (
-        <button
-          type="button"
-          onClick={onEnableAlerts}
-          disabled={requesting}
-          className="mx-auto flex min-h-11 items-center gap-2 rounded-full border border-primary/40 bg-primary/[0.04] px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
-        >
-          <Bell className="size-4" />
-          {requesting ? "Just a sec…" : "Alert me when it's ready"}
-        </button>
-      )}
-
-      {willNotify && (
-        <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground">
-          <BellRing className="size-3.5 text-primary" />
-          {notifyWorks
-            ? "We'll alert you the moment it's ready"
-            : "We'll chime the moment it's ready (keep this tab open)"}
-        </p>
+        <p className="text-xs text-muted-foreground">Placed {elapsed}</p>
       )}
     </div>
+  );
+}
+
+type StatusCopy = { headline: string; detail: string };
+
+/** The headline and the one line under it for where an order stands. */
+function statusCopy(
+  status: OrderStatus,
+  {
+    needsArrival,
+    awaitingPayment,
+    displayNumber,
+  }: { needsArrival: boolean; awaitingPayment: boolean; displayNumber: string },
+): StatusCopy {
+  if (needsArrival)
+    return {
+      headline: "Tap when you're at the counter",
+      detail: "We make it fresh, so we start once you arrive.",
+    };
+  if (awaitingPayment)
+    return AWAITING_PAYMENT_COPY[status] ?? STATUS_COPY[status];
+  if (status === "ready")
+    return {
+      headline: STATUS_COPY.ready.headline,
+      detail: `Show order #${displayNumber} at the counter to collect it.`,
+    };
+  return STATUS_COPY[status];
+}
+
+// Range-based rather than a precise countdown: waiting-line research says
+// uncertainty is what makes a wait feel worse, not the wait itself, so a
+// visible-but-honest estimate beats hiding it or over-promising a single
+// number. Falls back to queue position when there is not enough recent history
+// for a time estimate yet.
+function WaitEstimate({
+  wait,
+}: {
+  wait: { seconds: number | null; ordersAhead: number } | null;
+}) {
+  if (!wait) return null;
+  const timed = wait.seconds !== null;
+  return (
+    <div className="flex items-baseline justify-center gap-2 rounded-xl bg-primary/[0.06] px-5 py-3">
+      {timed && <span className="text-sm text-muted-foreground">About</span>}
+      <span className="font-display text-2xl font-bold text-primary">
+        {wait.seconds !== null
+          ? estimateRangeLabel(wait.seconds)
+          : queuePositionLabel(wait.ordersAhead)}
+      </span>
+    </div>
+  );
+}
+
+// The offer to be told when the order is ready, then the confirmation that it
+// is armed. Offered even where notifications are not supported (iOS Safari),
+// because the tap is also what unlocks sound; hidden once armed or once
+// permission is already granted, and moot once the order is ready or done.
+function ReadyAlerts({
+  waiting,
+  armed,
+  permission,
+  requesting,
+  onEnable,
+}: {
+  waiting: boolean;
+  armed: boolean;
+  permission: NotificationPermission | null;
+  requesting: boolean;
+  onEnable: () => void;
+}) {
+  if (!waiting) return null;
+  const granted = permission === "granted";
+  if (!armed && !granted)
+    return (
+      <button
+        type="button"
+        onClick={onEnable}
+        disabled={requesting}
+        className="mx-auto flex min-h-11 items-center gap-2 rounded-full border border-primary/40 bg-primary/[0.04] px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
+      >
+        <Bell className="size-4" />
+        {requesting ? "Just a sec…" : "Alert me when it's ready"}
+      </button>
+    );
+  // Be honest about what they'll get: a system popup only where supported.
+  const notifyWorks = isNotifySupported() && granted;
+  return (
+    <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground">
+      <BellRing className="size-3.5 text-primary" />
+      {notifyWorks
+        ? "We'll alert you the moment it's ready"
+        : "We'll chime the moment it's ready (keep this tab open)"}
+    </p>
   );
 }

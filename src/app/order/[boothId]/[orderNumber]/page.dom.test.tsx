@@ -6,6 +6,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { OrderStatus } from "@/lib/types";
 import OrderStatusPage from "./page";
+import { shortDateTime } from "@/lib/tz";
 
 const { notFoundMock, redirectMock, headersMock } = vi.hoisted(() => ({
   // Both throw to abort rendering — mirrors the real next/navigation
@@ -169,12 +170,36 @@ describe("OrderStatusPage — reopened older order", () => {
   // and a status that will never change (Kessie's AAR, order 65).
   const LAST_MONTH = "2026-08-16T00:00:00Z";
 
-  it("tells the customer the order is an older one and offers a new order", async () => {
+  it("stamps a reopened order as past, with the date it was placed", async () => {
     await renderPage("preparing", LAST_MONTH);
-    expect(screen.getByText("This is an older order")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /order again from this stall/i }),
-    ).toHaveAttribute("href", `/order/${BOOTH_ID}`);
+    expect(screen.getByText("Past order")).toBeInTheDocument();
+    expect(screen.getByText("This is not today's order")).toBeInTheDocument();
+    // The date in full, so staff handed this screen can see it is not
+    // today's, and a customer cannot present it as a current order.
+    expect(screen.getByText(shortDateTime(LAST_MONTH))).toBeInTheDocument();
+  });
+
+  it("strikes the number through, so it cannot pass for a live one", async () => {
+    await renderPage("preparing", LAST_MONTH);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass(
+      "line-through",
+    );
+  });
+
+  it("stamps a collected order as collected, with when", async () => {
+    await renderPage("completed");
+    expect(screen.getByText("Collected")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass(
+      "line-through",
+    );
+  });
+
+  it("leaves a live order's number plain", async () => {
+    await renderPage("preparing");
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveClass(
+      "line-through",
+    );
+    expect(screen.queryByText("Past order")).not.toBeInTheDocument();
   });
 
   it("hides the Telegram connect offer, which could not reach them anyway", async () => {

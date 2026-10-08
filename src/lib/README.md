@@ -292,7 +292,7 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   is what the order-status page actually renders, on the theory that an
   unmet precise promise erodes trust more than an upfront-honest range),
   `queuePositionLabel` (the no-time-data fallback, "N orders ahead of you"),
-  `orderProgressIndex` (customer 3-segment progress bar), `displayOrderNumber`
+  `ORDER_STAGES` + `orderStageIndex` (the customer page's four stages, Received, Preparing, Ready, Collected; Ready and Collected are separate so a collected order never reads as one still waiting, pending and confirmed both sit on Received, and a cancelled order is off the track at -1), `displayOrderNumber`
   (board_settings.daily_order_number_reset's display-only "position among
   today's orders" number — pure arithmetic on the immutable `order_number`/
   `created_at` relative to a caller-supplied baseline, never a live recount;
