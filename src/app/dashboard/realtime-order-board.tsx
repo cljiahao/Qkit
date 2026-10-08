@@ -61,6 +61,7 @@ import {
   sweepAbandonedPayments,
 } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
+import { CustomerScreenButton } from "./customer-screen-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
 
@@ -781,6 +782,10 @@ export function RealtimeOrderBoard({
               </Button>
             )
           )}
+          <CustomerScreenButton
+            booths={booths}
+            defaultBoothId={selectedBooth?.id}
+          />
           <Button
             variant="default"
             className="rounded-full"
