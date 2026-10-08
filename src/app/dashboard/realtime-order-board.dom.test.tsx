@@ -366,7 +366,7 @@ describe("RealtimeOrderBoard passed-over orders", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getAllByText("Passed over")).toHaveLength(1);
+    expect(screen.getAllByText("A later order is already out")).toHaveLength(1);
   });
 
   it("flags nothing while the queue is served in order", () => {
@@ -391,7 +391,9 @@ describe("RealtimeOrderBoard passed-over orders", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.queryByText("Passed over")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("A later order is already out"),
+    ).not.toBeInTheDocument();
   });
 });
 

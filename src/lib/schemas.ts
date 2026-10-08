@@ -7,6 +7,7 @@ import type {
   SocialLinks,
 } from "@/lib/types";
 import type { BoothHours } from "@/lib/hours";
+import { OPTION_CODE_MAX } from "@/lib/ticket";
 
 // Shared with passwordChangeSchema below — Supabase Auth config owns the
 // real policy, this is just the client-side form floor matching it.
@@ -87,6 +88,10 @@ export const optionChoiceSchema = z.object({
   // Only tag an allergen that actually varies by choice — see
   // menuItemFormSchema's allergens for the fixed-ingredient half.
   allergens: z.array(z.enum(ALLERGEN_TAGS)).optional(),
+  // The vendor's own shorthand for this choice on the order ticket ("LS" for
+  // "Less sugar"). Optional; a choice without one prints in full. See
+  // ticketOptions in @/lib/ticket.
+  code: z.string().trim().max(OPTION_CODE_MAX).optional(),
 });
 
 export const optionGroupSchema = z.object({

@@ -160,6 +160,9 @@ export type OptionChoice = {
   // -> ["dairy"], "Oat Milk" -> []) — see MenuItem.allergens for the
   // fixed-ingredient half of this model.
   allergens?: AllergenTag[];
+  // The vendor's own shorthand for this choice on the order ticket ("LS" for
+  // "Less sugar"). A choice without one prints in full.
+  code?: string;
 };
 export type OptionGroup = {
   id: string;

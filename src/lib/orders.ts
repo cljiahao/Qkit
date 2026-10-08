@@ -101,6 +101,21 @@ export function orderAgeTone(
 }
 
 /** Whole-minute elapsed label for a ticket, floored at 0. */
+/**
+ * A waiting time short enough to read at a glance on a ticket: minutes under
+ * an hour, hours and minutes under a day, whole days after that. A ticket left
+ * open over a weekend used to read "9802m".
+ */
+export function ageLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 24 * 60) {
+    const rem = minutes % 60;
+    const hours = Math.floor(minutes / 60);
+    return rem === 0 ? `${hours}h` : `${hours}h ${rem}m`;
+  }
+  return `${Math.floor(minutes / (24 * 60))}d`;
+}
+
 export function elapsedMinutes(elapsedMs: number): number {
   return Math.max(0, Math.floor(elapsedMs / 60_000));
 }

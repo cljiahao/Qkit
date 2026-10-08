@@ -186,6 +186,39 @@ describe("OptionGroupsEditor advanced modal", () => {
   });
 });
 
+describe("OptionGroupsEditor ticket short code", () => {
+  it("offers a suggestion from the choice's initials without applying it", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    await user.click(screen.getAllByRole("button", { name: /advanced/i })[1]!);
+
+    const code = screen.getByLabelText("Short code on the order ticket");
+    // "Oat Milk" suggests "OM", but only as a placeholder: an unset code means
+    // the ticket prints the choice in full, never a guess.
+    expect(code).toHaveAttribute("placeholder", "OM");
+    expect(code).toHaveValue("");
+  });
+
+  it("keeps the code the vendor types and marks the choice as customised", async () => {
+    const user = userEvent.setup();
+    render(<Host initial={[MILK_GROUP]} />);
+    const trigger = screen.getAllByRole("button", { name: /advanced/i })[1]!;
+    await user.click(trigger);
+
+    await user.type(
+      screen.getByLabelText("Short code on the order ticket"),
+      "OAT",
+    );
+    expect(screen.getByLabelText("Short code on the order ticket")).toHaveValue(
+      "OAT",
+    );
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      trigger.querySelector('[aria-hidden="true"].bg-primary'),
+    ).not.toBeNull();
+  });
+});
+
 describe("OptionGroupsEditor customer-sees preview", () => {
   it("shows nothing when neither the item nor the choice has allergens", async () => {
     const user = userEvent.setup();

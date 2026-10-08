@@ -14,15 +14,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { OrderStatusBadge } from "@/components/order-status-badge";
 import { Ticket } from "@/components/ticket";
 import { parseOrderItems } from "@/lib/schemas";
-import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
+import { cn, formatPrice, orderHasPricing } from "@/lib/utils";
 import { boothColor } from "@/lib/booth-color";
 import {
   ADVANCE,
+  ageLabel,
   isTerminal,
   needsPaymentReview,
   orderAgeTone,
@@ -30,6 +36,12 @@ import {
   splitTrailingDigit,
   type AgeTone,
 } from "@/lib/orders";
+import {
+  ticketAttention,
+  ticketOptions,
+  type OptionCodes,
+  type TicketAttention,
+} from "@/lib/ticket";
 import {
   advanceOrder,
   bumpOrder,
@@ -40,20 +52,16 @@ import {
   revertPaymentAndStart,
   restoreAutoCompleted,
 } from "@/app/dashboard/order-actions";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { sgtClock, shortDateTime } from "@/lib/tz";
+import { shortDateTime } from "@/lib/tz";
 import { useNow } from "@/hooks/use-now";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import {
   AlertTriangle,
   Banknote,
-  ChevronDown,
   Clock,
   ImageIcon,
+  MoreHorizontal,
+  Printer,
   Undo2,
   Zap,
 } from "lucide-react";
@@ -72,40 +80,6 @@ const PaymentProofViewer = dynamic(() =>
 // its equivalent complete action; vendor-configurable (board_settings.
 // undo_seconds) via the `undoMs` prop, this 4s is just the fallback.
 const DEFAULT_UNDO_MS = 4000;
-
-// Shared shape for the small pills stacked in an OrderCard's top-right
-// corner (payment/print/walk-up) — same class fingerprint, only the tone and
-// label ever differed between them.
-function MiniPill({ label, className }: { label: string; className: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider",
-        className,
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function PaymentBadge({ status }: { status: BoardOrder["payment_status"] }) {
-  if (status === "not_required") return null;
-  const map = {
-    pending: { label: "Unpaid", cls: "bg-secondary text-foreground" },
-    // Filled, high-contrast — the actionable state.
-    claimed: {
-      label: "Says paid",
-      cls: "bg-status-payment-claimed text-white",
-    },
-    confirmed: {
-      label: "Paid",
-      cls: "bg-status-payment-confirmed text-white",
-    },
-  } as const;
-  const v = map[status];
-  return <MiniPill label={v.label} className={v.cls} />;
-}
 
 // Tap-to-expand proof-photo review, factored out of OrderCard's own render to
 // keep its cognitive complexity down. Renders only when the caller has
@@ -142,13 +116,30 @@ function ProofPhotoTrigger({
   );
 }
 
-function PrintBadge({ status }: { status: BoardOrder["print_status"] }) {
-  if (status !== "failed") return null;
+const ATTENTION_ICON: Record<TicketAttention["kind"], typeof AlertTriangle> = {
+  payment_claimed: Banknote,
+  print_failed: Printer,
+  overtaken: AlertTriangle,
+  unpaid: Banknote,
+};
+
+// The ticket's single attention line (see ticketAttention): one message, never
+// a stack of pills. Filled only for the case that needs the vendor to act; the
+// rest sit on a quiet tint so an ordinary rush is not a wall of alarms.
+function AttentionLine({ attention }: { attention: TicketAttention }) {
+  const Icon = ATTENTION_ICON[attention.kind];
   return (
-    <MiniPill
-      label="Print failed"
-      className="bg-status-print-failed text-white"
-    />
+    <p
+      className={cn(
+        "mx-4 mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm leading-tight font-semibold",
+        attention.tone === "action"
+          ? "bg-status-payment-claimed text-white"
+          : "bg-foreground/[0.06] text-foreground",
+      )}
+    >
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      {attention.label}
+    </p>
   );
 }
 
@@ -233,6 +224,7 @@ export function OrderCard({
   order,
   displayNumber,
   overtaken = false,
+  optionCodes,
   boothName,
   agingMin,
   overdueMin,
@@ -254,6 +246,9 @@ export function OrderCard({
   // one may have been finished without anyone marking it (see
   // overtakenOrderIds in @/lib/orders).
   overtaken?: boolean;
+  // The booth's own short codes for option choices (see buildOptionCodes in
+  // @/lib/ticket). A choice with no code prints in full, so this is optional.
+  optionCodes?: OptionCodes;
   boothName?: string;
   // Vendor-configurable board_settings thresholds (see /dashboard/settings).
   // Fall through to orderAgeTone's own defaults when not supplied.
@@ -276,10 +271,10 @@ export function OrderCard({
   // remainingAutoClearMs below); the actual sweep is server-side
   // (sweepReadyOrders) — this is display only, never authoritative.
   readyAutoClearMs?: number | null;
-  // Footer stamp reads a bare time ("2:38 AM") by default — fine for the
-  // live board, where every card is from today. A history list spans many
-  // days, so it opts into a date+time stamp instead of a time an ordering
-  // vendor would have to guess the day for.
+  // The history list's view of a ticket: a date and time stamp, each line's
+  // price and the total. The live board shows none of that. Whoever is making
+  // the order needs the number, the name and the drinks, and how long it has
+  // waited is already in the header.
   showDate?: boolean;
   // Board-level batch-mark-ready mode: when true, a selection checkbox
   // renders instead of nothing (the board only sets this for `preparing`
@@ -312,13 +307,7 @@ export function OrderCard({
   const [bumpedLocally, setBumpedLocally] = useState(false);
   const bumped = bumpedLocally || order.priority_bumped_at != null;
   const { pending: updating, run } = useAsyncAction();
-  // Options start shown. Whoever is writing the order onto a cup needs every
-  // customisation to hand, and a collapsed card made that one tap per order:
-  // over a hundred taps across a service, for text the card had the room to
-  // print all along. The toggle stays, so a vendor scanning for numbers rather
-  // than making drinks can still fold them away.
-  const [expanded, setExpanded] = useState(true);
-  const [proofExpanded, setProofExpanded] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // A just-tapped advanceStatus sits here until the undo window closes (timer
   // in undoTimerRef) or the vendor taps Undo. Cleared on unmount too, so a
@@ -353,9 +342,6 @@ export function OrderCard({
   // dialog asking them to confirm it.
   const number = displayNumber ?? order.order_number;
   const numberSplit = splitTrailingDigit(number);
-  const advance = ADVANCE[status];
-  const hasOptions = items.some((it) => (it.options?.length ?? 0) > 0);
-  const paymentReviewNeeded = needsPaymentReview(status, payStatus);
 
   // Time left before sweepReadyOrders auto-completes this order, for the
   // "Mark Picked Up" drain bar. Set once per ready_at (the effect only
@@ -390,7 +376,7 @@ export function OrderCard({
   // All mutations go through validated server actions (order-actions.ts); the
   // DB enforces ownership (RLS) and column integrity (a freeze trigger).
   function advanceStatus() {
-    if (!advance) return;
+    if (!ADVANCE[status]) return;
     const revertTo = status;
     const prevPaymentStatus = order.payment_status;
     return run(async () => {
@@ -522,6 +508,23 @@ export function OrderCard({
   }
 
   const closed = isTerminal(status);
+  const attention = ticketAttention({
+    status,
+    paymentStatus: payStatus,
+    printStatus: order.print_status,
+    overtaken,
+  });
+  // What the customer owes, printed on the payment buttons themselves: the one
+  // moment on the live board where the amount is the thing being checked.
+  const amountDue = priced ? formatPrice(order.total_cents) : null;
+  // No cancel once payment is confirmed. There is no refund rail, so a paid
+  // order can only be refunded off-platform, and the server action rejects the
+  // cancel too.
+  const canCancel =
+    payStatus !== "confirmed" &&
+    status !== "cancelled" &&
+    (!closed || order.auto_completed);
+  const canBump = !closed && !bumped;
 
   // One full-card attention wash at a time, by priority. A background (not a
   // border) so the colour reaches the scalloped receipt top edge instead of
@@ -544,429 +547,427 @@ export function OrderCard({
         wash,
       )}
     >
-      {/* A full-width booth banner instead of squeezing the name into a
-          corner icon/tab — those blocked or truncated past readability. In
-          normal flow (not absolutely positioned) so it can't overlap the
-          name/number block below it, and the full card width means a
-          booth's actual name reads at a glance instead of being guessed
-          from a dot. Same boothColor() hash as the filter tabs/dropdown, so
-          the colour association still carries onto the card. Tinted
-          background + bigger dot (not just a small quiet dot on a neutral
-          bar) — staff triaging a lot of orders at once need the booth to
-          register at a glance, not on close reading. Only rendered in
-          multi-booth view. */}
-      {boothName && (
-        <div
-          className="flex items-center gap-2 rounded-t-xl border-b px-4 py-2"
-          style={{
-            backgroundColor: `color-mix(in oklch, ${boothColor(order.booth_id)} 22%, var(--color-secondary))`,
-            borderColor: `color-mix(in oklch, ${boothColor(order.booth_id)} 45%, var(--color-border))`,
-          }}
-        >
-          <span
-            className="size-3 shrink-0 rounded-full ring-2 ring-background"
-            style={{ backgroundColor: boothColor(order.booth_id) }}
-          />
-          <span className="truncate text-sm font-bold tracking-wide text-foreground uppercase">
-            {boothName}
-          </span>
-        </div>
-      )}
       <div className="flex items-start gap-3 px-4 pt-5 pb-3">
         {selectable && (
           <Checkbox
-            className="mt-1 shrink-0"
+            className="mt-1.5 shrink-0"
             checked={selected}
             onCheckedChange={() => onToggleSelect?.(order.id)}
             aria-label={`Select order #${number}`}
           />
         )}
-        <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
-          {/* The number/name block is plain, high-contrast primary data —
-            the single most-scanned element on the board, read one-handed
-            and often with greasy/wet hands. The bump affordance is a
-            separate icon chip so "read the number" and "this is tappable"
-            stay visually distinct signals instead of one dashed, low-
-            emphasis button that used to read as "empty/add here". Instant
-            tap, no confirm dialog — same rationale as advanceStatus below:
-            confirmation friction on a low-stakes, tapped-often action causes
-            habituation and increases errors more than it prevents them; a
-            mis-bump just means an order preps slightly out of its natural
-            order, not a real consequence. Not tappable once already bumped
-            (re-tap would just refresh the timestamp with no visible change)
-            or once closed. */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="font-mono text-xl font-bold tracking-tight">
-                #{numberSplit.lead}
-                {/* Emphasized: staff slotting a pickup by a physical
-                    shelf's last-digit position (bubble-tea-chain style)
-                    read this digit first. */}
-                <span className="text-primary text-2xl">
-                  {numberSplit.last}
-                </span>
-              </p>
-              {!closed && !bumped && (
-                <button
-                  type="button"
-                  aria-label={`Bump order #${number} to front`}
-                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 bg-secondary/40 p-1 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-secondary hover:text-primary"
-                  disabled={updating}
-                  onClick={bump}
-                >
-                  <Zap className="size-3.5" aria-hidden="true" />
-                </button>
-              )}
-              {!closed && bumped && (
-                <Zap
-                  className="size-4 shrink-0 text-primary"
-                  aria-label="Manually bumped to the front of the queue"
-                />
-              )}
-            </div>
-            {/* Wrapped, not truncated: this name is what staff write on the
-                cup and call out, so a cut-off one is a mix-up waiting to
-                happen. */}
-            <p className="text-sm break-words text-muted-foreground">
-              {order.customer_name}
+        <div className="min-w-0 flex-1">
+          {/* Only in multi-booth view. Same boothColor() hash as the board's
+              filter, so the colour still carries onto the ticket, but as one
+              quiet line: the number below is what gets called out. */}
+          {boothName && (
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: boothColor(order.booth_id) }}
+                aria-hidden="true"
+              />
+              <span className="truncate">{boothName}</span>
             </p>
-            {/* A later order is already out, so this one was probably finished
-                without anyone marking it. Deliberately a badge on the card
-                rather than a third board column: counter space is tight, and
-                the card colours staff already read stay as they are. */}
-            {overtaken && !closed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-status-aging/40 bg-status-aging/10 px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-status-aging uppercase">
-                    <AlertTriangle className="size-3" aria-hidden="true" />
-                    Passed over
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  A later order is already ready. Check whether this one is done
-                  and nobody marked it.
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            <OrderStatusBadge status={status} />
-            <PaymentBadge status={payStatus} />
-            <PrintBadge status={order.print_status} />
-            {order.source === "walkup" && (
-              <MiniPill
-                label="Walk-up"
-                className="bg-secondary text-muted-foreground"
+          )}
+          {/* The number is the most-scanned thing on the board, read
+              one-handed and often with wet hands, so it is the largest thing
+              on the ticket and nothing else competes with it. */}
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <p className="font-mono text-3xl leading-none font-bold tracking-tight">
+              #{numberSplit.lead}
+              {/* Emphasized: staff slotting a pickup by a physical shelf's
+                  last-digit position (bubble-tea-chain style) read this digit
+                  first. */}
+              <span className="text-primary">{numberSplit.last}</span>
+            </p>
+            {!closed && bumped && (
+              <Zap
+                className="size-4 shrink-0 text-primary"
+                aria-label="Manually bumped to the front of the queue"
               />
             )}
+            {/* "Preparing" is what a ticket on the board is unless told
+                otherwise, so it goes unsaid. Only the states that change what
+                staff do next are named. */}
+            {status !== "preparing" && <OrderStatusBadge status={status} />}
           </div>
-        </div>
-      </div>
-
-      <div className="perforation mx-4" />
-
-      <div className="px-4 py-3">
-        <div className="space-y-1.5">
-          {items.map((item, i) => (
-            <div key={i} className="text-sm">
-              <div className="flex justify-between gap-2">
-                <span className="min-w-0 break-words">
-                  <span className="font-mono text-muted-foreground">
-                    {item.quantity}×
-                  </span>{" "}
-                  {item.name}
-                </span>
-                {priced && (
-                  <span className="shrink-0 font-mono text-muted-foreground">
-                    {item.price_cents == null
-                      ? "Free"
-                      : formatPrice(item.price_cents * item.quantity)}
-                  </span>
-                )}
-              </div>
-              {(item.options?.length ?? 0) > 0 &&
-                (expanded ? (
-                  <ul className="mt-0.5 space-y-0.5 pl-5 text-xs text-muted-foreground">
-                    {(item.options ?? []).map((o, j) => (
-                      <li key={j} className="flex justify-between gap-3">
-                        <span className="font-medium text-foreground/70">
-                          {o.group}:
-                        </span>
-                        <span className="text-right text-foreground/90">
-                          {o.choice}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="pl-5 text-xs break-words text-muted-foreground">
-                    {formatOptions(item.options)}
-                  </p>
-                ))}
-            </div>
-          ))}
-        </div>
-
-        {hasOptions && (
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-            className="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-1 text-[0.7rem] font-medium text-muted-foreground transition-colors hover:bg-secondary/50"
-          >
-            <ChevronDown
-              className={cn(
-                "size-3.5 transition-transform",
-                expanded && "rotate-180",
-              )}
-            />
-            {expanded ? "Hide options" : "Show options"}
-          </button>
-        )}
-      </div>
-
-      <div className="mt-auto">
-        {priced && (
-          <>
-            <div className="perforation mx-4" />
-            <div className="flex items-baseline justify-between px-4 py-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Total
+          {/* Wrapped, not truncated: this name is what staff write on the cup
+              and call out, so a cut-off one is a mix-up waiting to happen. A
+              walk-up has no phone to notify, so staff need to know to call
+              it. */}
+          <p className="mt-1.5 text-base leading-snug font-medium break-words">
+            {order.customer_name}
+            {order.source === "walkup" && (
+              <span className="font-normal text-muted-foreground">
+                {" "}
+                · walk-up
               </span>
-              <span className="font-mono text-lg font-bold">
-                {formatPrice(order.total_cents)}
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* Tap-to-expand proof-photo review — only once a customer has
-            actually claimed payment (a proof photo only exists then). Covers
-            both payment-review button shapes below (the plain confirm button
-            and the merged "Mark paid & start" one), since both require
-            payStatus === "claimed". */}
-        {!closed && payStatus === "claimed" && order.payment_proof_path && (
-          <ProofPhotoTrigger
-            order={order}
-            expanded={proofExpanded}
-            onToggle={() => setProofExpanded((v) => !v)}
-          />
-        )}
-
-        {/* Payment prompts only while the order is live — a cancelled/completed
-            order must not solicit or re-confirm payment. A still-pending order
-            gets the merged review action instead (below) — no separate
-            confirm-payment prompt for it. */}
-        {!closed && status !== "pending" && payStatus === "claimed" && (
-          <div className="px-4 pb-3">
-            <Button
-              className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
-              onClick={confirmPayment}
-              disabled={updating}
-            >
-              <Banknote className="size-5" /> Confirm payment received
-            </Button>
-          </div>
-        )}
-        {!closed && status !== "pending" && payStatus === "pending" && (
-          <div className="px-4 pb-3">
-            <Button
-              size="sm"
-              className="h-10 w-full rounded-lg bg-status-payment-claimed font-semibold text-white hover:bg-status-payment-claimed/90"
-              onClick={confirmPayment}
-              disabled={updating}
-            >
-              Mark as paid
-            </Button>
-          </div>
-        )}
-
-        {/* Reconciled "Mark paid & start" review action — see
-            paymentReviewNeeded above. */}
-        {!closed && paymentReviewNeeded && (
-          <div className="px-4 pb-3">
-            <Button
-              className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
-              onClick={confirmPaymentAndStartHandler}
-              disabled={updating}
-            >
-              <Banknote className="size-5" /> Mark paid &amp; start
-            </Button>
-          </div>
-        )}
-
-        {/* Stays visible through a pending undo window even once `closed`
-            (e.g. a just-completed order) — otherwise the undo affordance
-            itself would vanish along with the row. */}
-        {(!closed || pendingUndo) && (
-          <div className="flex gap-2 px-4 pb-4">
-            {pendingUndo && status === pendingUndo.revertFrom ? (
-              // Instant tap, no confirm gate on the advance itself — this is
-              // the recovery path instead: a few seconds to catch a mis-tap,
-              // draining left-to-right so the deadline is visible at a glance.
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="relative h-11 flex-1 overflow-hidden rounded-lg font-semibold"
-                onClick={undoAdvance}
-                disabled={updating}
-              >
-                <span
-                  className="undo-bar absolute inset-y-0 left-0 bg-secondary"
-                  style={{ animationDuration: `${undoMs}ms` }}
-                  aria-hidden="true"
-                />
-                <span className="relative flex items-center gap-1.5">
-                  <Undo2 className="size-4" /> Undo
-                </span>
-              </Button>
-            ) : (
-              <>
-                {advance && !paymentReviewNeeded && (
-                  <Button
-                    size="sm"
-                    className="relative h-11 flex-1 overflow-hidden rounded-lg font-semibold"
-                    onClick={advanceStatus}
-                    disabled={updating}
-                  >
-                    {remainingAutoClearMs != null && (
-                      <span
-                        className="autoclear-bar absolute inset-y-0 left-0 bg-black/10"
-                        style={{
-                          animationDuration: `${remainingAutoClearMs}ms`,
-                        }}
-                        aria-hidden="true"
-                      />
-                    )}
-                    <span className="relative">{advance.label}</span>
-                  </Button>
-                )}
-                {/* No cancel affordance once payment is confirmed — there's no
-                    refund rail, so a paid order can only be refunded off-platform
-                    (the server action rejects the cancel too). */}
-                {payStatus !== "confirmed" && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
-                        disabled={updating}
-                      >
-                        Cancel
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          Cancel order #{number}?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This permanently cancels the order and removes it from
-                          the board. This can&apos;t be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel disabled={updating}>
-                          Keep order
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={cancelOrder}
-                          disabled={updating}
-                          className="bg-destructive text-white hover:bg-destructive/90"
-                        >
-                          Cancel order
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </>
             )}
-          </div>
-        )}
-
-        {closed && !pendingUndo && order.auto_completed && (
-          <div className="flex gap-2 px-4 pb-4">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-11 flex-1 rounded-lg font-semibold"
-              onClick={restoreToReady}
-              disabled={updating}
-            >
-              <Undo2 className="size-4" /> Restore to ready
-            </Button>
-            {/* The auto-clear sweep can beat a vendor's own cancel tap (the
-                order was sitting ready, past the vendor's configured auto-
-                clear window) -- without this, the only way to actually
-                cancel it is restore to ready first, then cancel from there.
-                cancelOrder accepts an auto-completed order specifically for
-                this reason (see its own comment). */}
-            {payStatus !== "confirmed" && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-11 rounded-lg text-muted-foreground hover:text-destructive"
-                    disabled={updating}
-                  >
-                    Cancel
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel order #{number}?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This order was auto-completed before you cancelled it.
-                      Cancelling now permanently removes it from the board. This
-                      can&apos;t be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={updating}>
-                      Keep order
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={cancelOrder}
-                      disabled={updating}
-                      className="bg-destructive text-white hover:bg-destructive/90"
-                    >
-                      Cancel order
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between border-t border-border/60 px-4 py-2 font-mono text-[0.7rem] text-muted-foreground">
-          {!closed && ageMins != null ? (
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {!closed && ageMins != null && (
             <span
               className={cn(
-                "inline-flex items-center gap-1 font-semibold tabular-nums",
+                "inline-flex items-center gap-1 font-mono text-sm font-semibold tabular-nums",
                 ageToneClass(tone),
               )}
               title="Time since the order arrived"
               aria-label={`${ageMins} minutes since arrival${ageToneAriaSuffix(tone)}`}
             >
-              <Clock className="size-3" />
-              {ageMins}m
+              <Clock className="size-3.5" aria-hidden="true" />
+              {ageLabel(ageMins)}
             </span>
-          ) : (
-            <span />
           )}
-          <span>
-            {showDate
-              ? shortDateTime(order.created_at)
-              : sgtClock(order.created_at)}
-          </span>
+          <TicketMenu
+            number={number}
+            disabled={updating}
+            onBump={canBump ? bump : undefined}
+            onCancel={canCancel ? () => setCancelOpen(true) : undefined}
+          />
         </div>
       </div>
+
+      {attention && <AttentionLine attention={attention} />}
+
+      <div className="perforation mx-4" />
+
+      <TicketItems
+        items={items}
+        optionCodes={optionCodes}
+        showPrices={showDate && priced}
+      />
+
+      <TicketActions
+        order={order}
+        status={status}
+        payStatus={payStatus}
+        updating={updating}
+        amountDue={amountDue}
+        pendingUndo={pendingUndo}
+        undoMs={undoMs}
+        remainingAutoClearMs={remainingAutoClearMs}
+        showDate={showDate}
+        onConfirmPayment={confirmPayment}
+        onConfirmPaymentAndStart={confirmPaymentAndStartHandler}
+        onAdvance={advanceStatus}
+        onUndo={undoAdvance}
+        onRestore={restoreToReady}
+      />
+
+      {/* Opened from the "more" menu. An auto-completed order gets its own
+          wording: the auto-clear sweep can beat a vendor's own cancel tap, and
+          cancelOrder accepts that case specifically (see its own comment). */}
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel order #{number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {closed
+                ? "This order was auto-completed before you cancelled it. Cancelling now permanently removes it from the board. This can't be undone."
+                : "This permanently cancels the order and removes it from the board. This can't be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updating}>
+              Keep order
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={cancelOrder}
+              disabled={updating}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Cancel order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Ticket>
+  );
+}
+
+// The amount owed, set off at the far end of a payment button. Absent for an
+// order with no prices, where there is nothing to check.
+function AmountDue({ amount }: { amount: string | null }) {
+  if (amount == null) return null;
+  return <span className="ml-auto pl-3 font-mono tabular-nums">{amount}</span>;
+}
+
+// Everything that is not "the next step" lives behind this, so the ticket
+// carries one button and a mis-tap with wet hands lands on nothing
+// destructive. Renders nothing when neither action applies.
+function TicketMenu({
+  number,
+  disabled,
+  onBump,
+  onCancel,
+}: {
+  number: string | null;
+  disabled: boolean;
+  onBump?: () => void;
+  onCancel?: () => void;
+}) {
+  if (!onBump && !onCancel) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="-mr-2 size-10 rounded-full text-muted-foreground"
+          aria-label={`More actions for order #${number}`}
+          disabled={disabled}
+        >
+          <MoreHorizontal className="size-5" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-44">
+        {onBump && (
+          <DropdownMenuItem onSelect={onBump} className="py-2.5">
+            <Zap className="size-4" aria-hidden="true" />
+            Bump to front
+          </DropdownMenuItem>
+        )}
+        {onCancel && (
+          <DropdownMenuItem
+            onSelect={onCancel}
+            className="py-2.5 text-destructive focus:text-destructive"
+          >
+            Cancel order
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// Every customisation is on the ticket with nothing to open: whoever is making
+// the order needs all of it, and a collapsed ticket cost a tap per order. They
+// are kept short instead, as the vendor's own codes where set (see
+// ticketOptions).
+function TicketItems({
+  items,
+  optionCodes,
+  showPrices,
+}: {
+  items: ReturnType<typeof parseOrderItems>;
+  optionCodes?: OptionCodes;
+  showPrices: boolean;
+}) {
+  return (
+    <ul className="space-y-2.5 px-4 py-3.5">
+      {items.map((item, i) => {
+        const options = ticketOptions(item, optionCodes);
+        return (
+          <li key={i}>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="min-w-0 text-base leading-snug font-medium break-words">
+                <span className="font-mono font-bold">{item.quantity}×</span>{" "}
+                {item.name}
+              </p>
+              {showPrices && (
+                <span className="shrink-0 font-mono text-sm text-muted-foreground">
+                  {item.price_cents == null
+                    ? "Free"
+                    : formatPrice(item.price_cents * item.quantity)}
+                </span>
+              )}
+            </div>
+            {options.length > 0 && (
+              <p className="mt-0.5 flex flex-wrap pl-7 text-sm leading-snug font-medium text-foreground/80">
+                {options.map((option, j) => (
+                  <span
+                    key={j}
+                    className="break-words after:mx-1.5 after:text-muted-foreground/60 after:content-['·'] last:after:content-none"
+                  >
+                    {option}
+                  </span>
+                ))}
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// The foot of the ticket: at most one next step (or its undo), the payment
+// check when money is outstanding, and the history list's date and total.
+// Split out of OrderCard so each reads as one concern.
+function TicketActions({
+  order,
+  status,
+  payStatus,
+  updating,
+  amountDue,
+  pendingUndo,
+  undoMs,
+  remainingAutoClearMs,
+  showDate,
+  onConfirmPayment,
+  onConfirmPaymentAndStart,
+  onAdvance,
+  onUndo,
+  onRestore,
+}: {
+  order: BoardOrder;
+  status: OrderStatus;
+  payStatus: PaymentStatus;
+  updating: boolean;
+  amountDue: string | null;
+  pendingUndo: PendingUndo | null;
+  undoMs: number;
+  remainingAutoClearMs: number | null;
+  showDate: boolean;
+  onConfirmPayment: () => void;
+  onConfirmPaymentAndStart: () => void;
+  onAdvance: () => void;
+  onUndo: () => void;
+  onRestore: () => void;
+}) {
+  const [proofExpanded, setProofExpanded] = useState(false);
+  const closed = isTerminal(status);
+  const advance = ADVANCE[status];
+  const paymentReviewNeeded = needsPaymentReview(status, payStatus);
+  const priced = amountDue != null;
+
+  return (
+    <div className="mt-auto">
+      {/* Tap-to-expand proof-photo review — only once a customer has
+          actually claimed payment (a proof photo only exists then). Covers
+          both payment-review button shapes below (the plain confirm button
+          and the merged "Mark paid & start" one), since both require
+          payStatus === "claimed". */}
+      {!closed && payStatus === "claimed" && order.payment_proof_path && (
+        <ProofPhotoTrigger
+          order={order}
+          expanded={proofExpanded}
+          onToggle={() => setProofExpanded((v) => !v)}
+        />
+      )}
+
+      {/* Payment prompts only while the order is live — a cancelled/completed
+          order must not solicit or re-confirm payment. A still-pending order
+          gets the merged review action instead (below) — no separate
+          confirm-payment prompt for it. */}
+      {!closed && status !== "pending" && payStatus === "claimed" && (
+        <div className="px-4 pb-3">
+          <Button
+            className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
+            onClick={onConfirmPayment}
+            disabled={updating}
+          >
+            <Banknote className="size-5" /> Confirm payment received
+            <AmountDue amount={amountDue} />
+          </Button>
+        </div>
+      )}
+      {!closed && status !== "pending" && payStatus === "pending" && (
+        <div className="px-4 pb-3">
+          <Button
+            size="sm"
+            className="h-10 w-full rounded-lg bg-status-payment-claimed font-semibold text-white hover:bg-status-payment-claimed/90"
+            onClick={onConfirmPayment}
+            disabled={updating}
+          >
+            Mark as paid
+            <AmountDue amount={amountDue} />
+          </Button>
+        </div>
+      )}
+
+      {/* Reconciled "Mark paid & start" review action — see
+          paymentReviewNeeded above. */}
+      {!closed && paymentReviewNeeded && (
+        <div className="px-4 pb-3">
+          <Button
+            className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
+            onClick={onConfirmPaymentAndStart}
+            disabled={updating}
+          >
+            <Banknote className="size-5" /> Mark paid &amp; start
+            <AmountDue amount={amountDue} />
+          </Button>
+        </div>
+      )}
+
+      {/* Stays visible through a pending undo window even once `closed`
+          (e.g. a just-completed order) — otherwise the undo affordance
+          itself would vanish along with the row. */}
+      {(!closed || pendingUndo) &&
+        (pendingUndo && status === pendingUndo.revertFrom ? (
+          // Instant tap, no confirm gate on the advance itself — this is
+          // the recovery path instead: a few seconds to catch a mis-tap,
+          // draining left-to-right so the deadline is visible at a glance.
+          <div className="px-4 pb-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="relative h-12 w-full overflow-hidden rounded-lg text-base font-semibold"
+              onClick={onUndo}
+              disabled={updating}
+            >
+              <span
+                className="undo-bar absolute inset-y-0 left-0 bg-secondary"
+                style={{ animationDuration: `${undoMs}ms` }}
+                aria-hidden="true"
+              />
+              <span className="relative flex items-center gap-1.5">
+                <Undo2 className="size-4" /> Undo
+              </span>
+            </Button>
+          </div>
+        ) : (
+          advance &&
+          !paymentReviewNeeded && (
+            <div className="px-4 pb-4">
+              <Button
+                className="relative h-12 w-full overflow-hidden rounded-lg text-base font-semibold"
+                onClick={onAdvance}
+                disabled={updating}
+              >
+                {remainingAutoClearMs != null && (
+                  <span
+                    className="autoclear-bar absolute inset-y-0 left-0 bg-black/10"
+                    style={{
+                      animationDuration: `${remainingAutoClearMs}ms`,
+                    }}
+                    aria-hidden="true"
+                  />
+                )}
+                <span className="relative">{advance.label}</span>
+              </Button>
+            </div>
+          )
+        ))}
+
+      {closed && !pendingUndo && order.auto_completed && (
+        <div className="px-4 pb-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 w-full rounded-lg text-base font-semibold"
+            onClick={onRestore}
+            disabled={updating}
+          >
+            <Undo2 className="size-4" /> Restore to ready
+          </Button>
+        </div>
+      )}
+
+      {showDate && (
+        <div className="flex items-baseline justify-between border-t border-border/60 px-4 py-2.5 font-mono text-xs text-muted-foreground">
+          <span>{shortDateTime(order.created_at)}</span>
+          {priced && (
+            <span className="text-sm font-bold text-foreground">
+              {formatPrice(order.total_cents)}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

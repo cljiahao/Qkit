@@ -505,6 +505,14 @@ boolean`, migration 0080 — orders, booth_item_sold —
   (a real CodeQL finding: remote property injection).
 - `tour-ids.test.ts` — asserts every `TOUR_IDS` entry parses and an
   arbitrary string (including `"__proto__"`) is rejected.
+- `ticket.ts` — what the order ticket prints, kept pure so it is unit-tested
+  apart from the card: `buildOptionCodes(menuItems)` (a booth's short codes
+  keyed by item, group and choice label, since an order stores labels),
+  `ticketOptions(item, codes)` (code where set, full choice otherwise, group
+  prefixed when two would read the same), `suggestOptionCode(label)`
+  (initials, offered as a placeholder and never applied), and
+  `ticketAttention(...)` (the single most urgent flag for a ticket, or
+  null). `OPTION_CODE_MAX` bounds a code's length.
 - `tz.ts` — Singapore-only wall-clock helpers built on cached
   `Intl.DateTimeFormat` instances: `sgtHour`/`sgtMinutes`/`sgtWeekday`,
   `WEEKDAY_ORDER`/`WEEKDAY_LABELS`, display formatters `shortDay`/

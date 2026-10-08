@@ -21,6 +21,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { OPTION_CODE_MAX, suggestOptionCode } from "@/lib/ticket";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ProLock } from "@/components/pro-lock";
 import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
@@ -39,7 +41,11 @@ interface Props {
 }
 
 function hasAdvancedSet(choice: OptionChoice): boolean {
-  return choice.cost_delta_cents != null || (choice.allergens?.length ?? 0) > 0;
+  return (
+    choice.cost_delta_cents != null ||
+    (choice.allergens?.length ?? 0) > 0 ||
+    Boolean(choice.code)
+  );
 }
 
 // Same union logic as item-customizer.tsx's live customer-facing badge.
@@ -125,6 +131,11 @@ export function OptionGroupsEditor({
 
   function setChoiceCost(gi: number, ci: number, cents: number | undefined) {
     updateChoice(gi, ci, { cost_delta_cents: cents === 0 ? undefined : cents });
+  }
+
+  function setChoiceCode(gi: number, ci: number, code: string) {
+    const trimmed = code.trim();
+    updateChoice(gi, ci, { code: trimmed === "" ? undefined : trimmed });
   }
 
   function toggleChoiceAllergen(
@@ -253,6 +264,7 @@ export function OptionGroupsEditor({
                     onLabelChange={(label) => updateChoiceLabel(gi, ci, label)}
                     onPriceChange={(cents) => setChoicePrice(gi, ci, cents)}
                     onCostChange={(cents) => setChoiceCost(gi, ci, cents)}
+                    onCodeChange={(code) => setChoiceCode(gi, ci, code)}
                     onAllergenToggle={(tag, checked) =>
                       toggleChoiceAllergen(gi, ci, choice, tag, checked)
                     }
@@ -305,6 +317,7 @@ function ChoiceRow({
   onLabelChange,
   onPriceChange,
   onCostChange,
+  onCodeChange,
   onAllergenToggle,
   onRemove,
 }: {
@@ -316,6 +329,7 @@ function ChoiceRow({
   onLabelChange: (label: string) => void;
   onPriceChange: (cents: number | undefined) => void;
   onCostChange: (cents: number | undefined) => void;
+  onCodeChange: (code: string) => void;
   onAllergenToggle: (tag: AllergenTag, checked: boolean) => void;
   onRemove: () => void;
 }) {
@@ -366,10 +380,29 @@ function ChoiceRow({
             <DialogHeader>
               <DialogTitle>Advanced: {choice.label || "Choice"}</DialogTitle>
               <DialogDescription>
-                Extra cost and allergens only when this choice is picked.
+                A short code for the order ticket, plus extra cost and allergens
+                only when this choice is picked.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor={`code-${choice.id}`} className="text-sm">
+                  Short code on the order ticket
+                </Label>
+                <Input
+                  id={`code-${choice.id}`}
+                  value={choice.code ?? ""}
+                  onChange={(e) => onCodeChange(e.target.value)}
+                  maxLength={OPTION_CODE_MAX}
+                  placeholder={suggestOptionCode(choice.label) || "e.g. LS"}
+                  autoCapitalize="characters"
+                  className="w-32 rounded-lg font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your own shorthand, so a ticket reads quickly. Leave it blank
+                  and the ticket prints the choice in full.
+                </p>
+              </div>
               <div className="relative w-32">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   $

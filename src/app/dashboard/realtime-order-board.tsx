@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
+import type { OptionCodes } from "@/lib/ticket";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
 import {
@@ -93,6 +94,10 @@ interface Props {
   // seenFirstNumbers). With the setting off the map stays empty and no fallback
   // is computed, so every card shows its real, permanent number.
   dailyOrderNumberBaselines?: Record<string, string>;
+  // Each booth's short codes for option choices, keyed by booth id (see
+  // buildOptionCodes in @/lib/ticket). A booth with none is simply absent, and
+  // its tickets print every choice in full.
+  optionCodes?: Record<string, OptionCodes>;
 }
 
 type BoothFilter = "all" | string;
@@ -459,6 +464,7 @@ export function RealtimeOrderBoard({
   boardSettings,
   loadError = false,
   dailyOrderNumberBaselines = {},
+  optionCodes = {},
 }: Props) {
   const router = useRouter();
   const boothIds = booths.map((b) => b.id);
@@ -707,6 +713,7 @@ export function RealtimeOrderBoard({
             null,
         )}
         overtaken={overtaken.has(order.id)}
+        optionCodes={optionCodes[order.booth_id]}
         boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
         agingMin={boardSettings.aging_min}
         overdueMin={boardSettings.overdue_min}

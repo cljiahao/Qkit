@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { OrderCard } from "./order-card";
+import { buildOptionCodes } from "@/lib/ticket";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { sgtClock, shortDateTime } from "@/lib/tz";
 import type { BoardOrder } from "@/lib/types";
@@ -126,17 +127,34 @@ function byOrderNumber(number: string) {
 }
 const ORDER_NUMBER_OPTS = { selector: "p" };
 
+// Bump and cancel live behind the ticket's "more" menu, so the ticket itself
+// carries one button. Opens it and hands back the query for one of its items.
+async function openMore(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: /more actions/i }));
+}
+const moreButton = () =>
+  screen.queryByRole("button", { name: /more actions/i });
+const menuItem = (name: RegExp) => screen.queryByRole("menuitem", { name });
+
 describe("OrderCard", () => {
-  it("renders order number, customer, items and total", () => {
+  it("renders order number, customer and items, and no prices on the live board", () => {
     render(<OrderCard order={makeOrder()} />, { wrapper: TooltipProvider });
     expect(
       screen.getByText(byOrderNumber("#0007"), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
     expect(screen.getByText("Ada")).toBeInTheDocument();
     expect(screen.getByText(/Kopi/)).toBeInTheDocument();
+    // Whoever is making the order needs the number, the name and the drinks.
+    // What it cost is the history list's business.
+    expect(screen.queryByText("$7.00")).not.toBeInTheDocument();
+  });
+
+  it("shows each line's price and the total in the history view", () => {
+    render(<OrderCard order={makeOrder()} showDate />, {
+      wrapper: TooltipProvider,
+    });
     // Line total (350×2) and order total both read $7.00.
     expect(screen.getAllByText("$7.00")).toHaveLength(2);
-    expect(screen.getByText("Total")).toBeInTheDocument();
   });
 
   it("shows displayNumber instead of the real order_number when supplied", () => {
@@ -151,12 +169,16 @@ describe("OrderCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("footer stamp is a bare time by default, a date+time when showDate is set", () => {
+  it("carries no timestamp on the live board, a date and time when showDate is set", () => {
     const order = makeOrder();
     const { rerender } = render(<OrderCard order={order} />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.getByText(sgtClock(order.created_at))).toBeInTheDocument();
+    // On the board the waiting time in the header is the only clock that
+    // matters; the wall-clock time an order came in is history's concern.
+    expect(
+      screen.queryByText(sgtClock(order.created_at)),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText(shortDateTime(order.created_at)),
     ).not.toBeInTheDocument();
@@ -181,6 +203,7 @@ describe("OrderCard", () => {
           ],
           total_cents: 350,
         })}
+        showDate
       />,
       { wrapper: TooltipProvider },
     );
@@ -188,7 +211,7 @@ describe("OrderCard", () => {
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
   });
 
-  it("shows every customisation without a tap, so writing an order costs no clicks", () => {
+  it("shows every customisation with nothing to open", () => {
     render(
       <OrderCard
         order={makeOrder({
@@ -213,42 +236,48 @@ describe("OrderCard", () => {
     expect(screen.getByText("Large")).toBeInTheDocument();
     expect(screen.getByText("Oat")).toBeInTheDocument();
     expect(screen.getByText("25 percent")).toBeInTheDocument();
+    // A tap per order to read the drink was the thing vendors could not
+    // afford mid-service, so there is no expand control at all.
     expect(
-      screen.getByRole("button", { name: /hide options/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /options/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("still lets a vendor fold the customisations down to one summary line", async () => {
-    const user = userEvent.setup();
+  it("prints the vendor's short code for a choice that has one", () => {
     render(
       <OrderCard
         order={makeOrder({
           items: [
             {
               menuItemId: "m1",
-              name: "Iced Latte",
-              price_cents: 650,
+              name: "Kopi",
               quantity: 1,
               options: [
-                { group: "Size", choice: "Large" },
-                { group: "Milk", choice: "Oat" },
+                { group: "Sugar", choice: "Less sugar" },
+                { group: "Temp", choice: "Hot" },
               ],
             },
           ],
-          total_cents: 650,
         })}
+        optionCodes={buildOptionCodes([
+          {
+            id: "m1",
+            option_groups: [
+              {
+                label: "Sugar",
+                choices: [{ label: "Less sugar", code: "LS" }],
+              },
+              { label: "Temp", choices: [{ label: "Hot" }] },
+            ],
+          },
+        ])}
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
-
-    await user.click(screen.getByRole("button", { name: /hide options/i }));
-
-    // The per-group list gives way to formatOptions' single summary line.
-    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
-    expect(
-      screen.getByRole("button", { name: /show options/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("LS")).toBeInTheDocument();
+    expect(screen.queryByText("Less sugar")).not.toBeInTheDocument();
+    // No code set for this one, so it prints in full rather than as a guess.
+    expect(screen.getByText("Hot")).toBeInTheDocument();
   });
 
   it("advances preparing -> ready instantly, showing Undo rather than a confirm gate", async () => {
@@ -410,8 +439,9 @@ describe("OrderCard", () => {
       wrapper: TooltipProvider,
     });
 
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-    // Dialog action (distinct from the trigger / "Keep order").
+    await openMore(user);
+    await user.click(screen.getByRole("menuitem", { name: /cancel order/i }));
+    // Dialog action (distinct from the menu item / "Keep order").
     await user.click(screen.getByRole("button", { name: "Cancel order" }));
 
     expect(cancelOrder).toHaveBeenCalledWith("o1");
@@ -429,9 +459,7 @@ describe("OrderCard", () => {
     expect(
       screen.queryByRole("button", { name: /Mark/ }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Cancel" }),
-    ).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
   });
 
   it("renders the booth banner when a name is given", () => {
@@ -441,18 +469,18 @@ describe("OrderCard", () => {
     expect(screen.getByText("Kopi Cart")).toBeInTheDocument();
   });
 
-  it("shows a Walk-up badge for a walk-up order", () => {
+  it("marks a walk-up beside the name, since there is no phone to notify", () => {
     render(<OrderCard order={makeOrder({ source: "walkup" })} />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.getByText("Walk-up")).toBeInTheDocument();
+    expect(screen.getByText(/walk-up/i)).toBeInTheDocument();
   });
 
-  it("shows no origin badge for a QR order", () => {
+  it("shows no origin note for a QR order", () => {
     render(<OrderCard order={makeOrder({ source: "qr" })} />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.queryByText("Walk-up")).not.toBeInTheDocument();
+    expect(screen.queryByText(/walk-up/i)).not.toBeInTheDocument();
   });
 });
 
@@ -521,11 +549,58 @@ describe("OrderCard payment", () => {
     expect(confirmOrderPayment).toHaveBeenCalledWith("o1");
   });
 
-  it("shows a Paid badge for a confirmed order", () => {
+  it("says nothing about payment once it is confirmed", () => {
     render(<OrderCard order={makeOrder({ payment_status: "confirmed" })} />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.getByText(/^Paid$/i)).toBeInTheDocument();
+    // Paid is the state where there is nothing left to do, so the ticket
+    // stays quiet rather than spending a badge on it.
+    expect(screen.queryByText(/paid/i)).not.toBeInTheDocument();
+  });
+
+  it("flags a payment that has not been made yet", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "preparing", payment_status: "pending" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getByText("Not paid yet")).toBeInTheDocument();
+  });
+
+  it("shows only the most urgent thing when several apply", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          status: "preparing",
+          payment_status: "claimed",
+          print_status: "failed",
+        })}
+        overtaken
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByText("Says paid. Check the payment"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Label did not print")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("A later order is already out"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("prints what is owed on the payment button", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ status: "preparing", payment_status: "claimed" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.getByRole("button", {
+        name: /confirm payment received.*\$7\.00/i,
+      }),
+    ).toBeInTheDocument();
   });
 
   it("shows no payment UI when payment is not required", () => {
@@ -538,7 +613,8 @@ describe("OrderCard payment", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides the Cancel button for a paid (confirmed) live order", () => {
+  it("offers no cancel for a paid (confirmed) live order", async () => {
+    const user = userEvent.setup();
     render(
       <OrderCard
         order={makeOrder({ status: "preparing", payment_status: "confirmed" })}
@@ -547,54 +623,51 @@ describe("OrderCard payment", () => {
     );
     // No refund rail — a paid order shows no cancel affordance, but stays live.
     expect(
-      screen.queryByRole("button", { name: "Cancel" }),
-    ).not.toBeInTheDocument();
-    expect(
       screen.getByRole("button", { name: "Mark Ready" }),
     ).toBeInTheDocument();
+    await openMore(user);
+    expect(menuItem(/cancel order/i)).not.toBeInTheDocument();
+    expect(menuItem(/bump to front/i)).toBeInTheDocument();
   });
 
-  it("still shows Cancel for a non-paid live order", () => {
+  it("still offers cancel for a non-paid live order", async () => {
+    const user = userEvent.setup();
     render(
       <OrderCard
         order={makeOrder({ status: "preparing", payment_status: "pending" })}
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    await openMore(user);
+    expect(menuItem(/cancel order/i)).toBeInTheDocument();
   });
 
-  it("shows a small icon-chip bump trigger, separate from the plain name/number block, for a live, non-bumped order", () => {
-    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
-      wrapper: TooltipProvider,
-    });
-    // The number/name block is plain text now (not itself a button) — the
-    // bump affordance lives only in the dedicated icon chip.
-    expect(
-      screen.getByRole("button", { name: /Bump order #0007 to front/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("calls bumpOrder on a single instant tap (no confirm dialog) and swaps the trigger for a bumped icon", async () => {
+  it("keeps bump in the more menu, off the face of a live, non-bumped ticket", async () => {
     const user = userEvent.setup();
     render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
       wrapper: TooltipProvider,
     });
-    await user.click(
-      screen.getByRole("button", { name: /Bump order #0007 to front/i }),
-    );
-    expect(bumpOrder).toHaveBeenCalledWith("o1");
-    expect(
-      screen.queryByRole("button", { name: "Bump to front" }),
-    ).not.toBeInTheDocument();
-    await waitFor(() => {
-      expect(
-        screen.queryByRole("button", { name: /Bump order #0007 to front/i }),
-      ).not.toBeInTheDocument();
+    expect(menuItem(/bump to front/i)).not.toBeInTheDocument();
+    await openMore(user);
+    expect(menuItem(/bump to front/i)).toBeInTheDocument();
+  });
+
+  it("bumps from the menu with no confirm dialog and marks the ticket as bumped", async () => {
+    const user = userEvent.setup();
+    render(<OrderCard order={makeOrder({ priority_bumped_at: null })} />, {
+      wrapper: TooltipProvider,
     });
-    expect(
-      screen.getByLabelText(/manually bumped to the front/i),
-    ).toBeInTheDocument();
+    await openMore(user);
+    await user.click(screen.getByRole("menuitem", { name: /bump to front/i }));
+    expect(bumpOrder).toHaveBeenCalledWith("o1");
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/manually bumped to the front/i),
+      ).toBeInTheDocument(),
+    );
+    // Once bumped there is nothing left to bump: the menu offers cancel only.
+    await openMore(user);
+    expect(menuItem(/bump to front/i)).not.toBeInTheDocument();
   });
 
   it("shows the bumped icon and no bump trigger for an order already bumped", () => {
@@ -741,18 +814,18 @@ describe("OrderCard — reconciled payment+start", () => {
 });
 
 describe("OrderCard print status", () => {
-  it("shows a Print failed badge when print_status is failed", () => {
+  it("says the label did not print when print_status is failed", () => {
     render(<OrderCard order={makeOrder({ print_status: "failed" })} />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.getByText(/^Print failed$/i)).toBeInTheDocument();
+    expect(screen.getByText("Label did not print")).toBeInTheDocument();
   });
 
   it("shows no print-status UI when print_status is not_required", () => {
     render(<OrderCard order={makeOrder({ print_status: "not_required" })} />, {
       wrapper: TooltipProvider,
     });
-    expect(screen.queryByText(/print failed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/did not print/i)).not.toBeInTheDocument();
   });
 
   it.each(["queued", "sent", "printed"] as const)(
@@ -761,7 +834,7 @@ describe("OrderCard print status", () => {
       render(<OrderCard order={makeOrder({ print_status })} />, {
         wrapper: TooltipProvider,
       });
-      expect(screen.queryByText(/print failed/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/did not print/i)).not.toBeInTheDocument();
     },
   );
 });
@@ -925,7 +998,8 @@ describe("OrderCard — restore auto-completed", () => {
     await waitFor(() => expect(screen.getByText("Ready")).toBeInTheDocument());
   });
 
-  it("also offers Cancel for a sweep-completed order (the sweep can beat a vendor's own cancel tap)", () => {
+  it("also offers cancel for a sweep-completed order (the sweep can beat a vendor's own cancel tap)", async () => {
+    const user = userEvent.setup();
     render(
       <TooltipProvider>
         <OrderCard
@@ -933,9 +1007,8 @@ describe("OrderCard — restore auto-completed", () => {
         />
       </TooltipProvider>,
     );
-    expect(
-      screen.getByRole("button", { name: /^cancel$/i }),
-    ).toBeInTheDocument();
+    await openMore(user);
+    expect(menuItem(/cancel order/i)).toBeInTheDocument();
   });
 
   it("hides Cancel for a sweep-completed order once payment is confirmed", () => {
@@ -950,9 +1023,7 @@ describe("OrderCard — restore auto-completed", () => {
         />
       </TooltipProvider>,
     );
-    expect(
-      screen.queryByRole("button", { name: /^cancel$/i }),
-    ).not.toBeInTheDocument();
+    expect(moreButton()).not.toBeInTheDocument();
   });
 
   it("cancels a sweep-completed order and shows the Cancelled badge", async () => {
@@ -964,7 +1035,8 @@ describe("OrderCard — restore auto-completed", () => {
       </TooltipProvider>,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /^cancel$/i }));
+    await openMore(user);
+    await user.click(screen.getByRole("menuitem", { name: /cancel order/i }));
     await user.click(screen.getByRole("button", { name: /cancel order/i }));
     expect(cancelOrder).toHaveBeenCalledWith("o1");
     await waitFor(() =>
