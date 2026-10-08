@@ -549,12 +549,18 @@ export function OrderCard({
     >
       <div className="flex items-start gap-3 px-4 pt-5 pb-3">
         {selectable && (
-          <Checkbox
-            className="mt-1.5 shrink-0"
-            checked={selected}
-            onCheckedChange={() => onToggleSelect?.(order.id)}
-            aria-label={`Select order #${number}`}
-          />
+          // The label is the touch target: the box itself is 16px, far too
+          // small to hit mid-service, so the padding around it (pulled back
+          // with a matching negative margin, leaving the layout as it was)
+          // makes 44px of it tappable.
+          <label className="-m-3.5 flex shrink-0 cursor-pointer p-3.5">
+            <Checkbox
+              className="mt-1.5"
+              checked={selected}
+              onCheckedChange={() => onToggleSelect?.(order.id)}
+              aria-label={`Select order #${number}`}
+            />
+          </label>
         )}
         <div className="min-w-0 flex-1">
           {/* Only in multi-booth view. Same boothColor() hash as the board's

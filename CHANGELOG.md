@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The order board's controls are a full 44px tall on a phone (booths, customer
+  screen, new order, settings, the booth filter, and the batch buttons), and
+  the tick box on a ticket in Select mode has a 44px touch area in place of a
+  16px one. The header shows the active count as a number alone on a phone, so
+  its controls stay on one row.
+- The five-minute order cleanup uses two partial indexes (migration `0098`)
+  and no longer reads the whole orders table on each run.
 - A payment link reopened long after its order was placed no longer shows a
   PayNow QR. An order still unpaid after 30 minutes reads "This order has
   expired" with a clear "do not pay", and a claim against it is refused, so an
@@ -76,10 +83,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- "Mark all ready" on the order board moves every order still being made to
-  Ready in one go, after a confirmation that says how many. For a stall that
-  had no time to mark orders one by one during service. With auto-clear on,
-  the board then empties by itself.
+- The order board's "Select" mode has "Select all", so a stall that had no
+  time to mark orders one by one during service can tick every order still
+  being made and send them to Ready with one "Mark N Ready". It lives inside
+  Select rather than as its own button, to keep the board to one batch
+  control. With auto-clear on, the board then empties by itself. A tap-to-open
+  hint beside "Select" says what it is for, and the batch buttons are a full
+  44px tall on a phone.
 - The menu CSV has a `choice_code` column, so short codes for the order ticket
   can be set in bulk and survive an export and re-import. It is the last
   column: a file exported before it existed still imports unchanged, and a

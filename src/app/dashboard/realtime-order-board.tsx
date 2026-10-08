@@ -20,6 +20,7 @@ import {
   Store,
 } from "lucide-react";
 import { toast } from "sonner";
+import { InfoTooltip } from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -62,7 +63,6 @@ import {
 } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
 import { CustomerScreenButton } from "./customer-screen-dialog";
-import { MarkAllReadyButton } from "./mark-all-ready";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
 
@@ -382,11 +382,92 @@ function resolveBoothFilter(
 
 /**
  * Batch mark-ready mode (F3): lets a vendor check off several `preparing`
- * orders and advance them to `ready` in one tap instead of one at a time.
+ * orders, or all of them with "Select all", and advance them to `ready` in one
+ * tap instead of one at a time. "Select all" is how a stall catches the board
+ * up after a service with no time to mark orders as they went out; it lives
+ * inside this mode rather than as its own button so the board keeps one batch
+ * control, and so ticking, then reading "Mark 14 Ready", is the confirmation.
  * Reuses the same advanceOrder server action each OrderCard's own single tap
  * calls — no new bulk RPC, per-row optimistic-concurrency guard still applies
  * to each id individually.
  */
+// The board's controls are tapped mid-service, often one-handed, so on a
+// phone each is a full 44px tall; from `sm` up they keep the compact height a
+// pointer is fine with.
+const BATCH_BUTTON = "h-11 rounded-full sm:h-8";
+const HEADER_BUTTON = "h-11 rounded-full sm:h-9";
+
+// The board's one batch control. Idle, it is a single "Select" button with a
+// tap-to-open hint. In select mode it becomes Cancel, Select all (which flips
+// to Clear all once everything is ticked) and "Mark N Ready", whose count is
+// the confirmation.
+function BatchControls({
+  selectMode,
+  selectedCount,
+  allSelected,
+  busy,
+  onStart,
+  onCancel,
+  onToggleAll,
+  onMarkReady,
+}: {
+  selectMode: boolean;
+  selectedCount: number;
+  allSelected: boolean;
+  busy: boolean;
+  onStart: () => void;
+  onCancel: () => void;
+  onToggleAll: () => void;
+  onMarkReady: () => void;
+}) {
+  if (!selectMode)
+    return (
+      <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          className={BATCH_BUTTON}
+          onClick={onStart}
+        >
+          Select
+        </Button>
+        <InfoTooltip
+          content="Tick several orders, or all of them, and mark them ready in one tap."
+          ariaLabel="About Select"
+          trigger="tap"
+        />
+      </div>
+    );
+  return (
+    <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className={BATCH_BUTTON}
+        onClick={onCancel}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className={BATCH_BUTTON}
+        onClick={onToggleAll}
+      >
+        {allSelected ? "Clear all" : "Select all"}
+      </Button>
+      <Button
+        size="sm"
+        className={BATCH_BUTTON}
+        disabled={selectedCount === 0 || busy}
+        onClick={onMarkReady}
+      >
+        Mark {selectedCount} Ready
+      </Button>
+    </div>
+  );
+}
+
 function useMarkReadySelection() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -399,7 +480,8 @@ function useMarkReadySelection() {
     });
   }, []);
   const [markingReady, setMarkingReady] = useState(false);
-  async function markReady(ids: string[]) {
+  async function markSelectedReady() {
+    const ids = Array.from(selectedIds);
     setMarkingReady(true);
     try {
       const results = await Promise.all(ids.map((id) => advanceOrder(id)));
@@ -424,10 +506,7 @@ function useMarkReadySelection() {
     setSelectedIds,
     toggleSelect,
     markingReady,
-    markSelectedReady: () => markReady(Array.from(selectedIds)),
-    // Every preparing order at once (MarkAllReadyButton), for a stall that had
-    // no time to tap them during service.
-    markAllReady: markReady,
+    markSelectedReady,
   };
 }
 
@@ -535,7 +614,6 @@ export function RealtimeOrderBoard({
     toggleSelect,
     markingReady,
     markSelectedReady,
-    markAllReady,
   } = useMarkReadySelection();
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [boothDialogOpen, setBoothDialogOpen] = useState(false);
@@ -702,6 +780,7 @@ export function RealtimeOrderBoard({
     .filter((o) => o.status === "preparing")
     .map((o) => o.id);
   const preparingCount = preparingIds.length;
+  const allSelected = preparingIds.every((id) => selectedIds.has(id));
   // Split the board so an order the vendor hasn't accepted yet (no printer
   // connected, or the booth waits for the customer's own arrival tap) can't
   // get buried under everything already being worked on.
@@ -771,7 +850,7 @@ export function RealtimeOrderBoard({
             booths.length > 1 && (
               <Button
                 variant="outline"
-                className="rounded-full"
+                className={HEADER_BUTTON}
                 onClick={() => setBoothDialogOpen(true)}
                 aria-label={`Booth status, ${activeBoothCount} of ${booths.length} open`}
               >
@@ -795,7 +874,7 @@ export function RealtimeOrderBoard({
           />
           <Button
             variant="default"
-            className="rounded-full"
+            className={HEADER_BUTTON}
             onClick={() => setWalkupOpen(true)}
             aria-label="New order"
             data-tour="new-order"
@@ -814,7 +893,7 @@ export function RealtimeOrderBoard({
                 asChild
                 variant="outline"
                 size="icon"
-                className="rounded-full"
+                className="size-11 rounded-full sm:size-9"
               >
                 <Link href="/dashboard/settings" aria-label="Board settings">
                   <SettingsIcon className="size-3.5" />
@@ -842,7 +921,16 @@ export function RealtimeOrderBoard({
                 )}
               />
             </span>
-            {idle ? "All clear" : `${visible.length} active`}
+            {/* A phone shows the count alone, so the header's controls and
+                this stay on one row; "active" is still read out. */}
+            {idle ? (
+              "All clear"
+            ) : (
+              <span>
+                {visible.length}
+                <span className="sr-only sm:not-sr-only"> active</span>
+              </span>
+            )}
           </span>
         </div>
       </div>
@@ -903,7 +991,7 @@ export function RealtimeOrderBoard({
           <Select value={effectiveFilter} onValueChange={setFilter}>
             <SelectTrigger
               aria-label="Filter by booth"
-              className="h-9 rounded-lg text-sm"
+              className="rounded-lg text-sm data-[size=default]:h-11 sm:data-[size=default]:h-9"
             >
               <SelectValue />
             </SelectTrigger>
@@ -945,7 +1033,7 @@ export function RealtimeOrderBoard({
               onClick={() => setSortOrder(o.value)}
               aria-pressed={sortOrder === o.value}
               className={cn(
-                "rounded-md px-3 py-1.5 font-medium transition-colors",
+                "min-h-9 rounded-md px-3 py-1.5 font-medium transition-colors sm:min-h-0",
                 sortOrder === o.value
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -955,46 +1043,23 @@ export function RealtimeOrderBoard({
             </button>
           ))}
         </div>
-        {preparingCount > 0 &&
-          (selectMode ? (
-            <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => {
-                  setSelectMode(false);
-                  setSelectedIds(new Set());
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="rounded-full"
-                disabled={selectedIds.size === 0 || markingReady}
-                onClick={markSelectedReady}
-              >
-                Mark {selectedIds.size} Ready
-              </Button>
-            </div>
-          ) : (
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-              <MarkAllReadyButton
-                count={preparingCount}
-                busy={markingReady}
-                onConfirm={() => markAllReady(preparingIds)}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => setSelectMode(true)}
-              >
-                Select
-              </Button>
-            </div>
-          ))}
+        {preparingCount > 0 && (
+          <BatchControls
+            selectMode={selectMode}
+            selectedCount={selectedIds.size}
+            allSelected={allSelected}
+            busy={markingReady}
+            onStart={() => setSelectMode(true)}
+            onCancel={() => {
+              setSelectMode(false);
+              setSelectedIds(new Set());
+            }}
+            onToggleAll={() =>
+              setSelectedIds(allSelected ? new Set() : new Set(preparingIds))
+            }
+            onMarkReady={markSelectedReady}
+          />
+        )}
       </div>
 
       {idle ? (
