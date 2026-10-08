@@ -6,7 +6,32 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A booth can limit how many items one customer order may carry ("Most items
+  in one order" in booth settings, every plan), so the first person in the
+  queue cannot take the whole tray. The menu page says the limit up front and
+  refuses an add past it; the `orders_max_items_per_order` trigger enforces it
+  for every customer-placed order. Orders the vendor keys in are not limited.
+  Migration `0096`.
+- A customer's basket now holds its items for five minutes on a booth with
+  finite stock (a daily total or a sold-out limit on an item). The next
+  customer sees those items as "In another basket" instead of being offered
+  them and refused at checkout, and when two people reach for the last one the
+  first basket wins and the second is told. A hold is soft: it changes what
+  other customers are shown and never blocks an order, so a flood of fake
+  holds cannot take a booth offline or cost a real sale. Placing the order
+  releases the hold. Migration `0096`.
+
 ### Changed
+
+- The booth's daily limit is worded as items, not cups, everywhere a vendor or
+  customer reads it ("Stop after this many items each day", "132/200 items",
+  "Only 3 items left today"). It always counted every item the booth sells,
+  whatever it is; the wording said cups because the first stall to ask sold
+  drinks. The menu page now also stops a basket at what is left, instead of
+  letting it fail at checkout. Setting the daily limit is part of stock caps
+  (Event pass and Pro), like the per-item sold-out limit.
 
 - The customer's order page shows the order's four stages, Received, Preparing,
   Ready and Collected, each with its own icon and all visible from the moment

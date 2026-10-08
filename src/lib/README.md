@@ -76,10 +76,22 @@ graceMs)` picks the objects in a vendor folder that nothing references and
 - `carousel.ts` — `nearestIndex(scrollLeft, boardWidth, count)`: clamped
   nearest-board-index calculation for a horizontally-scrolling carousel.
 - `carousel.test.ts` — tests clamping and the non-positive-width edge case.
+- `availability.ts` — what a customer can still add to a basket, parsed from
+  `booth_availability` (migration `0096`): `parseAvailability`, `hasLimits`/
+  `holdsApply`, `addBlock` + `addBlockMessage` (why one more of an item cannot
+  go in: the item's stock, the booth's daily total, or the per-order limit,
+  each told apart from "held in another basket"), and `fitCart` (cuts a basket
+  to what is available, trimming from the end). Display and courtesy only;
+  `place_order` and the cap triggers are the real limits.
+- `availability.test.ts` — tests parsing, each block reason and its order of
+  precedence, the messages, and trimming.
 - `cart-storage.ts` — `saveCart`/`loadCart`/`clearCart`: persists the
   in-progress customer cart to `sessionStorage` (keyed `qkit:cart:{boothId}`)
   as compact `ReorderLine`s, validated on read via `isValidLine`; best-effort
   (silently no-ops without `window` or on quota/private-mode errors).
+  `holdSessionId(boothId)` is the random id the tab's basket holds stock under
+  (`qkit:hold:{boothId}`), kept across a refresh so a customer never sees
+  their own held items as someone else's.
 - `cart-storage.test.ts` — tests save/load/clear round-tripping and malformed
   or missing storage.
 - `cart.ts` — `cartKey(menuItemId, options)` (stable dedup key sorted by

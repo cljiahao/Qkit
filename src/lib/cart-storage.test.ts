@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { saveCart, loadCart, clearCart } from "./cart-storage";
+import { saveCart, loadCart, clearCart, holdSessionId } from "./cart-storage";
 import type { ReorderLine } from "./reorder";
 
 // jsdom isn't configured for this suite (node env), so stub a minimal
@@ -96,5 +96,39 @@ describe("cart-storage", () => {
     vi.stubGlobal("window", { sessionStorage: throwing });
     vi.stubGlobal("sessionStorage", throwing);
     expect(() => saveCart("b1", LINES)).not.toThrow();
+  });
+});
+
+describe("holdSessionId", () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  beforeEach(installStorage);
+
+  it("makes an id once and returns the same one after a refresh", () => {
+    const first = holdSessionId("b1");
+    expect(first).toMatch(UUID);
+    expect(holdSessionId("b1")).toBe(first);
+  });
+
+  it("keeps a separate id per booth", () => {
+    expect(holdSessionId("b1")).not.toBe(holdSessionId("b2"));
+  });
+
+  it("replaces a stored value that is not an id", () => {
+    window.sessionStorage.setItem("qkit:hold:b1", "not-an-id");
+    const id = holdSessionId("b1");
+    expect(id).toMatch(UUID);
+    expect(window.sessionStorage.getItem("qkit:hold:b1")).toBe(id);
+  });
+
+  it("still returns an id when storage throws", () => {
+    vi.stubGlobal("window", {
+      sessionStorage: {
+        getItem: () => {
+          throw new Error("blocked");
+        },
+      },
+    });
+    expect(holdSessionId("b1")).toMatch(UUID);
   });
 });

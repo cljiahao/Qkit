@@ -451,10 +451,11 @@ export const boothFormSchema = z.object({
   // Vendor-pasted paykit booking id, event-mode booths only. Unvalidated
   // against paykit at write time — just stored. See migration 0083.
   paykit_booking_id: z.string().trim().max(200).nullable().default(null),
-  // Cups the booth will serve in one SGT day; null = no cap. Counted as the
-  // sum of item quantities, not orders, since one order can carry several
-  // cups. Enforced in Postgres by the orders_daily_cup_cap trigger, so this
-  // bound is a form guard, not the limit itself. See migration 0094.
+  // Items the booth will sell in one SGT day, across its whole menu; null =
+  // no cap. Counted as the sum of item quantities, not orders, since one order
+  // can carry several. Enforced in Postgres by the orders_daily_cup_cap
+  // trigger, so this bound is a form guard, not the limit itself. The column
+  // keeps its 0094 name; "cup" there means any item.
   // The form sends null for a blank field (same convention as
   // board_settings.default_prep_minutes), not an empty string.
   daily_cup_cap: z
@@ -462,6 +463,16 @@ export const boothFormSchema = z.object({
     .int()
     .positive()
     .max(100_000)
+    .nullable()
+    .default(null),
+  // Most items one customer order may carry; null = no limit. Enforced by the
+  // orders_max_items_per_order trigger (migration 0096), which exempts
+  // walk-up orders the vendor enters.
+  max_items_per_order: z
+    .number()
+    .int()
+    .positive()
+    .max(100)
     .nullable()
     .default(null),
 });

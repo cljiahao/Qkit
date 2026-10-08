@@ -250,10 +250,12 @@ describe("BoothForm paykit booking id", () => {
 
 describe("BoothForm menu section", () => {
   it("shows a hint instead of a link for a brand-new, unsaved booth", () => {
+    // With stock caps, so the only link the form could carry is the menu one
+    // (a plan without them shows an upgrade link on the daily total).
     render(
       <BoothForm
         vendorId="v1"
-        entitlement={ENTITLEMENT}
+        entitlement={{ ...ENTITLEMENT, stockCaps: true }}
         vendorSocialLinks={{}}
       />,
     );
@@ -345,8 +347,8 @@ describe("BoothForm menu section", () => {
   });
 });
 
-describe("BoothForm daily cup cap", () => {
-  const CAP_LABEL = "Stop after this many cups each day";
+describe("BoothForm per-order item limit", () => {
+  const LIMIT_LABEL = "Most items in one order";
 
   it("submits null when left blank, meaning no limit", async () => {
     const user = userEvent.setup();
@@ -354,6 +356,67 @@ describe("BoothForm daily cup cap", () => {
       <BoothForm
         vendorId="v1"
         entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    expect(saveBooth).toHaveBeenCalledWith(
+      expect.objectContaining({ max_items_per_order: null }),
+      [],
+    );
+  });
+
+  it("submits the number the vendor typed, on a plan without stock caps too", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.type(screen.getByLabelText(LIMIT_LABEL), "4");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+
+    expect(saveBooth).toHaveBeenCalledWith(
+      expect.objectContaining({ max_items_per_order: 4 }),
+      [],
+    );
+  });
+
+  it("locks the booth's daily total on a plan without stock caps", () => {
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    expect(
+      screen.queryByLabelText("Stop after this many items each day"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Stop after this many items each day"),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("BoothForm daily cup cap", () => {
+  const CAP_LABEL = "Stop after this many items each day";
+  const ENTITLEMENT_WITH_CAPS: Entitlement = {
+    ...ENTITLEMENT,
+    stockCaps: true,
+  };
+
+  it("submits null when left blank, meaning no limit", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT_WITH_CAPS}
         vendorSocialLinks={{}}
       />,
     );
@@ -371,7 +434,7 @@ describe("BoothForm daily cup cap", () => {
     render(
       <BoothForm
         vendorId="v1"
-        entitlement={ENTITLEMENT}
+        entitlement={ENTITLEMENT_WITH_CAPS}
         vendorSocialLinks={{}}
       />,
     );
@@ -389,7 +452,7 @@ describe("BoothForm daily cup cap", () => {
     render(
       <BoothForm
         vendorId="v1"
-        entitlement={ENTITLEMENT}
+        entitlement={ENTITLEMENT_WITH_CAPS}
         vendorSocialLinks={{}}
         initial={{
           boothId: BOOTH_ID,

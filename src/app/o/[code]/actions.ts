@@ -17,6 +17,8 @@ type Result = ActionResult<{
 const codeSchema = z.string().min(1).max(64);
 const idemSchema = z.string().uuid();
 
+const GENERIC_FAILURE = "Could not place order. Please try again.";
+
 // Map a place_order RAISE prefix to a customer-facing message.
 function messageFor(raw: string): string {
   if (raw.includes("ORDER_EXPIRED"))
@@ -27,15 +29,41 @@ function messageFor(raw: string): string {
     return "Sorry — an item just sold out. Please adjust your order.";
   if (raw.includes("ORDER_CAP_REACHED"))
     return "This stall has served everything it had for today.";
+  if (raw.includes("ORDER_TOO_LARGE"))
+    return "That is more than this stall takes in one order. Remove a few items and try again.";
   if (raw.includes("ORDER_RATE_LIMITED"))
     return "Too many orders too fast — wait a moment and try again.";
-  return "Could not place order. Please try again.";
+  return GENERIC_FAILURE;
+}
+
+/**
+ * Let go of the basket hold the order came from (qkit.cart_holds, migration
+ * 0096): the order now counts against stock itself, and leaving the hold up
+ * would count the same items twice for its remaining minutes. Best-effort
+ * and never throws; an unreleased hold simply expires.
+ */
+async function releaseHold(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  boothId: string,
+  holdSession: string | undefined,
+): Promise<void> {
+  if (!idemSchema.safeParse(holdSession).success) return;
+  try {
+    await supabase.rpc("hold_cart", {
+      p_booth_id: boothId,
+      p_session: holdSession as string,
+      p_items: [],
+    });
+  } catch {
+    // The hold lapses by itself within five minutes.
+  }
 }
 
 export async function placeOrder(
   code: string,
   input: PlaceOrderInput,
   idempotencyKey: string,
+  holdSession?: string,
 ): Promise<Result> {
   if (!codeSchema.safeParse(code).success)
     return { success: false, error: "This code expired — please rescan." };
@@ -79,7 +107,7 @@ export async function placeOrder(
     // Log only unexpected failures (those that fall through to the generic
     // message). Known business raises — sold out, expired, unservable, rate
     // limited — are normal outcomes, not bugs, so they'd only be log noise.
-    if (message === "Could not place order. Please try again.")
+    if (message === GENERIC_FAILURE)
       console.error("placeOrder failed", error.message);
     return { success: false, error: message };
   }
@@ -102,6 +130,7 @@ export async function placeOrder(
   // scan→order conversion. logEvent is best-effort and never throws, so awaiting
   // it can't fail a placed order.
   await logEvent("order_placed", { boothId: out.data.booth_id });
+  await releaseHold(supabase, out.data.booth_id, holdSession);
 
   // Redundant vendor alert + printing job — both fire-and-forget, run
   // concurrently so a slow/unreachable one doesn't add its timeout on top
