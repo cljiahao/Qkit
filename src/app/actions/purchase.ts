@@ -27,12 +27,7 @@ export async function requestUpgrade(
   // The idempotency check below only blocks a repeat of the SAME kind while
   // pending -- an authenticated vendor could still script alternating
   // event/monthly calls to flood the admin queue without this.
-  const allowed = await rateLimit(
-    supabase,
-    `upgrade-request:${user.id}`,
-    5,
-    60,
-  );
+  const allowed = await rateLimit(`upgrade-request:${user.id}`, 5, 60);
   if (!allowed)
     return { success: false, error: "Too many requests. Wait a moment." };
 

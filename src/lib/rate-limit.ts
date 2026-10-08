@@ -1,5 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/types";
+import { createServiceClient } from "@/lib/supabase/server";
 
 /**
  * Resolve a best-effort client IP from request headers: the first hop of
@@ -17,24 +16,28 @@ export function clientIp(hdrs: Headers): string {
 }
 
 /**
- * Fixed-window rate-limit check via the DB limiter (`check_rate_limit`). Returns
+ * Server-side fixed-window check via the service-only DB limiter. Returns
  * true when the call is allowed. Fails OPEN — any limiter error (infra hiccup)
  * yields `true` so a real customer is never blocked by a degraded limiter. The
  * limiter is defence against floods, not a correctness gate.
  */
 export async function rateLimit(
-  supabase: SupabaseClient<Database>,
   key: string,
   limit: number,
   windowSeconds: number,
 ): Promise<boolean> {
-  const { data: allowed, error } = await supabase.rpc("check_rate_limit", {
-    p_key: key,
-    p_limit: limit,
-    p_window_seconds: windowSeconds,
-  });
-  // Fail open, but don't fail SILENT — a degraded limiter is invisible
-  // otherwise (the flood guard would quietly stop guarding).
-  if (error) console.error("rateLimit degraded (failing open)", error.message);
-  return allowed !== false;
+  try {
+    const supabase = await createServiceClient();
+    const { data: allowed, error } = await supabase.rpc("check_rate_limit", {
+      p_key: key,
+      p_limit: limit,
+      p_window_seconds: windowSeconds,
+    });
+    if (!error) return allowed !== false;
+  } catch {
+    // Limiter availability must not prevent a legitimate request.
+  }
+  // Buckets can contain order tokens; RPC diagnostics must never echo them.
+  console.error("rateLimit degraded (failing open)");
+  return true;
 }

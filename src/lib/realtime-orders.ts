@@ -44,9 +44,8 @@ export function parseRealtimeOrderEvent(
 }
 
 /**
- * Fold a validated event into the order list. DELETE removes by id, INSERT
- * prepends (newest first), UPDATE replaces in place. Pure — no dedupe or
- * sorting beyond what the board already relies on.
+ * DELETE removes by id; INSERT/UPDATE upsert so missed or replayed events
+ * cannot leave an order absent or duplicated.
  */
 export function applyRealtimeOrderEvent(
   prev: BoardOrder[],
@@ -56,8 +55,11 @@ export function applyRealtimeOrderEvent(
     case "DELETE":
       return prev.filter((o) => o.id !== event.id);
     case "INSERT":
-      return [event.order, ...prev];
     case "UPDATE":
-      return prev.map((o) => (o.id === event.order.id ? event.order : o));
+      return prev.some((order) => order.id === event.order.id)
+        ? prev.map((order) =>
+            order.id === event.order.id ? event.order : order,
+          )
+        : [event.order, ...prev];
   }
 }

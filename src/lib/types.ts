@@ -709,6 +709,11 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
+      // Internal validator used by definer order RPCs; no public EXECUTE grant.
+      validate_order_options: {
+        Args: { p_menu_item: Json; p_options: Json | null };
+        Returns: undefined;
+      };
       next_order_number: {
         Args: { p_booth_id: string };
         Returns: string;

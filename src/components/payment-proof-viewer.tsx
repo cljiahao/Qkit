@@ -13,8 +13,15 @@ interface Props {
 
 interface OcrHint {
   amountMatch: boolean | null;
-  recognizedText: string;
 }
+
+type ProofView = {
+  orderId: string;
+  expectedAmountCents: number;
+  url: string | null;
+  duplicateOrderNumber: string | null;
+  ocrHint: OcrHint | null;
+};
 
 // Self-hosted under /public/tesseract (see that folder's own note) — never
 // the default jsDelivr CDN, so the model's WASM/worker/traineddata assets
@@ -24,58 +31,81 @@ interface OcrHint {
 const TESSERACT_ASSET_PATH = "/tesseract";
 
 export function PaymentProofViewer({ orderId, expectedAmountCents }: Props) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [duplicateOrderNumber, setDuplicateOrderNumber] = useState<
-    string | null
-  >(null);
-  const [ocrHint, setOcrHint] = useState<OcrHint | null>(null);
+  const [proof, setProof] = useState<ProofView | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let worker: Awaited<
+      ReturnType<typeof import("tesseract.js").createWorker>
+    > | null = null;
+    const terminate = async () => {
+      const activeWorker = worker;
+      worker = null;
+      await activeWorker?.terminate();
+    };
     void (async () => {
-      const [photoUrl, duplicate] = await Promise.all([
-        getProofPhotoUrl(orderId),
-        findDuplicateProofOrder(orderId),
-      ]);
-      if (cancelled) return;
-      setUrl(photoUrl);
-      setDuplicateOrderNumber(duplicate);
-      if (!photoUrl) return;
-
-      // OCR is a hint only -- any failure (worker init, recognition) just
-      // leaves ocrHint unset rather than surfacing an error, since the
-      // vendor's actual review action never depends on it.
       try {
+        const [photoUrl, duplicate] = await Promise.all([
+          getProofPhotoUrl(orderId),
+          findDuplicateProofOrder(orderId),
+        ]);
+        if (cancelled) return;
+        const view: ProofView = {
+          orderId,
+          expectedAmountCents,
+          url: photoUrl,
+          duplicateOrderNumber: duplicate,
+          ocrHint: null,
+        };
+        setProof(view);
+        if (!photoUrl) return;
+
+        // OCR failure leaves the photo available for manual review.
         const { createWorker } = await import("tesseract.js");
-        const worker = await createWorker("eng", 1, {
+        if (cancelled) return;
+        worker = await createWorker("eng", 1, {
           workerPath: `${TESSERACT_ASSET_PATH}/worker.min.js`,
           corePath: TESSERACT_ASSET_PATH,
           langPath: TESSERACT_ASSET_PATH,
-          // tesseract.js defaults to spawning the worker from a blob: URL
-          // (defaultOptions.workerBlobURL); this app's CSP has no
-          // worker-src/child-src directive, so worker creation falls back to
-          // script-src, which doesn't allow blob:. false makes it spawn a
-          // plain `new Worker(workerPath)` instead -- workerPath is already
-          // same-origin, so this needs no CSP change.
+          // Keep worker loading same-origin under the script CSP.
           workerBlobURL: false,
         });
-        const { data } = await worker.recognize(photoUrl);
-        await worker.terminate();
         if (cancelled) return;
-        const amountMatch = data.text.includes(
-          (expectedAmountCents / 100).toFixed(2),
+        const { data } = await worker.recognize(photoUrl);
+        if (cancelled) return;
+        // OCR is an amount hint, never proof that a transfer settled.
+        // No lookbehind: Safari before 16.4 fails to parse the whole chunk.
+        const amounts = Array.from(
+          data.text.matchAll(
+            /(?:^|[^\d.,])((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(?![\d.,])/g,
+          ),
+          (match) => match[1],
         );
-        setOcrHint({ amountMatch, recognizedText: data.text });
+        const expected = (expectedAmountCents / 100).toFixed(2);
+        const amountMatch = amounts.some(
+          (amount) => amount.replaceAll(",", "") === expected,
+        );
+        setProof({ ...view, ocrHint: { amountMatch } });
       } catch (error) {
         if (!cancelled) console.error("Payment proof OCR failed", error);
+      } finally {
+        await terminate().catch(() => {});
       }
     })();
     return () => {
       cancelled = true;
+      terminate().catch(() => {});
     };
   }, [orderId, expectedAmountCents]);
 
-  if (!url) return null;
+  if (
+    !proof ||
+    proof.orderId !== orderId ||
+    proof.expectedAmountCents !== expectedAmountCents ||
+    !proof.url
+  )
+    return null;
+  const { url, duplicateOrderNumber, ocrHint } = proof;
 
   return (
     <div className="space-y-2">
@@ -89,7 +119,7 @@ export function PaymentProofViewer({ orderId, expectedAmountCents }: Props) {
       {ocrHint && (
         <p className="text-sm text-muted-foreground">
           {ocrHint.amountMatch
-            ? `Looks like $${(expectedAmountCents / 100).toFixed(2)}, paid`
+            ? `Amount matches $${(expectedAmountCents / 100).toFixed(2)}. Verify payment in your payment app.`
             : "Couldn't confirm the amount, check manually"}
         </p>
       )}

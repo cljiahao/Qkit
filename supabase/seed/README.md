@@ -36,7 +36,9 @@ so it's safe to re-run.
   hosted (production) Supabase project: the operator replaces
   `__VENDOR_ID__` with their own auth-user UID and runs it in the Supabase
   SQL Editor; upserts the vendor row (no-op if already onboarded) then the
-  booth.
+  booth. An existing booth with the fixed demo UUID is updated only when it
+  already belongs to that vendor; it is never transferred with its orders.
+  Choose a different booth UUID to create a second vendor's demo.
 - `demo-two-booths.sql` — a richer local demo dataset: upserts the "Test"
   vendor onto the `pro` plan (to lift the 1-booth free cap), deletes that
   vendor's existing booths (orders cascade-delete per migration `0009`), then

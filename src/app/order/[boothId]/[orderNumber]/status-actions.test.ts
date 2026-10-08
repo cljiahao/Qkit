@@ -97,7 +97,6 @@ describe("getOrderStatus", () => {
     expect(res).toBeNull();
     expect(fromMock).not.toHaveBeenCalled();
     expect(rateLimitMockRef).toHaveBeenCalledWith(
-      expect.anything(),
       `order-status:${TOKEN}`,
       30,
       60,
@@ -123,7 +122,6 @@ describe("getWaitEstimate", () => {
     expect(res).toBeNull();
     expect(fromMock).not.toHaveBeenCalled();
     expect(rateLimitMockRef).toHaveBeenCalledWith(
-      expect.anything(),
       `wait-estimate:${TOKEN}`,
       30,
       60,

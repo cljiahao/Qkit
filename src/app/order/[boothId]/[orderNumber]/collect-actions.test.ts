@@ -74,8 +74,13 @@ describe("confirmCollection", () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "completed",
-        payment_status: "confirmed",
       }),
+    );
+    expect(update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ payment_status: expect.anything() }),
+    );
+    expect(update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ paid_at: expect.anything() }),
     );
     expect(recordOrderStatusEventMock).toHaveBeenCalledWith(
       expect.objectContaining({

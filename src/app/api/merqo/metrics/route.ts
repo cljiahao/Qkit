@@ -17,7 +17,6 @@ export async function GET(request: Request) {
   // Defense-in-depth against a leaked bearer secret -- the secret itself is
   // the real gate, this just blunts enumeration/DoS once compromised.
   const allowed = await rateLimit(
-    supabase,
     `merqo-metrics:${clientIp(request.headers)}`,
     30,
     60,

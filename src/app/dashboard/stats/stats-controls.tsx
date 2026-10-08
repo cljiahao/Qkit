@@ -59,6 +59,7 @@ export function StatsControls({ range, booth, booths, allowedRanges }: Props) {
               key={r.value}
               type="button"
               onClick={() => setParam("range", r.value)}
+              aria-pressed={range === r.value}
               className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
                 range === r.value
                   ? "bg-primary/10 text-primary"
@@ -73,7 +74,10 @@ export function StatsControls({ range, booth, booths, allowedRanges }: Props) {
 
       {booths.length > 1 && (
         <Select value={booth} onValueChange={(v) => setParam("booth", v)}>
-          <SelectTrigger className="h-9 rounded-lg text-sm">
+          <SelectTrigger
+            aria-label="Filter by booth"
+            className="h-9 rounded-lg text-sm"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -20,7 +20,6 @@ export async function POST(request: Request) {
   // the real gate, this just blunts abuse once compromised. Generous since
   // a busy vendor's bridge can legitimately fire several of these a minute.
   const allowed = await rateLimit(
-    supabase,
     `printkit-print-status:${clientIp(request.headers)}`,
     60,
     60,

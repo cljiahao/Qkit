@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { headers } from "next/headers";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Json } from "@/lib/types";
 
@@ -22,7 +22,7 @@ export type EventType = z.infer<typeof eventTypeSchema>;
 
 /**
  * Best-effort analytics. Fire-and-forget: validates the type, inserts via the
- * normal client (RLS allows insert), and never throws to the caller — analytics
+ * service client after validation, and never throws to the caller — analytics
  * must not disrupt the user flow.
  *
  * `metadata` (e.g. `{ feature: "stock" }` on an upgrade_cta) is best-effort too:
@@ -45,10 +45,10 @@ export async function logEvent(
     }
   }
   try {
-    const supabase = await createServerClient();
+    const supabase = await createServiceClient();
     // Generous limit — several of these fire per page visit.
     const ip = clientIp(await headers());
-    const allowed = await rateLimit(supabase, `event:${ip}`, 40, 60);
+    const allowed = await rateLimit(`event:${ip}`, 40, 60);
     if (!allowed) return;
     await supabase.from("events").insert({
       type: parsed.data,

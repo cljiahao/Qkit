@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAsyncAction } from "@/hooks/use-async-action";
@@ -134,6 +135,7 @@ export function OrderStatusPoller({
   awaitingPayment,
   requiresArrivalConfirm,
 }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
   // null = nothing to show at all (order not found — shouldn't happen once
   // mounted, but poll-only pages must tolerate a transient blip). Otherwise
@@ -210,9 +212,13 @@ export function OrderStatusPoller({
       getOrderStatus(boothId, orderNumber, token),
       getWaitEstimate(boothId, orderNumber, token),
     ]);
-    if (next) setStatus(next);
+    if (next && next !== status) {
+      setStatus(next);
+      // Pickup QR and completed-order content are rendered by the parent server page.
+      router.refresh();
+    }
     setWait(estimate);
-  }, [boothId, orderNumber, token]);
+  }, [boothId, orderNumber, token, status, router]);
   usePolling(poll, { intervalMs: POLL_MS, enabled: !isTerminal(status) });
 
   // Alert the moment the order flips to ready. setState bails on an identical

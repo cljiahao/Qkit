@@ -22,6 +22,7 @@ vi.mock("@/lib/supabase/get-entitlement", () => ({
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: vi.fn(async () => ({ from: fromMock, rpc: rpcMock })),
+  createServiceClient: vi.fn(async () => ({ rpc: rpcMock })),
 }));
 
 import { GET } from "@/app/api/v1/sales/summary/route";
@@ -29,12 +30,22 @@ import { GET } from "@/app/api/v1/sales/summary/route";
 // A chainable, awaitable query-builder stub. Every builder method returns the
 // same object; awaiting it resolves to { data } — mirroring supabase-js.
 function queryResult(data: unknown) {
+  let from = 0;
   const b: Record<string, unknown> = {
     select: () => b,
     eq: () => b,
     in: () => b,
     gte: () => b,
-    then: (resolve: (v: { data: unknown }) => unknown) => resolve({ data }),
+    lt: () => b,
+    order: () => b,
+    range: (start: number) => {
+      from = start;
+      return b;
+    },
+    then: (resolve: (v: { data: unknown }) => unknown) =>
+      resolve({
+        data: Array.isArray(data) ? data.slice(from, from + 1000) : data,
+      }),
   };
   return b;
 }
@@ -64,6 +75,23 @@ beforeEach(() => {
 });
 
 describe("GET /api/v1/sales/summary", () => {
+  it("includes revenue beyond the API row cap", async () => {
+    loadEntitlementMock.mockResolvedValue(authed(["24h", "7d"]));
+    wireSupabase(
+      [{ id: "b1" }],
+      Array.from({ length: 1201 }, () => ({
+        status: "completed",
+        total_cents: 100,
+        items: [],
+        created_at: new Date().toISOString(),
+        payment_status: "confirmed",
+      })),
+    );
+    const res = await GET(req());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.revenue_cents).toBe(120100);
+  });
   it("returns 401 when there is no authenticated vendor", async () => {
     loadEntitlementMock.mockResolvedValue({
       user: null,

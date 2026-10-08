@@ -347,7 +347,7 @@ function accumulateOptions(
   quantity: number,
 ) {
   for (const opt of options ?? []) {
-    const key = `${opt.group}${opt.choice}`;
+    const key = JSON.stringify([opt.group, opt.choice]);
     const existing = optionMap.get(key);
     if (existing) existing.count += quantity;
     else

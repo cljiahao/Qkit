@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
 import { rateLimit } from "@/lib/rate-limit";
-import { parseOrderItems } from "@/lib/schemas";
 import { computeStats, type StatsOrder } from "@/lib/stats";
+import { fetchOrders } from "@/app/dashboard/stats/queries";
 import { toSalesSummaryV1 } from "@/lib/sales-summary";
 import { MS_PER_DAY } from "@/lib/utils";
 
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
   // RLS scopes every row to the caller's own booths, so this is only
   // self-inflicted DB load, not a cross-tenant issue -- still worth capping.
-  const rateOk = await rateLimit(supabase, `sales-summary:${user.id}`, 30, 60);
+  const rateOk = await rateLimit(`sales-summary:${user.id}`, 30, 60);
   if (!rateOk) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -71,25 +71,15 @@ export async function GET(request: Request) {
 
   let orders: StatsOrder[] = [];
   if (queryIds.length) {
-    const { data, error: ordersErr } = await supabase
-      .from("orders")
-      .select("status, total_cents, items, created_at, payment_status")
-      .in("booth_id", queryIds)
-      .gte("created_at", cutoff);
-    if (ordersErr) {
-      console.error("sales summary: orders read failed", ordersErr.message);
+    try {
+      orders = await fetchOrders(supabase, queryIds, cutoff, generatedAt);
+    } catch {
+      console.error("sales summary: orders read failed");
       return NextResponse.json(
         { error: "Upstream unavailable" },
         { status: 503 },
       );
     }
-    orders = (data ?? []).map((row) => ({
-      status: row.status,
-      total_cents: row.total_cents,
-      items: parseOrderItems(row.items),
-      created_at: row.created_at,
-      payment_status: row.payment_status,
-    }));
   }
 
   const summary = computeStats(orders);

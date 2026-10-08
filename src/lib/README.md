@@ -358,7 +358,7 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   validates untrusted Supabase Realtime payloads via `orderRowSchema`, strips
   `access_token` before it reaches client state (Postgres replication
   broadcasts full rows regardless of REST column selection), and folds
-  DELETE/INSERT/UPDATE events into the board's order list.
+  DELETE/INSERT/UPDATE events into the board's order list. INSERT and UPDATE upsert by id, recovering missed inserts and avoiding replay duplicates.
 - `realtime-orders.test.ts` — tests payload validation (rejecting malformed
   events) and the fold logic for each event type.
 - `recent-orders.ts` — `getRecentOrders`/`getRecentOrdersForBooth`/
@@ -577,3 +577,9 @@ the client, and skips anything in `persisted`.
 ## Parent
 
 [src](../README.md)
+
+## Review corrections (2026-10-07)
+
+Menu CSV records preserve quoted LF, CRLF, and CR newlines on export/import.
+Option statistics key group and choice as a tuple so different pairs cannot collide.
+Restored carts recompute current option surcharges, including options on unpriced items.

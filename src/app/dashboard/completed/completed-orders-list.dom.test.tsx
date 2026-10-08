@@ -278,6 +278,9 @@ describe("CompletedOrdersList", () => {
     );
 
     // Defaults to "Today" — only the order from within the last 3h shows.
+    expect(
+      screen.getByRole("button", { name: "Today", pressed: true }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Today" })).toHaveClass(
       "text-primary",
     );

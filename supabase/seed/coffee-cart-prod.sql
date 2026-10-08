@@ -5,7 +5,9 @@
 -- Google account's User UID (Authentication → Users → that user → copy UID).
 -- vendors.id == auth.users.id.
 --
--- Idempotent: safe to re-run; it upserts the vendor row and the booth.
+-- Idempotent for the same vendor. The fixed demo booth id is never transferred:
+-- if another vendor already owns it, the booth update is skipped. Choose a new
+-- booth UUID for that other vendor instead of reassigning the existing demo.
 
 -- 1. Ensure the vendor row exists (no-op if that account already onboarded).
 insert into qkit.vendors (id)
@@ -82,8 +84,8 @@ select
   ]'::jsonb
 from v
 on conflict (id) do update
-  set vendor_id  = excluded.vendor_id,
-      name       = excluded.name,
+  set name       = excluded.name,
       is_active  = excluded.is_active,
       image_url  = excluded.image_url,
-      menu_items = excluded.menu_items;
+      menu_items = excluded.menu_items
+  where qkit.booths.vendor_id = excluded.vendor_id;

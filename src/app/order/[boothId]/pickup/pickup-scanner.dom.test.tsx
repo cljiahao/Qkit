@@ -16,6 +16,29 @@ beforeEach(() => {
 });
 
 describe("PickupScanner", () => {
+  it("recovers focus and accepts a retry when the collection request rejects", async () => {
+    confirmCollectionMock.mockRejectedValueOnce(
+      new Error("Network unavailable"),
+    );
+    render(<PickupScanner boothId="b1" />);
+    const input = screen.getByRole("textbox");
+    const scan =
+      "https://qkit.example/order/b1/0007?t=11111111-1111-1111-1111-111111111111";
+    fireEvent.change(input, { target: { value: scan } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await screen.findByText(/could not complete order.*scan again/i);
+    expect(input).toBeEnabled();
+    expect(input).toHaveFocus();
+    confirmCollectionMock.mockResolvedValueOnce({
+      success: true,
+      status: "completed",
+    });
+    fireEvent.change(input, { target: { value: scan } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(
+      await screen.findByText(/order #0007 collected/i),
+    ).toBeInTheDocument();
+  });
   it("auto-focuses its input on mount", () => {
     render(<PickupScanner boothId="b1" />);
     expect(screen.getByRole("textbox")).toHaveFocus();

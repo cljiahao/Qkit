@@ -31,6 +31,36 @@ const cookie: MenuItem = {
 const menu: MenuItem[] = [latte, cookie];
 
 describe("reconcileReorder", () => {
+  it.each([
+    { base: 500, expected: 575 },
+    { base: undefined, expected: 75 },
+  ])(
+    "includes current option surcharges when restoring a cart ($base)",
+    ({ base, expected }) => {
+      const priced: MenuItem = {
+        ...latte,
+        price_cents: base,
+        option_groups: [
+          {
+            id: "milk",
+            label: "Milk",
+            choices: [{ id: "oat", label: "Oat", price_delta_cents: 75 }],
+          },
+        ],
+      };
+      const { items } = reconcileReorder(
+        [
+          {
+            menuItemId: "latte",
+            quantity: 2,
+            options: [{ group: "Milk", choice: "Oat" }],
+          },
+        ],
+        [priced],
+      );
+      expect(items[0].price_cents).toBe(expected);
+    },
+  );
   it("rebuilds a simple line against the current menu", () => {
     const lines: ReorderLine[] = [{ menuItemId: "cookie", quantity: 2 }];
     const { items, unavailable } = reconcileReorder(lines, menu);

@@ -2,19 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Don't advertise the framework (drops the X-Powered-By: Next.js header).
+  // Avoid advertising the framework in response headers.
   poweredByHeader: false,
-  // Dev-only badge (route/build status, bottom-left) — no effect in production
-  // builds either way, but it shows up in screen recordings taken against a
-  // dev server, so keep it off entirely.
+  // Keep the development badge out of demo recordings.
   devIndicators: false,
 
-  // sharp is pulled in only as next's optional peer dep (pnpm auto-installs
-  // it); Vercel's own image-optimization infra never needs it in the
-  // function bundle (no custom images.loader here, so optimization already
-  // runs through Vercel, not self-hosted sharp). Left in node_modules,
-  // Next's file tracer bundles sharp's native binary into every route
-  // function -- excluding it here is Vercel's documented fix for that.
+  // Vercel handles image optimization outside the route function bundles.
   outputFileTracingExcludes: {
     "*": ["node_modules/@img/**", "node_modules/sharp/**"],
   },
@@ -32,42 +25,25 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
-    // Client-side Supabase calls (auth, realtime) go straight from the
-    // browser to Supabase, so connect-src must allow it. In dev that's local
-    // Supabase over plain http/ws (127.0.0.1:54321); in prod it's the hosted
-    // *.supabase.co over https/wss. Keeping the dev-only entries out of the
-    // production policy avoids widening it beyond what's actually needed.
+    // Auth and realtime connect directly to Supabase; local origins are dev-only.
     const connectSrc =
       process.env.NODE_ENV === "production"
         ? "connect-src 'self' https://*.supabase.co wss://*.supabase.co"
         : "connect-src 'self' https://*.supabase.co wss://*.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321";
 
-    // Avatars/menu photos render as plain <img> tags (shadcn's Avatar, and any
-    // remote image not routed through next/image), so the actual storage
-    // origins from images.remotePatterns above need to be reachable directly —
-    // not just same-origin — or the browser silently blocks the request and
-    // Avatar falls back to initials as if the photo didn't exist.
+    // Plain avatar/menu images need their storage origins in addition to self.
     const imgSrc =
       process.env.NODE_ENV === "production"
         ? "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com"
         : "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com http://127.0.0.1:54321";
 
-    // React's dev mode calls eval() to reconstruct stack traces across the
-    // RSC boundary — harmless and dev-only ("React will never use eval() in
-    // production mode", per the console message itself), but blocking it
-    // spams console.error on every navigation and can trip Next's dev error
-    // overlay into a full-page portal that eats every click. Production
-    // never needs 'unsafe-eval'.
+    // React development stack traces require eval; production does not.
     const scriptSrc =
       process.env.NODE_ENV === "production"
         ? "script-src 'self' 'unsafe-inline'"
         : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
-    // X-Frame-Options: DENY and CSP's frame-ancestors 'none' both apply during
-    // `next dev` too (headers() runs for every environment), and browsers
-    // enforce them even on localhost — blocking any IDE preview pane that
-    // renders the app via <iframe> (most do). Neither is needed in dev (no
-    // untrusted origin is framing a local server), so both are prod-only.
+    // Allow embedded development previews; deny framing in production.
     const frameHeaders =
       process.env.NODE_ENV === "production"
         ? [{ key: "X-Frame-Options", value: "DENY" }]
@@ -92,15 +68,8 @@ const nextConfig: NextConfig = {
             value: "max-age=31536000; includeSubDomains",
           },
           {
-            // No nonces: Next's own RSC-hydration <script> tags aren't
-            // nonce-stamped in this setup (verified against a real build —
-            // a nonce + 'strict-dynamic' policy blocked every script,
-            // including Next's own, and the app never hydrated). 'unsafe-inline'
-            // still blocks loading scripts/styles from foreign origins, which
-            // covers the common supply-chain/injected-script attack; it does
-            // not stop an inline payload from an XSS bug, but this app has no
-            // dangerouslySetInnerHTML anywhere, so React's own escaping is
-            // already the primary defense there.
+            // Hydration scripts have no nonces here. Inline scripts remain allowed;
+            // this policy constrains origins but cannot prevent inline XSS.
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",

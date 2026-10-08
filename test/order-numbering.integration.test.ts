@@ -1,61 +1,24 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { integrationDbEnv } from "./db-env";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
 
-// Integration test for migration 0008 (atomic per-booth order numbering).
-// Hits a REAL Supabase, so it is opt-in: the default `pnpm test` run skips it
-// (the dev DB may be down — see CLAUDE.md). Run it against a live DB with the
-// migration applied:
-//
-//   PowerShell:  $env:RUN_DB_TESTS=1; pnpm test
-//   bash:        RUN_DB_TESTS=1 pnpm test
-const RUN = !!process.env.RUN_DB_TESTS;
-
-/** Minimal .env.local reader — the repo does not depend on dotenv. */
-function loadEnvLocal(): Record<string, string> {
-  try {
-    const raw = readFileSync(path.resolve(process.cwd(), ".env.local"), "utf8");
-    const out: Record<string, string> = {};
-    for (const line of raw.split(/\r?\n/)) {
-      if (line.trimStart().startsWith("#")) continue;
-      const eq = line.indexOf("=");
-      if (eq === -1) continue;
-      const key = line.slice(0, eq).trim();
-      if (!/^[A-Z0-9_]+$/.test(key)) continue;
-      const value = line.slice(eq + 1).trim();
-      out[key] = value.replace(/^["']|["']$/g, "");
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
+// Opt in with RUN_DB_TESTS=1 and isolated QKIT_TEST_SUPABASE_* credentials.
+const RUN = process.env.RUN_DB_TESTS === "1";
 
 describe.skipIf(!RUN)("next_order_number concurrency (integration)", () => {
-  // vitest.config.ts injects a dummy NEXT_PUBLIC_SUPABASE_URL into
-  // process.env for every test run (so non-integration tests don't need
-  // real credentials) — .env.local must win here or this always targets
-  // the dummy localhost value instead of the real DB.
-  const env = { ...process.env, ...loadEnvLocal() };
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  const secret = env.SUPABASE_SECRET_KEY;
-
   let db: SupabaseClient<Database>;
   let userId: string;
   let boothId: string;
 
   beforeAll(async () => {
-    if (!url || !secret)
-      throw new Error(
-        "Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY (.env.local)",
-      );
+    const { url, secret } = integrationDbEnv();
 
     // Service-role (secret) key bypasses RLS — fine here, this is a server-side
     // test seeding and tearing down its own throwaway data.
     db = createClient<Database>(url, secret, {
       auth: { autoRefreshToken: false, persistSession: false },
+      db: { schema: "qkit" },
     });
 
     // Seed the FK chain: auth user → vendor → booth.

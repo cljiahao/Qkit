@@ -7,8 +7,9 @@ stop and reconsider the change — do not break the principle.
 ## 1. Authorization lives in Postgres RLS, never app code
 
 A vendor sees/edits only their own `vendors` row, their own `booths`, and `orders`
-whose `booth_id` belongs to them. Active booths are publicly readable; anyone may
-INSERT an order. **Never widen an RLS policy to make a query pass** — fix the
+whose `booth_id` belongs to them. Customers use constrained SECURITY DEFINER
+RPCs to read sanitized booth data and place orders; anon/authenticated callers
+cannot directly insert orders. **Never widen an RLS policy to make a query pass** — fix the
 query or the session instead. RLS is the security boundary; app checks are
 convenience, not enforcement.
 

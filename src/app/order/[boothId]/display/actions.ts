@@ -1,7 +1,9 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { boardSettingsSchema } from "@/lib/schemas";
+import { headers } from "next/headers";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { boardSettingsSchema, orderBoothIdSchema } from "@/lib/schemas";
 import { displayOrderNumber } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
 import type { OrderStatus } from "@/lib/types";
@@ -69,6 +71,9 @@ function sortForDisplay(orders: ActiveOrderRow[]): ActiveOrderRow[] {
 export async function getBoothQueueDisplay(
   boothId: string,
 ): Promise<QueueDisplayOrder[] | null> {
+  if (!orderBoothIdSchema.safeParse(boothId).success) return null;
+  const ip = clientIp(await headers());
+  if (!(await rateLimit(`queue-display:${boothId}:${ip}`, 60, 60))) return null;
   const supabase = await createServiceClient();
 
   const { data: booth, error: boothError } = await supabase
@@ -108,13 +113,17 @@ export async function getBoothQueueDisplay(
     baseline = firstToday?.order_number ?? null;
   }
 
+  const cutoff = Date.now() - COLLECTED_GRACE_MS;
+  const cutoffIso = new Date(cutoff).toISOString();
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select(
       "order_number, status, created_at, priority_bumped_at, completed_at",
     )
     .eq("booth_id", boothId)
-    .not("status", "eq", "cancelled")
+    .or(
+      `status.in.(pending,confirmed,preparing,ready),and(status.eq.completed,completed_at.gte.${cutoffIso})`,
+    )
     .or("payment_status.neq.pending,source.neq.qr");
   if (ordersError) {
     console.error(
@@ -128,7 +137,6 @@ export async function getBoothQueueDisplay(
   // shown as ready, which is what it still is from the customer's side: the cup
   // is on the shelf. Past that it drops off, so the screen does not fill up
   // with a whole service's numbers.
-  const cutoff = Date.now() - COLLECTED_GRACE_MS;
   const nonNullOrders = (orders ?? [])
     .filter(
       (o): o is typeof o & { order_number: string } => o.order_number != null,

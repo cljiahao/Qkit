@@ -109,3 +109,7 @@ folder so range labels and wait/hour formatting can't drift between them.
 ## Parent
 
 [dashboard](../README.md)
+
+Order statistics paginate in a stable id order through the API row cap. A failed
+page raises an error rather than showing partial totals. Review displays retain
+the documented 500-row cap. queries.test.ts covers row-cap and later-page failures.

@@ -234,10 +234,10 @@ expectedAmountCents })`: `"use client"`, always dynamically imported
   worker (`workerBlobURL: false`, since this app's CSP has no `worker-src`/
   `child-src` to permit the library's default `blob:` worker spawn) to OCR the
   photo and compares the recognized text against `expectedAmountCents`,
-  showing "Looks like $X.XX, paid" or "Couldn't confirm the amount, check
+  matching complete monetary tokens and showing "Amount matches $X.XX" or "Couldn't confirm the amount, check
   manually" — a hint only, never blocking the vendor's own manual review
   action, and any OCR failure (worker init, recognition) just leaves the hint
-  unset rather than surfacing an error.
+  unset rather than surfacing an error. The amount hint directs vendors to verify in their payment app; OCR never asserts settlement. Workers terminate on completion, failure, and unmount, and results from an earlier order/amount are hidden.
 - `pro-lock.tsx` — `ProLock({ feature, label })`: an inline upgrade nudge
   linking to `/dashboard/plan`, logging an `upgrade_cta` event tagged with
   the specific gated `feature` for funnel analysis.

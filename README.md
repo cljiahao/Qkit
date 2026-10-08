@@ -1,201 +1,144 @@
 # qkit
 
-Vendor booth ordering system. Vendors sign in to manage their menu and watch
-live orders; customers scan a booth QR code, order from the menu, and track
-their order status in realtime. The dashboard onboarding tour's final step
-(`src/components/tour-steps.ts`) tells a vendor which booth-page sections
-are optional (Payment, Printing, Booking Status) before they ever create
-their first booth.
-
-`@merqo/ui` bumped to v0.32.0 (2026-09-22). Booth banners, menu photos and
-the payment QR now upload only when the vendor clicks Save (`deferUpload` +
-`commitPendingImages`), so abandoning a form leaves nothing in storage; a
-failed save deletes what it uploaded. Profile icons still upload on pick,
-because picking one is the save.
-
-Booth-image orphan cleanup (`src/lib/booth-images.ts`) now parses storage URLs
-with `@merqo/ui`'s shared `storagePathFromPublicUrl` instead of a local copy.
-Replacing a payment QR image in the booth Payment section also deletes the old
-image now; that cleanup lives in paykit's vendor config API, which this form
-saves through.
-
-Images uploaded into a booth, menu or payment form the vendor never saved are
-now reclaimed too: after each booth or menu save, `sweepUnsavedUploads`
-(`src/app/dashboard/booths/sweep-unsaved-uploads.ts`) deletes objects in the
-vendor's `booth-images` folder older than 24h that no booth, avatar or paykit
-payment QR references.
-
-`@merqo/ui` bumped to v0.31.4 (2026-09-22), for its new
-`storagePathFromPublicUrl`. Replacing or removing a profile icon now deletes the
-old image from storage (`removeReplacedAvatar` in
-`src/lib/image-upload-adapter.ts`); before this, every avatar change orphaned one
-file, because `ImageUploader` names each upload randomly.
-
-`@merqo/ui` is pinned at v0.31.3 (2026-09-22). v0.31.0 replaced the
-package-wide `"use client"` banner with per-module directives, so a
-plain-data export is a real value inside a Server Component rather than an
-opaque client-reference stub — the root cause of qkit's 2026-09-18
-production outage (see
-`docs/meta/2026-09-18-social-links-backbutton-rsc-crash-aar.md`). It also
-promoted four modules qkit had its own copy of: `safeRedirectPath`,
-`resizeToWebp`, `BackToTop` and `GoogleMark`. `src/lib/image-upload-adapter.ts`
-stays local — the Storage bucket and object path are qkit's own. The
-customer payment QRs keep `react-qr-code` rather than `qrSvg`: `qr-image.ts`
-insets the rasterized PNG to restore a quiet zone that `react-qr-code`
-omits, and changing renderers would alter that on a live payment path.
-Payment-proof uploads are bounded at three layers: the browser resize in
-`pay-form.tsx`, `claimPayment`'s `paymentProofSchema` validation, and the
-`payment-proofs` bucket's own 1 MB / JPEG-PNG-WebP limits (migration `0093`).
-Which repo uses which shared export is tracked in
-`../merqo-ui/docs/usage-matrix.md`.
+Vendor booth ordering for the Merqo platform. Vendors manage menus and live
+orders; customers scan a booth QR, place an order, pay when required, and track
+pickup status.
 
 ## Stack
 
-Next.js 16 (App Router, Turbopack) · TypeScript · Tailwind v4 · shadcn/ui (new-york) ·
-Supabase (`@supabase/ssr` — auth, Postgres, realtime) · TanStack Query ·
-React Hook Form · Zod · Vitest · pnpm.
+Next.js 16 App Router, React 19, strict TypeScript, Tailwind v4, shadcn/Radix,
+React Hook Form, Zod, Supabase Auth/Postgres/Realtime, and the shared `@merqo/ui`
+package. Use `package.json` and `pnpm-lock.yaml` for exact versions.
 
-## Routes
-
-| Route                            | Who           | Purpose                                              |
-| -------------------------------- | ------------- | ---------------------------------------------------- |
-| `/login`, `/register`            | vendor        | Supabase email/password auth                         |
-| `/dashboard`                     | vendor (auth) | realtime order board; tap a card to advance status   |
-| `/order/[boothId]`               | customer      | menu + cart + checkout                               |
-| `/order/[boothId]/[orderNumber]` | customer      | live order status                                    |
-| `/about`                         | anyone        | public "Why Merqo" page (`@merqo/ui`'s `AboutMerqo`) |
+qkit uses Supabase, **not** templateCentral's better-auth/Drizzle data layer.
+Database authorization is enforced through RLS and SQL privileges. Service-role
+operations must remain server-only and explicitly constrain their target.
 
 ## Getting started
 
-```bash
-pnpm install
-cp .env.example .env.local   # then fill in the values below
-pnpm dev                     # http://localhost:3000
-```
-
-### Environment
-
-Set these in `.env.local` (find them in Supabase → Project Settings → API).
-`NEXT_PUBLIC_*` values are inlined at build time — **rebuild after changing them**.
-
-| Var                                    | Notes                                                     |
-| -------------------------------------- | --------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | project URL                                               |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | publishable key (client-safe, respects RLS)               |
-| `SUPABASE_SECRET_KEY`                  | server-only; used by the order-status page (bypasses RLS) |
-| `NEXT_PUBLIC_BASE_URL`                 | e.g. `http://localhost:3000`                              |
-
-### Database
-
-Apply the schema (creates tables, the `order_status` enum, RLS policies, and the
-realtime publication):
-
-- **With the Supabase CLI:** `supabase db push`, then
-  `supabase gen types typescript --linked > src/lib/types.ts`.
-- **Without the CLI:** paste `supabase/migrations/0001_initial_schema.sql` into
-  Supabase → SQL Editor → Run. `src/lib/types.ts` is already hand-written to match.
-
-Seed a test booth (Supabase → Table Editor → `booths.menu_items`):
-
-```json
-[
-  {
-    "id": "item-1",
-    "name": "Nasi Lemak",
-    "description": "With sambal and egg",
-    "price_cents": 800,
-    "available": true
-  },
-  {
-    "id": "item-2",
-    "name": "Teh Tarik",
-    "description": "Pulled milk tea",
-    "price_cents": 350,
-    "available": true
-  }
-]
-```
-
-## Scripts
+Use Node 24 and the pnpm version declared in `package.json`.
 
 ```bash
-pnpm dev      # dev server
-pnpm build    # production build
-pnpm test     # vitest
-pnpm check    # prettier --check + eslint + tsc --noEmit
-pnpm format   # prettier --write
+pnpm install --frozen-lockfile
+cp .env.example .env.local
+pnpm dev
 ```
 
-## Deployment
+Populate the template locally through your secret-management workflow. Never
+commit environment files. Public Supabase values are inlined at build time;
+rebuild after changing them.
 
-Deploys to Vercel. Set the four env vars above in the Vercel project for both
-Production and Preview. Supabase realtime requires the `orders` table in the
-`supabase_realtime` publication — included in the migration.
+| Configuration                                                                 | Purpose                                          |
+| ----------------------------------------------------------------------------- | ------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`            | Browser-safe Supabase connection                 |
+| `SUPABASE_SECRET_KEY`                                                         | Server-only service-role access                  |
+| `NEXT_PUBLIC_BASE_URL`                                                        | Application origin                               |
+| `MERQO_BASE_URL`, `MERQO_CUSTOMER_SECRET`                                     | Shared legal acceptance and Telegram integration |
+| `NEXT_PUBLIC_PAYKIT_URL`, `PAYKIT_KIT_SECRET`                                 | Vendor payment configuration and checkout        |
+| `NEXT_PUBLIC_PRINTKIT_URL`, `PRINTKIT_KIT_SECRET`, `PRINTKIT_CALLBACK_SECRET` | Optional printing integration                    |
 
-## Data model
+See [.env.example](.env.example) for the full configuration contract and
+[deployment notes](docs/DEPLOY.md) for environment scoping. In particular,
+`NEXT_PUBLIC_AUTH_COOKIE_DOMAIN` is Production-only; setting `.merqo.io` on a
+preview hostname breaks authentication. Missing Merqo legal configuration
+prevents signed-in vendors from passing the legal-acceptance gate.
 
-- `vendors` — one row per auth user (`id` = `auth.users.id`).
-- `booths` — belong to a vendor; menu is JSONB `menu_items`.
-- `orders` — belong to a booth; JSONB `items`, `order_status` enum
-  (`pending → confirmed → preparing → ready → completed`, plus `cancelled`).
+## Database setup
 
-Authorization is enforced in Postgres via RLS: vendors only ever see their own
-booths and orders. See `AGENTS.md` for full conventions.
+qkit uses the `qkit` schema in a shared Merqo Supabase project. Apply **all**
+ordered migrations through the Supabase CLI; applying only
+`0001_initial_schema.sql` does not create the current application database.
+Review the target environment and [database documentation](supabase/README.md)
+before applying changes. Do not reset or seed a production database as part of
+routine development.
 
-## Structure
+Local tests require Docker and a running local Supabase stack. The pgTAP suite
+creates its own fixtures and rolls them back. Customer E2E tests additionally
+need the CI auth bootstrap and coffee-cart seed. Some shared Merqo integration
+paths require the sibling schema; see [E2E setup](e2e/README.md) and
+[test documentation](test/README.md).
 
-### Contents
+```bash
+pnpm exec supabase start
+pnpm exec supabase test db
+```
 
-- `.claude/` — the Claude Code agent harness: hooks, project skills, harness integrity scripts, and the harness manifest recording what templateCentral seeded (own README).
-- `.env.example` — template env file: Supabase URL/publishable key/secret key, `NEXT_PUBLIC_BASE_URL`, the Merqo dashboard metrics-endpoint bearer secret (`MERQO_METRICS_SECRET`), the loopkit deployment URL used to build the order-status page's "Earn a stamp" link (`NEXT_PUBLIC_LOOPKIT_URL`, fails closed if unset), the paykit/printkit deployment URLs used for booth-settings deep links (`NEXT_PUBLIC_PAYKIT_URL`, `NEXT_PUBLIC_PRINTKIT_URL` — each link hides itself, not error, when its URL is unset), and Google OAuth client id/secret consumed by `supabase start` for local auth; copy to `.env.local` and fill in.
-- `.github/` — GitHub-specific config: CI/CD workflows (`ci.yml`, `security.yml`) and Dependabot (own README).
-- `.gitignore` — standard ignore list: `node_modules`, build/test output (`.next`, `coverage`, `.stryker-tmp`, `reports`, `test-results`, `playwright-report`), the local-only `.superpowers` brainstorming-mockup dir, the per-machine `.agents` harness symlink, env files (`.env`, `.env.local`), `*.tsbuildinfo`/`next-env.d.ts`, `.vercel`, and `.worktrees/`.
-- `.gitleaks.toml` — gitleaks secret-scan config: extends the default ruleset, allowlists `.env.example`/`.env.default` and lockfiles (`pnpm-lock.yaml`, etc.) as known non-secrets.
-- `.husky/` — the git-hook layer (husky v9, no native binary): `pre-commit`/`commit-msg`/`pre-push` are thin `exec bash .husky/lib/<name>.sh` wrappers (husky's dispatcher runs hooks via `sh -e`, ignoring the file's own shebang, so the real `set -euo pipefail` logic lives one level down in `lib/`, only ever invoked via `bash`); `lib/pre-commit.sh` (format/lint + format-docs + typecheck + lockfile-frozen-install + gitleaks secret-scan + README-coupling nudge), `lib/pre-push.sh` (harness-integrity check + `pnpm run check && pnpm test`), `lib/commit-msg-check.sh` (Conventional Commits gate), `lib/readme-coupling.sh` (own README).
-- `.prettierignore` — files/dirs Prettier skips: `pnpm-lock.yaml`, `.claude/.harness-base`, build/test output (`.next`, `node_modules`, `coverage`, `test-results`, `playwright-report`), and `scripts/demo/out`.
-- `.prettierrc.json` — Prettier config: `endOfLine: "auto"` (avoids CRLF/LF diff noise across contributors on different OSes).
-- `AGENTS.md` — routing/conventions doc for AI coding agents: stack divergence note (Supabase, not templateCentral's default better-auth/Drizzle), commands, file layout, data model, RLS/service-role rules, the AI harness description, and a running log of which templateCentral deltas were adopted vs. deliberately skipped.
-- `CHANGELOG.md` — Keep-a-Changelog history; entries are added under `[Unreleased]` by the `/changelog` skill.
-- `CLAUDE.md` — a one-line pointer that routes Claude Code to `AGENTS.md` via an `@AGENTS.md` import (`Routing and conventions for this project live in AGENTS.md. Read it first.`).
-- `FUTURE.md` — inactive design seams inherited from templateCentral v4.0 (Meta-Harness CI, Trace-Driven Evolution, Environment Engineering) — integration points only, nothing here runs unless built out.
-- `components.json` — shadcn/ui CLI config: `style: new-york`, RSC + TSX on, `baseColor: neutral`, CSS variables, and the path aliases (`@/components`, `@/components/ui`, `@/lib`, `@/hooks`) the `shadcn` CLI writes generated components into.
-- `docs/` — deploy notes, the engineering constitution, business/GTM docs, and dated design/plan history (own README).
-- `e2e/` — Playwright specs for the public smoke, auth-guard and customer-order-lifecycle tests (own README).
-- `eslint.config.mjs` — flat ESLint config: extends `eslint-config-next`, ignores generated/build dirs (`node_modules`, `.next`, `supabase`, `coverage`, etc.), extends `sonarjs.configs.recommended` (the plugin's full rule catalog — bugs, security, code smells, test hygiene, React/JSX rules — not just one hand-picked rule) plus `no-inline-comments` and `sonarjs/no-commented-code` as hard `error`s repo-wide, `sonarjs/no-unused-vars` turned off (redundant with the `@typescript-eslint` version below, which already understands this project's `^_`-prefix convention), `sonarjs/no-nested-functions` turned off for `**/*.tsx` (false-positives on ordinary JSX list rendering/functional-chaining callbacks) and for tests/scripts (mock/describe/it nesting), `sonarjs/no-hardcoded-ip`/`no-hardcoded-passwords`/`pseudo-random` turned off for tests/scripts (fixture values, not real credentials), `sonarjs/no-os-command-from-path` turned off for `scripts/**` (documented local-dev ffmpeg/ffprobe PATH prerequisite, no untrusted input), and `@typescript-eslint/no-unused-vars` (`warn`, `^_`-prefix ignore pattern) reusing the `@typescript-eslint` plugin instance `eslint-config-next` already registers.
-- `next.config.ts` — Next config: `reactStrictMode`, `poweredByHeader: false`, dev indicator disabled, `images.remotePatterns` allow-listing local Supabase/`*.supabase.co`/`*.googleusercontent.com`, a `/register`→`/login` redirect, and a `headers()` function that sets a full security-header set (HSTS, etc.) plus an environment-aware Content-Security-Policy (relaxes `script-src`/`connect-src`/`img-src` for local dev only). `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` are production-only — both apply during `next dev` too and block any IDE preview pane that renders the app via `<iframe>`.
-- `package.json` — scripts (`dev`/`build`/`test`/`test:mutation`/`test:e2e`/`check`/`format`/`demo:record`/`demo:compose`/`prepare`), the dependency set (`@merqo/ui` — the shared Merqo-family component package, installed from a GitHub release tag (`github:cljiahao/merqo-ui#v0.25.0`) rather than npm; Next `16.3.4`, `@supabase/ssr` + `@supabase/supabase-js`, Radix/shadcn deps, `react-hook-form` + `zod`, `recharts`, `react-qr-code`, `@icons-pack/react-simple-icons` (real brand-logo icons), the dev toolchain (`vitest` `4`, `@playwright/test`, `@stryker-mutator/*`, `eslint` + `eslint-plugin-sonarjs`, `husky`, `prettier`). `prepare` runs `husky`.
-- `playwright.config.ts` — e2e config: `testDir: ./e2e`, fully parallel, `webServer` auto-starts `pnpm dev` against `http://localhost:3000`, a single `chromium` project, and an HTML report emitted in CI (for the failure-artifact upload in `.github/workflows/ci.yml`).
-- `pnpm-lock.yaml` — generated pnpm lockfile; not hand-edited.
-- `pnpm-workspace.yaml` — pnpm settings: `allowBuilds` for `supabase`/`esbuild`/`sharp`/`unrs-resolver`/`@merqo/ui` (the last needed because pnpm 10+ blocks a git-hosted dependency's `prepare`/build script by default, even outside a real workspace — qkit isn't a pnpm workspace, but this file's `allowBuilds` key is still the mechanism this pnpm version reads, since the `pnpm.onlyBuiltDependencies` field in `package.json` was deprecated and is now silently ignored), and pinned `overrides` that force-patch transitive advisories (`postcss`, `undici`, `vite`, `qs`, `sharp`, `fast-uri`, `js-yaml`, `brace-expansion`, `nanoid`) to fixed-version ranges, each scoped to self-clear once the parent dep ships the patched version — `pnpm audit --prod --audit-level=high` is CI's hard gate on these (see `.github/workflows/security.yml`), so a new advisory needs its floor bumped here, not just waiting on the upstream package.
-- `postcss.config.mjs` — minimal PostCSS config wiring the `@tailwindcss/postcss` plugin (Tailwind v4's PostCSS integration).
-- `public/` — static assets served as-is by Next.
-- `scripts/` — the demo-video generator (`demo:record`/`demo:compose`); the former `check-readme-freshness.mjs` pre-commit nudge now lives at `.husky/lib/readme-coupling.sh`.
-- `src/` — the Next.js app itself (App Router pages/actions, `src/lib`, `src/components`, `src/hooks`, `src/proxy.ts`).
-- `stryker.conf.json` — mutation-testing config: vitest runner, mutates only `src/lib/**/*.ts` (excludes `*.test.ts`, `types.ts`, `action-result.ts`, `supabase/**`), advisory only (`thresholds.break: null`, so a low score never fails CI).
-- `supabase/` — the Postgres schema: `migrations/` (SQL + RLS + realtime publication), seed data, and pgTAP RLS tests.
-- `test/` — Vitest tests and setup not colocated with their source (e.g. API-route tests).
-- `tsconfig.json` — TypeScript strict compiler options, the `@/*` → `./src/*` path alias, and `.next/types` generated-type includes.
-- `vercel.json` — Vercel deploy config: pins the deployment region to `sin1` (Singapore).
-- `vitest.config.ts` — Vitest config: `@` alias to `src/`, `node` test environment, dummy `NEXT_PUBLIC_SUPABASE_*` env vars so `src/lib/env` validation doesn't throw during tests, `test/setup.ts` as the global setup file, and v8 coverage over `src/**/*.{ts,tsx}`.
+Schema changes belong in a new migration, with the TypeScript DB contract in
+`src/lib/types.ts` kept consistent. Historical migrations are required to rebuild
+the schema and must not be deleted merely because a later migration replaces a
+function.
 
-### Connectivity
+## Main routes
 
-`src/` is the Next.js app itself; `supabase/` holds the Postgres schema and RLS
-policies it depends on, applied via the Supabase CLI or SQL Editor (or the
-`/supabase-migrate` skill). Two separate test layers sit alongside it: `e2e/`
-(Playwright, against a real local Supabase, run via `playwright.config.ts`)
-and `test/` (Vitest, for code not colocated with its source, run via
-`vitest.config.ts`); `stryker.conf.json` adds an advisory mutation-testing pass
-over `src/lib` on top of both. `docs/` is deploy notes, the constitution, GTM
-docs, and dated design history; `scripts/` holds the demo-video generator;
-`public/` is static assets served as-is.
-`AGENTS.md`/`CLAUDE.md`/`FUTURE.md` and `.claude/` together form the AI-agent
-harness described in `AGENTS.md`'s own "AI Harness" section; `.husky/` is the
-git-hook layer that harness relies on for commit-time
-enforcement (format/lint/typecheck/lockfile/secret-scan/README-coupling on
-`pre-commit`, Conventional Commits on `commit-msg`, harness-integrity +
-`pnpm run check && pnpm test` on `pre-push`); `.gitleaks.toml` configures the
-secret-scan both husky and `.github/workflows/security.yml` use.
-`.github/workflows/` runs the same checks (`pnpm check`, `pnpm test`,
-`pnpm build`, e2e, RLS, security scans) that `package.json`'s scripts define
-locally.
+| Route                                          | Audience           | Purpose                                              |
+| ---------------------------------------------- | ------------------ | ---------------------------------------------------- |
+| `/login`                                       | Vendor             | Sign-in and registration; `/register` redirects here |
+| `/onboarding`                                  | Signed-in vendor   | Initial vendor setup                                 |
+| `/dashboard`                                   | Vendor             | Realtime order board and walk-up orders              |
+| `/dashboard/booths`                            | Vendor             | Booth, menu, payment and printing configuration      |
+| `/dashboard/stats`                             | Vendor             | Sales, service and review statistics                 |
+| `/o/[code]`                                    | Customer           | Current short-QR menu and ordering entry point       |
+| `/order/[boothId]`                             | Customer           | Legacy entry-point handling                          |
+| `/order/[boothId]/pay?t=…`                     | Customer           | Token-authorized payment submission                  |
+| `/order/[boothId]/[orderNumber]?t=…`           | Customer           | Token-authorized order tracking                      |
+| `/order/[boothId]/display`                     | Public display     | Queue display                                        |
+| `/order/[boothId]/pickup`                      | Pickup kiosk       | Collection scanner                                   |
+| `/admin`                                       | qkit administrator | Vendor and platform administration                   |
+| `/api/merqo/*`, `/api/printkit/*`, `/api/v1/*` | Integrations       | Independently authenticated endpoints                |
+
+## Payments and notifications
+
+Paykit owns payment configuration and transactions. qkit stores a minimal booth
+payment marker and an order payment-status mirror. A customer's collection
+confirmation must not confirm payment. Merqo owns shared vendor profiles, legal
+acceptance and Telegram connections; printkit owns printer integration.
+
+Booth, menu and payment images upload when the vendor saves. Profile avatars
+upload on selection. Cleanup removes replaced or unreferenced uploads while
+preserving images still referenced by the vendor's data.
+
+## Verification
+
+```bash
+pnpm check          # formatting, ESLint, TypeScript
+pnpm test           # unit/component tests; real-DB tests opt in separately
+pnpm test:coverage  # v8 coverage report
+pnpm build          # production build
+pnpm test:e2e       # Playwright; local Supabase required for order flows
+pnpm test:mutation  # advisory mutation analysis of src/lib
+pnpm audit --prod --audit-level=high
+```
+
+Coverage measures executed code, not security assurance. Mocked tests do not
+replace pgTAP isolation tests or the real checkout lifecycle. Real-DB Vitest tests
+require `RUN_DB_TESTS=1` plus explicitly supplied `QKIT_TEST_SUPABASE_URL` and
+`QKIT_TEST_SUPABASE_SECRET_KEY` for an isolated test database; they never load an
+application environment file.
+
+ESLint extends Next and SonarJS recommended rules. Unused TypeScript values,
+inline comments in application code, and commented-out code fail the gate.
+Underscore-prefixed intentionally unused values and tooling directives remain
+supported. Comments explain a durable constraint or reason; change history
+belongs in commits and [CHANGELOG.md](CHANGELOG.md).
+
+Husky runs staged formatting/lint, type checks, a conditional lockfile check,
+and gitleaks when installed. README and comment-hygiene reminders are advisory.
+Pre-push runs the harness integrity check and project checks/tests. Never bypass
+hooks to make a failing change pass. CI also runs build, security and database
+checks; inspect `.github/workflows/` for the actual job conditions.
+
+## Repository guide
+
+- [src](src/README.md): routes, components, hooks and domain utilities.
+- [supabase](supabase/README.md): migrations, seeds and pgTAP checks.
+- [test](test/README.md) and [e2e](e2e/README.md): test layers and prerequisites.
+- [docs](docs/README.md): operations, design history and audit findings.
+- [scripts](scripts/README.md): opt-in demo recording/composition tools.
+- [public](public/README.md): static assets and self-hosted OCR runtime.
+- [AGENTS.md](AGENTS.md) and [constitution](docs/CONSTITUTION.md): project rules.
+- [.claude](.claude/README.md) and [.husky](.husky/README.md): agent and Git hooks.
+- [October audit](docs/meta/2026-10-07-project-audit.md): findings, verification,
+  remaining risks and the tracked-file inventory.
+
+Vercel deployments use the Singapore region (`vercel.json`). Preview and
+Production currently share a database; treat preview writes as real data changes.

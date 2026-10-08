@@ -32,14 +32,31 @@ function order(overrides: Partial<BoardOrder> = {}): BoardOrder {
   };
 }
 
-// A minimal chainable query builder — the hook's resync() only ever calls
-// select/in/not/order in that order, ending on a promise.
+// A paged external response; the hook runs its actual reconciliation.
 function makeOrdersQuery(result: { data: unknown; error: unknown }) {
+  let afterId: string | null = null;
   const builder = {
     select: vi.fn(() => builder),
     in: vi.fn(() => builder),
     not: vi.fn(() => builder),
-    order: vi.fn(() => Promise.resolve(result)),
+    order: vi.fn(() => {
+      afterId = null;
+      return builder;
+    }),
+    gt: vi.fn((_column: string, value: string) => {
+      afterId = value;
+      return builder;
+    }),
+    limit: vi.fn((size: number) =>
+      Promise.resolve({
+        ...result,
+        data: Array.isArray(result.data)
+          ? (result.data as BoardOrder[])
+              .filter((row) => afterId === null || row.id > afterId)
+              .slice(0, size)
+          : result.data,
+      }),
+    ),
   };
   return builder;
 }
@@ -85,12 +102,104 @@ describe("useRealtimeOrders", () => {
     expect(result.current.status).toBe("connecting");
   });
 
-  it("marks connected on the first SUBSCRIBED without resyncing", async () => {
-    mockFrom.mockReturnValue(makeOrdersQuery({ data: [], error: null }));
+  it("resyncs on the first SUBSCRIBED to recover orders placed during hydration", async () => {
+    mockFrom.mockReturnValue(makeOrdersQuery({ data: [order()], error: null }));
     const { result } = renderHook(() => useRealtimeOrders(["b1"], []));
     act(() => statusCallback?.("SUBSCRIBED"));
     await waitFor(() => expect(result.current.status).toBe("connected"));
-    expect(mockFrom).not.toHaveBeenCalled();
+    await waitFor(() => expect(result.current.orders).toEqual([order()]));
+  });
+
+  it("drops stale active orders absent from the reconnect snapshot", async () => {
+    mockFrom.mockReturnValue(makeOrdersQuery({ data: [order()], error: null }));
+    const { result } = renderHook(() => useRealtimeOrders(["b1"], [order()]));
+    await act(async () => statusCallback?.("SUBSCRIBED"));
+    mockFrom.mockReturnValue(makeOrdersQuery({ data: [], error: null }));
+    act(() => statusCallback?.("CLOSED"));
+    await act(async () => statusCallback?.("SUBSCRIBED"));
+    expect(result.current.orders).toEqual([]);
+  });
+
+  it("continues from the last id when an earlier page order completes", async () => {
+    const a = order({ id: "a" });
+    const b = order({ id: "b" });
+    const query = makeOrdersQuery({ data: [b], error: null });
+    query.limit.mockResolvedValueOnce({ data: [a], error: null });
+    mockFrom.mockReturnValue(query);
+    const { result } = renderHook(() => useRealtimeOrders(["b1"], [a, b]));
+    await act(async () => statusCallback?.("SUBSCRIBED"));
+    expect(query.gt).toHaveBeenCalledWith("id", "a");
+    expect(result.current.orders.map((row) => row.id)).toContain("b");
+  });
+
+  it("preserves realtime inserts that arrive while a snapshot is pending", async () => {
+    let resolve!: (value: { data: BoardOrder[]; error: null }) => void;
+    const query = makeOrdersQuery({ data: [], error: null });
+    query.limit.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    mockFrom.mockReturnValue(query);
+    const { result } = renderHook(() => useRealtimeOrders(["b1"], []));
+    act(() => statusCallback?.("SUBSCRIBED"));
+    const inserted = order({ id: "o2" });
+    act(() =>
+      pgCallback?.({
+        eventType: "INSERT",
+        new: { ...inserted, access_token: "tok" },
+        old: {},
+      }),
+    );
+    await act(async () => resolve({ data: [], error: null }));
+    expect(result.current.orders).toEqual([inserted]);
+  });
+
+  it("does not resurrect a realtime-deleted order from an in-flight snapshot", async () => {
+    let resolve!: (value: { data: BoardOrder[]; error: null }) => void;
+    const query = makeOrdersQuery({ data: [], error: null });
+    query.limit.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    mockFrom.mockReturnValue(query);
+    const { result } = renderHook(() => useRealtimeOrders(["b1"], [order()]));
+    act(() => statusCallback?.("SUBSCRIBED"));
+    act(() =>
+      pgCallback?.({ eventType: "DELETE", new: {}, old: { id: "o1" } }),
+    );
+    await act(async () => resolve({ data: [order()], error: null }));
+    expect(result.current.orders).toEqual([]);
+  });
+
+  it("keeps an update to an order whose insertion was missed before subscribing", async () => {
+    let resolve!: (value: { data: BoardOrder[]; error: null }) => void;
+    const query = makeOrdersQuery({ data: [], error: null });
+    query.limit.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    mockFrom.mockReturnValue(query);
+    const { result } = renderHook(() => useRealtimeOrders(["b1"], []));
+    act(() => statusCallback?.("SUBSCRIBED"));
+    const ready = order({
+      status: "ready",
+      updated_at: "2026-06-12T04:05:00Z",
+    });
+    act(() =>
+      pgCallback?.({
+        eventType: "UPDATE",
+        new: { ...ready, access_token: "tok" },
+        old: {},
+      }),
+    );
+    await act(async () => resolve({ data: [order()], error: null }));
+    expect(result.current.orders).toEqual([ready]);
   });
 
   it("applies a realtime INSERT and fires onInsert", async () => {
@@ -132,7 +241,7 @@ describe("useRealtimeOrders", () => {
     );
     const { result } = renderHook(() => useRealtimeOrders(["b1"], [fresh]));
 
-    // First SUBSCRIBED: connects, no resync yet.
+    // Initial connection and reconnect both reconcile.
     act(() => statusCallback?.("SUBSCRIBED"));
     await waitFor(() => expect(result.current.status).toBe("connected"));
     // Simulate a drop + reconnect: the second SUBSCRIBED triggers resync().

@@ -22,6 +22,22 @@ const item = (patch: Partial<MenuItemFormInput> = {}): MenuItemFormInput => ({
 });
 
 describe("menuItemsToCsv", () => {
+  it.each([
+    "First line\nSecond line",
+    "First line\r\nSecond line",
+    "First line\rSecond line",
+  ])("round-trips multiline descriptions: %j", (description) => {
+    const rows = csvToMenuItems(
+      menuItemsToCsv([item({ description }), item({ name: "Tea" })]),
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      name: "Kopi O",
+      description,
+      price_cents: 180,
+    });
+    expect(rows[1]).toMatchObject({ name: "Tea", price_cents: 180 });
+  });
   it("writes a header row plus one row per item, no trailing columns for a plain item", () => {
     const csv = menuItemsToCsv([item()]);
     expect(csv).toBe(`${HEADER}\nKopi O,,1.80,,true,,,,`);

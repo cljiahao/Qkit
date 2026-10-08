@@ -24,7 +24,6 @@ export async function POST(request: Request) {
   // the real gate, this just blunts abuse once compromised. Tighter than a
   // read-only endpoint since this one creates a purchase request.
   const allowed = await rateLimit(
-    supabase,
     `merqo-upgrade-request:${clientIp(request.headers)}`,
     10,
     60,

@@ -8,7 +8,13 @@ assertion tests (`db/`), one `src/lib/` unit test that isn't colocated
 (`lib/`), and two real-database integration tests that can't run as fast
 colocated unit tests.
 
+Real-database tests run only with `RUN_DB_TESTS=1`. Supply
+`QKIT_TEST_SUPABASE_URL` and `QKIT_TEST_SUPABASE_SECRET_KEY` for an isolated
+database. Neither suite reads application environment files during collection.
+
 ## Contents
+
+- `db-env.ts` — validates explicit integration-test configuration when a test runs.
 
 - `api/` — route-handler tests, one file per route, mirroring
   `src/app/api/`'s structure one-for-one; see its own README.
@@ -28,12 +34,10 @@ colocated unit tests.
   order inserts (mirroring what `place_order` does internally), and asserts
   all 25 order numbers are distinct, sequential (`0001`..`0025`, no gaps),
   and that exactly 25 rows landed — proving the row-locked counter doesn't
-  collide the way the pre-migration `COUNT(*)`-based numbering did. Reads
-  `.env.local` itself (the repo has no dotenv dependency) and tears down its
+  collide the way the pre-migration `COUNT(*)`-based numbering did. Uses explicitly supplied isolated-test credentials and tears down its
   seeded data in `afterAll`.
 - `vendor-profile-cross-schema.integration.test.ts` — de-risking spike
-  integration test (same opt-in `RUN_DB_TESTS` gating and `.env.local`
-  reading as `order-numbering.integration.test.ts`) proving that a Supabase
+  integration test (same explicit opt-in and test credentials as the numbering suite) proving that a Supabase
   client configured with `db.schema: "qkit"` (mirroring every real qkit
   server client) can still call `get_or_create_vendor_profile` via
   `.schema("merqo").rpc(...)` — i.e. the cross-schema RPC pattern

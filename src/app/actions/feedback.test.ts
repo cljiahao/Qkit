@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // RPC (the feedback table has no public INSERT policy). Stub both RPCs.
 const rpc = vi.fn();
 vi.mock("@/lib/supabase/server", () => ({
+  createServiceClient: async () => ({ rpc }),
   createServerClient: async () => ({ rpc }),
 }));
 vi.mock("next/headers", () => ({

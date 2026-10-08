@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
+import { toast } from "sonner";
 
 const { getWalkupMenu, placeWalkupOrder } = vi.hoisted(() => ({
   getWalkupMenu: vi.fn(),
@@ -41,6 +42,58 @@ beforeEach(() => {
 });
 
 describe("WalkupOrderDialog", () => {
+  it("recovers the submit button after a rejected action", async () => {
+    placeWalkupOrder.mockRejectedValueOnce(new Error("Network unavailable"));
+    const user = userEvent.setup();
+    render(
+      <WalkupOrderDialog open={true} onOpenChange={vi.fn()} booths={BOOTHS} />,
+    );
+    await user.click(await screen.findByRole("button", { name: "Add" }));
+    await user.click(
+      screen.getByRole("button", { name: /add order · 1 item/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /add order · 1 item/i }),
+      ).toBeEnabled(),
+    );
+    expect(toast.error).toHaveBeenCalled();
+  });
+
+  it("ignores a menu response from an earlier dialog opening", async () => {
+    let resolveOld!: (value: unknown) => void;
+    getWalkupMenu.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOld = resolve;
+        }),
+    );
+    const props = { onOpenChange: vi.fn(), booths: BOOTHS };
+    const { rerender } = render(<WalkupOrderDialog {...props} open={true} />);
+    rerender(<WalkupOrderDialog {...props} open={false} />);
+    rerender(<WalkupOrderDialog {...props} open={true} />);
+    await screen.findByText("Kopi");
+    await act(async () =>
+      resolveOld({
+        menuItems: [],
+        remaining: {},
+        expectsPayment: false,
+        paymentKind: null,
+      }),
+    );
+    expect(screen.getByText("Kopi")).toBeInTheDocument();
+  });
+
+  it("surfaces a failed menu request instead of remaining in loading state", async () => {
+    getWalkupMenu.mockRejectedValueOnce(new Error("Network unavailable"));
+    render(
+      <WalkupOrderDialog open={true} onOpenChange={vi.fn()} booths={BOOTHS} />,
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Loading menu…")).not.toBeInTheDocument(),
+    );
+    expect(toast.error).toHaveBeenCalled();
+  });
   it("loads the booth's menu once opened", async () => {
     render(
       <WalkupOrderDialog

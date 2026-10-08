@@ -132,9 +132,8 @@ const errorBodySchema = z.object({ error: z.string() });
  * `{ok:false, status, error}` result so each call site decides its own
  * degrade-vs-fail behavior instead of repeating try/catch scaffolding.
  *
- * Reads `PAYKIT_KIT_SECRET` here, at request time, not at module load — the
- * production key isn't minted yet (see .env.example), so an unset secret
- * must degrade a single request, never fail the build or crash on import.
+ * Read the secret at request time so missing configuration fails only the
+ * affected payment operation, never module loading or the build.
  */
 async function paykitRequest<T>(
   path: string,

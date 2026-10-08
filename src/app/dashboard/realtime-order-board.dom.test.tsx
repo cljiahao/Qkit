@@ -132,10 +132,16 @@ describe("RealtimeOrderBoard sort toggle", () => {
         .map((el) => el.textContent);
 
     expect(numbersInOrder()).toEqual(["#0001", "#0002"]);
+    expect(
+      screen.getByRole("button", { name: "Earliest", pressed: true }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Latest" }));
 
     expect(numbersInOrder()).toEqual(["#0002", "#0001"]);
+    expect(
+      screen.getByRole("button", { name: "Latest", pressed: true }),
+    ).toBeInTheDocument();
   });
 });
 

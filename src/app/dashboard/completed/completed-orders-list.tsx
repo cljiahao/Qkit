@@ -120,6 +120,7 @@ export function CompletedOrdersList({
               key={r.value}
               type="button"
               onClick={() => setDateRange(r.value)}
+              aria-pressed={dateRange === r.value}
               className={cn(
                 "rounded-md px-3 py-1.5 font-medium transition-colors",
                 dateRange === r.value
@@ -133,7 +134,10 @@ export function CompletedOrdersList({
         </div>
         {multiBooth && (
           <Select value={boothFilter} onValueChange={setBoothFilter}>
-            <SelectTrigger className="h-9 rounded-lg text-sm">
+            <SelectTrigger
+              aria-label="Filter by booth"
+              className="h-9 rounded-lg text-sm"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
