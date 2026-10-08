@@ -8,6 +8,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The order board no longer opens the walk-up order dialog on every load
+  because of a walk-up booth that is switched off. Only an active walk-up booth
+  triggers it.
 - The menu page no longer says "Only 3 items left today" directly above "The
   last items are in other baskets". The count now comes from the same
   availability the basket uses, net of other customers' holds, so a customer

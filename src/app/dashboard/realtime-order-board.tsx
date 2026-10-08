@@ -634,11 +634,14 @@ export function RealtimeOrderBoard({
   // QR/menu-first board underneath is unaffected either way, and a vendor
   // with no such booth (every booth today) never triggers this. Runs once
   // on mount only, so closing the dialog doesn't reopen it on a later
-  // render (e.g. after toggling a booth active/inactive).
+  // render (e.g. after toggling a booth active/inactive). Only an ACTIVE
+  // booth counts: a walk-up booth that is switched off (last weekend's event,
+  // a booth kept for testing) is not being served from, and used to pop this
+  // dialog over the board on every load anyway.
   const autoOpenedWalkup = useRef(false);
   useEffect(() => {
     if (autoOpenedWalkup.current) return;
-    if (booths.some((b) => b.walkup_default)) {
+    if (booths.some((b) => b.walkup_default && b.is_active)) {
       autoOpenedWalkup.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setWalkupOpen(true);

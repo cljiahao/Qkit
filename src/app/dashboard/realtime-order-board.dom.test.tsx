@@ -685,6 +685,27 @@ describe("RealtimeOrderBoard event-mode (walkup_default)", () => {
     await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b1"));
   });
 
+  it("does not auto-open for a walk-up booth that is switched off", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={[
+          { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+          {
+            id: "b2",
+            name: "Last Weekend's Event",
+            is_active: false,
+            open: false,
+            walkup_default: true,
+          },
+        ]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText("New walk-up order")).not.toBeInTheDocument();
+  });
+
   it("does not auto-open the walk-up dialog for an ordinary QR booth", () => {
     render(
       <RealtimeOrderBoard
