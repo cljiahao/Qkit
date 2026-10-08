@@ -123,7 +123,7 @@ export function CustomerScreenButton({
       <Button
         type="button"
         variant="outline"
-        className="rounded-full"
+        className="rounded-full [@media(pointer:coarse)]:min-w-11"
         onClick={() => setOpen(true)}
         aria-label="Customer screen"
       >

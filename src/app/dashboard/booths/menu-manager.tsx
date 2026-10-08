@@ -206,7 +206,7 @@ export function MenuManager({
     <div className="mx-auto max-w-lg space-y-6 md:max-w-2xl">
       <Link
         href={`/dashboard/booths/${boothId}`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        className="tap-area inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" /> Back to {boothName}
       </Link>
@@ -225,6 +225,7 @@ export function MenuManager({
               </span>
             }
             ariaLabel="CSV column format"
+            trigger="tap"
           />
         </div>
         <div className="flex gap-2">

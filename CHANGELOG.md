@@ -8,6 +8,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Controls are finger-sized on every touch device, phones and iPads alike.
+  One rule in `globals.css`, keyed on `pointer: coarse` and not on screen
+  width, makes every button, field and dropdown at least 44px tall; a mouse
+  keeps the compact heights. Switches, the small (i) hint icons, the menu's
+  drag handle and the tick box on a ticket in Select mode keep their drawn
+  size and get a 44px touch area. Checked at phone width on the order board,
+  booth settings and the menu manager, none of which scroll sideways. The
+  board's header shows the active count as a number alone on a phone, so its
+  controls stay on one row.
+- The CSV format hint on the menu page opens on tap. It opened on hover only,
+  so it could not be read on a phone or an iPad.
+- The five-minute order cleanup uses two partial indexes (migration `0098`)
+  and no longer reads the whole orders table on each run.
 - A payment link reopened long after its order was placed no longer shows a
   PayNow QR. An order still unpaid after 30 minutes reads "This order has
   expired" with a clear "do not pay", and a claim against it is refused, so an
@@ -76,10 +89,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- "Mark all ready" on the order board moves every order still being made to
-  Ready in one go, after a confirmation that says how many. For a stall that
-  had no time to mark orders one by one during service. With auto-clear on,
-  the board then empties by itself.
+- The order board's "Select" mode has "Select all", so a stall that had no
+  time to mark orders one by one during service can tick every order still
+  being made and send them to Ready with one "Mark N Ready". It lives inside
+  Select rather than as its own button, to keep the board to one batch
+  control. With auto-clear on, the board then empties by itself. A tap-to-open
+  hint beside "Select" says what it is for.
 - The menu CSV has a `choice_code` column, so short codes for the order ticket
   can be set in bulk and survive an export and re-import. It is the last
   column: a file exported before it existed still imports unchanged, and a
