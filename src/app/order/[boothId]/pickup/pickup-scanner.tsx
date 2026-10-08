@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { confirmCollection } from "../[orderNumber]/collect-actions";
 
 interface Props {
@@ -49,6 +49,10 @@ export function PickupScanner({ boothId }: Props) {
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!busy) inputRef.current?.focus();
+  }, [busy]);
+
   async function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter" || busy) return;
     const raw = value;
@@ -68,18 +72,25 @@ export function PickupScanner({ boothId }: Props) {
     }
 
     setBusy(true);
-    const res = await confirmCollection(
-      parsed.boothId,
-      parsed.orderNumber,
-      parsed.token,
-    );
-    setBusy(false);
-    setFlash(
-      res.success
-        ? { ok: true, message: `Order #${parsed.orderNumber} collected` }
-        : { ok: false, message: res.error ?? "Could not complete order." },
-    );
-    inputRef.current?.focus();
+    try {
+      const res = await confirmCollection(
+        parsed.boothId,
+        parsed.orderNumber,
+        parsed.token,
+      );
+      setFlash(
+        res.success
+          ? { ok: true, message: `Order #${parsed.orderNumber} collected` }
+          : { ok: false, message: res.error ?? "Could not complete order." },
+      );
+    } catch {
+      setFlash({
+        ok: false,
+        message: "Could not complete order. Scan again to check.",
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

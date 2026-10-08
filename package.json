@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:mutation": "stryker run",
     "test:e2e": "playwright test",

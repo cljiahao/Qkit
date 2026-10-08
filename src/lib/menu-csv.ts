@@ -1,10 +1,10 @@
 import type { MenuItemFormInput } from "./schemas";
 import type { OptionGroup } from "./types";
 
-// Hand-rolled, not a dependency. No embedded-newline support.
+// Quoted fields retain their embedded line breaks across export and import.
 
 function csvField(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 const CSV_HEADER =
@@ -220,16 +220,28 @@ function emptyErrorRow(rowNumber: number, message: string): CsvMenuRow {
   };
 }
 
-/**
- * A row with `name` filled is an item row. A row with `name` blank and
- * `group_name`/`choice_label` filled is a choice row, attached to the item
- * row immediately above it (continuation rows) — see the design doc,
- * `docs/superpowers/specs/2026-09-01-menu-csv-customization-design.md`.
- * The first line is always the header, skipped. Every error names its real
- * spreadsheet row (header = row 1), so a bad row never disappears silently.
- */
+/** Split records only outside quoted fields, retaining embedded line breaks. */
+function csvRecords(text: string): string[] {
+  const records: string[] = [];
+  let start = 0;
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '"') {
+      if (inQuotes && text[i + 1] === '"') i++;
+      else inQuotes = !inQuotes;
+    } else if (!inQuotes && (text[i] === "\r" || text[i] === "\n")) {
+      records.push(text.slice(start, i));
+      if (text[i] === "\r" && text[i + 1] === "\n") i++;
+      start = i + 1;
+    }
+  }
+  records.push(text.slice(start));
+  return records.filter((record) => record.trim() !== "");
+}
+
+/** Named rows start items; blank-name choice rows extend the preceding item. */
 export function csvToMenuItems(text: string): CsvMenuRow[] {
-  const lines = text.split(/\r\n|\r|\n/).filter((l) => l.trim() !== "");
+  const lines = csvRecords(text);
   const [, ...dataLines] = lines;
 
   const items: CsvMenuRow[] = [];

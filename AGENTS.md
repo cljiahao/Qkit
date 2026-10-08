@@ -16,7 +16,7 @@ orders; customers order from a QR-linked booth page and track status in realtime
 ## Stack
 
 Next.js 16 · App Router · Turbopack · TypeScript strict · Tailwind v4 · shadcn/ui
-(new-york) · TanStack Query v5 · React Hook Form · Zod · Supabase (`@supabase/ssr`)
+(new-york) · React Hook Form · Zod · Supabase (`@supabase/ssr`)
 Vitest · pnpm 11 · Node ≥24 · deploy target: Vercel
 
 ## Commands
@@ -75,8 +75,9 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
 - `vendors` (id = auth.users.id), `booths` (JSONB `menu_items`),
   `orders` (JSONB `items`, `order_status` enum: pending→confirmed→preparing→ready→completed, + cancelled).
 - RLS: a vendor sees/edits only their own `vendors` row, their own `booths`,
-  and `orders` whose `booth_id` belongs to them. Active booths are publicly
-  readable (customer ordering). Anyone may INSERT an order. The customer status
+  and `orders` whose `booth_id` belongs to them. Customer ordering uses constrained SECURITY DEFINER RPCs;
+  anon/authenticated callers cannot directly insert orders. Public booth data
+  comes from the sanitized ordering RPC. The customer status
   page reads via the **service-role client** (bypasses RLS) — server-only.
 - **Payments route through paykit** (a sibling kit; see
   `../paykit/AGENTS.md`) as of the 2026-08-11 cutover — see "paykit checkout
@@ -240,8 +241,7 @@ Net-new: `lefthook.yml`, `.lefthook/`, `.gitleaks.toml`,
 rewrite). This also picks up the security hardening already reflected in
 the hook scripts themselves: the `LEFTHOOK=0`/`core.hooksPath=` bypass block,
 a broadened `--no-verify` regex, protected-branch/force-push/guard-file-checkout
-guards, an `.env*` catchall deny (was previously just the specific `.env.<env>`
-variants), and OWASP LLM02 credential-leak detection in the prompt guard.
+guards, environment-file write protection, and OWASP LLM02 credential-leak detection in the prompt guard.
 `SubagentStop` is a net-new hook (qkit previously had none). `harness.json`'s
 `templatecentral_version` marker moved 5.7.0 → 5.11.0 — the 5.8–5.11 feature
 deltas (comment gate, README governance/richReadme, unused-vars gate) were
@@ -279,9 +279,9 @@ violations on first run (`banner-form.tsx` x2, `menu-manager.tsx`,
 
 ## AI Harness
 
-PreToolUse: `protect-files.sh` hard-blocks (exit 2) writes to `.env*` (except
-`.env.example`/`.env.default`), CI/CD pipeline files, secrets directories, and
-cert/credential files, and asks for human approval (via a `permissionDecision`
+PreToolUse: `protect-files.sh` normalizes Windows and relative paths and
+hard-blocks (exit 2) reads/writes to `.env*` (except `.env.example`/`.env.default`),
+secrets directories and cert/credential files, and asks for human approval (via a `permissionDecision`
 JSON payload) on other protected files (`AGENTS.md`/`CLAUDE.md`,
 `docs/CONSTITUTION.md`, `.claude/settings.json`, `.claude/hooks/*`,
 `.claude/agents/*`, `.mcp.json`, the harness manifest/verifier/regen scripts,
@@ -289,10 +289,10 @@ JSON payload) on other protected files (`AGENTS.md`/`CLAUDE.md`,
 blocks `--no-verify`/`-n` on `git commit`, `HUSKY=0`/`HUSKY_SKIP_HOOKS`/
 `core.hooksPath=` bypasses, direct commits to `main`, force-push to a protected
 branch, `git checkout/restore` on guard-layer files, and recursive-force `rm`
-on source directories. App code, skills, specs, and `.github/workflows/`
-unrestricted (CI is reviewed code; the workflow-write block was lifted 2026-06-16).
-UserPromptSubmit: `user-prompt-guard.cjs` pattern-checks prompts for injection
-phrases (OWASP LLM01) and embedded credentials — AWS keys, GitHub PATs,
+on source directories. App code, skills and specs are unrestricted. CI/CD workflow writes ask for
+human approval; they are not hard-blocked. Governance reads are permitted.
+UserPromptSubmit: `user-prompt-guard.cjs` emits advisory context for injection phrases
+(so legitimate security investigation is permitted) and blocks embedded credentials — AWS keys, GitHub PATs,
 Anthropic API keys, PEM blocks, DB/broker URLs (OWASP LLM02); exit 2 blocks.
 PostToolUse: `post-edit-typecheck.sh` runs incremental `tsc --noEmit` after
 every Edit/Write to a `.ts`/`.tsx` file (feedback-only); `skill-usage-log.sh`
@@ -311,9 +311,9 @@ stdout is injected as context too — both PostCompact and
 SessionStart also covers session resume and startup, so it stays the single
 seeded path here.
 `permissions`: max-privilege — bare-tool `allow` (Bash/Read/Edit/Write/web/Skill/
-Task) so common work doesn't prompt; `deny` covers secret reads/edits (`.env*`
-catchall plus the specific `.env.<env>` variants, `./secrets/**`/`./.secrets/**`
-— `.env.example` is the one whitelisted env file), build-artefact reads
+Task) so common work doesn't prompt; static `deny` rules cover common secret
+filenames and directories. The file-tool hook covers all `.env*` variants
+except the blank templates. Static rules also cover build-artefact reads
 (`node_modules`, `.next`, `dist`, `coverage`, `.turbo`, `*.tsbuildinfo`, root
 and `./**/` forms), and irreversible ops (`rm -rf`, `git push --force`/`-f`,
 `git reset --hard`, `git clean -fd/-fx`, `git filter-branch`, ref-delete). `ask`
@@ -331,7 +331,8 @@ secret-scan on staged files (if gitleaks is installed), and the README-coupling
 nudge (`.husky/lib/readme-coupling.sh`); `commit-msg` enforces Conventional
 Commits (`.husky/lib/commit-msg-check.sh`); `pre-push` runs
 `.claude/verify-harness.sh` (integrity check) plus `pnpm run check && pnpm
-test`. Config: `.husky/` (plain shell hook files, no native binary — migrated
+test`. The integrity verifier checks committed HEAD blobs; it does not check
+uncommitted guard edits and is not currently a CI job. Config: `.husky/` (plain shell hook files, no native binary — migrated
 2026-08-01 off lefthook, whose unsigned `lefthook.exe` Windows Smart App
 Control blocks unconditionally; a cross-repo decision, see the
 workspace-level design doc at

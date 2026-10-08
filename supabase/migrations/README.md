@@ -334,6 +334,23 @@ realtime-order-board.tsx`; changes neither `place_order` nor
 
 ## Connectivity
 
+`0095_review_authorization_hardening.sql` closes the October review's direct
+Data API bypasses: public order-number assignment, Pro self-assignment on
+vendor INSERT, server-assigned printer IDs on booth INSERT, and nested option
+cost disclosure. It also restores the missing daily-cap UPDATE and admin
+banner service-role grants, and locks the booth for paid QR stock checks just
+as walkup/free orders already do. No rows, tables, or public RPC signatures are
+removed. The deployment must include this migration for those database fixes
+to take effect; application deployment alone does not change permissions.
+The generic rate limiter also becomes service-only; application callers use
+the server helper's internal service client. Customer feedback gains an
+in-RPC three-per-five-minute order-token bound, and both QR/walkup order RPCs
+share a private options validator for array shape and selection cardinality.
+Direct analytics INSERTs are replaced by the existing validated server action
+using its service client. Order completion skips the optional shared metrics
+integration only when its function is absent; an installed function's errors
+retain their existing transactional behavior.
+
 Applied via the Supabase CLI (`supabase db push`/`db reset`, or the
 project's `/supabase-migrate` skill) against the local or hosted Postgres
 instance configured in `../config.toml`. `src/lib/types.ts` is a hand-

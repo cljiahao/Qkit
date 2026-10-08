@@ -3,6 +3,7 @@ import { parseOrderItems } from "@/lib/schemas";
 import type { StatsOrder } from "@/lib/stats";
 import type { ReviewRow } from "@/lib/reviews";
 import type { Database } from "@/lib/types";
+import { readAllRows } from "@/lib/supabase/read-all";
 
 /** Fetch this vendor's orders for a window [gte, lt). RLS scopes to the vendor. */
 export async function fetchOrders(
@@ -12,14 +13,18 @@ export async function fetchOrders(
   lt?: string,
 ): Promise<StatsOrder[]> {
   if (!boothIds.length) return [];
-  let query = supabase
-    .from("orders")
-    .select("status, total_cents, items, created_at, ready_at, payment_status")
-    .in("booth_id", boothIds)
-    .gte("created_at", gte);
-  if (lt) query = query.lt("created_at", lt);
-  const { data } = await query;
-  return (data ?? []).map((row) => ({
+  const rows = await readAllRows((from, to) => {
+    let query = supabase
+      .from("orders")
+      .select(
+        "status, total_cents, items, created_at, ready_at, payment_status",
+      )
+      .in("booth_id", boothIds)
+      .gte("created_at", gte);
+    if (lt) query = query.lt("created_at", lt);
+    return query.order("id").range(from, to);
+  });
+  return rows.map((row) => ({
     status: row.status,
     total_cents: row.total_cents,
     items: parseOrderItems(row.items),
@@ -42,12 +47,15 @@ export async function fetchAllTimeTotals(
   boothIds: string[],
 ): Promise<{ orders: number; revenue_cents: number }> {
   if (!boothIds.length) return { orders: 0, revenue_cents: 0 };
-  const { data } = await supabase
-    .from("orders")
-    .select("total_cents")
-    .in("booth_id", boothIds)
-    .neq("status", "cancelled");
-  const rows = data ?? [];
+  const rows = await readAllRows((from, to) =>
+    supabase
+      .from("orders")
+      .select("total_cents")
+      .in("booth_id", boothIds)
+      .neq("status", "cancelled")
+      .order("id")
+      .range(from, to),
+  );
   return {
     orders: rows.length,
     revenue_cents: rows.reduce((sum, r) => sum + r.total_cents, 0),
@@ -92,13 +100,17 @@ export async function fetchEventReviewRows(
   if (!boothIds.length) return [];
   // Neither query depends on the other's result — both only need boothIds —
   // so run them concurrently instead of paying two sequential round-trips.
-  const [{ data: orderKeys }, rows] = await Promise.all([
-    supabase
-      .from("orders")
-      .select("booth_id, order_number")
-      .in("booth_id", boothIds)
-      .gte("created_at", from)
-      .lt("created_at", to),
+  const [orderKeys, rows] = await Promise.all([
+    readAllRows((start, end) =>
+      supabase
+        .from("orders")
+        .select("booth_id, order_number")
+        .in("booth_id", boothIds)
+        .gte("created_at", from)
+        .lt("created_at", to)
+        .order("id")
+        .range(start, end),
+    ),
     fetchReviewRows(supabase, boothIds),
   ]);
   const inEvent = new Set(

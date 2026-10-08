@@ -13,7 +13,14 @@ from the Vitest/Playwright tests elsewhere in the repo.
 
 ## Contents
 
-- `rls.test.sql` — a single pgTAP file (`plan(123)`, run inside one rolled-back
+- `review-hardening.test.sql` — rolled-back regression fixtures for migration
+  `0095`: plan and printer-id INSERT restrictions, service-only order numbering,
+  daily-cap editing, nested menu-cost privacy, paid-order stock reservation,
+  service-only rate limiting, feedback flood limits, option cardinality,
+  validated analytics writes, optional shared metrics with preserved failures,
+  and the service-role maintenance-banner grant. Uses `no_plan()` so each
+  independently named assertion remains visible without a manual test count.
+- `rls.test.sql` — a single pgTAP file (`plan(131)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,
@@ -53,9 +60,9 @@ from the Vitest/Playwright tests elsewhere in the repo.
     caller's own license.
   - **As anon** (no `auth.uid()`): cannot SELECT `booths` directly (the only
     public read is `get_booth_for_order`), cannot confirm payment on
-    any order, but CAN insert an analytics `events` row (a positive
-    assertion guarding against a repeat of migration `0041`'s accidental
-    regression).
+    any order, and cannot INSERT analytics `events` directly. The validated
+    server action now owns that write boundary, with application tests
+    preserving anonymous event logging through it.
   - The full `place_order` order path: direct INSERT into `orders` is closed;
     `get_booth_for_order` strips `cost_cents` and never exposes `short_code`;
     a valid cart succeeds and inserts exactly one row; an idempotent replay

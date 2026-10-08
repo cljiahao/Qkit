@@ -26,7 +26,7 @@ export async function submitFeedback(
 
   // Throttle: 3 submissions / 5 min per IP.
   const ip = clientIp(await headers());
-  const allowed = await rateLimit(supabase, `feedback:${ip}`, 3, 300);
+  const allowed = await rateLimit(`feedback:${ip}`, 3, 300);
   if (!allowed)
     return { success: false, error: "Thanks — you've already sent feedback." };
 

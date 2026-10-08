@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { PaymentProofViewer } from "./payment-proof-viewer";
 
 // getProofPhotoUrl/findDuplicateProofOrder are server actions (proof-actions.ts,
@@ -47,6 +47,57 @@ beforeEach(() => {
 });
 
 describe("PaymentProofViewer", () => {
+  it("does not match an expected amount inside a larger amount", async () => {
+    getProofPhotoUrlMock.mockResolvedValueOnce(
+      "https://signed.example/proof.png",
+    );
+    findDuplicateProofOrderMock.mockResolvedValueOnce(null);
+    recognizeMock.mockResolvedValueOnce({ data: { text: "PAID $15.50" } });
+    render(<PaymentProofViewer orderId="order-1" expectedAmountCents={550} />);
+    expect(
+      await screen.findByText(/couldn't confirm the amount/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/amount matches/i)).not.toBeInTheDocument();
+  });
+
+  it.each(["5.50", "PAID $5.50 to stall", "Ref 12.00\n5.50"])(
+    "matches the expected amount as a whole number in %j",
+    async (text) => {
+      getProofPhotoUrlMock.mockResolvedValueOnce(
+        "https://signed.example/proof.png",
+      );
+      findDuplicateProofOrderMock.mockResolvedValueOnce(null);
+      recognizeMock.mockResolvedValueOnce({ data: { text } });
+      render(
+        <PaymentProofViewer orderId="order-1" expectedAmountCents={550} />,
+      );
+      expect(await screen.findByText(/amount matches/i)).toBeInTheDocument();
+    },
+  );
+
+  it("terminates the OCR worker when recognition fails", async () => {
+    getProofPhotoUrlMock.mockResolvedValueOnce(
+      "https://signed.example/proof.png",
+    );
+    findDuplicateProofOrderMock.mockResolvedValueOnce(null);
+    recognizeMock.mockRejectedValueOnce(new Error("Unreadable image"));
+    render(<PaymentProofViewer orderId="order-1" expectedAmountCents={550} />);
+    await waitFor(() => expect(terminateMock).toHaveBeenCalledOnce());
+  });
+
+  it("terminates pending OCR when the viewer is closed", async () => {
+    getProofPhotoUrlMock.mockResolvedValueOnce(
+      "https://signed.example/proof.png",
+    );
+    findDuplicateProofOrderMock.mockResolvedValueOnce(null);
+    recognizeMock.mockImplementationOnce(() => new Promise(() => {}));
+    const { unmount } = render(
+      <PaymentProofViewer orderId="order-1" expectedAmountCents={550} />,
+    );
+    await waitFor(() => expect(recognizeMock).toHaveBeenCalled());
+    unmount();
+    await waitFor(() => expect(terminateMock).toHaveBeenCalledOnce());
+  });
   it("shows a loading state, then the photo, then the OCR + duplicate hints", async () => {
     getProofPhotoUrlMock.mockResolvedValueOnce(
       "https://signed.example/proof.png",
@@ -58,7 +109,7 @@ describe("PaymentProofViewer", () => {
 
     expect(await screen.findByRole("img")).toBeInTheDocument();
     expect(
-      await screen.findByText(/looks like \$5\.50, paid/i),
+      await screen.findByText(/amount matches \$5\.50/i),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/already used for order/i),
@@ -87,7 +138,7 @@ describe("PaymentProofViewer", () => {
     );
 
     expect(container).toBeEmptyDOMElement();
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(getProofPhotoUrlMock).toHaveBeenCalledWith("order-2");
     });
     expect(container).toBeEmptyDOMElement();
@@ -102,7 +153,7 @@ describe("PaymentProofViewer", () => {
 
     render(<PaymentProofViewer orderId="order-1" expectedAmountCents={550} />);
 
-    await vi.waitFor(() => expect(createWorkerMock).toHaveBeenCalled());
+    await waitFor(() => expect(createWorkerMock).toHaveBeenCalled());
     expect(createWorkerMock).toHaveBeenCalledWith(
       "eng",
       1,

@@ -7,17 +7,25 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import PayPage from "./page";
 
-const { notFoundMock, loadPreClaimContextMock } = vi.hoisted(() => ({
-  // Real notFound() throws to abort rendering — mirror that so a test
-  // hitting the notFound branch doesn't fall through into the rest of the
-  // function body, same as it never would in production.
-  notFoundMock: vi.fn(() => {
-    throw new Error("NEXT_NOT_FOUND");
+const { notFoundMock, redirectMock, loadPreClaimContextMock } = vi.hoisted(
+  () => ({
+    // Real notFound() throws to abort rendering — mirror that so a test
+    // hitting the notFound branch doesn't fall through into the rest of the
+    // function body, same as it never would in production.
+    notFoundMock: vi.fn(() => {
+      throw new Error("NEXT_NOT_FOUND");
+    }),
+    loadPreClaimContextMock: vi.fn(),
+    redirectMock: vi.fn(() => {
+      throw new Error("NEXT_REDIRECT");
+    }),
   }),
-  loadPreClaimContextMock: vi.fn(),
-}));
+);
 
-vi.mock("next/navigation", () => ({ notFound: notFoundMock }));
+vi.mock("next/navigation", () => ({
+  notFound: notFoundMock,
+  redirect: redirectMock,
+}));
 vi.mock("../[orderNumber]/payment-actions", () => ({
   loadPreClaimContext: loadPreClaimContextMock,
 }));
@@ -51,9 +59,37 @@ beforeEach(() => {
     throw new Error("NEXT_NOT_FOUND");
   });
   loadPreClaimContextMock.mockReset();
+  redirectMock.mockClear();
 });
 
 describe("PayPage", () => {
+  it("redirects an already paid order back to its numbered status page", async () => {
+    loadPreClaimContextMock.mockResolvedValue({
+      state: "placed",
+      orderNumber: "0007",
+    });
+    await expect(
+      PayPage({
+        params: Promise.resolve({ boothId: BOOTH_ID }),
+        searchParams: Promise.resolve({ t: TOKEN }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirectMock).toHaveBeenCalledWith(
+      `/order/${BOOTH_ID}/0007?t=${TOKEN}`,
+    );
+  });
+
+  it("shows a cancelled state instead of a payment form", async () => {
+    loadPreClaimContextMock.mockResolvedValue({ state: "cancelled" });
+    render(
+      await PayPage({
+        params: Promise.resolve({ boothId: BOOTH_ID }),
+        searchParams: Promise.resolve({ t: TOKEN }),
+      }),
+    );
+    expect(screen.getByText(/this order was cancelled/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("pay-form")).not.toBeInTheDocument();
+  });
   it("calls notFound for an invalid booth id", async () => {
     await expect(
       PayPage({
@@ -89,6 +125,7 @@ describe("PayPage", () => {
 
   it("renders PayForm with the order id, amount, and checkout when valid", async () => {
     loadPreClaimContextMock.mockResolvedValue({
+      state: "pending",
       orderId: "order-1",
       amountCents: 550,
       checkout: { type: "qr", transactionId: "tx-1", payload: "p" },

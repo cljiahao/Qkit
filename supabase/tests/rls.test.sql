@@ -419,14 +419,12 @@ select throws_ok(
   null,
   'anon cannot confirm payment on any order');
 
--- But anon CAN log an analytics event: logEvent inserts directly as the caller
--- (the landing-page 'landing_cta' fires for logged-out visitors), and the table
--- is designed for public logging (0005 events_public_insert WITH CHECK(true) +
--- the anon INSERT grant restored in 0043). A positive assertion so a future
--- grant sweep can't silently regress landing analytics again (0041 did).
-select lives_ok(
+-- Anonymous visitors still log through the validated logEvent server action.
+-- 0095 closes direct Data API writes that bypass its type/size/rate checks.
+select throws_ok(
   $$ insert into qkit.events (type) values ('landing_cta') $$,
-  'anon can INSERT an analytics event');
+  '42501', null,
+  'anon cannot bypass the validated analytics server action');
 
 -- ── Order-path write path (anon) — migrations 0027–0031 ─────────────────────
 

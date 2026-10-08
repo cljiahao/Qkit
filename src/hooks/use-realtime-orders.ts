@@ -6,7 +6,7 @@ import {
   applyRealtimeOrderEvent,
   parseRealtimeOrderEvent,
 } from "@/lib/realtime-orders";
-import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
+import { BOARD_ORDER_COLUMNS, isTerminal } from "@/lib/orders";
 import type { BoardOrder } from "@/lib/types";
 
 export type RealtimeStatus = "connecting" | "connected" | "disconnected";
@@ -20,6 +20,9 @@ export function useRealtimeOrders(
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
   const supabase = createClient();
   const filterString = useMemo(() => boothIds.join(","), [boothIds]);
+  const eventVersion = useRef(0);
+  const changedAt = useRef(new Map<string, number>());
+  const resyncVersion = useRef(0);
 
   // Hold the latest callback in a ref so a fresh closure each render doesn't
   // force a channel re-subscribe.
@@ -33,26 +36,50 @@ export function useRealtimeOrders(
   // RLS scopes it to the vendor's own booths.
   const resync = useCallback(async () => {
     if (boothIds.length === 0) return;
-    const { data, error } = await supabase
-      .from("orders")
-      .select(BOARD_ORDER_COLUMNS)
-      .in("booth_id", boothIds)
-      .not("status", "in", "(completed,cancelled)")
-      .order("created_at", { ascending: false });
-    if (error) {
-      console.error("useRealtimeOrders resync failed", error.message);
+    const snapshotVersion = eventVersion.current;
+    const requestVersion = ++resyncVersion.current;
+    const data: BoardOrder[] = [];
+    try {
+      let afterId: string | null = null;
+      // Keyset paging cannot skip the next row when an earlier order completes.
+      while (true) {
+        let query = supabase
+          .from("orders")
+          .select(BOARD_ORDER_COLUMNS)
+          .in("booth_id", boothIds)
+          .not("status", "in", "(completed,cancelled)")
+          .order("id");
+        if (afterId !== null) query = query.gt("id", afterId);
+        const { data: page, error } = await query.limit(1000);
+        if (requestVersion !== resyncVersion.current) return;
+        if (error || !page) throw new Error("Could not load active orders");
+        if (page.length === 0) break;
+        data.push(...page);
+        afterId = page[page.length - 1].id;
+      }
+    } catch (error) {
+      console.error("useRealtimeOrders resync failed", error);
       return;
     }
-    if (!data) return;
-    // MERGE by id (don't hard-replace): a realtime INSERT/UPDATE can land between
-    // this snapshot being read and applied, and a blanket setOrders(data) would
-    // clobber it — a just-placed order (its toast/sound already fired) would
-    // vanish from the board. Keep the newer of {local, snapshot} per id by
-    // updated_at, and never drop a local id just because it's absent from the
-    // snapshot (terminal orders are filtered at render anyway).
+    if (requestVersion !== resyncVersion.current) return;
+    // Absence removes stale active rows, unless realtime changed that id during
+    // the read. Keep terminal history for undo and passed-over indicators.
     setOrders((prev) => {
-      const byId = new Map(prev.map((o) => [o.id, o]));
+      const snapshotIds = new Set(data.map((row) => row.id));
+      const changedDuringRead = (id: string) =>
+        (changedAt.current.get(id) ?? 0) > snapshotVersion;
+      const byId = new Map(
+        prev
+          .filter(
+            (order) =>
+              isTerminal(order.status) ||
+              snapshotIds.has(order.id) ||
+              changedDuringRead(order.id),
+          )
+          .map((order) => [order.id, order]),
+      );
       for (const row of data) {
+        if (changedDuringRead(row.id)) continue;
         const existing = byId.get(row.id);
         if (!existing || row.updated_at >= existing.updated_at)
           byId.set(row.id, row);
@@ -63,14 +90,9 @@ export function useRealtimeOrders(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterString]);
 
-  // Whether the channel has been SUBSCRIBED at least once this mount. A
-  // SUBSCRIBED that follows a drop triggers a reconciliation refetch; the very
-  // first one does not (the server already handed us the initial set).
-  const wasConnected = useRef(false);
-
   useEffect(() => {
     if (boothIds.length === 0) return;
-    wasConnected.current = false;
+    const requests = resyncVersion;
 
     const channel = supabase
       .channel("vendor-orders")
@@ -86,19 +108,17 @@ export function useRealtimeOrders(
           // Realtime payloads are untrusted — validate before use.
           const event = parseRealtimeOrderEvent(payload);
           if (!event) return;
+          const id = event.type === "DELETE" ? event.id : event.order.id;
+          changedAt.current.set(id, ++eventVersion.current);
           setOrders((prev) => applyRealtimeOrderEvent(prev, event));
           if (event.type === "INSERT") onInsertRef.current?.(event.order);
         },
       )
-      // Surface the connection lifecycle instead of freezing silently: on a
-      // reconnect (SUBSCRIBED after a prior drop) refetch to catch up; on
-      // CHANNEL_ERROR/TIMED_OUT/CLOSED mark the board as disconnected so it can
-      // warn the vendor rather than showing a stale queue as if it were live.
+      // Every subscription reconciles, including the SSR-to-hydration gap.
       .subscribe((channelStatus) => {
         if (channelStatus === "SUBSCRIBED") {
           setStatus("connected");
-          if (wasConnected.current) void resync();
-          wasConnected.current = true;
+          void resync();
         } else if (
           channelStatus === "CHANNEL_ERROR" ||
           channelStatus === "TIMED_OUT" ||
@@ -110,6 +130,7 @@ export function useRealtimeOrders(
       });
 
     return () => {
+      requests.current++;
       supabase.removeChannel(channel);
     };
     // supabase client and setOrders are stable; only the booth filter should

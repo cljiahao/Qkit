@@ -46,7 +46,7 @@ export async function getPaymentStatus(
   // Same load-amplification guard as getOrderStatus/getWaitEstimate — the
   // token can't be brute-forced, but a holder could script polling faster
   // than the page's own 5s cadence.
-  const allowed = await rateLimit(supabase, `payment-status:${token}`, 30, 60);
+  const allowed = await rateLimit(`payment-status:${token}`, 30, 60);
   if (!allowed) return null;
 
   // maybeSingle + log real errors only (an unknown order is a normal null). The
@@ -103,14 +103,20 @@ async function loadCheckoutContext(
  * loadCheckoutView, just keyed on (boothId, token) instead of a numbered
  * order route.
  */
+type PreClaimContext =
+  | {
+      state: "pending";
+      orderId: string;
+      amountCents: number;
+      checkout: CheckoutView | null;
+    }
+  | { state: "placed"; orderNumber: string }
+  | { state: "cancelled" };
+
 export async function loadPreClaimContext(
   boothId: string,
   token: string,
-): Promise<{
-  orderId: string;
-  amountCents: number;
-  checkout: CheckoutView | null;
-} | null> {
+): Promise<PreClaimContext | null> {
   const parsed = parsePreClaimRef(boothId, token);
   if (!parsed.ok) return null;
 
@@ -120,7 +126,6 @@ export async function loadPreClaimContext(
   // paykit (createCheckout) on every invocation — cap page-reload-style
   // abuse tighter than a cheap local-only read.
   const allowed = await rateLimit(
-    supabase,
     `pre-claim-context:${boothId}:${token}`,
     20,
     60,
@@ -129,11 +134,17 @@ export async function loadPreClaimContext(
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, total_cents, payment_status")
+    .select("id, total_cents, payment_status, status, order_number")
     .eq("booth_id", boothId)
     .eq("access_token", token)
     .maybeSingle();
-  if (!order || order.payment_status !== "pending") return null;
+  if (!order) return null;
+  if (order.status === "cancelled") return { state: "cancelled" };
+  if (order.payment_status !== "pending") {
+    return order.order_number
+      ? { state: "placed", orderNumber: order.order_number }
+      : null;
+  }
 
   const { data: booth } = await supabase
     .from("booths")
@@ -149,6 +160,7 @@ export async function loadPreClaimContext(
   });
 
   return {
+    state: "pending",
     orderId: order.id,
     amountCents: order.total_cents,
     checkout: checkout.ok ? checkout.data : null,
@@ -199,7 +211,7 @@ export async function claimPayment(
   // order numbers and mass-flip a booth's orders to 'claimed'. Fails open on
   // limiter errors (don't block a real customer on infra hiccups).
   const ip = clientIp(await headers());
-  const allowed = await rateLimit(supabase, `claim:${boothId}:${ip}`, 10, 60);
+  const allowed = await rateLimit(`claim:${boothId}:${ip}`, 10, 60);
   if (!allowed)
     return { success: false, error: "Too many attempts — wait a moment." };
 
@@ -316,7 +328,7 @@ export async function unclaimPayment(
   const supabase = await createServiceClient();
 
   const ip = clientIp(await headers());
-  const allowed = await rateLimit(supabase, `unclaim:${boothId}:${ip}`, 10, 60);
+  const allowed = await rateLimit(`unclaim:${boothId}:${ip}`, 10, 60);
   if (!allowed)
     return { success: false, error: "Too many attempts — wait a moment." };
 

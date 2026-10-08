@@ -72,7 +72,7 @@ const createPrintJob = vi
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ rpc }),
-  createServiceClient: async () => ({ from: serviceFrom }),
+  createServiceClient: async () => ({ from: serviceFrom, rpc }),
 }));
 vi.mock("@/lib/merqo-customer-notify", () => ({
   notifyVendor: (...args: unknown[]) => notifyVendor(...args),

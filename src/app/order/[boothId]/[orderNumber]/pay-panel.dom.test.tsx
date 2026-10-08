@@ -2,6 +2,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { PayPanel } from "./pay-panel";
+import { getPaymentStatus } from "./payment-actions";
+
+const { replace, refresh } = vi.hoisted(() => ({
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace, refresh }),
+}));
 
 vi.mock("./payment-actions", () => ({
   unclaimPayment: vi.fn().mockResolvedValue({ success: true }),
@@ -42,6 +51,21 @@ describe("PayPanel", () => {
     await waitFor(() =>
       expect(screen.queryByText(/payment sent/i)).not.toBeInTheDocument(),
     );
+    expect(replace).toHaveBeenCalledWith("/order/b/pay?t=tok");
+  });
+
+  it("refreshes server-rendered payment instructions when confirmation arrives", async () => {
+    vi.mocked(getPaymentStatus).mockResolvedValueOnce("confirmed");
+    render(
+      <PayPanel
+        boothId="b"
+        orderNumber="12"
+        token="tok"
+        initialStatus="claimed"
+      />,
+    );
+    await screen.findByText(/payment confirmed/i);
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it("shows a confirmed state once the vendor confirms", () => {

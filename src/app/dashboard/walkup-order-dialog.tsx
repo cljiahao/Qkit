@@ -116,18 +116,34 @@ export function WalkupOrderDialog({
 
   useEffect(() => {
     if (!open || !boothId) return;
+    let active = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingMenu(true);
     setCart(new Map());
     setPaid(false);
     // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
-    void getWalkupMenu(boothId).then((res) => {
-      setMenuItems(res?.menuItems ?? []);
-      setRemaining(res?.remaining ?? {});
-      setExpectsPayment(res?.expectsPayment ?? false);
-      setPaymentKind(res?.paymentKind ?? null);
-      setLoadingMenu(false);
-    });
+    void getWalkupMenu(boothId)
+      .then((res) => {
+        if (!active) return;
+        setMenuItems(res?.menuItems ?? []);
+        setRemaining(res?.remaining ?? {});
+        setExpectsPayment(res?.expectsPayment ?? false);
+        setPaymentKind(res?.paymentKind ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setMenuItems([]);
+        setRemaining({});
+        setExpectsPayment(false);
+        setPaymentKind(null);
+        toast.error("Could not load the menu. Close and reopen to try again.");
+      })
+      .finally(() => {
+        if (active) setLoadingMenu(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [open, boothId]);
 
   function updateCart(
@@ -230,14 +246,21 @@ export function WalkupOrderDialog({
       return;
     }
     setSubmitting(true);
-    const res = await placeWalkupOrder(boothId, parsed.data, paid);
-    setSubmitting(false);
-    if (!res.success) {
-      toast.error(res.error);
-      return;
+    try {
+      const res = await placeWalkupOrder(boothId, parsed.data, paid);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(`Order #${res.orderNumber} added to the board`);
+      onOpenChange(false);
+    } catch {
+      toast.error(
+        "Could not confirm the order. Check the board before trying again.",
+      );
+    } finally {
+      setSubmitting(false);
     }
-    toast.success(`Order #${res.orderNumber} added to the board`);
-    onOpenChange(false);
   }
 
   const multiBooth = booths.length > 1;
@@ -360,7 +383,10 @@ export function WalkupOrderDialog({
                   Booth
                 </Label>
                 <Select value={boothId} onValueChange={setBoothId}>
-                  <SelectTrigger className="h-10 w-full rounded-xl sm:w-64">
+                  <SelectTrigger
+                    aria-label="Booth"
+                    className="h-10 w-full rounded-xl sm:w-64"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

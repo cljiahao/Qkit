@@ -26,6 +26,7 @@ const {
   auditInsert,
   purchaseReqEq,
   supportMsgUpdateSingle,
+  supportMsgEq,
   platformSettingsEq,
 } = vi.hoisted(() => ({
   requireAdminMock: vi.fn(),
@@ -38,6 +39,7 @@ const {
   auditInsert: vi.fn(),
   purchaseReqEq: vi.fn(),
   supportMsgUpdateSingle: vi.fn(),
+  supportMsgEq: vi.fn(),
   platformSettingsEq: vi.fn(),
 }));
 
@@ -90,13 +92,14 @@ vi.mock("@/lib/supabase/server", () => ({
             if (table !== "support_messages") {
               throw new Error(`unexpected merqo table ${table}`);
             }
-            return {
-              update: () => ({
-                eq: () => ({
-                  select: () => ({ maybeSingle: supportMsgUpdateSingle }),
-                }),
-              }),
+            const chain = {
+              eq: (column: string, value: string) => {
+                supportMsgEq(column, value);
+                return chain;
+              },
+              select: () => ({ maybeSingle: supportMsgUpdateSingle }),
             };
+            return { update: () => chain };
           },
         };
       },
@@ -108,6 +111,7 @@ const LICENSE = "00000000-0000-4000-8000-0000000000aa";
 const ADMIN = "admin-1";
 
 beforeEach(() => {
+  supportMsgEq.mockReset();
   requireAdminMock.mockReset().mockResolvedValue({ user: { id: ADMIN } });
   vendorsReadSingle.mockReset().mockResolvedValue({ data: { plan: "free" } });
   vendorsUpdate.mockReset();
@@ -224,6 +228,7 @@ describe("resolveSupportMessage", () => {
   it("marks it resolved and audits against the message's vendor", async () => {
     const res = await resolveSupportMessage({ id: MESSAGE });
     expect(res).toEqual({ success: true });
+    expect(supportMsgEq).toHaveBeenCalledWith("kit_slug", "qkit");
     expect(auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         admin_id: ADMIN,

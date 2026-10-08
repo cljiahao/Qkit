@@ -140,10 +140,16 @@ describe("applyRealtimeOrderEvent", () => {
     expect(next[1]).toBe(b);
   });
 
-  it("is a no-op UPDATE when no id matches", () => {
+  it("recovers an UPDATE whose INSERT was missed", () => {
     const ghost = row({ id: "z", status: "completed" });
     const event: RealtimeOrderEvent = { type: "UPDATE", order: ghost };
-    expect(applyRealtimeOrderEvent([a, b], event)).toEqual([a, b]);
+    expect(applyRealtimeOrderEvent([a, b], event)).toEqual([ghost, a, b]);
+  });
+
+  it("deduplicates an INSERT already recovered by a snapshot", () => {
+    expect(
+      applyRealtimeOrderEvent([a, b], { type: "INSERT", order: a }),
+    ).toEqual([a, b]);
   });
 
   it("removes the matching order on DELETE", () => {

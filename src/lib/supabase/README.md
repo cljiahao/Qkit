@@ -78,3 +78,6 @@ to gate access and resolve plan/pass entitlement (`@/lib/plan`'s
 ## Parent
 
 [lib](../README.md)
+
+read-all.ts provides readAllRows for ordered queries that must return complete
+results across the PostgREST row cap. It fails on incomplete/error responses.

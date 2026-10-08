@@ -4,7 +4,6 @@ import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { parseOrderRef } from "@/lib/schemas";
-import { buildAdvancePatch } from "@/lib/orders";
 import { recordOrderStatusEvent } from "@/lib/audit";
 import type { ActionResult } from "@/lib/action-result";
 
@@ -30,13 +29,13 @@ export async function confirmCollection(
   const supabase = await createServiceClient();
 
   const ip = clientIp(await headers());
-  const allowed = await rateLimit(supabase, `collect:${boothId}:${ip}`, 20, 60);
+  const allowed = await rateLimit(`collect:${boothId}:${ip}`, 20, 60);
   if (!allowed)
     return { success: false, error: "Too many attempts -- wait a moment." };
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, status, payment_status")
+    .select("id, status")
     .eq("booth_id", boothId)
     .eq("order_number", orderNumber)
     .eq("access_token", token)
@@ -47,14 +46,10 @@ export async function confirmCollection(
   if (order.status !== "ready")
     return { success: false, error: "Not ready yet." };
 
-  const patch = buildAdvancePatch(
-    "completed",
-    new Date().toISOString(),
-    order.payment_status,
-  );
+  // A customer can acknowledge pickup, but only the vendor can confirm money.
   const { data: rows, error } = await supabase
     .from("orders")
-    .update(patch)
+    .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("id", order.id)
     .eq("status", "ready")
     .select("id");

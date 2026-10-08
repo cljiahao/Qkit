@@ -1,6 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { getBoothQueueDisplay } from "./actions";
 
+const { rateLimitMock } = vi.hoisted(() => ({ rateLimitMock: vi.fn() }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
+vi.mock("@/lib/rate-limit", () => ({
+  clientIp: () => "127.0.0.1",
+  rateLimit: rateLimitMock,
+}));
+
 // Chainable stub: every builder method returns itself; the chain is
 // awaitable directly (the final orders read never calls a terminal
 // .maybeSingle()) and .maybeSingle() also resolves the same result for the
@@ -42,9 +49,20 @@ const VENDOR = "00000000-0000-4000-8000-000000000002";
 beforeEach(() => {
   createServiceClientMock.mockClear();
   fromMock.mockReset();
+  rateLimitMock.mockReset().mockResolvedValue(true);
 });
 
 describe("getBoothQueueDisplay", () => {
+  it("rejects invalid booth identifiers before accessing the database", async () => {
+    expect(await getBoothQueueDisplay("invalid")).toBeNull();
+    expect(createServiceClientMock).not.toHaveBeenCalled();
+  });
+
+  it("does not read queue history when rate limited", async () => {
+    rateLimitMock.mockResolvedValue(false);
+    expect(await getBoothQueueDisplay(BOOTH)).toBeNull();
+    expect(fromMock).not.toHaveBeenCalled();
+  });
   it("returns null when the booth doesn't exist", async () => {
     fromMock.mockReturnValueOnce(chain({ data: null, error: null }));
     const res = await getBoothQueueDisplay(BOOTH);
@@ -271,6 +289,11 @@ describe("getBoothQueueDisplay", () => {
     const res = await getBoothQueueDisplay(BOOTH);
     expect(orSpy).toHaveBeenCalledWith(
       "payment_status.neq.pending,source.neq.qr",
+    );
+    expect(orSpy).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^status\.in\.\(pending,confirmed,preparing,ready\),and\(status\.eq\.completed,completed_at\.gte\./,
+      ),
     );
     expect(res?.map((o) => o.orderNumber)).toEqual(["0001"]);
   });

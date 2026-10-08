@@ -50,17 +50,17 @@ order-status page.
   (`vendor-orders`, schema `qkit`, table `orders`, filtered to
   `booth_id=in.(...)`), validates every payload through
   `parseRealtimeOrderEvent` from `@/lib/realtime-orders` before applying it via
-  `applyRealtimeOrderEvent`, and calls `onInsert` on new orders. On a genuine
-  reconnect (a `SUBSCRIBED` that follows a drop, not the first one) it refetches
+  `applyRealtimeOrderEvent`, and calls `onInsert` on new orders. On every `SUBSCRIBED`, including initial connection, it refetches
   the active-order set with the same columns as the dashboard server query
   (`BOARD_ORDER_COLUMNS` from `@/lib/orders`) and merges by `id`, keeping
-  whichever of {local, snapshot} has the newer `updated_at` so a just-placed
-  order already reflected locally is never clobbered by a stale snapshot.
+  whichever of {local, snapshot} has the newer `updated_at`. Keyset-paged snapshots
+  remove missing stale active orders, preserve realtime changes made during the
+  read, and keep terminal history for undo and passed-over indicators.
   Surfaces `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED` as `"disconnected"` rather than
   failing silently.
 - `use-realtime-orders.test.tsx` — mocks `@/lib/supabase/client`'s `channel`/
   `from`/`removeChannel` to test: no subscribe with an empty booth list, first
-  `SUBSCRIBED` connects without a resync, an `INSERT` payload updates state and
+  `SUBSCRIBED` recovers the hydration gap, an `INSERT` payload updates state and
   fires `onInsert`, a reconnect (`CLOSED` → `SUBSCRIBED`) triggers a resync that
   keeps the newer of {local, snapshot} per id, and error statuses flip to
   `"disconnected"`.
@@ -76,18 +76,6 @@ order-status page.
   Its behaviour is covered from the outside, in
   `dashboard/booths/printing-section.dom.test.tsx`, since what matters is
   what a vendor sees on the booth page rather than the hook's own shape.
-- `use-money-field.ts` — `useMoneyField(cents, onCommit)` returns
-  `{ value, onFocus, onChange, onBlur }` props for a controlled $-amount
-  `<Input>`. Reformats to the canonical 2-decimal string only on blur (or on
-  an external `cents` change while unfocused, adjusted during render per
-  React's own pattern rather than in an effect) instead of on every keystroke
-  — reformatting live resets the caret to the end after each key, so typing
-  "6.50" left-to-right used to land as "6.01" in `menu-editor.tsx`/
-  `option-groups-editor.tsx`'s price/cost inputs (each digit appended past the
-  fixed decimal point). Not consumed directly — see `MoneyInput` in
-  `src/components/README.md`, which wraps it so the hook is always called at a
-  real component's top level even when rendered from inside a `.map()` or a
-  render-prop.
 
 ## Connectivity
 

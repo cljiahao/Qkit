@@ -51,7 +51,7 @@ export async function placeOrder(
   // is the honest-path per-IP guard; place_order also carries a booth-scoped
   // limiter so a direct RPC call that skips this action is still bounded.
   const ip = clientIp(await headers());
-  const allowed = await rateLimit(supabase, `order:${code}:${ip}`, 8, 60);
+  const allowed = await rateLimit(`order:${code}:${ip}`, 8, 60);
   if (!allowed)
     return {
       success: false,

@@ -5,6 +5,9 @@ import userEvent from "@testing-library/user-event";
 import { OrderStatusPoller } from "./order-status-poller";
 import type { OrderStatus } from "@/lib/types";
 
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
 const { getOrderStatus, getWaitEstimate, confirmArrival, alerts } = vi.hoisted(
   () => ({
     getOrderStatus: vi.fn(),
@@ -70,6 +73,7 @@ describe("OrderStatusPoller", () => {
       ).toBeInTheDocument(),
     );
     expect(getOrderStatus).toHaveBeenCalledWith("b1", "0007", "tok");
+    expect(refresh).toHaveBeenCalledTimes(1);
     expect(
       screen.getByText("Order #7 ready, please collect now"),
     ).toBeInTheDocument();
@@ -96,6 +100,7 @@ describe("OrderStatusPoller", () => {
     await waitFor(() =>
       expect(screen.getByText(/^Placed /)).toBeInTheDocument(),
     );
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("hides the placed stamp for a cancelled order", async () => {

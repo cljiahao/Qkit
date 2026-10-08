@@ -882,7 +882,10 @@ export function RealtimeOrderBoard({
             A Select scales to any booth count without growing the header. */}
         {multiBooth && (
           <Select value={effectiveFilter} onValueChange={setFilter}>
-            <SelectTrigger className="h-9 rounded-lg text-sm">
+            <SelectTrigger
+              aria-label="Filter by booth"
+              className="h-9 rounded-lg text-sm"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -921,6 +924,7 @@ export function RealtimeOrderBoard({
               key={o.value}
               type="button"
               onClick={() => setSortOrder(o.value)}
+              aria-pressed={sortOrder === o.value}
               className={cn(
                 "rounded-md px-3 py-1.5 font-medium transition-colors",
                 sortOrder === o.value

@@ -1,28 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // logEvent rate-limits (via the check_rate_limit RPC) before inserting into
-// `events` via the normal client. Capture both.
+// `events` via the service client. Capture both.
 const insert = vi.fn(() => Promise.resolve({ error: null }));
 const rpc = vi.fn(
   (): Promise<{ data: boolean | null; error?: { message: string } }> =>
     Promise.resolve({ data: true }),
 );
 vi.mock("@/lib/supabase/server", () => ({
-  createServerClient: async () => ({ from: () => ({ insert }), rpc }),
+  createServiceClient: vi.fn(async () => ({ from: () => ({ insert }), rpc })),
+  createServerClient: vi.fn(async () => ({ from: () => ({ insert }), rpc })),
 }));
 vi.mock("next/headers", () => ({
   headers: async () => new Map<string, string>(),
 }));
 
 import { logEvent } from "./events";
+import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 
 beforeEach(() => {
   insert.mockClear();
   rpc.mockClear();
+  vi.mocked(createServerClient).mockClear();
+  vi.mocked(createServiceClient).mockClear();
   rpc.mockImplementation(() => Promise.resolve({ data: true }));
 });
 
 describe("logEvent", () => {
+  it("keeps the validated insert behind the service-only boundary", async () => {
+    await logEvent("landing_cta");
+    expect(createServiceClient).toHaveBeenCalled();
+    expect(createServerClient).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledWith({ type: "landing_cta" });
+  });
+
   it("inserts an allowlisted event with small metadata", async () => {
     await logEvent("upgrade_cta", { feature: "stock" });
     expect(insert).toHaveBeenCalledWith({

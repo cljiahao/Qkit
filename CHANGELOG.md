@@ -8,12 +8,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- Restrict order-number allocation, vendor/printer INSERT privileges and rate-limit
+  buckets; exclude private option costs from customer projections and prevent
+  customer pickup from confirming payment. Apply migration 0095 before rollout.
+- Normalize secret-file guards across Windows paths, require approval for
+  governance and workflow writes, and keep injection-phrase detection advisory.
+- Patch published development-tool advisories and ignore secret-bearing environment
+  variants while retaining the blank template.
+
 - Raised the `sharp` override to `>=0.35.5` for GHSA-wq5f-xc86-pv6w, a
   high-severity vulnerability in its librsvg dependency. It reaches production
   through `next`'s optional `sharp` peer, and it was failing
   `pnpm audit --prod --audit-level=high` on every PR.
 
 ### Fixed
+
+- Reconcile missed realtime order updates, preserve CSV multiline descriptions and
+  distinct option statistics, and paginate vendor order totals beyond the API cap.
+- Keep integration tests off application environment files, remove the unused local
+  avatar primitive, and update setup and security documentation.
 
 - The vendor order board loaded again. `/dashboard` threw
   `ReferenceError: Cannot access 'cupsToday' before initialization` on every

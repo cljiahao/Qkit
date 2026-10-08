@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { orderBoothIdSchema, orderTokenSchema } from "@/lib/schemas";
 import { loadPreClaimContext } from "../[orderNumber]/payment-actions";
 import { PayForm } from "./pay-form";
@@ -29,6 +30,26 @@ export default async function PayPage({ params, searchParams }: Props) {
 
   const context = await loadPreClaimContext(boothId, token);
   if (!context) notFound();
+  if (context.state === "placed")
+    redirect(`/order/${boothId}/${context.orderNumber}?t=${token}`);
+  if (context.state === "cancelled") {
+    return (
+      <div className="mx-auto max-w-sm space-y-4 px-5 py-10 text-center">
+        <h1 className="font-display text-2xl font-semibold">
+          This order was cancelled
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Please do not make a payment for this order.
+        </p>
+        <Link
+          href={`/order/${boothId}`}
+          className="text-sm font-medium text-primary underline"
+        >
+          Order again from this stall
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">

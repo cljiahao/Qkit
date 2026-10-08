@@ -66,7 +66,6 @@ describe("requestUpgrade", () => {
     });
     expect(insert).not.toHaveBeenCalled();
     expect(rateLimitMock).toHaveBeenCalledWith(
-      expect.anything(),
       "upgrade-request:vendor-1",
       5,
       60,

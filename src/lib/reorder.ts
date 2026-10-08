@@ -1,5 +1,5 @@
 import type { CartItem, MenuItem, SelectedOption } from "@/lib/types";
-import { cartKey } from "@/lib/cart";
+import { cartKey, sumOptionDeltas } from "@/lib/cart";
 import { remainingFor, type Remaining } from "@/lib/stock";
 
 // One line of a past order, as needed to rebuild a cart. Carries no price/name —
@@ -35,14 +35,14 @@ function optionsStillValid(
   });
 }
 
-/**
- * Reconcile past order lines against the current menu into cart items.
- *
- * Each line survives only if its item still exists, every selected option still
- * exists, and there is stock room left. Surviving lines are rebuilt with the
- * CURRENT name/price; duplicates (same item + options) merge; quantities clamp to
- * live `remaining` stock (pooled per menu item across option variants).
- */
+function currentPrice(item: MenuItem, options: SelectedOption[] | undefined) {
+  const delta = sumOptionDeltas(item, options);
+  return item.price_cents == null && delta === 0
+    ? undefined
+    : (item.price_cents ?? 0) + delta;
+}
+
+/** Restore current prices/options, drop unavailable items, and cap shared stock. */
 export function reconcileReorder(
   lines: ReorderLine[],
   menuItems: MenuItem[],
@@ -91,7 +91,7 @@ export function reconcileReorder(
       byKey.set(key, {
         menuItemId: item.id,
         name: item.name,
-        price_cents: item.price_cents,
+        price_cents: currentPrice(item, options),
         options,
         quantity: take,
       });

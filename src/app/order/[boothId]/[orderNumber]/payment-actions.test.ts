@@ -203,6 +203,7 @@ describe("loadPreClaimContext", () => {
     const result = await loadPreClaimContext(BOOTH, TOKEN);
 
     expect(result).toEqual({
+      state: "pending",
       orderId: "order-1",
       amountCents: 550,
       checkout: {
@@ -228,7 +229,6 @@ describe("loadPreClaimContext", () => {
     expect(await loadPreClaimContext(BOOTH, TOKEN)).toBeNull();
     expect(createCheckoutMock).not.toHaveBeenCalled();
     expect(rateLimitMock).toHaveBeenCalledWith(
-      expect.anything(),
       `pre-claim-context:${BOOTH}:${TOKEN}`,
       20,
       60,
@@ -241,11 +241,38 @@ describe("loadPreClaimContext", () => {
     expect(createCheckoutMock).not.toHaveBeenCalled();
   });
 
-  it("returns null when the order isn't pending payment", async () => {
+  it.each(["claimed", "confirmed", "not_required"])(
+    "returns the numbered route for a %s order without calling paykit",
+    async (paymentStatus) => {
+      ordersMaybeSingle.mockResolvedValueOnce({
+        data: {
+          id: "order-1",
+          total_cents: 550,
+          payment_status: paymentStatus,
+          order_number: "0007",
+          status: "preparing",
+        },
+      });
+      expect(await loadPreClaimContext(BOOTH, TOKEN)).toEqual({
+        state: "placed",
+        orderNumber: "0007",
+      });
+      expect(createCheckoutMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns a cancelled state before creating a checkout", async () => {
     ordersMaybeSingle.mockResolvedValueOnce({
-      data: { id: "order-1", total_cents: 550, payment_status: "claimed" },
+      data: {
+        id: "order-1",
+        total_cents: 550,
+        payment_status: "pending",
+        status: "cancelled",
+      },
     });
-    expect(await loadPreClaimContext(BOOTH, TOKEN)).toBeNull();
+    expect(await loadPreClaimContext(BOOTH, TOKEN)).toEqual({
+      state: "cancelled",
+    });
     expect(createCheckoutMock).not.toHaveBeenCalled();
   });
 
@@ -647,7 +674,6 @@ describe("getPaymentStatus", () => {
     const res = await getPaymentStatus(BOOTH, ORDER, TOKEN);
     expect(res).toBeNull();
     expect(rateLimitMock).toHaveBeenCalledWith(
-      expect.anything(),
       `payment-status:${TOKEN}`,
       30,
       60,

@@ -21,6 +21,28 @@ function order(
 }
 
 describe("computeStats", () => {
+  it("keeps distinct group and choice pairs separate when their concatenations match", () => {
+    const result = computeStats([
+      order("completed", 0, [
+        {
+          menuItemId: "a",
+          name: "Tea",
+          quantity: 2,
+          options: [{ group: "AB", choice: "C" }],
+        },
+        {
+          menuItemId: "b",
+          name: "Coffee",
+          quantity: 3,
+          options: [{ group: "A", choice: "BC" }],
+        },
+      ]),
+    ]);
+    expect(result.optionBreakdown).toEqual([
+      { group: "A", choice: "BC", count: 3 },
+      { group: "AB", choice: "C", count: 2 },
+    ]);
+  });
   it("returns zeros for no orders", () => {
     const s = computeStats([]);
     expect(s.revenue_cents).toBe(0);

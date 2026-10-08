@@ -252,6 +252,7 @@ export async function resolveSupportMessage(
     .from("support_messages")
     .update({ status: "resolved" })
     .eq("id", parsed.data.id)
+    .eq("kit_slug", "qkit")
     .select("user_id")
     .maybeSingle();
   if (error || !updated) {

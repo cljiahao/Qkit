@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentStatus } from "@/lib/types";
@@ -21,6 +22,7 @@ export function PayPanel({
   token: string;
   initialStatus: PaymentStatus;
 }) {
+  const router = useRouter();
   const [status, setStatus] = useState<PaymentStatus>(initialStatus);
   const { pending: busy, run } = useAsyncAction();
 
@@ -30,8 +32,13 @@ export function PayPanel({
   // devices). The shared hook pauses while the tab is hidden.
   const poll = useCallback(async () => {
     const next = await getPaymentStatus(boothId, orderNumber, token);
-    if (next) setStatus(next);
-  }, [boothId, orderNumber, token]);
+    if (next && next !== status) {
+      setStatus(next);
+      if (next === "pending")
+        router.replace(`/order/${boothId}/pay?t=${token}`);
+      else router.refresh();
+    }
+  }, [boothId, orderNumber, token, status, router]);
   usePolling(poll, {
     intervalMs: POLL_MS,
     enabled: status !== "confirmed" && status !== "not_required",
@@ -63,8 +70,10 @@ export function PayPanel({
   function unclaim() {
     return run(async () => {
       const res = await unclaimPayment(boothId, orderNumber, token);
-      if (res.success) setStatus("pending");
-      else toast.error(res.error);
+      if (res.success) {
+        setStatus("pending");
+        router.replace(`/order/${boothId}/pay?t=${token}`);
+      } else toast.error(res.error);
     });
   }
 
