@@ -398,7 +398,7 @@ describe("RealtimeOrderBoard passed-over orders", () => {
 });
 
 describe("RealtimeOrderBoard cup cap counter", () => {
-  it("shows cups served against the booth's cap", () => {
+  it("shows items sold against the booth's cap", () => {
     render(
       <RealtimeOrderBoard
         booths={[{ ...BOOTHS[0], daily_cup_cap: 200, cups_today: 132 }]}
@@ -407,7 +407,7 @@ describe("RealtimeOrderBoard cup cap counter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("132/200 cups")).toBeInTheDocument();
+    expect(screen.getByText("132/200 items")).toBeInTheDocument();
   });
 
   it("shows nothing for a booth with no cap", () => {
@@ -419,7 +419,7 @@ describe("RealtimeOrderBoard cup cap counter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.queryByText(/cups$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d items$/)).not.toBeInTheDocument();
   });
 
   it("warns inside the last tenth of the cap, so staff can tell the queue", () => {
@@ -431,7 +431,7 @@ describe("RealtimeOrderBoard cup cap counter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("185/200 cups")).toHaveClass("text-status-aging");
+    expect(screen.getByText("185/200 items")).toHaveClass("text-status-aging");
   });
 });
 

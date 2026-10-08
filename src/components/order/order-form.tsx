@@ -38,6 +38,13 @@ import { addRecentOrder } from "@/lib/recent-orders";
 import { reconcileReorder } from "@/lib/reorder";
 import { takeReorder } from "@/lib/reorder-handoff";
 import { remainingFor, type Remaining } from "@/lib/stock";
+import {
+  addBlock,
+  addBlockMessage,
+  fitCart,
+  type Availability,
+} from "@/lib/availability";
+import { useCartAvailability } from "./use-cart-availability";
 import { placeOrder } from "@/app/o/[code]/actions";
 import { logEvent } from "@/app/actions/events";
 import { groupByCategory } from "@/lib/menu-sections";
@@ -56,6 +63,56 @@ interface Props {
   closed?: boolean;
   // Live remaining per capped item (id → count). Absent id = unlimited.
   remaining?: Remaining;
+  // Items left in the booth's daily total; null = the booth has none.
+  left?: number | null;
+  // Most items one order may carry; null = the booth sets no limit.
+  maxPerOrder?: number | null;
+}
+
+// What the item card says under the price when the item's stock is finite.
+function StockNote({ left, held }: { left: number | null; held: boolean }) {
+  if (left === null) return null;
+  if (left <= 0)
+    return (
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
+        {held ? "In another basket" : "Sold out"}
+      </p>
+    );
+  return (
+    <p
+      className={cn(
+        "mt-1 text-xs font-medium",
+        left <= 5
+          ? "font-semibold text-status-preparing"
+          : "text-muted-foreground",
+      )}
+    >
+      {left} left
+    </p>
+  );
+}
+
+// Limits that apply to the whole basket, said once above the menu so nobody
+// finds them out from a refused tap.
+function BasketLimits({ availability }: { availability: Availability }) {
+  const { left, leftHeld, maxPerOrder } = availability;
+  const allHeld = left === 0 && leftHeld > 0;
+  if (!allHeld && maxPerOrder === null) return null;
+  return (
+    <div className="space-y-2">
+      {allHeld && (
+        <p className="rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center text-sm font-medium">
+          The last items are in other baskets right now. Check back in a few
+          minutes.
+        </p>
+      )}
+      {maxPerOrder !== null && (
+        <p className="text-center text-sm text-muted-foreground">
+          Up to {count(maxPerOrder, "item")} per order at this stall.
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function OrderForm({
@@ -65,9 +122,19 @@ export function OrderForm({
   menuCategories = [],
   closed = false,
   remaining = {},
+  left = null,
+  maxPerOrder = null,
 }: Props) {
   const router = useRouter();
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
+  // What the server rendered, before anyone's basket hold is counted.
+  const [initialAvailability] = useState<Availability>(() => ({
+    remaining,
+    held: {},
+    left,
+    leftHeld: 0,
+    maxPerOrder,
+  }));
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -175,25 +242,41 @@ export function OrderForm({
     });
   }
 
-  // Stock is per menu item, pooled across its option variants. Sum the current
-  // cart quantity for an item so a capped item can't be over-added.
-  function qtyInCartFor(menuItemId: string): number {
-    let n = 0;
-    for (const it of cart.values()) {
-      if (it.menuItemId === menuItemId) n += it.quantity;
-    }
-    return n;
-  }
+  const cartEntries = Array.from(cart.entries());
+  const cartItems = Array.from(cart.values());
+  const { availability, holdSession } = useCartAvailability(
+    boothId,
+    initialAvailability,
+    cartItems.map((it) => ({
+      menuItemId: it.menuItemId,
+      quantity: it.quantity,
+    })),
+    !closed,
+  );
 
-  /** Block (and explain) when adding one more would exceed the live cap. */
+  // Another basket can take stock this one was counting on (two customers
+  // reaching for the last item: the first hold wins). Cut the basket to what
+  // is still available and say so, rather than let it fail at checkout.
+  useEffect(() => {
+    const fitted = fitCart(Array.from(cart.values()), availability);
+    if (fitted.trimmed === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCart(
+      new Map(
+        fitted.items.map((it) => [cartKey(it.menuItemId, it.options), it]),
+      ),
+    );
+    toast.error(
+      `${count(fitted.trimmed, "item")} no longer available, removed from your order`,
+    );
+  }, [availability, cart]);
+
+  /** Block (and explain) when one more would exceed stock or a booth limit. */
   function blockedByStock(menuItemId: string): boolean {
-    const left = remainingFor(remaining, menuItemId);
-    if (left === null) return false;
-    if (qtyInCartFor(menuItemId) >= left) {
-      toast.error(left <= 0 ? "Sold out" : `Only ${left} left`);
-      return true;
-    }
-    return false;
+    const block = addBlock(cartItems, menuItemId, availability);
+    if (!block) return false;
+    toast.error(addBlockMessage(block));
+    return true;
   }
 
   function addConfigured(item: MenuItem, options: SelectedOption[]) {
@@ -241,8 +324,6 @@ export function OrderForm({
     }
   }
 
-  const cartEntries = Array.from(cart.entries());
-  const cartItems = Array.from(cart.values());
   const total = cartTotal(cartItems);
   const itemCount = cartItems.reduce((n, it) => n + it.quantity, 0);
 
@@ -272,12 +353,19 @@ export function OrderForm({
     // One retry on a transient network failure (patchy event-site signal) so a
     // dropped request doesn't lose the order. The DB order number is atomic, so
     // a retried submit can't duplicate.
+    // The basket's hold, when the booth has stock to hold, goes with the
+    // order so placing it lets the hold go.
+    const session = holdSession();
+    const submit = () =>
+      session
+        ? placeOrder(code, input, idem, session)
+        : placeOrder(code, input, idem);
     let result: Awaited<ReturnType<typeof placeOrder>>;
     try {
-      result = await placeOrder(code, input, idem);
+      result = await submit();
     } catch {
       try {
-        result = await placeOrder(code, input, idem);
+        result = await submit();
       } catch {
         toast.error("Network issue. Please try again.");
         setSubmitting(false);
@@ -334,13 +422,15 @@ export function OrderForm({
     // Inline +/- only for plain items (keyed by id). Items with option
     // groups instead go through the sheet, managed in the cart summary.
     const plainInCart = hasOptions ? undefined : cart.get(item.id);
-    const left = remainingFor(remaining, item.id);
+    const left = remainingFor(availability.remaining, item.id);
     const soldOut = left !== null && left <= 0;
+    const held = (availability.held[item.id] ?? 0) > 0;
     let cardTone: string;
     if (soldOut) cardTone = "border-border opacity-60";
     else if (plainInCart) cardTone = "border-primary/40 bg-primary/[0.04]";
     else cardTone = "border-border";
-    const addLabel = menuItemActionLabel(soldOut, hasOptions);
+    const addLabel =
+      soldOut && held ? "Held" : menuItemActionLabel(soldOut, hasOptions);
     return (
       <div
         key={item.id}
@@ -369,23 +459,7 @@ export function OrderForm({
               </p>
             )}
             <AllergenBadges tags={item.allergens ?? []} />
-            {left !== null &&
-              (soldOut ? (
-                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
-                  Sold out
-                </p>
-              ) : (
-                <p
-                  className={cn(
-                    "mt-1 text-xs font-medium",
-                    left <= 5
-                      ? "font-semibold text-status-preparing"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {left} left
-                </p>
-              ))}
+            <StockNote left={left} held={held} />
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -458,6 +532,7 @@ export function OrderForm({
 
   return (
     <div className="space-y-8">
+      {!closed && <BasketLimits availability={availability} />}
       {/* Menu items */}
       {grouped ? (
         <div className="flex items-start gap-3 md:gap-6">

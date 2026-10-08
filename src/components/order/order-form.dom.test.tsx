@@ -6,13 +6,17 @@ import { toast } from "sonner";
 import { OrderForm } from "./order-form";
 import type { MenuItem, SelectedOption } from "@/lib/types";
 
-const { placeOrder, addRecentOrder, push } = vi.hoisted(() => ({
-  placeOrder: vi.fn(),
-  addRecentOrder: vi.fn(),
-  push: vi.fn(),
-}));
+const { placeOrder, addRecentOrder, push, holdCart, readAvailability } =
+  vi.hoisted(() => ({
+    placeOrder: vi.fn(),
+    addRecentOrder: vi.fn(),
+    push: vi.fn(),
+    holdCart: vi.fn(),
+    readAvailability: vi.fn(),
+  }));
 
 vi.mock("@/app/o/[code]/actions", () => ({ placeOrder }));
+vi.mock("@/app/o/[code]/hold-actions", () => ({ holdCart, readAvailability }));
 vi.mock("@/lib/recent-orders", () => ({ addRecentOrder }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -79,6 +83,10 @@ function renderForm(closed = false, menuItems: MenuItem[] = [KOPI, TEH]) {
 beforeEach(() => {
   vi.clearAllMocks();
   window.sessionStorage.clear(); // no stale reorder seed leaking between tests
+  // Default: the hold call could not be made, so the form keeps showing the
+  // stock it was rendered with.
+  holdCart.mockResolvedValue(null);
+  readAvailability.mockResolvedValue(null);
   placeOrder.mockResolvedValue({
     success: true,
     orderNumber: "0042",
@@ -630,5 +638,156 @@ describe("OrderForm category sections", () => {
       />,
     );
     expect(screen.getByRole("navigation").querySelector("img")).toBeNull();
+  });
+});
+
+describe("OrderForm booth limits and basket holds", () => {
+  const UUID = /^[0-9a-f-]{36}$/;
+
+  it("says the per-order limit and refuses an add past it", async () => {
+    const user = userEvent.setup();
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI, TEH]}
+        maxPerOrder={1}
+      />,
+    );
+    expect(
+      screen.getByText("Up to 1 item per order at this stall."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add one Kopi" }));
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "This stall takes up to 1 item per order.",
+    );
+    // An order limit alone is not stock, so there is nothing to hold.
+    expect(holdCart).not.toHaveBeenCalled();
+  });
+
+  it("refuses an add past what the booth has left today, across items", async () => {
+    const user = userEvent.setup();
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI, TEH]}
+        left={1}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Customize" }));
+    await user.click(screen.getByRole("button", { name: "stub-confirm" }));
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "This stall has only 1 item left today.",
+    );
+  });
+
+  it("holds the basket, and trims it when another basket got there first", async () => {
+    const user = userEvent.setup();
+    holdCart.mockResolvedValue({
+      remaining: { kopi: 1 },
+      held: { kopi: 1 },
+      left: null,
+      leftHeld: 0,
+      maxPerOrder: null,
+    });
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI]}
+        remaining={{ kopi: 2 }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add one Kopi" }));
+
+    await waitFor(
+      () =>
+        expect(holdCart).toHaveBeenCalledWith(
+          "b1",
+          expect.stringMatching(UUID),
+          [{ menuItemId: "kopi", quantity: 2 }],
+        ),
+      { timeout: 3000 },
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "1 item no longer available, removed from your order",
+      ),
+    );
+    expect(screen.getByText("1 left")).toBeInTheDocument();
+  });
+
+  it("shows stock held by another basket as held, not sold out", async () => {
+    holdCart.mockResolvedValue({
+      remaining: { kopi: 0 },
+      held: { kopi: 2 },
+      left: null,
+      leftHeld: 0,
+      maxPerOrder: null,
+    });
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI]}
+        remaining={{ kopi: 2 }}
+      />,
+    );
+    expect(
+      await screen.findByText("In another basket", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Held" })).toBeDisabled();
+  });
+
+  it("sends the hold's session with the order so placing it releases the hold", async () => {
+    const user = userEvent.setup();
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI]}
+        remaining={{ kopi: 5 }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await waitFor(() => expect(holdCart).toHaveBeenCalled(), { timeout: 3000 });
+    const session = holdCart.mock.calls[0][1];
+
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+
+    await waitFor(() =>
+      expect(placeOrder).toHaveBeenCalledWith(
+        "code123",
+        expect.objectContaining({ customerName: "Ada" }),
+        expect.stringMatching(UUID),
+        session,
+      ),
+    );
+  });
+
+  it("does not hold for a booth that is closed", async () => {
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI]}
+        remaining={{ kopi: 5 }}
+        closed
+      />,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(holdCart).not.toHaveBeenCalled();
   });
 });

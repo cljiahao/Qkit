@@ -270,9 +270,9 @@ function BoothToggle({
   );
 }
 
-// Cups committed today against the booth's own cap, for a stall working to a
-// fixed stock ("200 cups, then we stop"). Counts cups, not orders, matching
-// the orders_daily_cup_cap trigger, since one order can carry four or five.
+// Items committed today against the booth's own cap, for a stall working to
+// a fixed stock ("200, then we stop"). Counts items, not orders, matching the
+// orders_daily_cup_cap trigger, since one order can carry four or five.
 // Amber inside the last CUP_WARN_FRACTION of the cap, so staff see the line
 // coming while there is still time to tell the queue. Renders nothing for a
 // booth with no cap, which is every booth by default.
@@ -289,7 +289,7 @@ function CupCount({ cap, used }: { cap?: number | null; used?: number }) {
         low ? "font-semibold text-status-aging" : "text-muted-foreground",
       )}
     >
-      {served}/{cap} cups
+      {served}/{cap} items
     </span>
   );
 }
