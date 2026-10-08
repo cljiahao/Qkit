@@ -80,11 +80,16 @@ prompt, metric })`: compact rating widget posting to
   `LandingNav` shell) and the standalone wordmark used on the login page
   (`Wordmark`). See its own README.
 - `landing-ticket.tsx` — `LandingTicket({ t })`: presentational "order chit"
-  mirroring the real `OrderCard`'s visual language (status badge, payment
-  badge, aging wash, perforated sections) for the landing hero — no server
-  actions, purely decorative sample data.
+  mirroring the real `OrderCard`'s layout for the landing hero: a large
+  number and name, every option on one line with nothing to expand, a single
+  attention line ("Not paid yet", "Says paid. Check the payment", same wording
+  as `ticketAttention`), a status badge only past preparing, the aging wash,
+  and one action button that carries the amount when it confirms a payment.
+  No prices or total, as on the live board. No server actions, purely
+  decorative sample data.
 - `landing-ticket.dom.test.tsx` — RTL test for `LandingTicket` rendering
-  across status/payment/age combinations.
+  across status/payment/age combinations, the single attention line, and
+  options shown without a toggle.
 - `maintenance-banner.tsx` — `MaintenanceBanner({ enabled, message })`:
   site-wide informational banner rendered from the root layout (never blocks
   anything underneath); renders nothing when disabled or the message is

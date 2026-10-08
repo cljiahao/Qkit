@@ -9,7 +9,7 @@ const priced: LandingTicketData = {
   status: "preparing",
   payment: "unpaid",
   age: { label: "4m", tone: "aging" },
-  lines: [{ q: 2, name: "Kopi", opt: "Iced", price: "$3.60" }],
+  lines: [{ q: 2, name: "Kopi", opt: "Iced" }],
   total: "$7.20",
   action: "Mark Ready",
 };
@@ -21,71 +21,86 @@ const queueOnly: LandingTicketData = {
 };
 
 describe("LandingTicket", () => {
-  it("renders number, name, line, total and action", () => {
+  it("renders number, name, line, option, age and action", () => {
     const { container } = render(<LandingTicket t={priced} />);
     expect(screen.getByText("#0042")).toBeInTheDocument();
     expect(screen.getByText("Ada")).toBeInTheDocument();
     expect(screen.getByText("Kopi")).toBeInTheDocument();
-    expect(screen.getByText("$3.60")).toBeInTheDocument();
+    expect(screen.getByText("Iced")).toBeInTheDocument();
     expect(screen.getByText("Mark Ready")).toBeInTheDocument();
-    expect(container.querySelector(".ticket-aging")).not.toBeNull();
-    expect(screen.getByText("Unpaid")).toBeInTheDocument();
     expect(screen.getByText("4m")).toBeInTheDocument();
+    expect(container.querySelector(".ticket-aging")).not.toBeNull();
   });
-  it("renders queue-only: no total, no payment badge, no wash", () => {
+
+  it("says an unpaid order is not paid yet, in one line, with no amount", () => {
+    render(<LandingTicket t={priced} />);
+    expect(screen.getByText("Not paid yet")).toBeInTheDocument();
+    expect(screen.queryByText("$7.20")).toBeNull();
+    expect(screen.queryByText(/Total/i)).toBeNull();
+  });
+
+  it("states neither Preparing nor Paid: the states with nothing to do", () => {
+    render(<LandingTicket t={{ ...priced, payment: "paid" }} />);
+    expect(screen.queryByText("Preparing")).toBeNull();
+    expect(screen.queryByText("Paid")).toBeNull();
+    expect(screen.queryByText("Not paid yet")).toBeNull();
+  });
+
+  it("badges a status past preparing", () => {
+    render(<LandingTicket t={queueOnly} />);
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+  });
+
+  it("renders queue-only: no attention line, no wash", () => {
     const { container } = render(<LandingTicket t={queueOnly} />);
     expect(screen.getByText("Single Scoop")).toBeInTheDocument();
-    expect(screen.queryByText(/Total/i)).toBeNull();
-    expect(screen.queryByText("Unpaid")).toBeNull();
-    expect(screen.queryByText("Paid")).toBeNull();
+    expect(screen.queryByText("Not paid yet")).toBeNull();
+    expect(screen.queryByText(/Says paid/)).toBeNull();
     expect(
       container.querySelector(".ticket-aging,.ticket-overdue,.ticket-alert"),
     ).toBeNull();
   });
-  it("uses the alert wash + Says paid when payment is claimed", () => {
+
+  it("a claimed payment gets the alert wash, the check line, and the amount on the button", () => {
     const { container } = render(
-      <LandingTicket t={{ ...priced, payment: "claimed", age: undefined }} />,
+      <LandingTicket
+        t={{
+          ...priced,
+          payment: "claimed",
+          age: undefined,
+          action: "Confirm payment received",
+        }}
+      />,
     );
-    expect(screen.getByText("Says paid")).toBeInTheDocument();
+    expect(
+      screen.getByText("Says paid. Check the payment"),
+    ).toBeInTheDocument();
     expect(container.querySelector(".ticket-alert")).not.toBeNull();
+    expect(screen.getByText("$7.20")).toBeInTheDocument();
   });
 
-  const withOptions: LandingTicketData = {
-    n: "0018",
-    name: "Mei",
-    status: "preparing",
-    lines: [
-      {
-        q: 1,
-        name: "Single Scoop",
-        options: [
-          { group: "Flavour", choice: "Vanilla" },
-          { group: "Toppings", choice: "Sprinkles" },
-        ],
-      },
-    ],
-    action: "Mark Ready",
-  };
-
-  it("collapsed: shows 'Show options' + a joined choice summary, no rows", () => {
-    render(<LandingTicket t={{ ...withOptions, optionsView: "collapsed" }} />);
-    expect(screen.getByText("Show options")).toBeInTheDocument();
+  it("shows every option on one line, with nothing to expand", () => {
+    render(
+      <LandingTicket
+        t={{
+          n: "0018",
+          name: "Mei",
+          status: "preparing",
+          lines: [
+            {
+              q: 1,
+              name: "Single Scoop",
+              options: [
+                { group: "Flavour", choice: "Vanilla" },
+                { group: "Toppings", choice: "Sprinkles" },
+              ],
+            },
+          ],
+          action: "Mark Ready",
+        }}
+      />,
+    );
     expect(screen.getByText("Vanilla · Sprinkles")).toBeInTheDocument();
-    // Not broken out into group labels while collapsed.
-    expect(screen.queryByText("Flavour:")).toBeNull();
-  });
-
-  it("expanded: shows 'Hide options' + group→choice rows, no joined summary", () => {
-    render(<LandingTicket t={{ ...withOptions, optionsView: "expanded" }} />);
-    expect(screen.getByText("Hide options")).toBeInTheDocument();
-    expect(screen.getByText("Flavour:")).toBeInTheDocument();
-    expect(screen.getByText("Toppings:")).toBeInTheDocument();
-    expect(screen.getByText("Sprinkles")).toBeInTheDocument();
-    expect(screen.queryByText("Vanilla · Sprinkles")).toBeNull();
-  });
-
-  it("no options control when optionsView is unset", () => {
-    render(<LandingTicket t={withOptions} />);
     expect(screen.queryByText("Show options")).toBeNull();
     expect(screen.queryByText("Hide options")).toBeNull();
   });
