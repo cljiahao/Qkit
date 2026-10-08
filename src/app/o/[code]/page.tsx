@@ -70,10 +70,6 @@ async function loadBasketLimits(
   };
 }
 
-// Below this many items left, the page says how many are left. Above it the
-// number is noise: nobody queues differently at 40 remaining.
-const LOW_STOCK_ITEMS = 10;
-
 export default async function OrderEntryPage({ params }: Props) {
   const { code } = await params;
   const supabase = await createServerClient();
@@ -166,16 +162,6 @@ export default async function OrderEntryPage({ params }: Props) {
           </div>
         )}
       </div>
-      {itemsLeft != null && itemsLeft > 0 && itemsLeft <= LOW_STOCK_ITEMS && (
-        <div className="mb-7 rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center md:mx-auto md:max-w-lg">
-          <p className="text-sm font-semibold">
-            Only {itemsLeft} {itemsLeft === 1 ? "item" : "items"} left today
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Once they are gone this stall stops taking orders until tomorrow.
-          </p>
-        </div>
-      )}
       <OrderForm
         code={code}
         boothId={booth.booth_id}

@@ -396,6 +396,18 @@ function resolveBoothFilter(
 const BATCH_BUTTON = "rounded-full";
 const HEADER_BUTTON = "rounded-full";
 
+/** What the booth filter's trigger reads: the same text as the chosen item. */
+function boothFilterLabel(
+  filter: BoothFilter,
+  booths: BoothView[],
+  total: number,
+  countFor: (id: string) => number,
+): string {
+  const booth = booths.find((b) => b.id === filter);
+  if (!booth) return `All booths (${total})`;
+  return `${booth.name} (${countFor(booth.id)})${booth.open ? "" : " · closed"}`;
+}
+
 // The board's one batch control. Idle, it is a single "Select" button with a
 // tap-to-open hint. In select mode it becomes Cancel, Select all (which flips
 // to Clear all once everything is ticked) and "Mark N Ready", whose count is
@@ -990,7 +1002,17 @@ export function RealtimeOrderBoard({
               aria-label="Filter by booth"
               className="h-9 rounded-lg text-sm"
             >
-              <SelectValue />
+              {/* The label is given outright. Left to Radix it is read off
+                  the selected item, which is not mounted until the list has
+                  been opened once, so the trigger painted empty on load. */}
+              <SelectValue>
+                {boothFilterLabel(
+                  effectiveFilter,
+                  visibleBooths,
+                  active.length,
+                  activeCountFor,
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All booths ({active.length})</SelectItem>

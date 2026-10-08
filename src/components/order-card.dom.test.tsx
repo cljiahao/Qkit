@@ -1089,3 +1089,22 @@ describe("OrderCard — hydration", () => {
     nowSpy.mockRestore();
   });
 });
+
+describe("OrderCard waiting time placement", () => {
+  it("puts the waiting time in the ticket's bottom strip, after the action button", () => {
+    render(<OrderCard order={makeOrder()} />, { wrapper: TooltipProvider });
+    const age = screen.getByTitle("Time since the order arrived");
+    const action = screen.getByRole("button", { name: /mark ready/i });
+    // Document order: the button comes first, the time strip follows it.
+    expect(
+      action.compareDocumentPosition(age) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("shows no waiting time on a collected order", () => {
+    render(<OrderCard order={makeOrder({ status: "completed" })} showDate />, {
+      wrapper: TooltipProvider,
+    });
+    expect(screen.queryByTitle("Time since the order arrived")).toBeNull();
+  });
+});
