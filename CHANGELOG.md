@@ -42,6 +42,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The live board has a "Customer screen" button for the big-number queue
+  display. It opens the display in its own window to drag onto a TV, monitor
+  or an iPad used as an extended display, in any browser, and shows a code to
+  scan (with a link to copy) for a device that is not attached to the computer.
+  The display was reachable only from a small icon on the booth list, and a
+  vendor at an event did not find it.
 - A vendor can give each option choice a short code for the ticket ("LS" for
   "Less sugar"), set under the choice's Advanced options with a suggestion from
   its initials. A choice with no code prints in full: codes are never derived
