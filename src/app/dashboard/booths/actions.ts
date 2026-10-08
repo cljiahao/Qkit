@@ -315,6 +315,16 @@ async function discardUnsavedUploads(
   );
 }
 
+// The booth-wide daily total is a stock cap, the same entitlement as the
+// per-item sold-out limit; stripped for free so a stored value can't keep
+// enforcing after a pass expires. The per-order limit is for every tier.
+function entitledDailyCap(
+  entitlement: { stockCaps: boolean },
+  cap: number | null,
+): number | null {
+  return entitlement.stockCaps ? cap : null;
+}
+
 async function persistBooth(
   input: BoothFormInput,
   persisted: Set<string>,
@@ -376,7 +386,8 @@ async function persistBooth(
     walkup_default: data.walkup_default,
     print_enabled: data.print_enabled,
     paykit_booking_id: data.paykit_booking_id,
-    daily_cup_cap: data.daily_cup_cap,
+    daily_cup_cap: entitledDailyCap(entitlement, data.daily_cup_cap),
+    max_items_per_order: data.max_items_per_order,
   };
 
   const result = await upsertBoothRow(supabase, row, data.boothId, user.id);
