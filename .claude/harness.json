@@ -9,7 +9,7 @@
   "richReadme": true,
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "fa24603d8869366c15801fba2d784677789ecd3a79f1c222b6ccc696528e64d2",
+      "origin_hash": "2e748de0b70b9c735b4b667b34cef6958e99214e1331661832cd7eba27655c2b",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -17,7 +17,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "e457dc9e10992a72156a3230862e61f1a4dc748d4d8d27fa694ef00f2a8f8361",
+      "origin_hash": "712c632ad44eeedaa071bfea21f5bb1e03363581a4ec8308f86c9794ce513e6e",
       "path": ".claude/settings.json"
     },
     ".claude/comment-hygiene-patterns.txt": {
@@ -29,7 +29,7 @@
       "path": ".claude/hooks/verify.sh"
     },
     ".claude/hooks/protect-files.sh": {
-      "origin_hash": "169b8ae02ac1de188392668d96bd699645f5728bfa67b69f59af179dbaa83e75",
+      "origin_hash": "281dabc9d452a8d00d0749d698a764fec355641723abd47ba6860f3941305048",
       "path": ".claude/hooks/protect-files.sh"
     },
     ".claude/hooks/block-no-verify.sh": {
@@ -37,7 +37,7 @@
       "path": ".claude/hooks/block-no-verify.sh"
     },
     ".claude/hooks/user-prompt-guard.cjs": {
-      "origin_hash": "7d1d56b9b305dd5f3c54f919a07736ad9e5e824ca5d86ee8b77ef40f1cc5cda0",
+      "origin_hash": "534a7cb2b825a73d23a8687bbd14c9e9161b24ac3c61ae3df2fcfca8fbddccfd",
       "path": ".claude/hooks/user-prompt-guard.cjs"
     },
     ".claude/hooks/post-edit-typecheck.sh": {
