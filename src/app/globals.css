@@ -230,6 +230,54 @@ html::-webkit-scrollbar {
   animation: fade-rise 0.4s ease-out both;
 }
 
+/* Touch targets. On a touch device (a phone, and the iPads most stalls run the
+   board on) every button, field and dropdown is at least 44px tall, whatever
+   compact height its classes ask for. A mouse keeps the compact heights.
+   Keyed on the pointer and not the screen width: an iPad is wide and is still
+   a finger.
+
+   Buttons are matched by `data-variant` + `data-size`, not `data-slot`: a
+   Button under a Radix trigger (a tooltip, a menu, a dialog) has its
+   `data-slot` replaced by the trigger's. Icon buttons get the width as well,
+   so they stay round. Link-style buttons sit inside sentences and are left
+   alone.
+
+   A switch, the 16px (i) that opens a hint (InfoTooltip's tap trigger, from
+   @merqo/ui), and anything marked `.tap-area` keep their drawn size and grow
+   only their touch area: a transparent 44px box centred on each. That suits a
+   small control standing alone. Do not put `.tap-area` on something packed
+   against another control, since the box would cover its neighbour's edge
+   (give that a real min-height instead), or on a positioned element, since
+   it sets `position: relative`. */
+@media (pointer: coarse) {
+  :is(button, a)[data-variant][data-size]:not([data-variant="link"]),
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="select-trigger"],
+  input[type="time"] {
+    min-height: 2.75rem;
+  }
+  :is(button, a)[data-variant][data-size^="icon"] {
+    min-width: 2.75rem;
+  }
+  .tap-area,
+  [data-slot="switch"],
+  [data-slot="popover-trigger"].size-4 {
+    position: relative;
+  }
+  .tap-area::after,
+  [data-slot="switch"]::after,
+  [data-slot="popover-trigger"].size-4::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 2.75rem);
+    height: max(100%, 2.75rem);
+    transform: translate(-50%, -50%);
+  }
+}
+
 /* The stage an order is on, on the customer's status page: a ring that swells
    out of the node and fades, slowly enough to read as "this is happening now"
    rather than as an alert. */

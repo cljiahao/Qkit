@@ -20,7 +20,6 @@ import {
   Store,
 } from "lucide-react";
 import { toast } from "sonner";
-import { InfoTooltip } from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -46,6 +45,7 @@ import { sgtStartOfDayIso } from "@/lib/tz";
 import type { OptionCodes } from "@/lib/ticket";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
+import { Hint } from "@/components/hint";
 import {
   displayOrderNumber,
   overtakenOrderIds,
@@ -391,11 +391,10 @@ function resolveBoothFilter(
  * calls — no new bulk RPC, per-row optimistic-concurrency guard still applies
  * to each id individually.
  */
-// The board's controls are tapped mid-service, often one-handed, so on a
-// phone each is a full 44px tall; from `sm` up they keep the compact height a
-// pointer is fine with.
-const BATCH_BUTTON = "h-11 rounded-full sm:h-8";
-const HEADER_BUTTON = "h-11 rounded-full sm:h-9";
+// Heights here are the compact ones a mouse gets. On a touch device the
+// `pointer: coarse` rule in globals.css raises every one of these to 44px.
+const BATCH_BUTTON = "rounded-full";
+const HEADER_BUTTON = "rounded-full";
 
 // The board's one batch control. Idle, it is a single "Select" button with a
 // tap-to-open hint. In select mode it becomes Cancel, Select all (which flips
@@ -422,7 +421,7 @@ function BatchControls({
 }) {
   if (!selectMode)
     return (
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center">
         <Button
           variant="outline"
           size="sm"
@@ -431,11 +430,9 @@ function BatchControls({
         >
           Select
         </Button>
-        <InfoTooltip
-          content="Tick several orders, or all of them, and mark them ready in one tap."
-          ariaLabel="About Select"
-          trigger="tap"
-        />
+        <Hint label="About Select">
+          Tick several orders, or all of them, and mark them ready in one tap.
+        </Hint>
       </div>
     );
   return (
@@ -893,7 +890,7 @@ export function RealtimeOrderBoard({
                 asChild
                 variant="outline"
                 size="icon"
-                className="size-11 rounded-full sm:size-9"
+                className="rounded-full"
               >
                 <Link href="/dashboard/settings" aria-label="Board settings">
                   <SettingsIcon className="size-3.5" />
@@ -991,7 +988,7 @@ export function RealtimeOrderBoard({
           <Select value={effectiveFilter} onValueChange={setFilter}>
             <SelectTrigger
               aria-label="Filter by booth"
-              className="rounded-lg text-sm data-[size=default]:h-11 sm:data-[size=default]:h-9"
+              className="h-9 rounded-lg text-sm"
             >
               <SelectValue />
             </SelectTrigger>
@@ -1033,7 +1030,7 @@ export function RealtimeOrderBoard({
               onClick={() => setSortOrder(o.value)}
               aria-pressed={sortOrder === o.value}
               className={cn(
-                "min-h-9 rounded-md px-3 py-1.5 font-medium transition-colors sm:min-h-0",
+                "rounded-md px-3 py-1.5 font-medium transition-colors [@media(pointer:coarse)]:min-h-9",
                 sortOrder === o.value
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground",

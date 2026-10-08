@@ -2,10 +2,6 @@ import Link from "next/link";
 import { LandingNav } from "@merqo/ui";
 import { Button } from "@/components/ui/button";
 
-// The buttons a phone shows: full 44px touch height there, the compact nav
-// height from `sm` up where a pointer is the norm.
-const PHONE_TAP = "h-11 rounded-lg sm:h-8";
-
 export function Nav({ authed }: { authed: boolean }) {
   return (
     <LandingNav
@@ -49,15 +45,15 @@ export function Nav({ authed }: { authed: boolean }) {
             <Link href="/about">About</Link>
           </Button>
           {authed ? (
-            <Button asChild variant="ghost" size="sm" className={PHONE_TAP}>
+            <Button asChild variant="ghost" size="sm" className="rounded-lg">
               <Link href="/dashboard">Dashboard</Link>
             </Button>
           ) : (
             <>
-              <Button asChild variant="ghost" size="sm" className={PHONE_TAP}>
+              <Button asChild variant="ghost" size="sm" className="rounded-lg">
                 <Link href="/login">Sign in</Link>
               </Button>
-              <Button asChild size="sm" className={PHONE_TAP}>
+              <Button asChild size="sm" className="rounded-lg">
                 <Link href="/login?mode=signup">Get started</Link>
               </Button>
             </>

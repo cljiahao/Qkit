@@ -79,6 +79,13 @@ prompt, metric })`: compact rating widget posting to
 - `landing/` — the sticky landing-page nav (`Nav`, composing `@merqo/ui`'s
   `LandingNav` shell) and the standalone wordmark used on the login page
   (`Wordmark`). See its own README.
+- `hint.tsx` — `Hint({ label, children })`: the small (i) that says what a
+  control is for, opening on tap (`InfoTooltip` from `@merqo/ui` with
+  `trigger="tap"`). The rule it encodes: anything a vendor has to understand
+  gets a `Hint` or visible text, because a hover tooltip never shows on a
+  phone or an iPad; a hover `Tooltip` is only for naming an icon-only button
+  on a desktop. Its 44px touch area on touch devices comes from the
+  `pointer: coarse` block in `globals.css`.
 - `landing-ticket.tsx` — `LandingTicket({ t })`: presentational "order chit"
   mirroring the real `OrderCard`'s layout for the landing hero: a large
   number and name, every option on one line with nothing to expand, a single
