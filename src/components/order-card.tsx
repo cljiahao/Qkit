@@ -123,6 +123,36 @@ const ATTENTION_ICON: Record<TicketAttention["kind"], typeof AlertTriangle> = {
   unpaid: Banknote,
 };
 
+// How long the order has waited, in the ticket's bottom-left corner. It sits
+// under the action button, away from the number and name, so the top of the
+// ticket carries only what gets read out and the "more" menu. The right-hand
+// corner of the strip is left free on purpose. Renders nothing before mount
+// (ageMins is null until then, see useNow).
+function TicketAge({
+  ageMins,
+  tone,
+}: {
+  ageMins: number | null;
+  tone: AgeTone;
+}) {
+  if (ageMins == null) return null;
+  return (
+    <div className="flex items-center border-t border-border/60 px-4 py-2">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 font-mono text-xs font-semibold tabular-nums",
+          ageToneClass(tone),
+        )}
+        title="Time since the order arrived"
+        aria-label={`${ageMins} minutes since arrival${ageToneAriaSuffix(tone)}`}
+      >
+        <Clock className="size-3.5" aria-hidden="true" />
+        {ageLabel(ageMins)}
+      </span>
+    </div>
+  );
+}
+
 // The ticket's single attention line (see ticketAttention): one message, never
 // a stack of pills. Filled only for the case that needs the vendor to act; the
 // rest sit on a quiet tint so an ordinary rush is not a wall of alarms.
@@ -274,7 +304,7 @@ export function OrderCard({
   // The history list's view of a ticket: a date and time stamp, each line's
   // price and the total. The live board shows none of that. Whoever is making
   // the order needs the number, the name and the drinks, and how long it has
-  // waited is already in the header.
+  // waited is in the ticket's bottom corner.
   showDate?: boolean;
   // Board-level batch-mark-ready mode: when true, a selection checkbox
   // renders instead of nothing (the board only sets this for `preparing`
@@ -612,27 +642,12 @@ export function OrderCard({
             )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {!closed && ageMins != null && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 font-mono text-sm font-semibold tabular-nums",
-                ageToneClass(tone),
-              )}
-              title="Time since the order arrived"
-              aria-label={`${ageMins} minutes since arrival${ageToneAriaSuffix(tone)}`}
-            >
-              <Clock className="size-3.5" aria-hidden="true" />
-              {ageLabel(ageMins)}
-            </span>
-          )}
-          <TicketMenu
-            number={number}
-            disabled={updating}
-            onBump={canBump ? bump : undefined}
-            onCancel={canCancel ? () => setCancelOpen(true) : undefined}
-          />
-        </div>
+        <TicketMenu
+          number={number}
+          disabled={updating}
+          onBump={canBump ? bump : undefined}
+          onCancel={canCancel ? () => setCancelOpen(true) : undefined}
+        />
       </div>
 
       {attention && <AttentionLine attention={attention} />}
@@ -661,6 +676,8 @@ export function OrderCard({
         onUndo={undoAdvance}
         onRestore={restoreToReady}
       />
+
+      {!closed && <TicketAge ageMins={ageMins} tone={tone} />}
 
       {/* Opened from the "more" menu. An auto-completed order gets its own
           wording: the auto-clear sweep can beat a vendor's own cancel tap, and
@@ -692,6 +709,13 @@ export function OrderCard({
     </Ticket>
   );
 }
+
+// The payment buttons carry the longest labels on the ticket ("Confirm payment
+// received" plus the amount). On a narrow card, three across on a tablet, one
+// line of that overflowed the button, so these wrap and grow instead: a
+// minimum of the usual height, never a fixed one.
+const PAYMENT_BUTTON =
+  "h-auto min-h-12 w-full rounded-lg bg-status-payment-claimed py-2 text-left text-base leading-tight font-bold whitespace-normal text-white hover:bg-status-payment-claimed/90";
 
 // The amount owed, set off at the far end of a payment button. Absent for an
 // order with no prices, where there is nothing to check.
@@ -862,7 +886,7 @@ function TicketActions({
       {!closed && status !== "pending" && payStatus === "claimed" && (
         <div className="px-4 pb-3">
           <Button
-            className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
+            className={PAYMENT_BUTTON}
             onClick={onConfirmPayment}
             disabled={updating}
           >
@@ -890,7 +914,7 @@ function TicketActions({
       {!closed && paymentReviewNeeded && (
         <div className="px-4 pb-3">
           <Button
-            className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
+            className={PAYMENT_BUTTON}
             onClick={onConfirmPaymentAndStart}
             disabled={updating}
           >

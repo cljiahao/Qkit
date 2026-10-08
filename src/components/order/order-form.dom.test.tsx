@@ -791,3 +791,59 @@ describe("OrderForm booth limits and basket holds", () => {
     expect(holdCart).not.toHaveBeenCalled();
   });
 });
+
+describe("OrderForm stock notice", () => {
+  it("says how many items are left today when stock is low", () => {
+    render(
+      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={3} />,
+    );
+    expect(screen.getByText("Only 3 items left today")).toBeInTheDocument();
+  });
+
+  it("says nothing about stock while plenty is left", () => {
+    render(
+      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={40} />,
+    );
+    expect(screen.queryByText(/left today/)).not.toBeInTheDocument();
+  });
+
+  it("counts other baskets' holds, so the number matches what can be added", async () => {
+    holdCart.mockResolvedValue({
+      remaining: {},
+      held: {},
+      left: 1,
+      leftHeld: 2,
+      maxPerOrder: null,
+    });
+    render(
+      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={3} />,
+    );
+    expect(
+      await screen.findByText("Only 1 item left today", {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Only 3 items left today")).toBeNull();
+  });
+
+  it("shows one message, not two, when the last items are all in other baskets", async () => {
+    holdCart.mockResolvedValue({
+      remaining: {},
+      held: {},
+      left: 0,
+      leftHeld: 3,
+      maxPerOrder: null,
+    });
+    render(
+      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={3} />,
+    );
+    expect(
+      await screen.findByText(
+        /last items are in other baskets/,
+        {},
+        {
+          timeout: 3000,
+        },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/left today/)).not.toBeInTheDocument();
+  });
+});

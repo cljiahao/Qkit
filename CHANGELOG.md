@@ -8,6 +8,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The order board no longer opens the walk-up order dialog on every load
+  because of a walk-up booth that is switched off. Only an active walk-up booth
+  triggers it.
+- The menu page no longer says "Only 3 items left today" directly above "The
+  last items are in other baskets". The count now comes from the same
+  availability the basket uses, net of other customers' holds, so a customer
+  reads one message that matches what they can add.
+- "Add to order" is always in view in the customise sheet. With several option
+  groups or a short phone it sat below the fold with nothing to show the sheet
+  scrolled; it is pinned to the bottom of the sheet now. The item photo is
+  capped at 28% of the screen height, and no longer collapses to nothing when
+  the sheet has to scroll.
+- The booth filter on the order board shows its label from the first paint. It
+  was blank for a moment on load.
+- The payment buttons on a ticket ("Confirm payment received" with the amount)
+  wrap on a narrow card. Three across on a tablet, the label overflowed the
+  button.
 - Controls are finger-sized on every touch device, phones and iPads alike.
   One rule in `globals.css`, keyed on `pointer: coarse` and not on screen
   width, makes every button, field and dropdown at least 44px tall; a mouse
@@ -44,6 +61,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- A ticket's waiting time is back in its bottom-left corner, under the action
+  button, where it was before the redesign. Beside the number it crowded the
+  part of the ticket that gets read out. The top-right corner now holds only
+  the "more" menu, and the bottom-right corner is free.
 - The landing page's sample order tickets match the ticket vendors now work
   from: a large number and name, options always visible, one attention line
   in place of the payment badges, and no "Show options" control or prices.

@@ -92,20 +92,53 @@ function StockNote({ left, held }: { left: number | null; held: boolean }) {
   );
 }
 
+// Below this many items left, the menu says how many. Above it the number is
+// noise: nobody queues differently at 40 remaining.
+const LOW_STOCK_ITEMS = 10;
+
+// What the stall has left today, as this customer can act on it: one message,
+// never two. `left` is already net of other baskets' holds, so "Only 1 item
+// left" and "the last items are in other baskets" cannot both be true. The
+// page used to print its own count from the stock before holds, which read
+// "Only 3 items left today" right above "the last items are in other baskets".
+function StockNotice({
+  left,
+  leftHeld,
+}: {
+  left: number | null;
+  leftHeld: number;
+}) {
+  if (left === null || left > LOW_STOCK_ITEMS) return null;
+  if (left > 0)
+    return (
+      <div className="rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center">
+        <p className="text-sm font-semibold">
+          Only {count(left, "item")} left today
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Once they are gone this stall stops taking orders until tomorrow.
+        </p>
+      </div>
+    );
+  if (leftHeld === 0) return null;
+  return (
+    <p className="rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center text-sm font-medium">
+      The last items are in other baskets right now. Check back in a few
+      minutes.
+    </p>
+  );
+}
+
 // Limits that apply to the whole basket, said once above the menu so nobody
 // finds them out from a refused tap.
 function BasketLimits({ availability }: { availability: Availability }) {
   const { left, leftHeld, maxPerOrder } = availability;
-  const allHeld = left === 0 && leftHeld > 0;
-  if (!allHeld && maxPerOrder === null) return null;
+  const stock =
+    left !== null && left <= LOW_STOCK_ITEMS && (left > 0 || leftHeld > 0);
+  if (!stock && maxPerOrder === null) return null;
   return (
-    <div className="space-y-2">
-      {allHeld && (
-        <p className="rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center text-sm font-medium">
-          The last items are in other baskets right now. Check back in a few
-          minutes.
-        </p>
-      )}
+    <div className="mx-auto max-w-lg space-y-2">
+      <StockNotice left={left} leftHeld={leftHeld} />
       {maxPerOrder !== null && (
         <p className="text-center text-sm text-muted-foreground">
           Up to {count(maxPerOrder, "item")} per order at this stall.

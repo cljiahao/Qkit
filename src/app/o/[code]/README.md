@@ -110,10 +110,12 @@ the current (non-legacy) customer ordering entry point.
   `loadBasketLimits` calls `booth_availability` (migration `0096`) for the
   items left in the booth's daily total and its per-order limit, either null
   when not set: zero left makes the page read "Sold out for today" and closes
-  ordering, and anything up to `LOW_STOCK_ITEMS` (10) shows an "Only N items
-  left today" note above `OrderForm`. Both go to `OrderForm`, which stops a
-  basket at them. The total it uses is the stock itself, with no basket hold
-  taken off: the server cannot tell which hold is the visitor's own. Read
+  ordering. Both go to `OrderForm`, which stops a basket at them and prints
+  the "Only N items left today" note itself (`StockNotice`), from availability
+  net of other baskets' holds, so it can never contradict "the last items are
+  in other baskets". The total this page uses is the stock itself, with no
+  basket hold taken off: the server cannot tell which hold is the visitor's
+  own. Read
   separately from `get_booth_for_order` to leave that RPC's public-safe shape
   alone, and degraded to "no limits" on any failure, since the triggers are
   the real limits.

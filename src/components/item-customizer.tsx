@@ -32,7 +32,7 @@ export function ItemCustomizer({ item, onClose, onAdd }: Props) {
     <Sheet open={!!item} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="mx-auto max-h-[85vh] max-w-lg overflow-y-auto rounded-t-2xl"
+        className="mx-auto max-h-[85dvh] max-w-lg overflow-y-auto rounded-t-2xl"
       >
         {/* Keyed by id so each drink remounts with fresh default selections —
             no reset effect needed. Content only mounts while the sheet is open. */}
@@ -110,8 +110,12 @@ function CustomizerBody({
       {item.image_url && (
         // Sticky hero: the full photo (object-contain, never cropped) sits over a
         // blurred, zoomed copy of itself so there are no letterbox bars. Stays
-        // pinned while the options scroll.
-        <div className="sticky top-0 z-10 aspect-[16/9] w-full overflow-hidden rounded-t-2xl bg-muted">
+        // pinned while the options scroll, capped at 28% of the screen height
+        // so on a short phone it cannot crowd the options out of view. shrink-0
+        // because the sheet is a flex column and this box has no in-flow
+        // content (both images are absolutely positioned): left shrinkable it
+        // collapsed to nothing as soon as the sheet had to scroll.
+        <div className="sticky top-0 z-10 aspect-[16/9] max-h-[28dvh] w-full shrink-0 overflow-hidden rounded-t-2xl bg-muted">
           <MediaImage
             src={item.image_url}
             alt=""
@@ -218,7 +222,11 @@ function CustomizerBody({
         ))}
       </div>
 
-      <SheetFooter>
+      {/* Pinned to the bottom of the sheet. With several option groups, or
+          on a short screen, the button used to sit below the fold with
+          nothing to say the sheet scrolled, and "Add to order" is the one
+          thing this sheet is for. */}
+      <SheetFooter className="sticky bottom-0 z-10 border-t border-border bg-background pb-[max(1rem,env(safe-area-inset-bottom))]">
         {/* Informational only — place_order re-derives the real total
             server-side from the stored menu, never trusts this. */}
         {priceDelta > 0 && (
