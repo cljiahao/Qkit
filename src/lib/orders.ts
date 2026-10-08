@@ -61,11 +61,31 @@ const STATUS_RANK: Record<OrderStatus, number> = {
   cancelled: 3,
 };
 
-// Customer-facing progress for the status page's segmented bar: placed →
-// cooking → ready. pending/confirmed light the first segment so the earliest,
-// most anxious wait still shows movement; cancelled has no progress.
-export const ORDER_PROGRESS_SEGMENTS = 3;
-export function orderProgressIndex(status: OrderStatus): number {
+/**
+ * The four stages a customer watches their order pass through, in order. All
+ * four are shown from the moment the order is placed, so the end is in sight
+ * the whole time: people wait more patiently for something with a visible
+ * finish than for a status that might be the last one or might not.
+ *
+ * Ready and Collected are separate stages. Merged, the page ended on "ready",
+ * which told a customer nothing about whether the stall knew they had come, and
+ * left a collected order looking exactly like one still sitting on the shelf.
+ */
+export const ORDER_STAGES = [
+  "received",
+  "preparing",
+  "ready",
+  "collected",
+] as const;
+export type OrderStage = (typeof ORDER_STAGES)[number];
+
+/**
+ * How far along ORDER_STAGES an order is, or -1 for a cancelled one, which has
+ * no place on the track. pending and confirmed both sit on "received": from the
+ * customer's side the order is in and nothing more is asked of them, whichever
+ * of the two the stall's own workflow happens to be in.
+ */
+export function orderStageIndex(status: OrderStatus): number {
   switch (status) {
     case "pending":
     case "confirmed":
@@ -73,10 +93,10 @@ export function orderProgressIndex(status: OrderStatus): number {
     case "preparing":
       return 1;
     case "ready":
-    case "completed":
       return 2;
+    case "completed":
+      return 3;
     default:
-      // cancelled — no progress
       return -1;
   }
 }

@@ -8,6 +8,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The customer's order page shows the order's four stages, Received, Preparing,
+  Ready and Collected, each with its own icon and all visible from the moment
+  the order is placed, so the finish is in sight for the whole wait. It replaces
+  a three-segment bar that merged Ready and Collected, which left a collected
+  order looking the same as one still on the shelf. "Received" is already
+  reached when the page opens, the stage the order is on pulses, and Ready takes
+  over the block in its own colour. The copy now speaks as the stall ("We're
+  making it now", "It's ready") with one line of what to do next.
+- An order that is over, or one reopened more than 12 hours after it was placed,
+  reads as a receipt and cannot pass for a live order: the number is struck
+  through, a stamp says Collected, Cancelled or Past order, and the date and
+  time it was placed (and collected) are printed in full. The daily order number
+  resets, so without this a customer could show last week's `#012` at the
+  counter as today's. A reopened order shows no live tracker and no payment
+  prompt, and its button reads "Order this again".
+
 - The order ticket is rebuilt around what staff read at the counter. The
   number and the customer's name are the largest things on it, every
   customisation is always visible on one line per item, and there is one

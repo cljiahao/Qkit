@@ -319,6 +319,19 @@ because nothing told them the page changes by itself, and the chime, desktop
 notification and title flash `OrderStatusPoller` already fires only help
 someone who knows to leave it open.
 
+`OrderStatusPoller` draws the order's four stages (`StageTrack`, from
+`ORDER_STAGES` in `@/lib/orders`) with every stage visible from the start, the
+reached ones filled and the current one pulsing (`.stage-pulse` in
+`globals.css`, off under reduced motion), then a headline and one line of what
+to do (`statusCopy`). The wait estimate (`WaitEstimate`) and the alert opt-in
+(`ReadyAlerts`) are their own small components.
+
+`page.tsx` treats an order as past when it is terminal or a stale view
+(`isStaleOrderView`). `OrderHeader` then strikes the number through and
+`PastOrderStamp` prints how it ended and the full date and time, so the page
+cannot be shown at the counter as a live order; a stale view also gets no
+tracker and no payment prompt.
+
 ## Parent
 
 [[boothId]](../README.md)

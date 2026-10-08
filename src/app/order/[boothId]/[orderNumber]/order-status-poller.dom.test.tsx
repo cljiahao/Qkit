@@ -68,14 +68,12 @@ describe("OrderStatusPoller", () => {
     renderPoller("preparing");
 
     await waitFor(() =>
-      expect(
-        screen.getByText("Your order is ready for pickup!"),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("It's ready")).toBeInTheDocument(),
     );
     expect(getOrderStatus).toHaveBeenCalledWith("b1", "0007", "tok");
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByText("Order #7 ready, please collect now"),
+      screen.getByText("Show order #7 at the counter to collect it."),
     ).toBeInTheDocument();
   });
 
@@ -108,9 +106,13 @@ describe("OrderStatusPoller", () => {
     renderPoller("cancelled");
     // Let the mount clock effect run.
     await waitFor(() =>
-      expect(screen.getByText("Your order was cancelled")).toBeInTheDocument(),
+      expect(screen.getByText("This order was cancelled")).toBeInTheDocument(),
     );
     expect(screen.queryByText(/^Placed /)).not.toBeInTheDocument();
+    // A cancelled order has no place on the track, so none is drawn.
+    expect(
+      screen.queryByRole("list", { name: "Order progress" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not poll once the order is in a terminal state", async () => {
@@ -120,7 +122,37 @@ describe("OrderStatusPoller", () => {
     // Give any stray microtasks a chance to run.
     await Promise.resolve();
     expect(getOrderStatus).not.toHaveBeenCalled();
-    expect(screen.getByText("Order complete, enjoy!")).toBeInTheDocument();
+    expect(screen.getByText("Collected. Enjoy!")).toBeInTheDocument();
+  });
+
+  it("shows all four stages from the start, with the current one marked", async () => {
+    getOrderStatus.mockResolvedValue("preparing");
+    renderPoller("preparing");
+
+    const track = screen.getByRole("list", { name: "Order progress" });
+    const stages = Array.from(track.querySelectorAll("li"));
+    // The finish is in sight for the whole wait, not revealed stage by stage.
+    expect(stages.map((li) => li.textContent)).toEqual([
+      "Received",
+      "Preparing",
+      "Ready",
+      "Collected",
+    ]);
+    expect(stages.map((li) => li.getAttribute("aria-current"))).toEqual([
+      null,
+      "step",
+      null,
+      null,
+    ]);
+  });
+
+  it("keeps Ready and Collected as separate stages", async () => {
+    getOrderStatus.mockResolvedValue("completed");
+    renderPoller("completed");
+    const track = screen.getByRole("list", { name: "Order progress" });
+    const current = track.querySelector('li[aria-current="step"]');
+    // A collected order must not look like one still waiting on the shelf.
+    expect(current?.textContent).toBe("Collected");
   });
 
   it("offers the alert opt-in, unlocks audio + requests permission on click", async () => {
@@ -168,9 +200,7 @@ describe("OrderStatusPoller", () => {
     renderPoller("preparing");
 
     await waitFor(() =>
-      expect(
-        screen.getByText("Your order is ready for pickup!"),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("It's ready")).toBeInTheDocument(),
     );
     expect(screen.queryByText("4-6 min")).not.toBeInTheDocument();
   });
@@ -203,11 +233,11 @@ describe("OrderStatusPoller — awaiting payment", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText("Being prepared, please complete your payment"),
+        screen.getByText("Please complete your payment while you wait."),
       ).toBeInTheDocument(),
     );
     expect(
-      screen.queryByText("Your order is being prepared"),
+      screen.queryByText(/turns to Ready the moment it is/),
     ).not.toBeInTheDocument();
   });
 
@@ -217,11 +247,11 @@ describe("OrderStatusPoller — awaiting payment", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText("Please pay before you collect order #7"),
+        screen.getByText("Please pay before you collect."),
       ).toBeInTheDocument(),
     );
     expect(
-      screen.queryByText("Order #7 ready, please collect now"),
+      screen.queryByText("Show order #7 at the counter to collect it."),
     ).not.toBeInTheDocument();
   });
 
@@ -230,22 +260,27 @@ describe("OrderStatusPoller — awaiting payment", () => {
     renderPoller("preparing", false);
 
     await waitFor(() =>
-      expect(
-        screen.getByText("Your order is being prepared"),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("We're making it now")).toBeInTheDocument(),
     );
+    expect(
+      screen.getByText(/turns to Ready the moment it is/),
+    ).toBeInTheDocument();
   });
 });
 
 describe("OrderStatusPoller — arrival confirmation", () => {
-  it("shows the arrival prompt instead of the progress bar when pending", async () => {
+  it("asks for the arrival tap, with no wait estimate, while pending", async () => {
     getOrderStatus.mockResolvedValue("pending");
+    getWaitEstimate.mockResolvedValue({ seconds: 300, ordersAhead: 2 });
     renderPoller("pending");
     expect(
       await screen.findByRole("button", { name: /i'm here/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/estimated wait/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/You're order #7\./)).toBeInTheDocument();
+    expect(
+      screen.getByText("Tap when you're at the counter"),
+    ).toBeInTheDocument();
+    // Nothing is being made yet, so there is no wait to estimate.
+    expect(screen.queryByText("About")).not.toBeInTheDocument();
   });
 
   it("calls confirmArrival and shows the progress view on success", async () => {
@@ -257,9 +292,7 @@ describe("OrderStatusPoller — arrival confirmation", () => {
     await user.click(btn);
     expect(confirmArrival).toHaveBeenCalledWith("b1", "0007", "tok");
     await waitFor(() =>
-      expect(
-        screen.getByText("Your order is being prepared"),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("We're making it now")).toBeInTheDocument(),
     );
   });
 
@@ -278,9 +311,7 @@ describe("OrderStatusPoller — arrival confirmation", () => {
     expect(
       screen.getByRole("button", { name: /i'm here/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Your order is being prepared"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("We're making it now")).not.toBeInTheDocument();
   });
 });
 
@@ -288,7 +319,7 @@ describe("OrderStatusPoller — vendor-accept gate (no printer, no arrival confi
   it("shows no self-start button, and never calls confirmArrival", async () => {
     getOrderStatus.mockResolvedValue("pending");
     renderPoller("pending", false, false);
-    expect(await screen.findByText(/You're order #7\./)).toBeInTheDocument();
+    expect(await screen.findByText("We've got your order")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /i'm here/i }),
     ).not.toBeInTheDocument();
