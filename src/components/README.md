@@ -98,7 +98,18 @@ prompt, metric })`: compact rating widget posting to
   optimization.
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
-- `order-card.tsx` — `OrderCard({ order, displayNumber, overtaken, boothName, agingMin,
+- `order-card.tsx` — `OrderCard`, the vendor's order ticket, laid out for
+  reading at a counter: the number (largest, last digit in the accent colour)
+  and the customer's name, one line of always-visible options per item (the
+  vendor's short codes via `optionCodes` where set, see `@/lib/ticket`), a
+  single `AttentionLine` chosen by `ticketAttention` in place of stacked
+  badges, and one next-step button (`TicketActions`). Bump and cancel sit in
+  a `TicketMenu` dropdown; "Preparing" and "Paid" go unstated. `showDate`
+  switches on the history view: date and time, per-line prices and the
+  total, none of which the live board shows. The notes below predate this
+  layout and describe behaviour that is unchanged (undo, payment review,
+  auto-clear, batch select). Signature: `OrderCard({ order, displayNumber,
+  overtaken, optionCodes, boothName, agingMin,
 overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs, selectable,
 selected, onToggleSelect })`. Item options start expanded, not collapsed behind
   "Show options": whoever writes the order onto a cup needs every

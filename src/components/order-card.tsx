@@ -521,7 +521,9 @@ export function OrderCard({
   // order can only be refunded off-platform, and the server action rejects the
   // cancel too.
   const canCancel =
-    payStatus !== "confirmed" && (!closed || order.auto_completed);
+    payStatus !== "confirmed" &&
+    status !== "cancelled" &&
+    (!closed || order.auto_completed);
   const canBump = !closed && !bumped;
 
   // One full-card attention wash at a time, by priority. A background (not a
@@ -774,7 +776,7 @@ function TicketItems({
               )}
             </div>
             {options.length > 0 && (
-              <p className="mt-0.5 flex flex-wrap pl-7 text-sm leading-snug font-medium text-foreground/70">
+              <p className="mt-0.5 flex flex-wrap pl-7 text-sm leading-snug font-medium text-foreground/80">
                 {options.map((option, j) => (
                   <span
                     key={j}

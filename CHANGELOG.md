@@ -6,7 +6,32 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The order ticket is rebuilt around what staff read at the counter. The
+  number and the customer's name are the largest things on it, every
+  customisation is always visible on one line per item, and there is one
+  button: the next step. Vendors said they had no time to expand a ticket
+  mid-service and that a growing stack of badges was becoming noise, so the
+  expand control is gone and the badges (payment, print, walk-up, passed over)
+  are replaced by a single attention line that shows only the most urgent
+  thing: a payment to check, a label that did not print, a later order already
+  out, then a payment not made yet (`ticketAttention` in `src/lib/ticket.ts`).
+  "Paid" and "Preparing" are no longer stated, since they are the states with
+  nothing to do. Bump and cancel moved into a "more" menu so a mis-tap lands on
+  nothing destructive. Prices, the total and the timestamp now appear only in
+  order history; on the live board the amount owed is printed on the payment
+  button, the one place it is being checked.
+- Waiting time on a ticket reads `2h 5m` or `6d` past an hour, not `9802m`.
+
 ### Added
+
+- A vendor can give each option choice a short code for the ticket ("LS" for
+  "Less sugar"), set under the choice's Advanced options with a suggestion from
+  its initials. A choice with no code prints in full: codes are never derived
+  automatically, because initials collide ("Soy" and "Skim") and a wrong drink
+  costs more than the space saved. When two options on one item would print the
+  same text, each is prefixed with its group.
 
 - `e2e/smoke.spec.ts`: a public smoke spec (the landing page and `/login` render). The CI job that ran only the auth-guard spec runs both and is named `e2e (public smoke)`, the same name and baseline as every other kit.
 
