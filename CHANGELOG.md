@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `e2e/smoke.spec.ts`: a public smoke spec (the landing page and `/login` render). The CI job that ran only the auth-guard spec runs both and is named `e2e (public smoke)`, the same name and baseline as every other kit.
+
+### Changed
+
+- The repository moved from the `cljiahao` GitHub account to the `merqo-io` organization. `@merqo/ui` now installs from `github:merqo-io/merqo-ui` at the same tag, with the lockfile and tarball URLs updated to match.
+- The `secret scan (gitleaks)` CI job runs the pinned gitleaks release binary, verified against the release checksum, instead of `gitleaks-action`. The action is free only for personal-account repos and needs a paid license on organization-owned ones, so every run failed after the move to `merqo-io`. It scans the PR commits, or the pushed range on `main`.
+
 ### Security
 
 - Restrict order-number allocation, vendor/printer INSERT privileges and rate-limit
@@ -1438,5 +1447,5 @@ plan='pro'` on their own row via a direct PostgREST call — a free→pro
 - Upgraded `@supabase/ssr` 0.6 → 0.10 for `@supabase/supabase-js` 2.107 type
   compatibility (older ssr made every typed query resolve to `never`).
 
-[Unreleased]: https://github.com/cljiahao/qkit/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/cljiahao/qkit/releases/tag/v0.1.0
+[Unreleased]: https://github.com/merqo-io/qkit/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/merqo-io/qkit/releases/tag/v0.1.0
