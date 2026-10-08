@@ -4,7 +4,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { boardSettingsSchema, orderBoothIdSchema } from "@/lib/schemas";
-import { displayOrderNumber } from "@/lib/orders";
+import { displayOrderNumber, isStaleOrderView } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
 import type { OrderStatus } from "@/lib/types";
 
@@ -137,10 +137,16 @@ export async function getBoothQueueDisplay(
   // shown as ready, which is what it still is from the customer's side: the cup
   // is on the shelf. Past that it drops off, so the screen does not fill up
   // with a whole service's numbers.
+  // An order left unfinished on the vendor's board from an earlier day is
+  // still "preparing" as far as the row knows, and would sit on this public
+  // screen as a number nobody is waiting for. Same age line the customer's
+  // own status page draws (isStaleOrderView): the vendor still sees it on the
+  // board to clear, the queue does not.
   const nonNullOrders = (orders ?? [])
     .filter(
       (o): o is typeof o & { order_number: string } => o.order_number != null,
     )
+    .filter((o) => !isStaleOrderView(o.created_at, Date.now()))
     .filter((o) => {
       if (o.status !== "completed") return true;
       const at = o.completed_at == null ? NaN : Date.parse(o.completed_at);

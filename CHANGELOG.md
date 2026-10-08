@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- A payment link reopened long after its order was placed no longer shows a
+  PayNow QR. An order still unpaid after 30 minutes reads "This order has
+  expired" with a clear "do not pay", and a claim against it is refused, so an
+  old link cannot take money or put a fresh "says paid" on the board for an
+  order nobody is making.
+- The public queue display leaves off orders more than 12 hours old. An order
+  left unfinished on the board from an earlier day was shown to today's queue
+  as a number still being prepared.
+- Unpaid orders are cancelled, and ready orders auto-cleared, on a schedule in
+  the database (`qkit.sweep_stale_orders`, every five minutes, migration
+  `0097`). Both ran only while a vendor had the order board open, so with no
+  board open an abandoned order kept its stock and a ready order stayed on the
+  queue display.
+- Saving a booth on a plan without stock caps no longer wipes a daily limit
+  that was already set. The limit keeps working, is shown in booth settings,
+  and can be removed there; setting or changing one still needs an Event pass
+  or Pro.
+- Touch targets on a phone are a full 44px for the landing page's "Sign in"
+  and "Get started", the social icons on order pages, "Order something else",
+  and the queue display's "Enable sound".
+
 ### Changed
 
 - The landing page's sample order tickets match the ticket vendors now work
@@ -53,6 +76,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- "Mark all ready" on the order board moves every order still being made to
+  Ready in one go, after a confirmation that says how many. For a stall that
+  had no time to mark orders one by one during service. With auto-clear on,
+  the board then empties by itself.
 - The menu CSV has a `choice_code` column, so short codes for the order ticket
   can be set in bulk and survive an export and re-import. It is the last
   column: a file exported before it existed still imports unchanged, and a

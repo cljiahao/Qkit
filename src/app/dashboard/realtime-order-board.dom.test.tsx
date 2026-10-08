@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RealtimeOrderBoard } from "./realtime-order-board";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -763,6 +763,51 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
       expect(advanceOrder).toHaveBeenCalledWith("o2");
     });
     expect(advanceOrder).toHaveBeenCalledTimes(2);
+  });
+
+  it("marks every preparing order ready in one go, after a confirmation, leaving ready ones alone", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001", status: "preparing" }),
+          order({ id: "o2", order_number: "0002", status: "preparing" }),
+          order({ id: "o3", order_number: "0003", status: "ready" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: "Mark all ready" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Mark all 2 orders ready?",
+    });
+    expect(advanceOrder).not.toHaveBeenCalled();
+
+    await user.click(
+      within(dialog).getByRole("button", { name: "Mark all ready" }),
+    );
+
+    await waitFor(() => expect(advanceOrder).toHaveBeenCalledTimes(2));
+    expect(advanceOrder).toHaveBeenCalledWith("o1");
+    expect(advanceOrder).toHaveBeenCalledWith("o2");
+    expect(advanceOrder).not.toHaveBeenCalledWith("o3");
+  });
+
+  it("offers no mark-all for a single preparing order", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[order({ id: "o1", status: "preparing" })]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.queryByRole("button", { name: "Mark all ready" }),
+    ).not.toBeInTheDocument();
   });
 });
 

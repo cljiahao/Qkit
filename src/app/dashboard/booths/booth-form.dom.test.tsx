@@ -404,6 +404,64 @@ describe("BoothForm per-order item limit", () => {
   });
 });
 
+describe("BoothForm daily limit on a plan without stock caps", () => {
+  const initial = {
+    boothId: BOOTH_ID,
+    name: "Ice Cream Cart",
+    image_url: null,
+    is_active: true,
+    hours: null,
+    menuItemCount: 0,
+    payment: null,
+    social_links: null,
+    requires_arrival_confirm: false,
+    walkup_default: false,
+    print_enabled: false,
+    printkit_location_id: null,
+    paykit_booking_id: null,
+    daily_cup_cap: 200,
+  };
+
+  it("shows a limit that is already set, and keeps it on save", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+        initial={initial}
+      />,
+    );
+    expect(screen.getByText(/Set to 200\./)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+    expect(saveBooth).toHaveBeenCalledWith(
+      expect.objectContaining({ daily_cup_cap: 200 }),
+      [],
+    );
+  });
+
+  it("lets the vendor remove it", async () => {
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+        initial={initial}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Remove limit" }));
+    expect(screen.queryByText(/Set to 200\./)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+    expect(saveBooth).toHaveBeenCalledWith(
+      expect.objectContaining({ daily_cup_cap: null }),
+      [],
+    );
+  });
+});
+
 describe("BoothForm daily cup cap", () => {
   const CAP_LABEL = "Stop after this many items each day";
   const ENTITLEMENT_WITH_CAPS: Entitlement = {

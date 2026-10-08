@@ -62,6 +62,7 @@ import {
 } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
 import { CustomerScreenButton } from "./customer-screen-dialog";
+import { MarkAllReadyButton } from "./mark-all-ready";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
 
@@ -398,8 +399,7 @@ function useMarkReadySelection() {
     });
   }, []);
   const [markingReady, setMarkingReady] = useState(false);
-  async function markSelectedReady() {
-    const ids = Array.from(selectedIds);
+  async function markReady(ids: string[]) {
     setMarkingReady(true);
     try {
       const results = await Promise.all(ids.map((id) => advanceOrder(id)));
@@ -424,7 +424,10 @@ function useMarkReadySelection() {
     setSelectedIds,
     toggleSelect,
     markingReady,
-    markSelectedReady,
+    markSelectedReady: () => markReady(Array.from(selectedIds)),
+    // Every preparing order at once (MarkAllReadyButton), for a stall that had
+    // no time to tap them during service.
+    markAllReady: markReady,
   };
 }
 
@@ -532,6 +535,7 @@ export function RealtimeOrderBoard({
     toggleSelect,
     markingReady,
     markSelectedReady,
+    markAllReady,
   } = useMarkReadySelection();
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [boothDialogOpen, setBoothDialogOpen] = useState(false);
@@ -694,7 +698,10 @@ export function RealtimeOrderBoard({
   }
 
   const idle = visible.length === 0;
-  const preparingCount = visible.filter((o) => o.status === "preparing").length;
+  const preparingIds = visible
+    .filter((o) => o.status === "preparing")
+    .map((o) => o.id);
+  const preparingCount = preparingIds.length;
   // Split the board so an order the vendor hasn't accepted yet (no printer
   // connected, or the booth waits for the customer's own arrival tap) can't
   // get buried under everything already being worked on.
@@ -972,14 +979,21 @@ export function RealtimeOrderBoard({
               </Button>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto rounded-full"
-              onClick={() => setSelectMode(true)}
-            >
-              Select
-            </Button>
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <MarkAllReadyButton
+                count={preparingCount}
+                busy={markingReady}
+                onConfirm={() => markAllReady(preparingIds)}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => setSelectMode(true)}
+              >
+                Select
+              </Button>
+            </div>
           ))}
       </div>
 

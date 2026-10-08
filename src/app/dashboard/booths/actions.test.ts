@@ -285,6 +285,21 @@ describe("saveBooth entitlement enforcement", () => {
     expect(row.max_items_per_order).toBe(4);
   });
 
+  it("leaves a stored daily total alone when editing on a plan without stock caps", async () => {
+    await saveBooth(makeBooth({ boothId: BOOTH_ID, daily_cup_cap: 200 }));
+
+    const row = h.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    // Not nulled and not rewritten: the key is absent, so the stored value stays.
+    expect(row).not.toHaveProperty("daily_cup_cap");
+  });
+
+  it("lets a plan without stock caps remove a stored daily total", async () => {
+    await saveBooth(makeBooth({ boothId: BOOTH_ID, daily_cup_cap: null }));
+
+    const row = h.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(row.daily_cup_cap).toBeNull();
+  });
+
   it("saves the booth's daily total on a plan with stock caps", async () => {
     h.loadEntitlementMock.mockResolvedValue({
       user: { id: "v1" },
