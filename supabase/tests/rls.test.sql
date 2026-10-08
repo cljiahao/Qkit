@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(151);
+select plan(155);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -1368,6 +1368,56 @@ select lives_ok(
      values ('00000000-0000-0000-0000-0000000b0012', 'L-003', 'Cust',
              '[{"menuItemId":"teh","name":"Teh","quantity":4}]'::jsonb, 400, 'walkup') $$,
   'a walk-up order the vendor enters is not limited'
+);
+
+-- qkit.sweep_stale_orders (migration 0097): the scheduled twin of the board's
+-- own sweeps, for when no vendor has a board open.
+insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents,
+                         status, payment_status, created_at)
+values
+  ('00000000-0000-0000-0000-0000000b0012', 'S-001', 'Cust', '[{"menuItemId":"teh","name":"Teh","quantity":1}]'::jsonb,
+   100, 'pending', 'pending', now() - interval '2 hours'),
+  ('00000000-0000-0000-0000-0000000b0012', 'S-002', 'Cust', '[{"menuItemId":"teh","name":"Teh","quantity":1}]'::jsonb,
+   100, 'pending', 'pending', now() - interval '5 minutes');
+
+update qkit.vendors
+set board_settings = coalesce(board_settings, '{}'::jsonb)
+                     || '{"ready_auto_clear_min": 5}'::jsonb
+where id = '00000000-0000-0000-0000-00000000000a';
+
+insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents,
+                         status, ready_at)
+values
+  ('00000000-0000-0000-0000-0000000b0012', 'S-003', 'Cust', '[{"menuItemId":"teh","name":"Teh","quantity":1}]'::jsonb,
+   100, 'ready', now() - interval '10 minutes');
+
+select qkit.sweep_stale_orders();
+
+select is(
+  (select status::text from qkit.orders where booth_id = '00000000-0000-0000-0000-0000000b0012' and order_number = 'S-001'),
+  'cancelled',
+  'the sweep cancels a QR order unpaid for over 30 minutes'
+);
+
+select is(
+  (select status::text from qkit.orders where booth_id = '00000000-0000-0000-0000-0000000b0012' and order_number = 'S-002'),
+  'pending',
+  'the sweep leaves an order still inside its payment window'
+);
+
+select is(
+  (select status::text || ':' || auto_completed::text
+   from qkit.orders where booth_id = '00000000-0000-0000-0000-0000000b0012' and order_number = 'S-003'),
+  'completed:true',
+  'the sweep clears a ready order past the vendor auto-clear time'
+);
+
+select is(
+  (select count(*)::int from qkit.order_status_events e
+   join qkit.orders o on o.id = e.order_id
+   where o.booth_id = '00000000-0000-0000-0000-0000000b0012' and o.order_number in ('S-001', 'S-003')),
+  2,
+  'each swept order gets a status event'
 );
 
 select * from finish();

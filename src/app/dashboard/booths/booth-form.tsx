@@ -135,6 +135,45 @@ function LimitField({
 
 const DAILY_LIMIT_LABEL = "Stop after this many items each day";
 
+// The daily limit on a plan without stock caps. With none set it is an
+// upgrade prompt. With one already set (from a pass that has since ended) it
+// keeps working, and the vendor can see it and take it off, but not change it.
+function LockedDailyLimit({
+  value,
+  onRemove,
+}: {
+  value: string;
+  onRemove: () => void;
+}) {
+  if (value === "")
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3">
+        <ProLock feature="stock_cap" label="Pro" />
+        <span className="text-sm text-muted-foreground">
+          {DAILY_LIMIT_LABEL}
+        </span>
+      </div>
+    );
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+      <p className="text-sm font-medium">{DAILY_LIMIT_LABEL}</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Set to {value}. It keeps working until you remove it. Changing it needs
+        an Event pass or Pro.
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-2 rounded-lg"
+        onClick={onRemove}
+      >
+        Remove limit
+      </Button>
+    </div>
+  );
+}
+
 function qrImageOf(payment: PaymentConfig | null): string | null {
   return payment?.kind === "pointer" ? (payment.qr_image_url ?? null) : null;
 }
@@ -430,12 +469,10 @@ export function BoothForm({
                 onChange={setDailyCupCap}
               />
             ) : (
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3">
-                <ProLock feature="stock_cap" label="Pro" />
-                <span className="text-sm text-muted-foreground">
-                  {DAILY_LIMIT_LABEL}
-                </span>
-              </div>
+              <LockedDailyLimit
+                value={dailyCupCap}
+                onRemove={() => setDailyCupCap("")}
+              />
             )}
 
             <LimitField

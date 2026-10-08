@@ -185,6 +185,23 @@ export function isStaleOrderView(createdAt: string, nowMs: number): boolean {
   return nowMs - placed > STALE_ORDER_VIEW_HOURS * 60 * 60_000;
 }
 
+/** How long an unpaid QR order waits for its payment before it is given up. */
+export const ABANDONED_PAYMENT_MS = 30 * 60_000;
+
+/**
+ * Whether an order still waiting for its payment has waited past
+ * ABANDONED_PAYMENT_MS. The sweeps cancel such an order, but a sweep is not
+ * instant and older rows predate it, so the pay page and the claim action ask
+ * this themselves: a payment link reopened days later must not take money, or
+ * land a fresh "says paid" on the vendor's board, for an order nobody is
+ * making.
+ */
+export function isAbandonedPayment(createdAt: string, nowMs: number): boolean {
+  const placed = Date.parse(createdAt);
+  if (Number.isNaN(placed)) return false;
+  return nowMs - placed > ABANDONED_PAYMENT_MS;
+}
+
 /**
  * The DB patch for advancing an order to `next`: the new status plus the
  * transition timestamp it stamps — ready_at on entering "ready", completed_at on

@@ -4,7 +4,12 @@ import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
 import { boardSettingsSchema } from "@/lib/schemas";
-import { ADVANCE, buildAdvancePatch, isTerminal } from "@/lib/orders";
+import {
+  ABANDONED_PAYMENT_MS,
+  ADVANCE,
+  buildAdvancePatch,
+  isTerminal,
+} from "@/lib/orders";
 import { createCheckout, confirmCheckout } from "@/lib/paykit/client";
 import { notifyCustomer } from "@/lib/merqo-customer-notify";
 import { recordAudit, recordOrderStatusEvent } from "@/lib/audit";
@@ -613,8 +618,9 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
  * configured ready_auto_clear_min (board_settings) to 'completed'. No id
  * param — bulk, RLS-scoped to the caller's own booths (orders_vendor_update)
  * exactly like every other mutation here. Called on a client poll (see
- * realtime-order-board.tsx) rather than a DB cron job, matching this
- * codebase's existing usePolling pattern. Returns void: this is a background
+ * realtime-order-board.tsx), so an open board clears them promptly;
+ * qkit.sweep_stale_orders (migration 0097) does the same on a schedule for
+ * when no board is open. Returns void: this is a background
  * sweep the caller doesn't surface a toast for — a real failure is logged,
  * and the next poll simply retries.
  */
@@ -662,15 +668,14 @@ export async function sweepReadyOrders(): Promise<void> {
   }
 }
 
-const ABANDONED_PAYMENT_MS = 30 * 60_000;
-
 /**
  * Abandoned-payment sweep: cancels every pending QR order older than 30
  * minutes. No vendor setting gate — this is baseline hygiene, not an opt-in
  * preference. No id param — bulk, RLS-scoped to the caller's own booths
  * (orders_vendor_update) exactly like every other mutation here. Called on a
- * client poll (realtime-order-board.tsx) rather than a DB cron job, matching
- * this codebase's existing usePolling pattern. Returns void: this is a
+ * client poll (realtime-order-board.tsx), so an open board clears them
+ * promptly; qkit.sweep_stale_orders (migration 0097) does the same on a
+ * schedule for when no board is open. Returns void: this is a
  * background sweep the caller doesn't surface a toast for — a real failure is
  * logged, and the next poll simply retries.
  */

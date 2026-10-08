@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  ABANDONED_PAYMENT_MS,
+  isAbandonedPayment,
   isTerminal,
   sortActiveOrders,
   orderAgeTone,
@@ -612,5 +614,28 @@ describe("overtakenOrderIds", () => {
       o("fourteen", "preparing", 14),
     ]);
     expect([...ids].sort()).toEqual(["eight", "ten"]);
+  });
+});
+
+describe("isAbandonedPayment", () => {
+  const NOW = Date.parse("2026-10-08T12:00:00Z");
+  const minutesAgo = (m: number) => new Date(NOW - m * 60_000).toISOString();
+
+  it("is false inside the 30 minute payment window", () => {
+    expect(isAbandonedPayment(minutesAgo(5), NOW)).toBe(false);
+    expect(isAbandonedPayment(minutesAgo(30), NOW)).toBe(false);
+  });
+
+  it("is true once the window has passed", () => {
+    expect(isAbandonedPayment(minutesAgo(31), NOW)).toBe(true);
+    expect(isAbandonedPayment(minutesAgo(60 * 24 * 40), NOW)).toBe(true);
+  });
+
+  it("is false for a date it cannot read, so a bad row is not refused", () => {
+    expect(isAbandonedPayment("not a date", NOW)).toBe(false);
+  });
+
+  it("uses the same window the sweep cancels on", () => {
+    expect(ABANDONED_PAYMENT_MS).toBe(30 * 60_000);
   });
 });

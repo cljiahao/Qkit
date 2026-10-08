@@ -44,6 +44,10 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 const BOOTH = "00000000-0000-4000-8000-000000000001";
+// Relative to now: an order older than STALE_ORDER_VIEW_HOURS is left off the
+// display, so a fixed date would age out of every test below.
+const PLACED_FIRST = new Date(Date.now() - 10 * 60_000).toISOString();
+const PLACED_SECOND = new Date(Date.now() - 5 * 60_000).toISOString();
 const VENDOR = "00000000-0000-4000-8000-000000000002";
 
 beforeEach(() => {
@@ -88,13 +92,13 @@ describe("getBoothQueueDisplay", () => {
       {
         order_number: "0002",
         status: "preparing",
-        created_at: "2026-06-12T10:05:00Z",
+        created_at: PLACED_SECOND,
         priority_bumped_at: null,
       },
       {
         order_number: "0001",
         status: "ready",
-        created_at: "2026-06-12T10:00:00Z",
+        created_at: PLACED_FIRST,
         priority_bumped_at: null,
       },
     ];
@@ -115,7 +119,7 @@ describe("getBoothQueueDisplay", () => {
       {
         order_number: "0105",
         status: "ready",
-        created_at: "2026-06-12T10:00:00Z",
+        created_at: PLACED_FIRST,
         priority_bumped_at: null,
       },
     ];
@@ -158,7 +162,7 @@ describe("getBoothQueueDisplay", () => {
       {
         order_number: "0001",
         status: "completed",
-        created_at: "2026-06-12T10:00:00Z",
+        created_at: PLACED_FIRST,
         priority_bumped_at: null,
         completed_at: new Date(Date.now() - 60_000).toISOString(),
       },
@@ -179,7 +183,7 @@ describe("getBoothQueueDisplay", () => {
       {
         order_number: "0001",
         status: "completed",
-        created_at: "2026-06-12T10:00:00Z",
+        created_at: PLACED_FIRST,
         priority_bumped_at: null,
         completed_at: new Date(Date.now() - 20 * 60_000).toISOString(),
       },
@@ -197,7 +201,7 @@ describe("getBoothQueueDisplay", () => {
       {
         order_number: "0001",
         status: "completed",
-        created_at: "2026-06-12T10:00:00Z",
+        created_at: PLACED_FIRST,
         priority_bumped_at: null,
         completed_at: null,
       },
@@ -215,13 +219,13 @@ describe("getBoothQueueDisplay", () => {
       {
         order_number: "0001",
         status: "preparing",
-        created_at: "2026-06-12T10:00:00Z",
+        created_at: PLACED_FIRST,
         priority_bumped_at: null,
       },
       {
         order_number: "0002",
         status: "preparing",
-        created_at: "2026-06-12T10:05:00Z",
+        created_at: PLACED_SECOND,
         priority_bumped_at: "2026-06-12T10:06:00Z",
       },
     ];
@@ -275,7 +279,7 @@ describe("getBoothQueueDisplay", () => {
       {
         order_number: "0001",
         status: "preparing" as const,
-        created_at: "2026-06-12T10:00:00Z",
+        created_at: PLACED_FIRST,
         priority_bumped_at: null,
       },
     ];
@@ -296,5 +300,32 @@ describe("getBoothQueueDisplay", () => {
       ),
     );
     expect(res?.map((o) => o.orderNumber)).toEqual(["0001"]);
+  });
+});
+
+describe("getBoothQueueDisplay stale orders", () => {
+  it("leaves an order from an earlier day off the public screen", async () => {
+    const rows = [
+      {
+        order_number: "0022",
+        status: "preparing",
+        created_at: new Date(Date.now() - 8 * 24 * 60 * 60_000).toISOString(),
+        priority_bumped_at: null,
+      },
+      {
+        order_number: "0031",
+        status: "preparing",
+        created_at: PLACED_FIRST,
+        priority_bumped_at: null,
+      },
+    ];
+    fromMock
+      .mockReturnValueOnce(chain({ data: { vendor_id: VENDOR }, error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockReturnValueOnce(chain({ data: rows, error: null }));
+
+    expect(await getBoothQueueDisplay(BOOTH)).toEqual([
+      { orderNumber: "0031", displayNumber: "0031", status: "preparing" },
+    ]);
   });
 });

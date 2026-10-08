@@ -548,7 +548,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
         )}
         <Link
           href={`/order/${boothId}`}
-          className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
         >
           {items.length > 0 ? "Order something else" : "Order again"}
         </Link>
