@@ -6,23 +6,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-
-- A booth can limit how many items one customer order may carry ("Most items
-  in one order" in booth settings, every plan), so the first person in the
-  queue cannot take the whole tray. The menu page says the limit up front and
-  refuses an add past it; the `orders_max_items_per_order` trigger enforces it
-  for every customer-placed order. Orders the vendor keys in are not limited.
-  Migration `0096`.
-- A customer's basket now holds its items for five minutes on a booth with
-  finite stock (a daily total or a sold-out limit on an item). The next
-  customer sees those items as "In another basket" instead of being offered
-  them and refused at checkout, and when two people reach for the last one the
-  first basket wins and the second is told. A hold is soft: it changes what
-  other customers are shown and never blocks an order, so a flood of fake
-  holds cannot take a booth offline or cost a real sale. Placing the order
-  releases the hold. Migration `0096`.
-
 ### Changed
 
 - The booth's daily limit is worded as items, not cups, everywhere a vendor or
@@ -73,6 +56,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   automatically, because initials collide ("Soy" and "Skim") and a wrong drink
   costs more than the space saved. When two options on one item would print the
   same text, each is prefixed with its group.
+- A booth can limit how many items one customer order may carry ("Most items
+  in one order" in booth settings, every plan), so the first person in the
+  queue cannot take the whole tray. The menu page says the limit up front and
+  refuses an add past it; the `orders_max_items_per_order` trigger enforces it
+  for every customer-placed order. Orders the vendor keys in are not limited.
+  Migration `0096`.
+- A customer's basket now holds its items for five minutes on a booth with
+  finite stock (a daily total or a sold-out limit on an item). The next
+  customer sees those items as "In another basket" instead of being offered
+  them and refused at checkout, and when two people reach for the last one the
+  first basket wins and the second is told. A hold is soft: it changes what
+  other customers are shown and never blocks an order, so a flood of fake
+  holds cannot take a booth offline or cost a real sale. Placing the order
+  releases the hold. Migration `0096`.
 
 - `e2e/smoke.spec.ts`: a public smoke spec (the landing page and `/login` render). The CI job that ran only the auth-guard spec runs both and is named `e2e (public smoke)`, the same name and baseline as every other kit.
 
