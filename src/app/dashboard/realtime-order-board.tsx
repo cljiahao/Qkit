@@ -42,8 +42,10 @@ import {
 } from "@/components/ui/dialog";
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
+import type { OptionCodes } from "@/lib/ticket";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
+import { Hint } from "@/components/hint";
 import {
   displayOrderNumber,
   overtakenOrderIds,
@@ -60,6 +62,7 @@ import {
   sweepAbandonedPayments,
 } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
+import { CustomerScreenButton } from "./customer-screen-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
 
@@ -93,6 +96,10 @@ interface Props {
   // seenFirstNumbers). With the setting off the map stays empty and no fallback
   // is computed, so every card shows its real, permanent number.
   dailyOrderNumberBaselines?: Record<string, string>;
+  // Each booth's short codes for option choices, keyed by booth id (see
+  // buildOptionCodes in @/lib/ticket). A booth with none is simply absent, and
+  // its tickets print every choice in full.
+  optionCodes?: Record<string, OptionCodes>;
 }
 
 type BoothFilter = "all" | string;
@@ -264,9 +271,9 @@ function BoothToggle({
   );
 }
 
-// Cups committed today against the booth's own cap, for a stall working to a
-// fixed stock ("200 cups, then we stop"). Counts cups, not orders, matching
-// the orders_daily_cup_cap trigger, since one order can carry four or five.
+// Items committed today against the booth's own cap, for a stall working to
+// a fixed stock ("200, then we stop"). Counts items, not orders, matching the
+// orders_daily_cup_cap trigger, since one order can carry four or five.
 // Amber inside the last CUP_WARN_FRACTION of the cap, so staff see the line
 // coming while there is still time to tell the queue. Renders nothing for a
 // booth with no cap, which is every booth by default.
@@ -283,7 +290,7 @@ function CupCount({ cap, used }: { cap?: number | null; used?: number }) {
         low ? "font-semibold text-status-aging" : "text-muted-foreground",
       )}
     >
-      {served}/{cap} cups
+      {served}/{cap} items
     </span>
   );
 }
@@ -375,11 +382,101 @@ function resolveBoothFilter(
 
 /**
  * Batch mark-ready mode (F3): lets a vendor check off several `preparing`
- * orders and advance them to `ready` in one tap instead of one at a time.
+ * orders, or all of them with "Select all", and advance them to `ready` in one
+ * tap instead of one at a time. "Select all" is how a stall catches the board
+ * up after a service with no time to mark orders as they went out; it lives
+ * inside this mode rather than as its own button so the board keeps one batch
+ * control, and so ticking, then reading "Mark 14 Ready", is the confirmation.
  * Reuses the same advanceOrder server action each OrderCard's own single tap
  * calls — no new bulk RPC, per-row optimistic-concurrency guard still applies
  * to each id individually.
  */
+// Heights here are the compact ones a mouse gets. On a touch device the
+// `pointer: coarse` rule in globals.css raises every one of these to 44px.
+const BATCH_BUTTON = "rounded-full";
+const HEADER_BUTTON = "rounded-full";
+
+/** What the booth filter's trigger reads: the same text as the chosen item. */
+function boothFilterLabel(
+  filter: BoothFilter,
+  booths: BoothView[],
+  total: number,
+  countFor: (id: string) => number,
+): string {
+  const booth = booths.find((b) => b.id === filter);
+  if (!booth) return `All booths (${total})`;
+  return `${booth.name} (${countFor(booth.id)})${booth.open ? "" : " · closed"}`;
+}
+
+// The board's one batch control. Idle, it is a single "Select" button with a
+// tap-to-open hint. In select mode it becomes Cancel, Select all (which flips
+// to Clear all once everything is ticked) and "Mark N Ready", whose count is
+// the confirmation.
+function BatchControls({
+  selectMode,
+  selectedCount,
+  allSelected,
+  busy,
+  onStart,
+  onCancel,
+  onToggleAll,
+  onMarkReady,
+}: {
+  selectMode: boolean;
+  selectedCount: number;
+  allSelected: boolean;
+  busy: boolean;
+  onStart: () => void;
+  onCancel: () => void;
+  onToggleAll: () => void;
+  onMarkReady: () => void;
+}) {
+  if (!selectMode)
+    return (
+      <div className="ml-auto flex items-center">
+        <Button
+          variant="outline"
+          size="sm"
+          className={BATCH_BUTTON}
+          onClick={onStart}
+        >
+          Select
+        </Button>
+        <Hint label="About Select">
+          Tick several orders, or all of them, and mark them ready in one tap.
+        </Hint>
+      </div>
+    );
+  return (
+    <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className={BATCH_BUTTON}
+        onClick={onCancel}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        className={BATCH_BUTTON}
+        onClick={onToggleAll}
+      >
+        {allSelected ? "Clear all" : "Select all"}
+      </Button>
+      <Button
+        size="sm"
+        className={BATCH_BUTTON}
+        disabled={selectedCount === 0 || busy}
+        onClick={onMarkReady}
+      >
+        Mark {selectedCount} Ready
+      </Button>
+    </div>
+  );
+}
+
 function useMarkReadySelection() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -463,6 +560,7 @@ export function RealtimeOrderBoard({
   boardSettings,
   loadError = false,
   dailyOrderNumberBaselines = {},
+  optionCodes = {},
 }: Props) {
   const router = useRouter();
   const boothIds = booths.map((b) => b.id);
@@ -545,11 +643,14 @@ export function RealtimeOrderBoard({
   // QR/menu-first board underneath is unaffected either way, and a vendor
   // with no such booth (every booth today) never triggers this. Runs once
   // on mount only, so closing the dialog doesn't reopen it on a later
-  // render (e.g. after toggling a booth active/inactive).
+  // render (e.g. after toggling a booth active/inactive). Only an ACTIVE
+  // booth counts: a walk-up booth that is switched off (last weekend's event,
+  // a booth kept for testing) is not being served from, and used to pop this
+  // dialog over the board on every load anyway.
   const autoOpenedWalkup = useRef(false);
   useEffect(() => {
     if (autoOpenedWalkup.current) return;
-    if (booths.some((b) => b.walkup_default)) {
+    if (booths.some((b) => b.walkup_default && b.is_active)) {
       autoOpenedWalkup.current = true;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setWalkupOpen(true);
@@ -696,7 +797,11 @@ export function RealtimeOrderBoard({
   }
 
   const idle = visible.length === 0;
-  const preparingCount = visible.filter((o) => o.status === "preparing").length;
+  const preparingIds = visible
+    .filter((o) => o.status === "preparing")
+    .map((o) => o.id);
+  const preparingCount = preparingIds.length;
+  const allSelected = preparingIds.every((id) => selectedIds.has(id));
   // Split the board so an order the vendor hasn't accepted yet (no printer
   // connected, or the booth waits for the customer's own arrival tap) can't
   // get buried under everything already being worked on.
@@ -716,6 +821,7 @@ export function RealtimeOrderBoard({
             null,
         )}
         overtaken={overtaken.has(order.id)}
+        optionCodes={optionCodes[order.booth_id]}
         boothName={multiBooth ? boothName.get(order.booth_id) : undefined}
         agingMin={boardSettings.aging_min}
         overdueMin={boardSettings.overdue_min}
@@ -765,7 +871,7 @@ export function RealtimeOrderBoard({
             booths.length > 1 && (
               <Button
                 variant="outline"
-                className="rounded-full"
+                className={HEADER_BUTTON}
                 onClick={() => setBoothDialogOpen(true)}
                 aria-label={`Booth status, ${activeBoothCount} of ${booths.length} open`}
               >
@@ -783,9 +889,13 @@ export function RealtimeOrderBoard({
               </Button>
             )
           )}
+          <CustomerScreenButton
+            booths={booths}
+            defaultBoothId={selectedBooth?.id}
+          />
           <Button
             variant="default"
-            className="rounded-full"
+            className={HEADER_BUTTON}
             onClick={() => setWalkupOpen(true)}
             aria-label="New order"
             data-tour="new-order"
@@ -832,7 +942,16 @@ export function RealtimeOrderBoard({
                 )}
               />
             </span>
-            {idle ? "All clear" : `${visible.length} active`}
+            {/* A phone shows the count alone, so the header's controls and
+                this stay on one row; "active" is still read out. */}
+            {idle ? (
+              "All clear"
+            ) : (
+              <span>
+                {visible.length}
+                <span className="sr-only sm:not-sr-only"> active</span>
+              </span>
+            )}
           </span>
         </div>
       </div>
@@ -895,7 +1014,17 @@ export function RealtimeOrderBoard({
               aria-label="Filter by booth"
               className="h-9 rounded-lg text-sm"
             >
-              <SelectValue />
+              {/* The label is given outright. Left to Radix it is read off
+                  the selected item, which is not mounted until the list has
+                  been opened once, so the trigger painted empty on load. */}
+              <SelectValue>
+                {boothFilterLabel(
+                  effectiveFilter,
+                  visibleBooths,
+                  active.length,
+                  activeCountFor,
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All booths ({active.length})</SelectItem>
@@ -935,7 +1064,7 @@ export function RealtimeOrderBoard({
               onClick={() => setSortOrder(o.value)}
               aria-pressed={sortOrder === o.value}
               className={cn(
-                "rounded-md px-3 py-1.5 font-medium transition-colors",
+                "rounded-md px-3 py-1.5 font-medium transition-colors [@media(pointer:coarse)]:min-h-9",
                 sortOrder === o.value
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -945,39 +1074,23 @@ export function RealtimeOrderBoard({
             </button>
           ))}
         </div>
-        {preparingCount > 0 &&
-          (selectMode ? (
-            <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => {
-                  setSelectMode(false);
-                  setSelectedIds(new Set());
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="rounded-full"
-                disabled={selectedIds.size === 0 || markingReady}
-                onClick={markSelectedReady}
-              >
-                Mark {selectedIds.size} Ready
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto rounded-full"
-              onClick={() => setSelectMode(true)}
-            >
-              Select
-            </Button>
-          ))}
+        {preparingCount > 0 && (
+          <BatchControls
+            selectMode={selectMode}
+            selectedCount={selectedIds.size}
+            allSelected={allSelected}
+            busy={markingReady}
+            onStart={() => setSelectMode(true)}
+            onCancel={() => {
+              setSelectMode(false);
+              setSelectedIds(new Set());
+            }}
+            onToggleAll={() =>
+              setSelectedIds(allSelected ? new Set() : new Set(preparingIds))
+            }
+            onMarkReady={markSelectedReady}
+          />
+        )}
       </div>
 
       {idle ? (
@@ -1030,7 +1143,13 @@ export function RealtimeOrderBoard({
         open={walkupOpen}
         onOpenChange={setWalkupOpen}
         booths={booths.filter(boothIsActive)}
-        initialBoothId={effectiveFilter !== "all" ? effectiveFilter : undefined}
+        // With no booth filtered, start on the booth set up for walk-ups, not
+        // on whichever booth happens to be listed first.
+        initialBoothId={
+          effectiveFilter !== "all"
+            ? effectiveFilter
+            : booths.find((b) => b.walkup_default && boothIsActive(b))?.id
+        }
       />
     </div>
   );

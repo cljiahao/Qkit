@@ -73,10 +73,22 @@ graceMs)` picks the objects in a vendor folder that nothing references and
 - `carousel.ts` — `nearestIndex(scrollLeft, boardWidth, count)`: clamped
   nearest-board-index calculation for a horizontally-scrolling carousel.
 - `carousel.test.ts` — tests clamping and the non-positive-width edge case.
+- `availability.ts` — what a customer can still add to a basket, parsed from
+  `booth_availability` (migration `0096`): `parseAvailability`, `hasLimits`/
+  `holdsApply`, `addBlock` + `addBlockMessage` (why one more of an item cannot
+  go in: the item's stock, the booth's daily total, or the per-order limit,
+  each told apart from "held in another basket"), and `fitCart` (cuts a basket
+  to what is available, trimming from the end). Display and courtesy only;
+  `place_order` and the cap triggers are the real limits.
+- `availability.test.ts` — tests parsing, each block reason and its order of
+  precedence, the messages, and trimming.
 - `cart-storage.ts` — `saveCart`/`loadCart`/`clearCart`: persists the
   in-progress customer cart to `sessionStorage` (keyed `qkit:cart:{boothId}`)
   as compact `ReorderLine`s, validated on read via `isValidLine`; best-effort
   (silently no-ops without `window` or on quota/private-mode errors).
+  `holdSessionId(boothId)` is the random id the tab's basket holds stock under
+  (`qkit:hold:{boothId}`), kept across a refresh so a customer never sees
+  their own held items as someone else's.
 - `cart-storage.test.ts` — tests save/load/clear round-tripping and malformed
   or missing storage.
 - `pending-order.ts` — per-booth session replay key and canonical SHA-256 payload
@@ -140,8 +152,12 @@ graceMs)` picks the objects in a vendor folder that nothing references and
   secret).
 - `menu-csv.ts` — `menuItemsToCsv(items)`/`csvToMenuItems(text)`/
   `optionGroupsFromCsvChoices(choices)`: the qkit-side of the menu-manager's
-  CSV bulk export/import, 9 fixed columns —
-  `name,description,price,cost,available,group_name,group_type,choice_label,choice_price`
+  CSV bulk export/import, 10 fixed columns —
+  `name,description,price,cost,available,group_name,group_type,choice_label,choice_price,choice_code`
+  (`choice_code` is the choice's short code on the order ticket, at most
+  `OPTION_CODE_MAX` characters; it is last so a file exported before it
+  existed still imports unchanged, and a blank cell leaves the choice printing
+  in full)
   (`cost` added 2026-09-01, the item's own private `cost_cents`; the last 4
   customization columns added the same day; dollars not cents for
   spreadsheet readability; choice-level cost delta and allergens are
@@ -292,7 +308,7 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   is what the order-status page actually renders, on the theory that an
   unmet precise promise erodes trust more than an upfront-honest range),
   `queuePositionLabel` (the no-time-data fallback, "N orders ahead of you"),
-  `orderProgressIndex` (customer 3-segment progress bar), `displayOrderNumber`
+  `ORDER_STAGES` + `orderStageIndex` (the customer page's four stages, Received, Preparing, Ready, Collected; Ready and Collected are separate so a collected order never reads as one still waiting, pending and confirmed both sit on Received, and a cancelled order is off the track at -1), `displayOrderNumber`
   (board_settings.daily_order_number_reset's display-only "position among
   today's orders" number — pure arithmetic on the immutable `order_number`/
   `created_at` relative to a caller-supplied baseline, never a live recount;
@@ -498,6 +514,14 @@ boolean`, migration 0080 — orders, booth_item_sold —
   (a real CodeQL finding: remote property injection).
 - `tour-ids.test.ts` — asserts every `TOUR_IDS` entry parses and an
   arbitrary string (including `"__proto__"`) is rejected.
+- `ticket.ts` — what the order ticket prints, kept pure so it is unit-tested
+  apart from the card: `buildOptionCodes(menuItems)` (a booth's short codes
+  keyed by item, group and choice label, since an order stores labels),
+  `ticketOptions(item, codes)` (code where set, full choice otherwise, group
+  prefixed when two would read the same), `suggestOptionCode(label)`
+  (initials, offered as a placeholder and never applied), and
+  `ticketAttention(...)` (the single most urgent flag for a ticket, or
+  null). `OPTION_CODE_MAX` bounds a code's length.
 - `tz.ts` — Singapore-only wall-clock helpers built on cached
   `Intl.DateTimeFormat` instances: `sgtHour`/`sgtMinutes`/`sgtWeekday`,
   `WEEKDAY_ORDER`/`WEEKDAY_LABELS`, display formatters `shortDay`/

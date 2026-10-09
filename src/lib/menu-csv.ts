@@ -1,6 +1,7 @@
 import type { MenuItemFormInput } from "./schemas";
 import type { OptionGroup } from "./types";
 import { spreadsheetText } from "./spreadsheet-text";
+import { OPTION_CODE_MAX } from "./ticket";
 
 // Quoted fields retain their embedded line breaks across export and import.
 
@@ -9,8 +10,10 @@ function csvField(raw: string): string {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+// choice_code (the choice's short code on the order ticket) is the last
+// column, so a file exported before it existed still imports unchanged.
 const CSV_HEADER =
-  "name,description,price,cost,available,group_name,group_type,choice_label,choice_price";
+  "name,description,price,cost,available,group_name,group_type,choice_label,choice_price,choice_code";
 
 function itemRowToCsv(it: MenuItemFormInput): string {
   return [
@@ -19,6 +22,7 @@ function itemRowToCsv(it: MenuItemFormInput): string {
     it.price_cents == null ? "" : (it.price_cents / 100).toFixed(2),
     it.cost_cents == null ? "" : (it.cost_cents / 100).toFixed(2),
     it.available ? "true" : "false",
+    "",
     "",
     "",
     "",
@@ -42,6 +46,7 @@ function choiceRowToCsv(
     choice.price_delta_cents == null
       ? ""
       : (choice.price_delta_cents / 100).toFixed(2),
+    csvField(choice.code ?? ""),
   ].join(",");
 }
 
@@ -61,8 +66,8 @@ export function menuItemsToCsv(items: MenuItemFormInput[]): string {
 export function menuCsvTemplate(): string {
   return [
     CSV_HEADER,
-    "Kopi O,Local black coffee,1.80,0.60,true,,,,",
-    "Roti Prata,,,,true,,,,",
+    "Kopi O,Local black coffee,1.80,0.60,true,,,,,",
+    "Roti Prata,,,,true,,,,,",
   ].join("\n");
 }
 
@@ -101,6 +106,9 @@ export interface CsvChoiceRow {
   groupType: "one" | "any";
   choiceLabel: string;
   choicePrice_cents: number | undefined;
+  // Present only when the row sets one; a blank cell leaves the choice
+  // printing in full on the ticket.
+  choiceCode?: string;
   error?: string;
 }
 
@@ -136,6 +144,7 @@ interface ParsedRowFields {
   groupType: string;
   choiceLabel: string;
   choicePrice: string;
+  choiceCode: string;
 }
 
 function parseRowFields(line: string): ParsedRowFields {
@@ -149,6 +158,7 @@ function parseRowFields(line: string): ParsedRowFields {
     groupType = "",
     choiceLabel = "",
     choicePrice = "",
+    choiceCode = "",
   ] = parseCsvLine(line);
   return {
     name,
@@ -160,6 +170,7 @@ function parseRowFields(line: string): ParsedRowFields {
     groupType,
     choiceLabel,
     choicePrice,
+    choiceCode,
   };
 }
 
@@ -199,14 +210,19 @@ function parseChoiceRow(
     fields.choicePrice,
     "choice price",
   );
+  const choiceCode = fields.choiceCode.trim();
+  const codeError =
+    choiceCode.length > OPTION_CODE_MAX
+      ? `Short code "${choiceCode}" is longer than ${OPTION_CODE_MAX} characters`
+      : undefined;
+  const error = parsedChoicePrice.error ?? codeError;
   return {
     groupName,
     groupType,
     choiceLabel,
     choicePrice_cents: parsedChoicePrice.cents,
-    ...(parsedChoicePrice.error
-      ? { error: `Row ${rowNumber}: ${parsedChoicePrice.error}` }
-      : {}),
+    ...(choiceCode && !codeError ? { choiceCode } : {}),
+    ...(error ? { error: `Row ${rowNumber}: ${error}` } : {}),
   };
 }
 
@@ -306,6 +322,7 @@ export function optionGroupsFromCsvChoices(
       ...(c.choicePrice_cents != null
         ? { price_delta_cents: c.choicePrice_cents }
         : {}),
+      ...(c.choiceCode ? { code: c.choiceCode } : {}),
     });
   }
   return groups;

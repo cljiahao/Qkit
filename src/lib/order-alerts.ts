@@ -157,6 +157,11 @@ function stopActiveNotes(ctx: AudioContext): void {
   activeNotesByCtx.set(ctx, []);
 }
 
+// seconds between note onsets (no overlap → no clip)
+const NOTE_SPACING = 0.2;
+const NOTE_DURATION = 0.22;
+const PEAK_GAIN = 0.4;
+
 // Schedules a sequence of notes on the shared context — the engine behind
 // every board sound preset. Square waves carry a full stack of odd harmonics
 // (triangle's roll off fast, reading thin/hollow next to stall noise) — that's
@@ -197,11 +202,6 @@ function playNotes(
     }
   })();
 }
-
-// seconds between note onsets (no overlap → no clip)
-const NOTE_SPACING = 0.2;
-const NOTE_DURATION = 0.22;
-const PEAK_GAIN = 0.4;
 
 // G5 · C6 · E6 (major triad), rising, then the triad again. ~1.2s total — loud
 // and long enough to catch a customer/vendor not staring at the screen.

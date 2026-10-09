@@ -53,6 +53,7 @@ import { CloseBoothControl } from "./close-booth-control";
 import { saveBooth, deleteBooth } from "./actions";
 import { boothFormSchema } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
+import { ProLock } from "@/components/pro-lock";
 import type { BoothHours } from "@/lib/hours";
 import type { PaymentConfig, SocialLinks } from "@/lib/types";
 import type { BookingStatus } from "@/lib/paykit/client";
@@ -75,6 +76,9 @@ interface Props {
     // Display-only; items are edited on the dedicated menu-manager page.
     menuItemCount: number;
     payment: PaymentConfig | null;
+    // The vendor's payment details from paykit, whatever this booth is set
+    // to: picking a payment method again restores them instead of blanks.
+    savedPayment?: PaymentConfig | null;
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
     walkup_default: boolean;
@@ -82,11 +86,95 @@ interface Props {
     printkit_location_id: string | null;
     paykit_booking_id: string | null;
     daily_cup_cap: number | null;
+    max_items_per_order?: number | null;
     // Fetched server-side (paykit's GET /api/v1/bookings/{id}) — see
     // BookingStatusSection's own doc comment for what null vs. undefined
     // mean here.
     bookingStatus?: BookingStatus | null;
   };
+}
+
+// A blank number field means "no limit", sent as null (the same convention as
+// board_settings.default_prep_minutes in the dashboard settings form).
+function limitOrNull(text: string): number | null {
+  return text.trim() === "" ? null : Number(text.trim());
+}
+
+function LimitField({
+  id,
+  label,
+  hint,
+  max,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  max: number;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+      <Label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </Label>
+      <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
+      <Input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={max}
+        placeholder="No limit"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-2 max-w-40"
+      />
+    </div>
+  );
+}
+
+const DAILY_LIMIT_LABEL = "Stop after this many items each day";
+
+// The daily limit on a plan without stock caps. With none set it is an
+// upgrade prompt. With one already set (from a pass that has since ended) it
+// keeps working, and the vendor can see it and take it off, but not change it.
+function LockedDailyLimit({
+  value,
+  onRemove,
+}: {
+  value: string;
+  onRemove: () => void;
+}) {
+  if (value === "")
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3">
+        <ProLock feature="stock_cap" label="Pro" />
+        <span className="text-sm text-muted-foreground">
+          {DAILY_LIMIT_LABEL}
+        </span>
+      </div>
+    );
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+      <p className="text-sm font-medium">{DAILY_LIMIT_LABEL}</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Set to {value}. It keeps working until you remove it. Changing it needs
+        an Event pass or Pro.
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="mt-2 rounded-lg"
+        onClick={onRemove}
+      >
+        Remove limit
+      </Button>
+    </div>
+  );
 }
 
 function qrImageOf(payment: PaymentConfig | null): string | null {
@@ -148,11 +236,15 @@ export function BoothForm({
   const [paykitBookingId, setPaykitBookingId] = useState<string | null>(
     initial?.paykit_booking_id ?? null,
   );
-  // Kept as the raw text the vendor typed, so clearing the field reads as
-  // "no cap" rather than 0. Converted at submit, the same convention as
-  // board_settings.default_prep_minutes in the dashboard settings form.
+  // Both limits are kept as the raw text the vendor typed, so clearing a
+  // field reads as "no limit" rather than 0. Converted at submit.
   const [dailyCupCap, setDailyCupCap] = useState(
     initial?.daily_cup_cap != null ? String(initial.daily_cup_cap) : "",
+  );
+  const [maxItemsPerOrder, setMaxItemsPerOrder] = useState(
+    initial?.max_items_per_order != null
+      ? String(initial.max_items_per_order)
+      : "",
   );
   const { pending: saving, run: runSave } = useAsyncAction(
     "Could not save the booth. Refresh to check its status before retrying.",
@@ -197,8 +289,8 @@ export function BoothForm({
         walkup_default: walkupDefault,
         print_enabled: printEnabled,
         paykit_booking_id: paykitBookingId,
-        daily_cup_cap:
-          dailyCupCap.trim() === "" ? null : Number(dailyCupCap.trim()),
+        daily_cup_cap: limitOrNull(dailyCupCap),
+        max_items_per_order: limitOrNull(maxItemsPerOrder),
       };
       const parsed = boothFormSchema.safeParse(candidate);
       if (!parsed.success) {
@@ -374,26 +466,30 @@ export function BoothForm({
               />
             </div>
 
-            <div className="rounded-xl border border-border bg-card px-4 py-3">
-              <Label htmlFor="daily-cup-cap" className="text-sm font-medium">
-                Stop after this many cups each day
-              </Label>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Counts cups, not orders, so one order of four still counts four.
-                Leave blank for no limit. Resets at midnight.
-              </p>
-              <Input
+            {entitlement.stockCaps ? (
+              <LimitField
                 id="daily-cup-cap"
-                type="number"
-                inputMode="numeric"
-                min={1}
+                label={DAILY_LIMIT_LABEL}
+                hint="Counts every item you sell, whatever it is, so an order of four counts four. Leave blank for no limit. Resets at midnight."
                 max={100000}
-                placeholder="No limit"
                 value={dailyCupCap}
-                onChange={(e) => setDailyCupCap(e.target.value)}
-                className="mt-2 max-w-40"
+                onChange={setDailyCupCap}
               />
-            </div>
+            ) : (
+              <LockedDailyLimit
+                value={dailyCupCap}
+                onRemove={() => setDailyCupCap("")}
+              />
+            )}
+
+            <LimitField
+              id="max-items-per-order"
+              label="Most items in one order"
+              hint="Stops one customer taking the whole tray. Orders you key in yourself are not limited. Leave blank for no limit."
+              max={100}
+              value={maxItemsPerOrder}
+              onChange={setMaxItemsPerOrder}
+            />
 
             {walkupDefault && (
               <BookingStatusSection
@@ -445,6 +541,7 @@ export function BoothForm({
             <PaymentSection
               vendorId={vendorId}
               value={payment}
+              saved={initial?.savedPayment ?? null}
               onChange={setPayment}
             />
           </Section>

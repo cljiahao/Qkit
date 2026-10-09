@@ -206,7 +206,7 @@ export function MenuManager({
     <div className="mx-auto max-w-lg space-y-6 md:max-w-2xl">
       <Link
         href={`/dashboard/booths/${boothId}`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        className="tap-area inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" /> Back to {boothName}
       </Link>
@@ -219,11 +219,13 @@ export function MenuManager({
               <span className="block max-w-64">
                 CSV columns: name, description, price, cost, available. One row
                 per item, price/cost optional. Add group_name, group_type
-                (one/any), choice_label, choice_price rows right after an item
-                for its customization.
+                (one/any), choice_label, choice_price, choice_code rows right
+                after an item for its customization. choice_code is the short
+                code printed on the order ticket, up to 6 characters.
               </span>
             }
             ariaLabel="CSV column format"
+            trigger="tap"
           />
         </div>
         <div className="flex gap-2">

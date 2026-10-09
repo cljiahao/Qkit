@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
+  ABANDONED_PAYMENT_MS,
+  isAbandonedPayment,
   isTerminal,
   sortActiveOrders,
   orderAgeTone,
   elapsedMinutes,
   elapsedLabel,
-  orderProgressIndex,
-  ORDER_PROGRESS_SEGMENTS,
+  orderStageIndex,
+  ORDER_STAGES,
   buildAdvancePatch,
   ordersAheadOf,
   estimateLabel,
@@ -295,30 +297,30 @@ describe("isStaleOrderView", () => {
   });
 });
 
-describe("orderProgressIndex", () => {
-  it("lights the first segment for the earliest states", () => {
-    expect(orderProgressIndex("pending")).toBe(0);
-    expect(orderProgressIndex("confirmed")).toBe(0);
+describe("orderStageIndex", () => {
+  it("puts both early states on Received", () => {
+    expect(orderStageIndex("pending")).toBe(0);
+    expect(orderStageIndex("confirmed")).toBe(0);
   });
 
-  it("advances through preparing and ready/completed", () => {
-    expect(orderProgressIndex("preparing")).toBe(1);
-    expect(orderProgressIndex("ready")).toBe(2);
-    expect(orderProgressIndex("completed")).toBe(2);
+  it("gives Preparing, Ready and Collected a stage each", () => {
+    expect(orderStageIndex("preparing")).toBe(1);
+    expect(orderStageIndex("ready")).toBe(2);
+    // Collected is its own stage, not folded into Ready: a collected order must
+    // not look like one still waiting on the shelf.
+    expect(orderStageIndex("completed")).toBe(3);
   });
 
-  it("has no progress for a cancelled order, and fits the segment count", () => {
-    expect(orderProgressIndex("cancelled")).toBe(-1);
-    // Every non-cancelled index is a valid segment slot.
-    for (const s of [
+  it("keeps a cancelled order off the track, and every other index on it", () => {
+    expect(orderStageIndex("cancelled")).toBe(-1);
+    for (const status of [
       "pending",
       "confirmed",
       "preparing",
       "ready",
       "completed",
     ] as const) {
-      expect(orderProgressIndex(s)).toBeLessThan(ORDER_PROGRESS_SEGMENTS);
-      expect(orderProgressIndex(s)).toBeGreaterThanOrEqual(0);
+      expect(orderStageIndex(status)).toBeLessThan(ORDER_STAGES.length);
     }
   });
 });
@@ -578,5 +580,28 @@ describe("overtakenOrderIds", () => {
       o("fourteen", "preparing", 14),
     ]);
     expect([...ids].sort()).toEqual(["eight", "ten"]);
+  });
+});
+
+describe("isAbandonedPayment", () => {
+  const NOW = Date.parse("2026-10-08T12:00:00Z");
+  const minutesAgo = (m: number) => new Date(NOW - m * 60_000).toISOString();
+
+  it("is false inside the 30 minute payment window", () => {
+    expect(isAbandonedPayment(minutesAgo(5), NOW)).toBe(false);
+    expect(isAbandonedPayment(minutesAgo(30), NOW)).toBe(false);
+  });
+
+  it("is true once the window has passed", () => {
+    expect(isAbandonedPayment(minutesAgo(31), NOW)).toBe(true);
+    expect(isAbandonedPayment(minutesAgo(60 * 24 * 40), NOW)).toBe(true);
+  });
+
+  it("is false for a date it cannot read, so a bad row is not refused", () => {
+    expect(isAbandonedPayment("not a date", NOW)).toBe(false);
+  });
+
+  it("uses the same window the sweep cancels on", () => {
+    expect(ABANDONED_PAYMENT_MS).toBe(30 * 60_000);
   });
 });

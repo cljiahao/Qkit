@@ -21,7 +21,7 @@ export function SocialLinksRow({ links }: { links: SocialLinks }) {
           target="_blank"
           rel="noopener noreferrer"
           aria-label={label}
-          className="grid size-10 place-items-center rounded-full border border-black/5 bg-white text-neutral-700 shadow-sm transition-transform hover:scale-105"
+          className="grid size-11 place-items-center rounded-full border border-black/5 bg-white text-neutral-700 shadow-sm transition-transform hover:scale-105"
         >
           <Icon className="size-4" />
         </a>

@@ -8,6 +8,7 @@ import {
 } from "@/lib/schemas";
 import { isBoothOpen, nextOpenLabel } from "@/lib/hours";
 import { parseRemaining } from "@/lib/stock";
+import { parseAvailability } from "@/lib/availability";
 import { OrderForm } from "@/components/order/order-form";
 import { RecentOrders } from "@/components/order/recent-orders";
 import { ExpiredCode } from "@/components/order/expired-code";
@@ -35,34 +36,44 @@ const boothForOrder = z.object({
 });
 
 /**
- * Cups the booth can still serve today, or null when it has no cap
- * (booths.daily_cup_cap, migration 0094). Read separately from
- * get_booth_for_order so that RPC's public-safe shape stays as it is, and
- * degraded to null on any failure: the orders_daily_cup_cap trigger is the
- * real limit, so a failure here costs a warning, never correctness.
+ * The booth's whole-basket limits: items left in its daily total
+ * (booths.daily_cup_cap, migration 0094, which counts every item sold) and
+ * the most items one order may carry (max_items_per_order, 0096). Either is
+ * null when the booth does not set it.
+ *
+ * `left` here is the stock itself, with nobody's basket hold taken off. This
+ * page cannot know which hold is the visitor's own, so subtracting them would
+ * tell a customer who refreshes with the last items in their basket that the
+ * stall is sold out. OrderForm applies holds once it knows its own.
+ *
+ * Read separately from get_booth_for_order so that RPC's public-safe shape
+ * stays as it is, and degraded to "no limits" on any failure: the triggers
+ * are the real limits, so a failure here costs a warning, never correctness.
  */
-async function loadCupsLeft(
+async function loadBasketLimits(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   boothId: string,
-): Promise<number | null> {
+): Promise<{ left: number | null; maxPerOrder: number | null }> {
   try {
-    const { data, error } = await supabase.rpc("booth_cups_left", {
+    const { data, error } = await supabase.rpc("booth_availability", {
       p_booth_id: boothId,
+      p_session: null,
     });
-    if (error) {
-      console.error("booth_cups_left failed", error.message);
-      return null;
-    }
-    return typeof data === "number" ? data : null;
+    if (error) console.error("booth_availability failed", error.message);
+    const availability = error ? null : parseAvailability(data);
+    if (!availability) return { left: null, maxPerOrder: null };
+    return {
+      left:
+        availability.left === null
+          ? null
+          : availability.left + availability.leftHeld,
+      maxPerOrder: availability.maxPerOrder,
+    };
   } catch {
-    console.error("booth_cups_left request failed");
-    return null;
+    console.error("booth_availability request failed");
+    return { left: null, maxPerOrder: null };
   }
 }
-
-// Below this many cups left, the page says how many are left. Above it the
-// number is noise: nobody queues differently at 40 cups remaining.
-const LOW_STOCK_CUPS = 10;
 
 export default async function OrderEntryPage({ params }: Props) {
   const { code } = await params;
@@ -90,11 +101,14 @@ export default async function OrderEntryPage({ params }: Props) {
   const reopen = open
     ? null
     : nextOpenLabel({ is_active: booth.is_active, hours }, nowIso);
-  const cupsLeft = await loadCupsLeft(supabase, booth.booth_id);
-  const soldOutToday = cupsLeft === 0;
+  const { left: itemsLeft, maxPerOrder } = await loadBasketLimits(
+    supabase,
+    booth.booth_id,
+  );
+  const soldOutToday = itemsLeft === 0;
   const closed = !open || !booth.servable || soldOutToday;
   const remaining = parseRemaining(booth.remaining);
-  // Three closed reasons, most specific first: the day's cups are gone, the
+  // Three closed reasons, most specific first: the day's stock is gone, the
   // booth is paused, or it is simply outside opening hours.
   let closedTitle = "Closed right now";
   let closedDetail = `${reopen ?? "Not taking orders at the moment."} You can browse the menu below.`;
@@ -153,16 +167,6 @@ export default async function OrderEntryPage({ params }: Props) {
           </div>
         )}
       </div>
-      {cupsLeft != null && cupsLeft > 0 && cupsLeft <= LOW_STOCK_CUPS && (
-        <div className="mb-7 rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center md:mx-auto md:max-w-lg">
-          <p className="text-sm font-semibold">
-            Only {cupsLeft} {cupsLeft === 1 ? "cup" : "cups"} left today
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Once they are gone this stall stops taking orders until tomorrow.
-          </p>
-        </div>
-      )}
       <OrderForm
         code={code}
         boothId={booth.booth_id}
@@ -170,6 +174,8 @@ export default async function OrderEntryPage({ params }: Props) {
         menuCategories={categories}
         closed={closed}
         remaining={remaining}
+        left={itemsLeft}
+        maxPerOrder={maxPerOrder}
       />
     </div>
   );

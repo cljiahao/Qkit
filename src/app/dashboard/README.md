@@ -61,3 +61,7 @@ The authenticated vendor area — a shared header/nav shell wrapping the live or
 ## Parent
 
 [app](../README.md)
+
+## Current board and walk-up controls
+
+Select all targets eligible preparing orders. The customer-screen dialog opens the public booth display. Walk-up entry places the order before its optional payment step; collecting payment calls explicit Paykit-backed confirmation. Stale-order sweeps update fulfillment state independently of payment settlement.

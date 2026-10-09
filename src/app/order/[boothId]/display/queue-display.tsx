@@ -139,7 +139,7 @@ export function QueueDisplay({ boothId, boothName, initialOrders }: Props) {
               unlockAudio();
               setSoundEnabled(true);
             }}
-            className="flex shrink-0 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground"
+            className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground"
           >
             <Volume2 className="size-4" />
             Enable sound

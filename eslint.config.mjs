@@ -42,6 +42,25 @@ const eslintConfig = [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      // A `const` read from inside a closure that is built before the
+      // declaration runs is a temporal-dead-zone crash at request time, not a
+      // type error: tsc only flags a direct read in the same scope. One of
+      // those took the vendor order board down in production (a booth .map
+      // reading a `cupsToday` declared below it) with every other gate green,
+      // so this is an error rather than a warning. Functions and types are
+      // exempt: hoisted declarations below their use are the house style for
+      // component helpers.
+      "@typescript-eslint/no-use-before-define": [
+        "error",
+        {
+          functions: false,
+          classes: false,
+          variables: true,
+          enums: false,
+          typedefs: false,
+          ignoreTypeReferences: true,
+        },
+      ],
     },
   },
   {
@@ -118,6 +137,12 @@ const eslintConfig = [
       "sonarjs/no-hardcoded-ip": "off",
       "sonarjs/no-hardcoded-passwords": "off",
       "sonarjs/pseudo-random": "off",
+      // A vi.mock factory reads fixture constants declared below it. vitest
+      // hoists the vi.mock call above the imports but only invokes the factory
+      // when the mocked module is first loaded, by which time the constant
+      // exists, so the pattern is safe here and common enough that the gate
+      // would be noise.
+      "@typescript-eslint/no-use-before-define": "off",
     },
   },
   {

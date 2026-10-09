@@ -7,7 +7,9 @@ the current (non-legacy) customer ordering entry point.
 
 ## Contents
 
-- `actions.ts` — `placeOrder(code, input, idempotencyKey)` server action:
+- `actions.ts` — `placeOrder(code, input, idempotencyKey, holdSession?)`
+  (the optional last argument is the basket's hold session; a placed order
+  releases that hold, best-effort) server action:
   validates `code`/`idempotencyKey`/`input` (`placeOrderSchema`), applies a
   best-effort per-IP flood guard (`rateLimit`, 8/60s, fails open), normalizes
   a blank/whitespace-only `customerPhone` to `undefined` (so "left blank" and
@@ -105,14 +107,25 @@ the current (non-legacy) customer ordering entry point.
   two-pane sidebar layout has room beside the item list on tablet/desktop;
   the header/hero-image/closed-banner block stays wrapped in its own
   `md:max-w-lg` so it doesn't stretch wide alongside the wider menu below.
-  `loadCupsLeft` calls `booth_cups_left` (migration `0094`) for the booth's
-  remaining cups today, or null when it has no cap: zero makes the page read
-  "Sold out for today" and closes ordering, and anything up to
-  `LOW_STOCK_CUPS` (10) shows an "Only N cups left today" note above
-  `OrderForm`, so nobody builds a cart only to be refused by the
-  `orders_daily_cup_cap` trigger at checkout. Read separately from
-  `get_booth_for_order` to leave that RPC's public-safe shape alone, and
-  degraded to null on any failure, since the trigger is the real limit.
+  `loadBasketLimits` calls `booth_availability` (migration `0096`) for the
+  items left in the booth's daily total and its per-order limit, either null
+  when not set: zero left makes the page read "Sold out for today" and closes
+  ordering. Both go to `OrderForm`, which stops a basket at them and prints
+  the "Only N items left today" note itself (`StockNotice`), from availability
+  net of other baskets' holds, so it can never contradict "the last items are
+  in other baskets". The total this page uses is the stock itself, with no
+  basket hold taken off: the server cannot tell which hold is the visitor's
+  own. Read
+  separately from `get_booth_for_order` to leave that RPC's public-safe shape
+  alone, and degraded to "no limits" on any failure, since the triggers are
+  the real limits.
+- `hold-actions.ts` — `holdCart(boothId, session, lines)` places or renews the
+  basket's hold (`hold_cart`, migration `0096`) behind a per-IP guard and
+  returns the availability the customer should see; `readAvailability` only
+  reads, for the menu's periodic refresh. Both return null when the call
+  could not be made, and the caller keeps what it was showing.
+- `hold-actions.test.ts` — unit tests (RPC mocked): the hold and read calls,
+  validation refusing before any RPC, the per-IP guard, and null on error.
 - `loading.tsx` — animated skeleton (title bar + 5 placeholder menu rows)
   shown while `page.tsx`'s server fetch resolves — the QR-scan hot path,
   where event-site network can be slow.

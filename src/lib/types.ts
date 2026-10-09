@@ -160,6 +160,9 @@ export type OptionChoice = {
   // -> ["dairy"], "Oat Milk" -> []) — see MenuItem.allergens for the
   // fixed-ingredient half of this model.
   allergens?: AllergenTag[];
+  // The vendor's own shorthand for this choice on the order ticket ("LS" for
+  // "Less sugar"). A choice without one prints in full.
+  code?: string;
 };
 export type OptionGroup = {
   id: string;
@@ -527,6 +530,7 @@ export interface Database {
           paykit_booking_id: string | null;
           printkit_location_id: string | null;
           daily_cup_cap: number | null;
+          max_items_per_order: number | null;
         };
         Insert: {
           id?: string;
@@ -548,6 +552,7 @@ export interface Database {
           paykit_booking_id?: string | null;
           printkit_location_id?: string | null;
           daily_cup_cap?: number | null;
+          max_items_per_order?: number | null;
         };
         Update: {
           id?: string;
@@ -569,6 +574,7 @@ export interface Database {
           paykit_booking_id?: string | null;
           printkit_location_id?: string | null;
           daily_cup_cap?: number | null;
+          max_items_per_order?: number | null;
         };
         Relationships: [
           {
@@ -745,6 +751,14 @@ export interface Database {
       booth_cups_left: {
         Args: { p_booth_id: string };
         Returns: number | null;
+      };
+      booth_availability: {
+        Args: { p_booth_id: string; p_session: string | null };
+        Returns: Json;
+      };
+      hold_cart: {
+        Args: { p_booth_id: string; p_session: string; p_items: Json };
+        Returns: Json;
       };
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number };

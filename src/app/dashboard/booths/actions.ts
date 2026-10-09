@@ -323,6 +323,23 @@ async function discardUnsavedUploads(
   }
 }
 
+// The booth-wide daily total is a stock cap, the same entitlement as the
+// per-item sold-out limit, so a plan without it cannot set one. A limit
+// already stored is left alone, though: the key is left out of the update
+// rather than nulled, so saving a booth's name does not silently switch off
+// a limit the stall is relying on. Removing it is always allowed, so a vendor
+// is never stuck with a limit they cannot change. The per-order limit is for
+// every tier.
+function dailyCapPatch(
+  entitlement: { stockCaps: boolean },
+  cap: number | null,
+  creating: boolean,
+): { daily_cup_cap?: number | null } {
+  if (entitlement.stockCaps) return { daily_cup_cap: cap };
+  if (cap === null || creating) return { daily_cup_cap: null };
+  return {};
+}
+
 async function persistBooth(
   input: BoothFormInput,
   persisted: Set<string>,
@@ -384,7 +401,8 @@ async function persistBooth(
     walkup_default: data.walkup_default,
     print_enabled: data.print_enabled,
     paykit_booking_id: data.paykit_booking_id,
-    daily_cup_cap: data.daily_cup_cap,
+    max_items_per_order: data.max_items_per_order,
+    ...dailyCapPatch(entitlement, data.daily_cup_cap, !data.boothId),
   };
 
   const result = await upsertBoothRow(supabase, row, data.boothId, user.id);

@@ -300,6 +300,63 @@ describe("loadPreClaimContext", () => {
     expect(await loadPreClaimContext(BOOTH, TOKEN)).toBeNull();
     expect(createCheckoutMock).not.toHaveBeenCalled();
   });
+
+  it("returns an expired state for an order unpaid past the window, minting no QR", async () => {
+    ordersMaybeSingle.mockResolvedValueOnce({
+      data: {
+        id: "order-1",
+        total_cents: 550,
+        payment_status: "pending",
+        status: "pending",
+        created_at: new Date(Date.now() - 40 * 24 * 60 * 60_000).toISOString(),
+      },
+    });
+    expect(await loadPreClaimContext(BOOTH, TOKEN)).toEqual({
+      state: "expired",
+    });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("still serves a pending order placed a few minutes ago", async () => {
+    ordersMaybeSingle.mockResolvedValueOnce({
+      data: {
+        id: "order-1",
+        total_cents: 550,
+        payment_status: "pending",
+        status: "pending",
+        created_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+      },
+    });
+    boothsMaybeSingle.mockResolvedValueOnce({
+      data: { vendor_id: "vendor-1" },
+    });
+    createCheckoutMock.mockResolvedValueOnce({ ok: false, error: "down" });
+
+    const result = await loadPreClaimContext(BOOTH, TOKEN);
+    expect(result).toMatchObject({ state: "pending", orderId: "order-1" });
+  });
+});
+
+describe("claimPayment on an expired order", () => {
+  it("refuses a claim for an order unpaid past the window, before any upload", async () => {
+    ordersMaybeSingle.mockResolvedValueOnce({
+      data: {
+        id: "order-1",
+        total_cents: 550,
+        payment_status: "pending",
+        status: "pending",
+        created_at: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
+      },
+    });
+
+    const result = await claimPayment(BOOTH, TOKEN, fakeFile("proof-bytes"));
+
+    expect(result).toEqual({
+      success: false,
+      error: "This order expired before it was paid. Please place a new one.",
+    });
+    expect(storageUploadMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("claimPayment (photo required, deferred numbering)", () => {

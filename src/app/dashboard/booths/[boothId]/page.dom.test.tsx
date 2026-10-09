@@ -133,14 +133,36 @@ describe("booth editor data boundary", () => {
     [{ kind: "unknown" }, null],
     [{ hasConfig: false }, null],
   ])("prefills supported remote configuration %j", async (data, payment) => {
+    booth.current = {
+      ...booth.current,
+      payment: payment ? { kind: payment.kind } : null,
+    };
     config.mockResolvedValue({ ok: true, data: { hasConfig: true, ...data } });
     render(await page());
     expect(form).toHaveBeenCalledWith(
       expect.objectContaining({
-        initial: expect.objectContaining({ payment }),
+        initial: expect.objectContaining({ payment, savedPayment: payment }),
       }),
     );
   });
+  it.each(["paynow", "pointer"])(
+    "does not enable booth payment merely because vendor configuration is %s",
+    async (kind) => {
+      config.mockResolvedValue({ ok: true, data: { hasConfig: true, kind } });
+      render(await page());
+      expect(form).toHaveBeenCalledWith(
+        expect.objectContaining({
+          initial: expect.objectContaining({
+            payment: null,
+            savedPayment:
+              kind === "paynow"
+                ? { kind, payee_name: "" }
+                : { kind, label: "" },
+          }),
+        }),
+      );
+    },
+  );
   it.each([true, false])(
     "shows booking status only when its lookup succeeds: %s",
     async (ok) => {

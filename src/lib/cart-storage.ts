@@ -40,6 +40,30 @@ export function loadCart(boothId: string): ReorderLine[] {
   }
 }
 
+const HOLD_PREFIX = "qkit:hold:";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The random id this tab's basket holds stock under (qkit.cart_holds,
+ * migration 0096). Stored beside the cart so a refresh keeps the same id:
+ * a fresh one would leave the old hold standing for its five minutes and the
+ * customer would see their own items as taken by someone else. Identifies a
+ * basket, never a person. With storage unavailable the id lasts one page load,
+ * which costs only that refresh case.
+ */
+export function holdSessionId(boothId: string): string {
+  const fresh = crypto.randomUUID();
+  if (typeof window === "undefined") return fresh;
+  try {
+    const saved = window.sessionStorage.getItem(HOLD_PREFIX + boothId);
+    if (saved && UUID.test(saved)) return saved;
+    window.sessionStorage.setItem(HOLD_PREFIX + boothId, fresh);
+  } catch {
+    // Storage unavailable: use the one-off id.
+  }
+  return fresh;
+}
+
 export function clearCart(boothId: string): void {
   if (typeof window === "undefined") return;
   try {

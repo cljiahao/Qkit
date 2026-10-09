@@ -367,7 +367,7 @@ describe("RealtimeOrderBoard passed-over orders", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getAllByText("Passed over")).toHaveLength(1);
+    expect(screen.getAllByText("A later order is already out")).toHaveLength(1);
   });
 
   it("flags nothing while the queue is served in order", () => {
@@ -392,12 +392,14 @@ describe("RealtimeOrderBoard passed-over orders", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.queryByText("Passed over")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("A later order is already out"),
+    ).not.toBeInTheDocument();
   });
 });
 
 describe("RealtimeOrderBoard cup cap counter", () => {
-  it("shows cups served against the booth's cap", () => {
+  it("shows items sold against the booth's cap", () => {
     render(
       <RealtimeOrderBoard
         booths={[{ ...BOOTHS[0], daily_cup_cap: 200, cups_today: 132 }]}
@@ -406,7 +408,7 @@ describe("RealtimeOrderBoard cup cap counter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("132/200 cups")).toBeInTheDocument();
+    expect(screen.getByText("132/200 items")).toBeInTheDocument();
   });
 
   it("shows nothing for a booth with no cap", () => {
@@ -418,7 +420,7 @@ describe("RealtimeOrderBoard cup cap counter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.queryByText(/cups$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d items$/)).not.toBeInTheDocument();
   });
 
   it("warns inside the last tenth of the cap, so staff can tell the queue", () => {
@@ -430,7 +432,7 @@ describe("RealtimeOrderBoard cup cap counter", () => {
       />,
       { wrapper: TooltipProvider },
     );
-    expect(screen.getByText("185/200 cups")).toHaveClass("text-status-aging");
+    expect(screen.getByText("185/200 items")).toHaveClass("text-status-aging");
   });
 });
 
@@ -712,6 +714,57 @@ describe("RealtimeOrderBoard event-mode (walkup_default)", () => {
     await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b1"));
   });
 
+  it("opens on the walk-up booth, not on the first booth listed", async () => {
+    vi.mocked(getWalkupMenu).mockResolvedValue({
+      menuItems: [],
+      remaining: {},
+      expectsPayment: false,
+      paymentKind: null,
+    });
+    render(
+      <RealtimeOrderBoard
+        booths={[
+          { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+          {
+            id: "b2",
+            name: "Event Stall",
+            is_active: true,
+            open: true,
+            walkup_default: true,
+          },
+        ]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(await screen.findByText("New walk-up order")).toBeInTheDocument();
+    await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b2"));
+    expect(getWalkupMenu).not.toHaveBeenCalledWith("b1");
+  });
+
+  it("does not auto-open for a walk-up booth that is switched off", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={[
+          { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+          {
+            id: "b2",
+            name: "Last Weekend's Event",
+            is_active: false,
+            open: false,
+            walkup_default: true,
+          },
+        ]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.queryByText("New walk-up order")).not.toBeInTheDocument();
+  });
+
   it("does not auto-open the walk-up dialog for an ordinary QR booth", () => {
     render(
       <RealtimeOrderBoard
@@ -792,6 +845,60 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
     expect(advanceOrder).toHaveBeenCalledTimes(2);
   });
 
+  it("selects every preparing order with Select all, leaving ready ones alone", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001", status: "preparing" }),
+          order({ id: "o2", order_number: "0002", status: "preparing" }),
+          order({ id: "o3", order_number: "0003", status: "ready" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /^select$/i }));
+    await user.click(screen.getByRole("button", { name: "Select all" }));
+    // Nothing happens until the vendor reads the count and confirms it.
+    expect(advanceOrder).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /mark 2 ready/i }));
+
+    await waitFor(() => expect(advanceOrder).toHaveBeenCalledTimes(2));
+    expect(advanceOrder).toHaveBeenCalledWith("o1", "preparing");
+    expect(advanceOrder).toHaveBeenCalledWith("o2", "preparing");
+    expect(advanceOrder).not.toHaveBeenCalledWith("o3", "preparing");
+  });
+
+  it("turns Select all into Clear all once everything is ticked", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001", status: "preparing" }),
+          order({ id: "o2", order_number: "0002", status: "preparing" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /^select$/i }));
+    await user.click(screen.getByRole("button", { name: "Select all" }));
+    await user.click(screen.getByRole("button", { name: "Clear all" }));
+
+    expect(
+      screen.getByRole("button", { name: /mark 0 ready/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Select all" }),
+    ).toBeInTheDocument();
+  });
+
   it("reports both completed and rejected requests in a batch", async () => {
     vi.mocked(advanceOrder)
       .mockResolvedValueOnce({ success: true, status: "ready" })
@@ -809,18 +916,36 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
       { wrapper: TooltipProvider },
     );
     await user.click(screen.getByRole("button", { name: /^select$/i }));
-    await user.click(
-      screen.getByRole("checkbox", { name: /select order #0001/i }),
-    );
-    await user.click(
-      screen.getByRole("checkbox", { name: /select order #0002/i }),
-    );
+    await user.click(screen.getByRole("button", { name: "Select all" }));
     await user.click(screen.getByRole("button", { name: /mark 2 ready/i }));
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("1 order couldn't be updated"),
     );
     expect(toast.success).toHaveBeenCalledWith("Marked 1 order ready");
+    expect(advanceOrder).toHaveBeenCalledWith("o1", "preparing");
+    expect(advanceOrder).toHaveBeenCalledWith("o2", "preparing");
+    expect(advanceOrder).toHaveBeenCalledTimes(2);
     expect(screen.getByRole("button", { name: /^select$/i })).toBeEnabled();
+  });
+
+  it("has no separate mark-all button on the board", () => {
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001", status: "preparing" }),
+          order({ id: "o2", order_number: "0002", status: "preparing" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(
+      screen.queryByRole("button", { name: "Mark all ready" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "About Select" }),
+    ).toBeInTheDocument();
   });
 });
 

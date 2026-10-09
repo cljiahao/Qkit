@@ -529,3 +529,65 @@ describe("placeOrder", () => {
     });
   });
 });
+
+describe("placeOrder basket hold", () => {
+  const BOOTH = "22222222-2222-4222-8222-222222222222";
+  const SESSION = "33333333-3333-4333-8333-333333333333";
+
+  function mockRpc(release: () => Promise<unknown>) {
+    rpc.mockImplementation((name: string) => {
+      if (name === "check_rate_limit") return Promise.resolve({ data: true });
+      if (name === "place_order")
+        return Promise.resolve({
+          data: { order_number: "0007", booth_id: BOOTH, access_token: "tok7" },
+          error: null,
+        });
+      if (name === "hold_cart") return release();
+      throw new Error(`unexpected rpc: ${name}`);
+    });
+  }
+
+  it("releases the basket's hold once the order lands", async () => {
+    mockRpc(() => Promise.resolve({ data: null, error: null }));
+    const res = await placeOrder("code123", validInput, IDEM, SESSION);
+
+    expect(res.success).toBe(true);
+    expect(rpc).toHaveBeenCalledWith("hold_cart", {
+      p_booth_id: BOOTH,
+      p_session: SESSION,
+      p_items: [],
+    });
+  });
+
+  it("makes no hold call without a session, or with one that is not an id", async () => {
+    rpc.mockClear();
+    mockRpc(() => Promise.reject(new Error("should not be called")));
+    expect((await placeOrder("code123", validInput, IDEM)).success).toBe(true);
+    expect(
+      (await placeOrder("code123", validInput, IDEM, "nope")).success,
+    ).toBe(true);
+    expect(rpc).not.toHaveBeenCalledWith("hold_cart", expect.anything());
+  });
+
+  it("still places the order when releasing the hold throws", async () => {
+    mockRpc(() => Promise.reject(new Error("network")));
+    const res = await placeOrder("code123", validInput, IDEM, SESSION);
+    expect(res.success).toBe(true);
+  });
+
+  it("explains an order over the booth's per-order limit", async () => {
+    rpc.mockImplementation((name: string) => {
+      if (name === "check_rate_limit") return Promise.resolve({ data: true });
+      return Promise.resolve({
+        data: null,
+        error: { message: "ORDER_TOO_LARGE: order asks for 9 items" },
+      });
+    });
+    const res = await placeOrder("code123", validInput, IDEM);
+    expect(res).toEqual({
+      success: false,
+      error:
+        "That is more than this stall takes in one order. Remove a few items and try again.",
+    });
+  });
+});

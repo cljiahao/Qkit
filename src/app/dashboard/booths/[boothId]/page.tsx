@@ -29,17 +29,14 @@ function initialPaymentFromMarker(data: unknown): PaymentConfig | null {
 }
 
 /**
- * Prefer paykit's own vendor config (the real editable fields) so re-opening
- * an existing booth's Payment settings starts pre-filled; fall back to the
- * `{kind}`-only marker when paykit's call degrades or reports no config.
+ * The vendor's payment details as saved in paykit (the real editable fields),
+ * or null when there are none or paykit's call degrades.
  */
-async function initialPayment(
+async function savedVendorPayment(
   vendorId: string,
-  boothPayment: unknown,
 ): Promise<PaymentConfig | null> {
   const result = await getVendorConfig(vendorId);
-  if (!result.ok || !result.data.hasConfig)
-    return initialPaymentFromMarker(boothPayment);
+  if (!result.ok || !result.data.hasConfig) return null;
 
   const d = result.data;
   if (d.kind === "paynow")
@@ -56,7 +53,23 @@ async function initialPayment(
       ...(d.url ? { url: d.url } : {}),
       ...(d.qrImageUrl ? { qr_image_url: d.qrImageUrl } : {}),
     };
-  return initialPaymentFromMarker(boothPayment);
+  return null;
+}
+
+/**
+ * What the Payment section opens on. The booth's own marker decides whether
+ * this booth takes payment at all; paykit's details only fill the fields in.
+ * Those details are vendor-wide, so reading them alone opened every booth as
+ * "PayNow", including one saved with no online payment, and the next save of
+ * anything on the page then switched payment on for it.
+ */
+function initialPayment(
+  boothPayment: unknown,
+  saved: PaymentConfig | null,
+): PaymentConfig | null {
+  const marker = initialPaymentFromMarker(boothPayment);
+  if (!marker) return null;
+  return saved ?? marker;
 }
 
 /**
@@ -89,7 +102,7 @@ export default async function EditBoothPage({ params }: Props) {
   const { data: booth } = await supabase
     .from("booths")
     .select(
-      "id, name, image_url, is_active, hours, menu_items, payment, social_links, requires_arrival_confirm, walkup_default, print_enabled, printkit_location_id, paykit_booking_id, daily_cup_cap",
+      "id, name, image_url, is_active, hours, menu_items, payment, social_links, requires_arrival_confirm, walkup_default, print_enabled, printkit_location_id, paykit_booking_id, daily_cup_cap, max_items_per_order",
     )
     .eq("id", boothId)
     .maybeSingle();
@@ -98,10 +111,11 @@ export default async function EditBoothPage({ params }: Props) {
 
   const menuItemCount = parseMenuItems(booth.menu_items).length;
 
-  const [payment, bookingStatus] = await Promise.all([
-    initialPayment(vendor.id, booth.payment),
+  const [savedPayment, bookingStatus] = await Promise.all([
+    savedVendorPayment(vendor.id),
     initialBookingStatus(booth.paykit_booking_id),
   ]);
+  const payment = initialPayment(booth.payment, savedPayment);
 
   return (
     <div className="mx-auto max-w-lg md:max-w-4xl">
@@ -118,6 +132,7 @@ export default async function EditBoothPage({ params }: Props) {
           hours: parseBoothHours(booth.hours),
           menuItemCount,
           payment,
+          savedPayment,
           social_links: booth.social_links
             ? parseSocialLinks(booth.social_links)
             : null,
@@ -127,6 +142,7 @@ export default async function EditBoothPage({ params }: Props) {
           printkit_location_id: booth.printkit_location_id,
           paykit_booking_id: booth.paykit_booking_id,
           daily_cup_cap: booth.daily_cup_cap,
+          max_items_per_order: booth.max_items_per_order,
           bookingStatus,
         }}
       />

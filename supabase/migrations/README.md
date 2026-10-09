@@ -32,16 +32,16 @@ The latest forward corrections are:
   privacy, shared option validation, paid-order stock locking, bounded
   order-proof feedback and validated server-owned analytics. Missing optional
   shared metrics are skipped; installed integration errors still propagate.
-- `0096_atomic_board_settings_patch.sql`: caller-scoped partial settings merge
+- `0100_atomic_board_settings_patch.sql`: caller-scoped partial settings merge
   with strict keys, types and merged timing validation under a row lock.
-- `0097_atomic_booth_creation_cap.sql`: owner-only statement triggers enforce
+- `0101_atomic_booth_creation_cap.sql`: owner-only statement triggers enforce
   the free booth cap across inserts and vendor reassignment. Sorted vendor
   locks and a fresh recount serialize competing writes; cap-enforced free
   writes require READ COMMITTED. Paid entitlements retain their existing rules.
-- `0098_scoped_admin_membership.sql`: authenticated admin-membership checks are
+- `0102_scoped_admin_membership.sql`: authenticated admin-membership checks are
   limited to the caller's subject, with privileged service lookups retained;
   anonymous and default PUBLIC execution are revoked.
-- `0099_audit_truncate_privileges.sql`: service-role `TRUNCATE` is revoked on
+- `0103_audit_truncate_privileges.sql`: service-role `TRUNCATE` is revoked on
   the existing audit trails while reads/appends and owner maintenance remain.
 
 Column privileges and RLS work together. Revoking one column does not subtract
@@ -74,3 +74,11 @@ fixtures with separate Paykit checkout prerequisites.
 ## Parent
 
 [supabase](../README.md)
+
+## Upstream ordering additions
+
+- 0096_order_limit_and_cart_holds.sql adds per-order limits and anonymous basket holds. SQL placement enforces stock independently of holds; the current customer UI also blocks and trims baskets using held availability, so sustained anonymous holds remain an availability-abuse concern.
+- 0097_scheduled_order_sweep.sql schedules stale-payment cancellation and ready-order completion when pg_cron is available; verify actual scheduling separately.
+- 0098_order_sweep_indexes.sql indexes the in-flight orders used by that sweep.
+
+The audit additions follow these deployed versions as 0100 through 0103. Local database and isolation-runner validation remain outstanding.

@@ -72,12 +72,24 @@ prompt, metric })`: compact rating widget posting to
 - `landing/` — the sticky landing-page nav (`Nav`, composing `@merqo/ui`'s
   `LandingNav` shell) and the standalone wordmark used on the login page
   (`Wordmark`). See its own README.
+- `hint.tsx` — `Hint({ label, children })`: the small (i) that says what a
+  control is for, opening on tap (`InfoTooltip` from `@merqo/ui` with
+  `trigger="tap"`). The rule it encodes: anything a vendor has to understand
+  gets a `Hint` or visible text, because a hover tooltip never shows on a
+  phone or an iPad; a hover `Tooltip` is only for naming an icon-only button
+  on a desktop. Its 44px touch area on touch devices comes from the
+  `pointer: coarse` block in `globals.css`.
 - `landing-ticket.tsx` — `LandingTicket({ t })`: presentational "order chit"
-  mirroring the real `OrderCard`'s visual language (status badge, payment
-  badge, aging wash, perforated sections) for the landing hero — no server
-  actions, purely decorative sample data.
+  mirroring the real `OrderCard`'s layout for the landing hero: a large
+  number and name, every option on one line with nothing to expand, a single
+  attention line ("Not paid yet", "Says paid. Check the payment", same wording
+  as `ticketAttention`), a status badge only past preparing, the aging wash,
+  and one action button that carries the amount when it confirms a payment.
+  No prices or total, as on the live board. No server actions, purely
+  decorative sample data.
 - `landing-ticket.dom.test.tsx` — RTL test for `LandingTicket` rendering
-  across status/payment/age combinations.
+  across status/payment/age combinations, the single attention line, and
+  options shown without a toggle.
 - `maintenance-banner.tsx` — `MaintenanceBanner({ enabled, message })`:
   site-wide informational banner rendered from the root layout (never blocks
   anything underneath); renders nothing when disabled or the message is
@@ -91,7 +103,18 @@ prompt, metric })`: compact rating widget posting to
   optimization.
 - `order/` — components specific to the customer ordering flow (menu/cart
   form, recent-orders list, expired-code screen). See its own README.
-- `order-card.tsx` — `OrderCard({ order, displayNumber, overtaken, boothName, agingMin,
+- `order-card.tsx` — `OrderCard`, the vendor's order ticket, laid out for
+  reading at a counter: the number (largest, last digit in the accent colour)
+  and the customer's name, one line of always-visible options per item (the
+  vendor's short codes via `optionCodes` where set, see `@/lib/ticket`), a
+  single `AttentionLine` chosen by `ticketAttention` in place of stacked
+  badges, and one next-step button (`TicketActions`). Bump and cancel sit in
+  a `TicketMenu` dropdown; "Preparing" and "Paid" go unstated. `showDate`
+  switches on the history view: date and time, per-line prices and the
+  total, none of which the live board shows. The notes below predate this
+  layout and describe behaviour that is unchanged (undo, payment review,
+  auto-clear, batch select). Signature: `OrderCard({ order, displayNumber,
+  overtaken, optionCodes, boothName, agingMin,
 overdueMin, onUndoWindowChange, showDate, undoMs, readyAutoClearMs, selectable,
 selected, onToggleSelect })`. Item options start expanded, not collapsed behind
   "Show options": whoever writes the order onto a cup needs every

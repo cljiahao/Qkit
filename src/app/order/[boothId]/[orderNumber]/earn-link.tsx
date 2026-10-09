@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 const LOOPKIT_URL =
   process.env.NEXT_PUBLIC_LOOPKIT_URL ?? "https://loopkit-sg.vercel.app";
 const MERQO_METRICS_SECRET = process.env.MERQO_METRICS_SECRET ?? "";
@@ -49,4 +51,3 @@ export async function EarnLink({
     </a>
   );
 }
-import { z } from "zod";

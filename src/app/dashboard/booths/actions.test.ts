@@ -188,6 +188,7 @@ function makeBooth(over: Partial<BoothFormInput> = {}): BoothFormInput {
     print_enabled: false,
     paykit_booking_id: null,
     daily_cup_cap: null,
+    max_items_per_order: null,
     ...over,
   };
 }
@@ -268,6 +269,46 @@ describe("saveBooth entitlement enforcement", () => {
     };
     expect(row.hours).toBeNull();
     expect(row.vendor_id).toBe("v1");
+  });
+
+  it("strips the booth's daily total on a plan without stock caps, keeps the per-order limit", async () => {
+    const res = await saveBooth(
+      makeBooth({ daily_cup_cap: 200, max_items_per_order: 4 }),
+    );
+
+    expect(res.success).toBe(true);
+    const row = h.insertSpy.mock.calls[0][0] as {
+      daily_cup_cap: unknown;
+      max_items_per_order: unknown;
+    };
+    expect(row.daily_cup_cap).toBeNull();
+    expect(row.max_items_per_order).toBe(4);
+  });
+
+  it("leaves a stored daily total alone when editing on a plan without stock caps", async () => {
+    await saveBooth(makeBooth({ boothId: BOOTH_ID, daily_cup_cap: 200 }));
+
+    const row = h.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    // Not nulled and not rewritten: the key is absent, so the stored value stays.
+    expect(row).not.toHaveProperty("daily_cup_cap");
+  });
+
+  it("lets a plan without stock caps remove a stored daily total", async () => {
+    await saveBooth(makeBooth({ boothId: BOOTH_ID, daily_cup_cap: null }));
+
+    const row = h.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(row.daily_cup_cap).toBeNull();
+  });
+
+  it("saves the booth's daily total on a plan with stock caps", async () => {
+    h.loadEntitlementMock.mockResolvedValue({
+      user: { id: "v1" },
+      entitlement: { ...ENTITLEMENTS.free, stockCaps: true },
+    });
+    await saveBooth(makeBooth({ daily_cup_cap: 200 }));
+
+    const row = h.insertSpy.mock.calls[0][0] as { daily_cup_cap: unknown };
+    expect(row.daily_cup_cap).toBe(200);
   });
 
   it("(d) rejects activating a 2nd booth when one active booth already exists", async () => {

@@ -13,6 +13,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    maxWorkers: 2,
     environment: "node",
     // lib/env validates the public Supabase vars at import; any test that
     // transitively pulls in the client chain (mocked or not) needs them present

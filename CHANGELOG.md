@@ -6,7 +6,163 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- A booth saved with "No online payment" stays that way. The booth page filled
+  its Payment section from the vendor's payment details, which are shared by
+  every booth, so a booth without payment opened showing PayNow selected, and
+  saving any other change on the page then switched payment on for it. The
+  booth's own setting now decides what is selected; the saved details only
+  fill the fields in when that method is picked.
+- The walk-up dialog that opens by itself for an event booth now starts on
+  that booth. With several booths open it started on the first one listed.
+- The order board no longer opens the walk-up order dialog on every load
+  because of a walk-up booth that is switched off. Only an active walk-up booth
+  triggers it.
+- The menu page no longer says "Only 3 items left today" directly above "The
+  last items are in other baskets". The count now comes from the same
+  availability the basket uses, net of other customers' holds, so a customer
+  reads one message that matches what they can add.
+- "Add to order" is always in view in the customise sheet. With several option
+  groups or a short phone it sat below the fold with nothing to show the sheet
+  scrolled; it is pinned to the bottom of the sheet now. The item photo is
+  capped at 28% of the screen height, and no longer collapses to nothing when
+  the sheet has to scroll.
+- The booth filter on the order board shows its label from the first paint. It
+  was blank for a moment on load.
+- The payment buttons on a ticket ("Confirm payment received" with the amount)
+  wrap on a narrow card. Three across on a tablet, the label overflowed the
+  button.
+- Controls are finger-sized on every touch device, phones and iPads alike.
+  One rule in `globals.css`, keyed on `pointer: coarse` and not on screen
+  width, makes every button, field and dropdown at least 44px tall; a mouse
+  keeps the compact heights. Switches, the small (i) hint icons, the menu's
+  drag handle and the tick box on a ticket in Select mode keep their drawn
+  size and get a 44px touch area. Checked at phone width on the order board,
+  booth settings and the menu manager, none of which scroll sideways. The
+  board's header shows the active count as a number alone on a phone, so its
+  controls stay on one row.
+- The CSV format hint on the menu page opens on tap. It opened on hover only,
+  so it could not be read on a phone or an iPad.
+- The five-minute order cleanup uses two partial indexes (migration `0098`)
+  and no longer reads the whole orders table on each run.
+- A payment link reopened long after its order was placed no longer shows a
+  PayNow QR. An order still unpaid after 30 minutes reads "This order has
+  expired" with a clear "do not pay", and a claim against it is refused, so an
+  old link cannot take money or put a fresh "says paid" on the board for an
+  order nobody is making.
+- The public queue display leaves off orders more than 12 hours old. An order
+  left unfinished on the board from an earlier day was shown to today's queue
+  as a number still being prepared.
+- Unpaid orders are cancelled, and ready orders auto-cleared, on a schedule in
+  the database (`qkit.sweep_stale_orders`, every five minutes, migration
+  `0097`). Both ran only while a vendor had the order board open, so with no
+  board open an abandoned order kept its stock and a ready order stayed on the
+  queue display.
+- Saving a booth on a plan without stock caps no longer wipes a daily limit
+  that was already set. The limit keeps working, is shown in booth settings,
+  and can be removed there; setting or changing one still needs an Event pass
+  or Pro.
+- Touch targets on a phone are a full 44px for the landing page's "Sign in"
+  and "Get started", the social icons on order pages, "Order something else",
+  and the queue display's "Enable sound".
+
+### Changed
+
+- Taking payment for a walk-up order is now a second step. "Add order" places
+  the order, then the dialog shows the amount and the booth's own payment QR
+  (PayNow with the amount already filled in, or the payment link or QR image)
+  for staff to turn towards the customer. "Payment received" marks the order
+  paid; "Collect later" leaves it unpaid on the board. This replaces the
+  "Payment collected" switch, which had to be set before the order existed
+  and never showed a QR. A booth with no payment set up sees no payment
+  control at all.
+- A ticket's waiting time is back in its bottom-left corner, under the action
+  button, where it was before the redesign. Beside the number it crowded the
+  part of the ticket that gets read out. The top-right corner now holds only
+  the "more" menu, and the bottom-right corner is free.
+- The landing page's sample order tickets match the ticket vendors now work
+  from: a large number and name, options always visible, one attention line
+  in place of the payment badges, and no "Show options" control or prices.
+- The booth's daily limit is worded as items, not cups, everywhere a vendor or
+  customer reads it ("Stop after this many items each day", "132/200 items",
+  "Only 3 items left today"). It always counted every item the booth sells,
+  whatever it is; the wording said cups because the first stall to ask sold
+  drinks. The menu page now also stops a basket at what is left, instead of
+  letting it fail at checkout. Setting the daily limit is part of stock caps
+  (Event pass and Pro), like the per-item sold-out limit.
+
+- The customer's order page shows the order's four stages, Received, Preparing,
+  Ready and Collected, each with its own icon and all visible from the moment
+  the order is placed, so the finish is in sight for the whole wait. It replaces
+  a three-segment bar that merged Ready and Collected, which left a collected
+  order looking the same as one still on the shelf. "Received" is already
+  reached when the page opens, the stage the order is on pulses, and Ready takes
+  over the block in its own colour. The copy now speaks as the stall ("We're
+  making it now", "It's ready") with one line of what to do next.
+- An order that is over, or one reopened more than 12 hours after it was placed,
+  reads as a receipt and cannot pass for a live order: the number is struck
+  through, a stamp says Collected, Cancelled or Past order, and the date and
+  time it was placed (and collected) are printed in full. The daily order number
+  resets, so without this a customer could show last week's `#012` at the
+  counter as today's. A reopened order shows no live tracker and no payment
+  prompt, and its button reads "Order this again".
+
+- The order ticket is rebuilt around what staff read at the counter. The
+  number and the customer's name are the largest things on it, every
+  customisation is always visible on one line per item, and there is one
+  button: the next step. Vendors said they had no time to expand a ticket
+  mid-service and that a growing stack of badges was becoming noise, so the
+  expand control is gone and the badges (payment, print, walk-up, passed over)
+  are replaced by a single attention line that shows only the most urgent
+  thing: a payment to check, a label that did not print, a later order already
+  out, then a payment not made yet (`ticketAttention` in `src/lib/ticket.ts`).
+  "Paid" and "Preparing" are no longer stated, since they are the states with
+  nothing to do. Bump and cancel moved into a "more" menu so a mis-tap lands on
+  nothing destructive. Prices, the total and the timestamp now appear only in
+  order history; on the live board the amount owed is printed on the payment
+  button, the one place it is being checked.
+- Waiting time on a ticket reads `2h 5m` or `6d` past an hour, not `9802m`.
+
 ### Added
+
+- The order board's "Select" mode has "Select all", so a stall that had no
+  time to mark orders one by one during service can tick every order still
+  being made and send them to Ready with one "Mark N Ready". It lives inside
+  Select rather than as its own button, to keep the board to one batch
+  control. With auto-clear on, the board then empties by itself. A tap-to-open
+  hint beside "Select" says what it is for.
+- The menu CSV has a `choice_code` column, so short codes for the order ticket
+  can be set in bulk and survive an export and re-import. It is the last
+  column: a file exported before it existed still imports unchanged, and a
+  blank cell leaves the choice printing in full. A code longer than 6
+  characters is reported against its row.
+- The live board has a "Customer screen" button for the big-number queue
+  display. It opens the display in its own window to drag onto a TV, monitor
+  or an iPad used as an extended display, in any browser, and shows a code to
+  scan (with a link to copy) for a device that is not attached to the computer.
+  The display was reachable only from a small icon on the booth list, and a
+  vendor at an event did not find it.
+- A vendor can give each option choice a short code for the ticket ("LS" for
+  "Less sugar"), set under the choice's Advanced options with a suggestion from
+  its initials. A choice with no code prints in full: codes are never derived
+  automatically, because initials collide ("Soy" and "Skim") and a wrong drink
+  costs more than the space saved. When two options on one item would print the
+  same text, each is prefixed with its group.
+- A booth can limit how many items one customer order may carry ("Most items
+  in one order" in booth settings, every plan), so the first person in the
+  queue cannot take the whole tray. The menu page says the limit up front and
+  refuses an add past it; the `orders_max_items_per_order` trigger enforces it
+  for every customer-placed order. Orders the vendor keys in are not limited.
+  Migration `0096`.
+- A customer's basket now holds its items for five minutes on a booth with
+  finite stock (a daily total or a sold-out limit on an item). The next
+  customer sees those items as "In another basket" instead of being offered
+  them and refused at checkout, and when two people reach for the last one the
+  first basket wins and the second is told. A hold is soft: it changes what
+  other customers are shown and never blocks an order, so a flood of fake
+  holds cannot take a booth offline or cost a real sale. Placing the order
+  releases the hold. Migration `0096`.
 
 - `e2e/smoke.spec.ts`: a public smoke spec (the landing page and `/login` render). The CI job that ran only the auth-guard spec runs both and is named `e2e (public smoke)`, the same name and baseline as every other kit.
 
@@ -26,6 +182,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The repository moved from the `cljiahao` GitHub account to the `merqo-io` organization. `@merqo/ui` now installs from `github:merqo-io/merqo-ui` at the same tag, with the lockfile and tarball URLs updated to match.
 - The `secret scan (gitleaks)` CI job runs the pinned gitleaks release binary, verified against the release checksum, instead of `gitleaks-action`. The action is free only for personal-account repos and needs a paid license on organization-owned ones, so every run failed after the move to `merqo-io`. It scans the PR commits, or the pushed range on `main`.
+- `pnpm check` now fails on a `const` or `let` read before its declaration
+  (`@typescript-eslint/no-use-before-define`, variables only). A closure that
+  reads a binding declared below it is a temporal-dead-zone crash at request
+  time, and `tsc` does not flag it; one took the vendor order board down in
+  production with the build and every test green. Functions and types stay
+  exempt, since hoisted helpers below their use are the house style, and test
+  files are exempt because `vi.mock` factories read fixtures declared below
+  them by design. Three existing cases were reordered to comply:
+  `NOTE_SPACING`/`PEAK_GAIN` in `src/lib/order-alerts.ts` and `empty` in
+  `src/app/dashboard/stats/reviews-card.tsx`.
 
 ### Security
 

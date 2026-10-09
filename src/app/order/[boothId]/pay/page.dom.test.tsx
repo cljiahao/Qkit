@@ -90,6 +90,22 @@ describe("PayPage", () => {
     expect(screen.getByText(/this order was cancelled/i)).toBeInTheDocument();
     expect(screen.queryByTestId("pay-form")).not.toBeInTheDocument();
   });
+  it("shows an expired state, with no payment form, for an order unpaid too long", async () => {
+    loadPreClaimContextMock.mockResolvedValue({ state: "expired" });
+    render(
+      await PayPage({
+        params: Promise.resolve({ boothId: BOOTH_ID }),
+        searchParams: Promise.resolve({ t: TOKEN }),
+      }),
+    );
+    expect(screen.getByText("This order has expired")).toBeInTheDocument();
+    expect(screen.getByText(/do not pay for it/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Order again from this stall" }),
+    ).toHaveAttribute("href", `/order/${BOOTH_ID}`);
+    expect(screen.queryByTestId("pay-form")).not.toBeInTheDocument();
+  });
+
   it("calls notFound for an invalid booth id", async () => {
     await expect(
       PayPage({

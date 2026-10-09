@@ -458,7 +458,7 @@ export function MenuEditor({
             <div className="flex gap-2">
               <button
                 type="button"
-                className="mt-2 shrink-0 cursor-grab touch-none self-start text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                className="tap-area mt-2 shrink-0 cursor-grab touch-none self-start text-muted-foreground hover:text-foreground active:cursor-grabbing"
                 aria-label="Reorder item"
                 {...attributes}
                 {...listeners}
@@ -658,7 +658,7 @@ export function MenuEditor({
                 <button
                   type="button"
                   onClick={() => toggleAdvanced(item.id)}
-                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:min-h-11"
                 >
                   {expandedAdvanced.has(item.id) ? (
                     <ChevronDown className="size-3" />
@@ -714,7 +714,7 @@ export function MenuEditor({
               <button
                 type="button"
                 onClick={() => toggleExpand(item.id)}
-                className="flex w-full items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                className="flex w-full items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground [@media(pointer:coarse)]:min-h-11"
               >
                 {isOpen ? (
                   <ChevronDown className="size-3.5" />

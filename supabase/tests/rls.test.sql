@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(132);
+select plan(156);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -1217,6 +1217,215 @@ select lives_ok(
      values ('00000000-0000-0000-0000-0000000b0001', 'A-900', 'Cust',
              '[{"menuItemId":"m1","name":"Kopi","quantity":99}]'::jsonb, 9900) $$,
   'a booth with no cap is never limited'
+);
+
+-- Basket holds and the per-order item limit (migration 0096). A hold is soft:
+-- it lowers what OTHER baskets are shown and never blocks an order, so these
+-- check the availability a customer is given, not what an insert allows.
+insert into qkit.booths (id, vendor_id, name, is_active, daily_cup_cap,
+                         max_items_per_order, menu_items)
+values
+  ('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-00000000000a', 'Held Booth', true, 5, 3,
+   '[{"id":"kopi","name":"Kopi","available":true,"stock":2},
+     {"id":"teh","name":"Teh","available":true}]'::jsonb),
+  ('00000000-0000-0000-0000-0000000b0012', '00000000-0000-0000-0000-00000000000a', 'Limited Booth', true,
+   null, 3,
+   '[{"id":"teh","name":"Teh","available":true}]'::jsonb);
+
+select is(
+  qkit.hold_cart('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501',
+    '[{"menuItemId":"kopi","quantity":2},{"menuItemId":"teh","quantity":1}]'::jsonb
+  )->>'left',
+  '5',
+  'a basket is not blocked by its own hold'
+);
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5502')->'remaining'->>'kopi',
+  '0',
+  'another basket sees held stock as not available'
+);
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5502')->'held'->>'kopi',
+  '2',
+  'and is told it is held, not sold'
+);
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5502')->>'left',
+  '2',
+  'a hold counts against the booth daily total for other baskets'
+);
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5502')->>'left_held',
+  '3',
+  'left_held reports how much of the daily total is held'
+);
+
+select qkit.hold_cart('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5502',
+  '[{"menuItemId":"kopi","quantity":1},{"menuItemId":"teh","quantity":5}]'::jsonb);
+
+select is(
+  (select items from qkit.cart_holds
+   where booth_id = '00000000-0000-0000-0000-0000000b0011' and session_id = '00000000-0000-0000-0000-0000000e5502'),
+  '{"teh": 2}'::jsonb,
+  'a second basket is granted only what the first has not claimed'
+);
+
+select qkit.hold_cart('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501', '[]'::jsonb);
+
+select is(
+  (select count(*)::int from qkit.cart_holds
+   where booth_id = '00000000-0000-0000-0000-0000000b0011' and session_id = '00000000-0000-0000-0000-0000000e5501'),
+  0,
+  'an empty basket releases its hold'
+);
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501')->>'left',
+  '3',
+  'a live hold from another basket is subtracted'
+);
+
+update qkit.cart_holds set expires_at = now() - interval '1 minute'
+where booth_id = '00000000-0000-0000-0000-0000000b0011' and session_id = '00000000-0000-0000-0000-0000000e5502';
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501')->>'left',
+  '5',
+  'an expired hold no longer counts'
+);
+
+select lives_ok(
+  $$ select qkit.hold_cart('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501', '{"x":1}'::jsonb) $$,
+  'a basket that is not an array is ignored, not raised on'
+);
+
+select lives_ok(
+  $$ select qkit.hold_cart('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501',
+       '[{"menuItemId":"kopi","quantity":"abc"}, 7]'::jsonb) $$,
+  'a malformed line is ignored, not raised on'
+);
+
+select qkit.hold_cart('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501',
+  '[{"menuItemId":"not-on-the-menu","quantity":2}]'::jsonb);
+
+select is(
+  (select count(*)::int from qkit.cart_holds
+   where booth_id = '00000000-0000-0000-0000-0000000b0011' and session_id = '00000000-0000-0000-0000-0000000e5501'),
+  0,
+  'an item that is not on the booth menu holds nothing'
+);
+
+select qkit.hold_cart('00000000-0000-0000-0000-0000000b0012', '00000000-0000-0000-0000-0000000e5501',
+  '[{"menuItemId":"teh","quantity":1}]'::jsonb);
+
+select is(
+  (select count(*)::int from qkit.cart_holds where booth_id = '00000000-0000-0000-0000-0000000b0012'),
+  0,
+  'a booth with no finite stock stores no hold'
+);
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000b0012', NULL)->>'max_per_order',
+  '3',
+  'booth_availability reports the per-order limit'
+);
+
+select is(
+  qkit.booth_availability('00000000-0000-0000-0000-0000000bffff', NULL),
+  NULL,
+  'booth_availability is null for an unknown booth'
+);
+
+set local role anon;
+
+select throws_ok(
+  $$ select * from qkit.cart_holds $$,
+  '42501',
+  NULL,
+  'anon cannot read basket holds directly'
+);
+
+select lives_ok(
+  $$ select qkit.booth_availability('00000000-0000-0000-0000-0000000b0011', '00000000-0000-0000-0000-0000000e5501') $$,
+  'anon can read availability through the RPC'
+);
+
+reset role;
+
+select throws_like(
+  $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
+     values ('00000000-0000-0000-0000-0000000b0012', 'L-001', 'Cust',
+             '[{"menuItemId":"teh","name":"Teh","quantity":4}]'::jsonb, 400) $$,
+  'ORDER_TOO_LARGE%',
+  'a customer order over the per-order limit is refused'
+);
+
+select lives_ok(
+  $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents)
+     values ('00000000-0000-0000-0000-0000000b0012', 'L-002', 'Cust',
+             '[{"menuItemId":"teh","name":"Teh","quantity":3}]'::jsonb, 300) $$,
+  'a customer order at the per-order limit is accepted'
+);
+
+select lives_ok(
+  $$ insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents, source)
+     values ('00000000-0000-0000-0000-0000000b0012', 'L-003', 'Cust',
+             '[{"menuItemId":"teh","name":"Teh","quantity":4}]'::jsonb, 400, 'walkup') $$,
+  'a walk-up order the vendor enters is not limited'
+);
+
+-- qkit.sweep_stale_orders (migration 0097): the scheduled twin of the board's
+-- own sweeps, for when no vendor has a board open.
+insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents,
+                         status, payment_status, created_at)
+values
+  ('00000000-0000-0000-0000-0000000b0012', 'S-001', 'Cust', '[{"menuItemId":"teh","name":"Teh","quantity":1}]'::jsonb,
+   100, 'pending', 'pending', now() - interval '2 hours'),
+  ('00000000-0000-0000-0000-0000000b0012', 'S-002', 'Cust', '[{"menuItemId":"teh","name":"Teh","quantity":1}]'::jsonb,
+   100, 'pending', 'pending', now() - interval '5 minutes');
+
+update qkit.vendors
+set board_settings = coalesce(board_settings, '{}'::jsonb)
+                     || '{"ready_auto_clear_min": 5}'::jsonb
+where id = '00000000-0000-0000-0000-00000000000a';
+
+insert into qkit.orders (booth_id, order_number, customer_name, items, total_cents,
+                         status, ready_at)
+values
+  ('00000000-0000-0000-0000-0000000b0012', 'S-003', 'Cust', '[{"menuItemId":"teh","name":"Teh","quantity":1}]'::jsonb,
+   100, 'ready', now() - interval '10 minutes');
+
+select qkit.sweep_stale_orders();
+
+select is(
+  (select status::text from qkit.orders where booth_id = '00000000-0000-0000-0000-0000000b0012' and order_number = 'S-001'),
+  'cancelled',
+  'the sweep cancels a QR order unpaid for over 30 minutes'
+);
+
+select is(
+  (select status::text from qkit.orders where booth_id = '00000000-0000-0000-0000-0000000b0012' and order_number = 'S-002'),
+  'pending',
+  'the sweep leaves an order still inside its payment window'
+);
+
+select is(
+  (select status::text || ':' || auto_completed::text
+   from qkit.orders where booth_id = '00000000-0000-0000-0000-0000000b0012' and order_number = 'S-003'),
+  'completed:true',
+  'the sweep clears a ready order past the vendor auto-clear time'
+);
+
+select is(
+  (select count(*)::int from qkit.order_status_events e
+   join qkit.orders o on o.id = e.order_id
+   where o.booth_id = '00000000-0000-0000-0000-0000000b0012' and o.order_number in ('S-001', 'S-003')),
+  2,
+  'each swept order gets a status event'
 );
 
 select * from finish();

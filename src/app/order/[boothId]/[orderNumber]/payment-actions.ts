@@ -17,6 +17,7 @@ import {
   type CheckoutView,
 } from "@/lib/paykit/client";
 import { hashBuffer } from "@/lib/hash";
+import { isAbandonedPayment } from "@/lib/orders";
 import { notifyVendorTelegram, notifyPrintkit } from "@/app/o/[code]/notify";
 import type { ActionResult } from "@/lib/action-result";
 import type { PaymentStatus } from "@/lib/types";
@@ -111,7 +112,9 @@ type PreClaimContext =
       checkout: CheckoutView | null;
     }
   | { state: "placed"; orderNumber: string }
-  | { state: "cancelled" };
+  | { state: "cancelled" }
+  // Unpaid past the abandoned-payment window: no longer payable.
+  | { state: "expired" };
 
 export async function loadPreClaimContext(
   boothId: string,
@@ -134,7 +137,7 @@ export async function loadPreClaimContext(
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, total_cents, payment_status, status, order_number")
+    .select("id, total_cents, payment_status, status, order_number, created_at")
     .eq("booth_id", boothId)
     .eq("access_token", token)
     .maybeSingle();
@@ -145,6 +148,9 @@ export async function loadPreClaimContext(
       ? { state: "placed", orderNumber: order.order_number }
       : null;
   }
+  // Checked before createCheckout, so an expired order mints no payment QR.
+  if (isAbandonedPayment(order.created_at, Date.now()))
+    return { state: "expired" };
 
   const { data: booth } = await supabase
     .from("booths")
@@ -179,6 +185,24 @@ function validatePaymentProof(
       error: proof.error.issues[0]?.message ?? "Invalid payment screenshot.",
     };
   return { success: true, data: proof.data };
+}
+
+/**
+ * Why an order cannot take a payment claim right now, or null when it can.
+ * The pay page already refuses an expired order; the expiry check here covers
+ * a page left open past the window, and a direct call.
+ */
+function claimRefusal(order: {
+  status: string;
+  payment_status: string;
+  created_at: string;
+}): string | null {
+  if (order.status === "cancelled") return "This order was cancelled.";
+  if (order.payment_status !== "pending")
+    return "This order isn't awaiting payment.";
+  if (isAbandonedPayment(order.created_at, Date.now()))
+    return "This order expired before it was paid. Please place a new one.";
+  return null;
 }
 
 // Customer is anonymous, so this uses the service-role client (same pattern as
@@ -223,15 +247,13 @@ export async function claimPayment(
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, total_cents, payment_status, status")
+    .select("id, total_cents, payment_status, status, created_at")
     .eq("booth_id", boothId)
     .eq("access_token", token)
     .maybeSingle();
   if (!order) return { success: false, error: "Invalid order" };
-  if (order.status === "cancelled")
-    return { success: false, error: "This order was cancelled." };
-  if (order.payment_status !== "pending")
-    return { success: false, error: "This order isn't awaiting payment." };
+  const refusal = claimRefusal(order);
+  if (refusal) return { success: false, error: refusal };
 
   const { data: booth } = await supabase
     .from("booths")

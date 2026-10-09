@@ -9,7 +9,7 @@ import {
   type VendorProfile,
 } from "@/lib/merqo-vendor-profile";
 import { Ticket } from "@/components/ticket";
-import { formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
+import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
 import {
   boardSettingsSchema,
   orderBoothIdSchema,
@@ -31,6 +31,158 @@ import { SocialLinksRow } from "@/components/social-links-row";
 // showPay is false for most orders (queue-only booths, or once payment is a
 // moot point), so PayPanel shouldn't ship in every order-status page's JS.
 const PayPanel = dynamic(() => import("./pay-panel").then((m) => m.PayPanel));
+
+const PAST_STAMP: Record<"completed" | "cancelled" | "stale", string> = {
+  completed: "Collected",
+  cancelled: "Cancelled",
+  stale: "Past order",
+};
+
+/**
+ * The mark on an order that is over: a stamp saying how it ended, and the date
+ * and time, in full. Both are there so that staff handed this screen can see at
+ * a glance that it is not today's order, and a customer cannot present last
+ * week's receipt as a current one.
+ */
+function PastOrderStamp({
+  status,
+  placedAt,
+  completedAt,
+}: {
+  status: string;
+  placedAt: string;
+  completedAt: string | null;
+}) {
+  let kind: keyof typeof PAST_STAMP = "stale";
+  if (status === "completed") kind = "completed";
+  else if (status === "cancelled") kind = "cancelled";
+  return (
+    <div className="mt-5 flex flex-col items-center gap-3">
+      <span
+        className={cn(
+          "inline-block -rotate-3 rounded-md border-2 px-4 py-1.5 font-display text-xl font-bold tracking-[0.18em] uppercase",
+          kind === "cancelled"
+            ? "border-status-cancelled text-status-cancelled"
+            : "border-muted-foreground text-muted-foreground",
+        )}
+      >
+        {PAST_STAMP[kind]}
+      </span>
+      <dl className="space-y-0.5 text-sm">
+        <div className="flex justify-center gap-1.5">
+          <dt className="text-muted-foreground">Placed</dt>
+          <dd className="font-medium">{shortDateTime(placedAt)}</dd>
+        </div>
+        {kind === "completed" && completedAt && (
+          <div className="flex justify-center gap-1.5">
+            <dt className="text-muted-foreground">Collected</dt>
+            <dd className="font-medium">{shortDateTime(completedAt)}</dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  );
+}
+
+// The top of the ticket: the number, who it is for, and where. A past order's
+// number is struck through and stamped. A receipt that still looked live could
+// be shown at the counter as today's order, and the daily number resets, so
+// yesterday's #012 would be indistinguishable from today's without it.
+function OrderHeader({
+  number,
+  customerName,
+  boothName,
+  past,
+  status,
+  placedAt,
+  completedAt,
+}: {
+  number: string;
+  customerName: string;
+  boothName: string | undefined;
+  past: boolean;
+  status: string;
+  placedAt: string;
+  completedAt: string | null;
+}) {
+  return (
+    <header className="px-6 pt-9 pb-6 text-center">
+      <h1
+        className={cn(
+          "font-mono text-6xl leading-none font-bold tracking-tight",
+          past &&
+            "text-muted-foreground line-through decoration-muted-foreground/70 decoration-2",
+        )}
+      >
+        #{number}
+      </h1>
+      <p className="mt-3 text-lg font-medium">{customerName}</p>
+      <p className="text-sm text-muted-foreground">{boothName}</p>
+      {past && (
+        <PastOrderStamp
+          status={status}
+          placedAt={placedAt}
+          completedAt={completedAt}
+        />
+      )}
+      {/* Says what will happen, not just what to remember: at NCS every
+          customer came back to the counter to ask whether theirs was ready,
+          because nothing told them the page changes by itself. */}
+      {!past && status !== "ready" && (
+        <p className="mt-3 text-xs font-medium text-muted-foreground">
+          Keep this page open. It turns to Ready when your order is up.
+        </p>
+      )}
+    </header>
+  );
+}
+
+// What was ordered, with prices where the booth charges. The customer's own
+// record of the order, so unlike the vendor's ticket it keeps every price.
+function OrderLines({
+  items,
+  priced,
+  totalCents,
+}: {
+  items: ReturnType<typeof parseOrderItems>;
+  priced: boolean;
+  totalCents: number;
+}) {
+  return (
+    <section className="space-y-1.5 px-6 py-5">
+      {items.map((item, i) => (
+        <div key={i} className="text-sm">
+          <div className="flex justify-between gap-2">
+            <span className="min-w-0 break-words">
+              <span className="font-mono text-muted-foreground">
+                {item.quantity}×
+              </span>{" "}
+              {item.name}
+            </span>
+            {priced && (
+              <span className="shrink-0 font-mono text-muted-foreground">
+                {item.price_cents == null
+                  ? "Free"
+                  : formatPrice(item.price_cents * item.quantity)}
+              </span>
+            )}
+          </div>
+          {formatOptions(item.options) && (
+            <p className="pl-5 text-xs text-muted-foreground">
+              {formatOptions(item.options)}
+            </p>
+          )}
+        </div>
+      ))}
+      {priced && (
+        <div className="mt-1 flex justify-between border-t border-border/60 pt-3 font-semibold">
+          <span>Total</span>
+          <span className="font-mono">{formatPrice(totalCents)}</span>
+        </div>
+      )}
+    </section>
+  );
+}
 
 interface Props {
   params: Promise<{ boothId: string; orderNumber: string }>;
@@ -240,6 +392,10 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
       : null;
 
   const staleView = resolveStaleView(order.created_at);
+  // A past order: one that is finished, or one reopened long after it was
+  // placed whatever state it was left in. Either way it must not pass for a
+  // live order at the counter.
+  const past = staleView || isTerminal(order.status);
 
   const items = parseOrderItems(order.items);
   const priced = orderHasPricing(items);
@@ -252,55 +408,22 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col px-5 py-10">
       <Ticket shadow="lifted">
-        <header className="px-6 pt-9 pb-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {booth?.name}
-          </p>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            Order
-          </p>
-          <h1 className="font-mono text-6xl font-bold leading-none tracking-tight">
-            #{headingNumber}
-          </h1>
-          <p className="mt-3 text-muted-foreground">
-            for {order.customer_name}
-          </p>
-          {/* Says what will happen, not just what to remember: at NCS every
-              customer came back to the counter to ask whether theirs was
-              ready, because nothing told them the page changes by itself. */}
-          <p className="mt-1 text-xs font-medium text-muted-foreground">
-            Keep this page open. It turns to Ready when your order is up.
-          </p>
-        </header>
-
-        {staleView && (
-          <>
-            <div className="perforation" />
-            <div className="px-6 py-5 text-center">
-              <p className="text-sm font-semibold text-foreground">
-                This is an older order
-              </p>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Placed {shortDateTime(order.created_at)}. Your phone reopened
-                it, so this is not a new order and the number above is not the
-                one the stall is calling.
-              </p>
-              <Link
-                href={`/order/${boothId}`}
-                className="mt-3 inline-flex text-xs font-semibold text-primary underline underline-offset-4"
-              >
-                Order again from this stall
-              </Link>
-            </div>
-          </>
-        )}
+        <OrderHeader
+          number={headingNumber}
+          customerName={order.customer_name}
+          boothName={booth?.name}
+          past={past}
+          status={order.status}
+          placedAt={order.created_at}
+          completedAt={order.completed_at}
+        />
 
         <div className="perforation" />
 
         {/* Pay comes first, above status/progress — it's the customer's
             actual call-to-action while an order is unpaid, not passive
             information like "you're next in line". */}
-        {showPay && (
+        {showPay && !staleView && (
           <>
             <PayPanel
               boothId={boothId}
@@ -312,22 +435,34 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
           </>
         )}
 
-        <OrderStatusPoller
-          boothId={boothId}
-          orderNumber={orderNumber}
-          displayNumber={headingNumber}
-          token={token}
-          initialStatus={order.status}
-          boothName={booth?.name ?? "Your order"}
-          placedAt={order.created_at}
-          // The kitchen status (pending→…→completed) and payment status
-          // (pending→claimed→confirmed) advance independently — a vendor can
-          // mark an order preparing/ready before the customer has paid. Don't
-          // let the status text claim progress that implies payment is
-          // settled when it isn't.
-          awaitingPayment={showPay && order.payment_status !== "confirmed"}
-          requiresArrivalConfirm={booth?.requires_arrival_confirm ?? false}
-        />
+        {staleView ? (
+          <div className="space-y-3 px-6 py-7 text-center">
+            <p className="font-display text-xl font-semibold text-balance">
+              This is not today&apos;s order
+            </p>
+            <p className="text-sm text-balance text-muted-foreground">
+              Your phone reopened an earlier one. It is kept here as a receipt
+              and cannot be collected again.
+            </p>
+          </div>
+        ) : (
+          <OrderStatusPoller
+            boothId={boothId}
+            orderNumber={orderNumber}
+            displayNumber={headingNumber}
+            token={token}
+            initialStatus={order.status}
+            boothName={booth?.name ?? "Your order"}
+            placedAt={order.created_at}
+            // The kitchen status (pending→…→completed) and payment status
+            // (pending→claimed→confirmed) advance independently — a vendor can
+            // mark an order preparing/ready before the customer has paid. Don't
+            // let the status text claim progress that implies payment is
+            // settled when it isn't.
+            awaitingPayment={showPay && order.payment_status !== "confirmed"}
+            requiresArrivalConfirm={booth?.requires_arrival_confirm ?? false}
+          />
+        )}
 
         {/* The connect button only makes sense while the order is still
             waiting — once it's ready/completed/cancelled, there's nothing
@@ -357,40 +492,11 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
 
         <div className="perforation" />
 
-        <section className="space-y-1.5 px-6 py-5">
-          {items.map((item, i) => (
-            <div key={i} className="text-sm">
-              <div className="flex justify-between gap-2">
-                <span className="truncate">
-                  <span className="font-mono text-muted-foreground">
-                    {item.quantity}×
-                  </span>{" "}
-                  {item.name}
-                </span>
-                {priced && (
-                  <span className="shrink-0 font-mono text-muted-foreground">
-                    {item.price_cents == null
-                      ? "Free"
-                      : formatPrice(item.price_cents * item.quantity)}
-                  </span>
-                )}
-              </div>
-              {formatOptions(item.options) && (
-                <p className="pl-5 text-xs text-muted-foreground">
-                  {formatOptions(item.options)}
-                </p>
-              )}
-            </div>
-          ))}
-          {priced && (
-            <div className="mt-1 flex justify-between border-t border-border/60 pt-3 font-semibold">
-              <span>Total</span>
-              <span className="font-mono">
-                {formatPrice(order.total_cents)}
-              </span>
-            </div>
-          )}
-        </section>
+        <OrderLines
+          items={items}
+          priced={priced}
+          totalCents={order.total_cents}
+        />
 
         {pickupUrl && (
           <>
@@ -436,13 +542,13 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
               options: it.options,
             }))}
             customerName={order.customer_name}
-            label="Reorder these items"
+            label={past ? "Order this again" : "Reorder these items"}
             className="h-11 rounded-xl px-5"
           />
         )}
         <Link
           href={`/order/${boothId}`}
-          className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
         >
           {items.length > 0 ? "Order something else" : "Order again"}
         </Link>

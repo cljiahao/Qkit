@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
-import { parseBoothHours } from "@/lib/schemas";
+import { parseBoothHours, parseMenuItems } from "@/lib/schemas";
+import { buildOptionCodes, type OptionCodes } from "@/lib/ticket";
 import { isBoothOpen } from "@/lib/hours";
 import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
 import { readAllRows } from "@/lib/supabase/read-all";
@@ -84,7 +85,9 @@ export default async function DashboardPage() {
 
   const boothQuery = supabase
     .from("booths")
-    .select("id, name, is_active, hours, walkup_default, daily_cup_cap")
+    .select(
+      "id, name, is_active, hours, walkup_default, daily_cup_cap, menu_items",
+    )
     .eq("vendor_id", vendor.id)
     .order("created_at", { ascending: true })
     .order("id");
@@ -105,6 +108,14 @@ export default async function DashboardPage() {
 
   // Open/closed as of this request (SGT); revalidate=0 re-evaluates on nav.
   const nowIso = new Date().toISOString();
+  // Each booth's short codes for option choices, read out of its menu here so
+  // the board gets a small lookup rather than every menu, photos and all.
+  const optionCodes: Record<string, OptionCodes> = {};
+  for (const b of booths ?? []) {
+    const codes = buildOptionCodes(parseMenuItems(b.menu_items));
+    if (Object.keys(codes).length > 0) optionCodes[b.id] = codes;
+  }
+
   const boothViews = (booths ?? []).map((b) => ({
     id: b.id,
     name: b.name,
@@ -162,6 +173,7 @@ export default async function DashboardPage() {
       boardSettings={vendor.board_settings}
       loadError={loadError}
       dailyOrderNumberBaselines={dailyOrderNumberBaselines}
+      optionCodes={optionCodes}
     />
   );
 }

@@ -2,7 +2,7 @@
 
 Vendor booth creation, editing, menus, QR posters and printing configuration.
 All vendor writes use the session client and tenant RLS. Server actions validate
-input and recheck plan entitlements; migration 0097 additionally enforces the
+input and recheck plan entitlements; migration 0101 additionally enforces the
 free-plan total-booth cap under concurrent writes.
 
 ## Entry points
@@ -67,3 +67,7 @@ cover database cap concurrency separately; mocked application tests do not
 establish database enforcement or physical printer operation.
 
 [Dashboard](../README.md)
+
+## Order limits and payment prefill
+
+Booth settings include a per-order item limit alongside the daily cap. Vendor-wide Paykit details prefill only booths with their own payment-kind marker; a booth with no marker stays payment-free. Booking and payment-prefill requests run concurrently. Menu CSV import/export also preserves item and option short codes.
