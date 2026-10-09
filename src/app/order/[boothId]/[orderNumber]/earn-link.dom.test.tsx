@@ -6,6 +6,21 @@ import { EarnLink } from "./earn-link";
 afterEach(() => vi.restoreAllMocks());
 
 describe("EarnLink", () => {
+  it.each([
+    { enabled: "false" },
+    { enabled: true, program_name: {} },
+    { enabled: true, program_name: "x".repeat(201) },
+  ])("fails closed for malformed upstream config %j", async (body) => {
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+    render(await EarnLink({ orderId: "o1", vendorId: "v1" }));
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ redirect: "error" }),
+    );
+  });
   it("renders nothing when loopkit says not enabled", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ enabled: false }), { status: 200 }),

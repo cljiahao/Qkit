@@ -396,8 +396,12 @@ function useMarkReadySelection() {
     const ids = Array.from(selectedIds);
     setMarkingReady(true);
     try {
-      const results = await Promise.all(ids.map((id) => advanceOrder(id)));
-      const ok = results.filter((r) => r.success).length;
+      const results = await Promise.allSettled(
+        ids.map((id) => advanceOrder(id, "preparing")),
+      );
+      const ok = results.filter(
+        (r) => r.status === "fulfilled" && r.value.success,
+      ).length;
       const failed = results.length - ok;
       if (ok > 0)
         toast.success(`Marked ${ok} order${ok === 1 ? "" : "s"} ready`);
@@ -485,16 +489,21 @@ export function RealtimeOrderBoard({
   function setBoothActive(b: BoothView, active: boolean) {
     setActiveOverrides((prev) => new Map(prev).set(b.id, active));
     void (async () => {
-      const res = await toggleBoothActive(b.id, active);
-      if (!res.success) {
-        toast.error(res.error);
+      try {
+        const res = await toggleBoothActive(b.id, active);
+        if (!res.success) {
+          toast.error(res.error);
+          setActiveOverrides((prev) => new Map(prev).set(b.id, !active));
+          return;
+        }
+        toast(active ? `${b.name} is open for orders` : `${b.name} is paused`, {
+          action: { label: "Undo", onClick: () => setBoothActive(b, !active) },
+        });
+        router.refresh();
+      } catch {
         setActiveOverrides((prev) => new Map(prev).set(b.id, !active));
-        return;
+        toast.error("Could not update the booth. Refresh to check its status.");
       }
-      toast(active ? `${b.name} is open for orders` : `${b.name} is paused`, {
-        action: { label: "Undo", onClick: () => setBoothActive(b, !active) },
-      });
-      router.refresh();
     })();
   }
   const activeBoothCount = booths.filter(boothIsActive).length;

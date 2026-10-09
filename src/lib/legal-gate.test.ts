@@ -27,14 +27,15 @@ function clientWith(opts: {
 }
 
 beforeEach(() => {
-  process.env.MERQO_BASE_URL = "https://merqo.example.com";
-  process.env.MERQO_CUSTOMER_SECRET = "test-secret";
+  vi.stubEnv("MERQO_BASE_URL", "https://merqo.example.com");
+  vi.stubEnv("MERQO_CUSTOMER_SECRET", "test-secret");
   vi.mocked(createServiceClient).mockReset();
   global.fetch = originalFetch;
 });
 
 afterEach(() => {
   global.fetch = originalFetch;
+  vi.unstubAllEnvs();
 });
 
 describe("checkLegalAcceptance", () => {
@@ -137,7 +138,7 @@ describe("checkLegalAcceptance", () => {
   });
 
   it("fails closed (returns false) when MERQO_CUSTOMER_SECRET is unset", async () => {
-    delete process.env.MERQO_CUSTOMER_SECRET;
+    vi.stubEnv("MERQO_CUSTOMER_SECRET", undefined);
     const { client } = clientWith({ cached: null });
     vi.mocked(createServiceClient).mockResolvedValue(client as never);
     const fetchSpy = vi.fn();
@@ -146,4 +147,42 @@ describe("checkLegalAcceptance", () => {
     expect(await checkLegalAcceptance("vendor@example.com")).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+});
+
+describe("legal cache failure boundaries", () => {
+  it("fails closed when service client setup rejects", async () => {
+    vi.mocked(createServiceClient).mockRejectedValue(new Error("unavailable"));
+    await expect(checkLegalAcceptance("vendor@example.com")).resolves.toBe(
+      false,
+    );
+  });
+  it("fails closed when the cache lookup rejects", async () => {
+    const { client, maybeSingle } = clientWith({});
+    maybeSingle.mockRejectedValue(new Error("unavailable"));
+    vi.mocked(createServiceClient).mockResolvedValue(client as never);
+    await expect(checkLegalAcceptance("vendor@example.com")).resolves.toBe(
+      false,
+    );
+  });
+  it.each(["returned", "rejected"])(
+    "retains verified acceptance after a %s cache write error",
+    async (kind) => {
+      const upsert = vi.fn();
+      if (kind === "returned")
+        upsert.mockResolvedValue({ error: { message: "unavailable" } });
+      else upsert.mockRejectedValue(new Error("unavailable"));
+      const { client } = clientWith({ upsert });
+      vi.mocked(createServiceClient).mockResolvedValue(client as never);
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          terms: LEGAL_VERSIONS.terms,
+          privacy: LEGAL_VERSIONS.privacy,
+        }),
+      }) as never;
+      await expect(checkLegalAcceptance("vendor@example.com")).resolves.toBe(
+        true,
+      );
+    },
+  );
 });

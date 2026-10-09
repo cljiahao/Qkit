@@ -89,8 +89,11 @@ function.
 ## Payments and notifications
 
 Paykit owns payment configuration and transactions. qkit stores a minimal booth
-payment marker and an order payment-status mirror. A customer's collection
-confirmation must not confirm payment. Merqo owns shared vendor profiles, legal
+payment marker and an order payment-status mirror. Customer collection, vendor
+pickup and fulfillment undo never confirm or reverse payment. Completed unpaid
+orders retain an explicit payment-confirmation action. Payment actions inspect Paykit's returned
+state before updating that mirror; a successful HTTP response alone does not
+prove the requested transition occurred. Merqo owns shared vendor profiles, legal
 acceptance and Telegram connections; printkit owns printer integration.
 
 Booth, menu and payment images upload when the vendor saves. Profile avatars
@@ -102,7 +105,7 @@ preserving images still referenced by the vendor's data.
 ```bash
 pnpm check          # formatting, ESLint, TypeScript
 pnpm test           # unit/component tests; real-DB tests opt in separately
-pnpm test:coverage  # v8 coverage report
+pnpm test:coverage  # v8 coverage across production source, including untested files
 pnpm build          # production build
 pnpm test:e2e       # Playwright; local Supabase required for order flows
 pnpm test:mutation  # advisory mutation analysis of src/lib
@@ -142,3 +145,17 @@ checks; inspect `.github/workflows/` for the actual job conditions.
 
 Vercel deployments use the Singapore region (`vercel.json`). Preview and
 Production currently share a database; treat preview writes as real data changes.
+
+CSV exports quote embedded line breaks and prefix spreadsheet formula-like text
+with an apostrophe. Prices and derived monetary totals remain numeric. Importing
+an exported formula-like name retains that protective apostrophe as literal text.
+
+Order-board advance requests include the status shown when staff tapped. If
+another device already advanced the order, the stale tap asks for a refresh
+instead of advancing it a second time. Bulk Mark Ready applies this same guard
+and reports partial failures.
+
+Live queue reads page through the database API limit and reject partial results
+when a later page fails. ID cursors prevent earlier orders leaving the queue
+from shifting later pages. Dashboard booth filters use bounded batches; optional
+cup counters run with bounded concurrency and cannot fail the board.

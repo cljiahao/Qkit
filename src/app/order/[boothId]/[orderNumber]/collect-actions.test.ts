@@ -9,6 +9,7 @@ import { confirmCollection } from "./collect-actions";
 const {
   createServiceClientMock,
   ordersMaybeSingle,
+  readEqMock,
   update,
   writeSelect,
   rateLimitMock,
@@ -16,19 +17,26 @@ const {
   recordOrderStatusEventMock,
 } = vi.hoisted(() => {
   const ordersMaybeSingle = vi.fn();
+  const readEqMock = vi.fn();
   const writeSelect = vi.fn();
   const update = vi.fn(() => ({
     eq: () => ({ eq: () => ({ select: writeSelect }) }),
   }));
-  const ordersSelect = () => ({
-    eq: () => ({
-      eq: () => ({ eq: () => ({ maybeSingle: ordersMaybeSingle }) }),
-    }),
-  });
+  const ordersSelect = () => {
+    const node = {
+      eq: (...args: unknown[]) => {
+        readEqMock(...args);
+        return node;
+      },
+      maybeSingle: ordersMaybeSingle,
+    };
+    return node;
+  };
   const from = () => ({ select: ordersSelect, update });
   return {
     createServiceClientMock: vi.fn(() => Promise.resolve({ from })),
     ordersMaybeSingle,
+    readEqMock,
     update,
     writeSelect,
     rateLimitMock: vi.fn(),
@@ -56,6 +64,7 @@ const TOKEN = "11111111-2222-4333-8444-555555555555";
 beforeEach(() => {
   createServiceClientMock.mockClear();
   update.mockClear();
+  readEqMock.mockClear();
   ordersMaybeSingle.mockReset().mockResolvedValue({
     data: { id: "o1", status: "ready", payment_status: "claimed" },
   });
@@ -71,6 +80,11 @@ describe("confirmCollection", () => {
   it("completes a ready order and logs a null-actor event", async () => {
     const result = await confirmCollection(BOOTH, ORDER, TOKEN);
     expect(result).toEqual({ success: true, status: "completed" });
+    expect(readEqMock.mock.calls).toEqual([
+      ["booth_id", BOOTH],
+      ["order_number", ORDER],
+      ["access_token", TOKEN],
+    ]);
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "completed",

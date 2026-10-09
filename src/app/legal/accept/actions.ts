@@ -74,6 +74,7 @@ export async function acceptLegalTerms(formData: FormData): Promise<void> {
         user_agent: userAgent,
       }),
       signal: AbortSignal.timeout(5000),
+      redirect: "error",
     });
     if (!res.ok) {
       throw new Error(
@@ -82,12 +83,17 @@ export async function acceptLegalTerms(formData: FormData): Promise<void> {
     }
   }
 
-  const service = await createServiceClient();
-  await service.from("legal_check_state").upsert({
-    email,
-    checked_at: new Date().toISOString(),
-    is_current: true,
-  });
+  try {
+    const service = await createServiceClient();
+    const { error } = await service.from("legal_check_state").upsert({
+      email,
+      checked_at: new Date().toISOString(),
+      is_current: true,
+    });
+    if (error) console.error("legal acceptance cache update failed");
+  } catch {
+    console.error("legal acceptance cache update failed");
+  }
 
   redirect(safeRedirectPath(String(formData.get("next") || ""), "/dashboard"));
 }

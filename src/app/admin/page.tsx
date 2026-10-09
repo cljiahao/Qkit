@@ -1,3 +1,4 @@
+import { readAllRows } from "@/lib/supabase/read-all";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -27,7 +28,11 @@ import { ResolveMessageButton } from "./resolve-message-button";
 import { StuckOrdersSection } from "./stuck-orders-section";
 import { AdminAuditLog } from "./audit-log";
 import { isTerminal } from "@/lib/orders";
-import { findStuckOrders, statusSinceByOrder } from "@/lib/stuck-orders";
+import {
+  findStuckOrders,
+  statusSinceByOrder,
+  type OrderStatusEventLite,
+} from "@/lib/stuck-orders";
 import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
 
 // Lazy-loaded: pulls in recharts, code-split out of the initial admin bundle.
@@ -70,8 +75,6 @@ export default async function AdminPage() {
   const cutoff14d = new Date(now - 14 * MS_PER_DAY).toISOString();
   const cutoff30d = new Date(now - 30 * MS_PER_DAY).toISOString();
 
-  // NOTE: fetching all booths/orders is fine at validation scale; revisit with
-  // server-side aggregation if volume grows.
   const [
     { data: vendorRows },
     { data: boothRows },
@@ -85,15 +88,35 @@ export default async function AdminPage() {
     { data: requestRows },
     { data: messageRows },
   ] = await Promise.all([
-    supabase
-      .from("vendors")
-      .select("id, plan, created_at")
-      .order("created_at", { ascending: false }),
-    supabase.from("booths").select("id, name, vendor_id, is_active"),
-    supabase
-      .from("orders")
-      .select("id, booth_id, status, total_cents, created_at"),
-    supabase.from("events").select("type, created_at"),
+    readAllRows((from, to) =>
+      supabase
+        .from("vendors")
+        .select("id, plan, created_at")
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("booths")
+        .select("id, name, vendor_id, is_active")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("orders")
+        .select("id, booth_id, status, total_cents, created_at")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("events")
+        .select("type, created_at")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
     supabase
       .from("admin_audit")
       .select("id, admin_id, action, target_id, detail, created_at")
@@ -109,27 +132,47 @@ export default async function AdminPage() {
       .select("banner_enabled, banner_message")
       .eq("id", 1)
       .maybeSingle(),
-    supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
-    supabase.from("payments").select("amount_cents, created_at"),
-    supabase
-      .from("purchase_requests")
-      .select("id, vendor_id, kind, created_at")
-      .eq("status", "pending")
-      .order("created_at", { ascending: true }),
-    merqoClient
-      .schema("merqo")
-      .from("support_messages")
-      .select("id, user_id, category, body, created_at")
-      .eq("kit_slug", "qkit")
-      .eq("status", "open")
-      .order("created_at", { ascending: true }),
+    readAllRows((from, to) =>
+      supabase
+        .from("licenses")
+        .select("vendor_id, valid_from, expires_at")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("payments")
+        .select("amount_cents, created_at")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("purchase_requests")
+        .select("id, vendor_id, kind, created_at")
+        .eq("status", "pending")
+        .order("created_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      merqoClient
+        .schema("merqo")
+        .from("support_messages")
+        .select("id, user_id, category, body, created_at")
+        .eq("kit_slug", "qkit")
+        .eq("status", "open")
+        .order("created_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
   ]);
 
   const licenses = licenseRows ?? [];
   const payments = paymentRows ?? [];
 
   const stallNames = await vendorStallNames(
-    supabase,
+    merqoClient,
     (vendorRows ?? []).map((v) => v.id),
   );
 
@@ -163,15 +206,20 @@ export default async function AdminPage() {
   // window. Only queried for the orders that could possibly qualify — a
   // terminal order's history is never read. See @/lib/stuck-orders.
   const nonTerminalOrders = orders.filter((o) => !isTerminal(o.status));
-  const { data: statusEventRows } = nonTerminalOrders.length
-    ? await supabase
+  const statusEventRows: OrderStatusEventLite[] = [];
+  // Bound URL size and request concurrency while reading every history page.
+  for (let offset = 0; offset < nonTerminalOrders.length; offset += 100) {
+    const ids = nonTerminalOrders.slice(offset, offset + 100).map((o) => o.id);
+    const events = await readAllRows((from, to) =>
+      supabase
         .from("order_status_events")
         .select("order_id, to_status, created_at")
-        .in(
-          "order_id",
-          nonTerminalOrders.map((o) => o.id),
-        )
-    : { data: [] };
+        .in("order_id", ids)
+        .order("id")
+        .range(from, to),
+    );
+    statusEventRows.push(...events);
+  }
   const boothNameById = new Map(booths.map((b) => [b.id, b.name]));
   const statusSince = statusSinceByOrder(
     nonTerminalOrders,

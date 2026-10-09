@@ -100,6 +100,8 @@ describe("useRealtimeOrders", () => {
     const { result } = renderHook(() => useRealtimeOrders([], [order()]));
     expect(result.current.orders).toEqual([order()]);
     expect(result.current.status).toBe("connecting");
+    expect(pgCallback).toBeUndefined();
+    expect(statusCallback).toBeUndefined();
   });
 
   it("resyncs on the first SUBSCRIBED to recover orders placed during hydration", async () => {
@@ -256,7 +258,7 @@ describe("useRealtimeOrders", () => {
     );
   });
 
-  it("marks disconnected on CHANNEL_ERROR / TIMED_OUT / CLOSED", async () => {
+  it("marks disconnected on CHANNEL_ERROR", async () => {
     const { result } = renderHook(() => useRealtimeOrders(["b1"], []));
     act(() => statusCallback?.("CHANNEL_ERROR"));
     await waitFor(() => expect(result.current.status).toBe("disconnected"));

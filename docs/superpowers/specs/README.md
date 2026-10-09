@@ -2,7 +2,11 @@
 
 ## Purpose
 
-Approved design docs, one per feature, each with a matching implementation plan in `../plans/`. These capture the problem statement, decisions made during brainstorming, and the architecture a feature was built against — kept as project history, not living docs.
+Dated designs and proposals, including approved, draft and superseded work.
+Related implementation plans live in `../plans/`. These files preserve decisions
+and architecture at the time they were written; current source, `AGENTS.md` and
+operating READMEs describe today's implementation. Historical plans do not
+authorize database changes, deployments or secret access.
 
 ## Contents
 
@@ -45,11 +49,11 @@ Approved design docs, one per feature, each with a matching implementation plan 
 - `2026-07-18-cicd-hardening-design.md` — "CI/CD Hardening — Design": moves qkit from solo direct-to-main pushes to a PR-based workflow so the existing (already thorough, currently unused) `ci.yml` pipeline actually gates changes ahead of the Manfred pilot taking live payment.
 - `2026-07-18-live-wait-time-estimate-design.md` — "Live Wait-Time Estimate — Design": shows customers a live "ready in ~N min" estimate on the order-status page, computed from data qkit already tracks, to cut "is it ready yet" interruptions.
 - `2026-07-18-manual-queue-priority-override-design.md` — "Manual Queue Priority Override — Design": a one-time bump (not a permanent pin) that jumps an order to the front of its status lane, for a vendor to help a specific customer right now; depends on the Track B unified board.
-- `2026-07-18-menu-choice-price-delta-design.md` — "Menu Customization Choice Price Delta — Design": an optional `cost_delta_cents` on a customization choice, computed server-side into the order total from the stored menu (never trusted from the client), preserving the order-path-hardening invariant.
+- `2026-07-18-menu-choice-price-delta-design.md` — "Menu Customization Choice Price Delta — Design": optional choice price and cost deltas. Stored price deltas determine the authoritative order total; cost deltas support margin statistics.
 - `2026-07-18-vendor-notification-channels-design.md` — "Vendor Notification Channels (Telegram/WhatsApp pickup pings) — Design": draft, pending founder review — push a pickup-ready ping to a vendor-chosen channel since the customer order-status page is poll-only and stops working once a customer locks their phone; qkit-only for now, not extracted as a shared service.
 - `2026-07-21-arrival-confirmation-design.md` — "Arrival Confirmation (\"Scan-to-Start\") — Design": holds prep for a perishable-immediately item until the customer is confirmed at the counter, reusing the dormant `pending` order status instead of adding a new enum value.
 - `2026-07-21-drop-vendor-identity-columns-design.md` — "Drop `qkit.vendors.name` / `qkit.vendors.social_links` — Design": finishes the deferred step 4 of merqo's shared-vendor-profile cutover (which shipped 2026-07-17) by dropping the two now-stale columns once a full deploy cycle had passed.
-- `2026-08-16-telegram-order-alerts-design.md` — "Telegram Order Alerts — Design": a vendor connects Telegram once (deep-link QR, own bot/webhook), then gets a message the moment a new order lands — a redundant channel alongside the live dashboard board. Phase A of the cross-kit Telegram integration design; distinct from (but infra-compatible with) the still-draft `2026-07-18-vendor-notification-channels-design.md`'s customer-facing "order ready" ping.
+- `2026-08-16-telegram-order-alerts-design.md` — "Telegram Order Alerts — Design": retired Phase A local bot and webhook. Phase A2 below replaces it with Merqo's shared bot; retain this document as history.
 - `2026-08-16-customer-telegram-connect-design.md` — "Customer Telegram Connect — Design": qkit's half of Phase B+D — a "Get notified on Telegram" button on the order-status page's waiting moment, calling merqo's new `customer-connect-token`/`notify-customer` endpoints; `advanceOrder`'s `ready` transition fires the notification. No new qkit table or webhook — the connection lives entirely in `merqo.customers`.
 - `2026-08-16-customer-notify-vendor-toggle-design.md` — "Customer Notify Vendor Toggle — Design": fast-follow on the customer Telegram connect work — a `board_settings` on/off switch (default on) letting a vendor turn off the customer order-ready notification without touching the customer's own consent.
 - `2026-08-16-vendor-telegram-connect-design.md` — "Vendor Telegram Connect (Phase A2) — Design": retires qkit's own Telegram bot (Phase A) in favor of merqo's shared one — a vendor connects once from merqo's profile page instead of per-kit; `notifyVendorTelegram` now calls merqo's `notify-vendor` endpoint. Deletion-heavy spec; no data carries over, already-linked vendors must reconnect.

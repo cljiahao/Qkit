@@ -71,13 +71,10 @@ Up" button (`ADVANCE.ready`, `@/lib/orders`) already performs, just reached
 from the customer side instead of the vendor's. This page and
 `collect-actions.ts` only consume the order-status page's existing URL
 shape (`/order/{boothId}/{orderNumber}?t=token`) — neither renders
-anything on that page itself. Per the design doc, a separate task renders
-the actual pickup QR on `../[orderNumber]/page.tsx` once
-`order.status === "ready"` and `board_settings.pickup_scan_enabled` is on
-(that Zod field already exists on `boardSettingsSchema`, `@/lib/schemas.ts`)
-— until that lands, this kiosk still works against any order-status URL
-scanned in by other means, and the existing one-tap "Mark Picked Up" board
-button stays the fallback either way.
+anything on that page itself. The order-status page renders the pickup QR once `order.status === "ready"`
+and `board_settings.pickup_scan_enabled` is on. Collection changes fulfillment
+only; it never confirms or clears payment. The vendor's board remains the
+manual collection fallback.
 
 ## Parent
 

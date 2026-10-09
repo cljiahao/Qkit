@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sweepUnsavedUploads } from "./sweep-unsaved-uploads";
 
 const { getVendorConfig } = vi.hoisted(() => ({ getVendorConfig: vi.fn() }));
@@ -32,9 +32,17 @@ function makeSupabase({
   const remove = vi.fn((_paths: string[]) =>
     Promise.resolve({ error: removeError }),
   );
-  const eq = vi.fn((_col: string, _val: string) =>
-    Promise.resolve({ data: boothsError ? null : booths, error: boothsError }),
-  );
+  const eq = vi.fn((_col: string, _val: string) => ({
+    order: () => ({
+      range: (from: number, to: number) =>
+        Promise.resolve({
+          data: boothsError
+            ? null
+            : booths.slice(from, Math.min(to + 1, from + 2)),
+          error: boothsError,
+        }),
+    }),
+  }));
   const supabase = {
     from: vi.fn(() => ({ select: vi.fn(() => ({ eq })) })),
     storage: { from: vi.fn(() => ({ list, remove })) },
@@ -51,7 +59,27 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
+afterEach(() => vi.restoreAllMocks());
+
 describe("sweepUnsavedUploads", () => {
+  it("retains images referenced beyond the server's first page", async () => {
+    paykitOk();
+    const { supabase, remove } = makeSupabase({
+      booths: [
+        { image_url: null, menu_items: [] },
+        { image_url: null, menu_items: [] },
+        { image_url: `${PUBLIC}/v1/keep.webp`, menu_items: [] },
+      ],
+      pages: [
+        [
+          { name: "keep.webp", created_at: OLD },
+          { name: "orphan.webp", created_at: OLD },
+        ],
+      ],
+    });
+    await sweepUnsavedUploads(supabase, USER, NOW);
+    expect(remove).toHaveBeenCalledWith(["v1/orphan.webp"]);
+  });
   it("deletes only old objects nothing references", async () => {
     paykitOk(`${PUBLIC}/v1/qr.webp`);
     const { supabase, list, remove, eq } = makeSupabase({

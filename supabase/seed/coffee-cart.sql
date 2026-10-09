@@ -79,11 +79,8 @@ on conflict (id) do update
       short_code = excluded.short_code,
       menu_items = excluded.menu_items;
 
--- Payment seam: give the Kopitiam Cart a PayNow method so the customer pay
--- panel (and the payment-queue e2e) has something to render. No secrets — a
--- UEN is public-by-design. print_enabled true keeps a new order auto-starting
--- into 'preparing' (migration 0086) — this seed represents an already-set-up
--- vendor, and e2e/customer-order.spec.ts asserts that path.
+-- Local payment marker; Paykit checkout configuration is seeded separately.
+-- Printing is opted in, but payment-required QR orders still begin pending.
 update qkit.booths
 set payment = '{"kind":"paynow","payee_name":"Kopitiam Cart","uen":"53312345A"}'::jsonb,
     print_enabled = true

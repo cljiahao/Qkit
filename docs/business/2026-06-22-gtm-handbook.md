@@ -13,6 +13,15 @@ synthesis on top of that evidence (labelled where so).
 
 ---
 
+> **2026-10-09 correction:** The DPO obligation below was incorrectly labelled
+> refuted. Organisations must designate a DPO and make the business contact
+> information available publicly. See [PDPC accountability obligations](https://www.pdpc.gov.sg/overview-of-pdpa/the-legislation/personal-data-protection-act/data-protection-obligations)
+> and [PDPA section 11](https://sso.agc.gov.sg/Act/PDPA2012?ProvIds=pr11-.).
+> The June payment description also predates the Paykit integration. Its blanket
+> "no MAS exposure" conclusion is not a current legal assessment; assess the actual
+> payment-service role before relying on it. Market, pricing and competitor figures
+> remain dated research, not current verified recommendations.
+
 ## 1. Beachhead — recurring weekend markets (NOT bazaars)
 
 **Pick: recurring weekend artisan/food markets** (Makers' Market / Invade —

@@ -12,10 +12,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Separate pickup and its undo from payment confirmation; retain explicit
+  Paykit-backed settlement for completed unpaid orders and preserve concurrent confirmations.
+- Merge section-owned board settings atomically under vendor RLS, preserving
+  unrelated preferences from concurrent saves. Apply migration 0096 before rollout.
+- Keep unresolved customer order keys across manual retries and contain optional
+  banner, cup-count and feedback transport failures.
+- Preserve unknown order attempts across reload using opaque replay metadata;
+  display transport failures and retry guidance in settings, profile and booth forms.
+
+- Remove the unused featured-booth testimonial scaffold and its always-empty
+  landing-page call; retain the existing trust strip.
+
 - The repository moved from the `cljiahao` GitHub account to the `merqo-io` organization. `@merqo/ui` now installs from `github:merqo-io/merqo-ui` at the same tag, with the lockfile and tarball URLs updated to match.
 - The `secret scan (gitleaks)` CI job runs the pinned gitleaks release binary, verified against the release checksum, instead of `gitleaks-action`. The action is free only for personal-account repos and needs a paid license on organization-owned ones, so every run failed after the move to `merqo-io`. It scans the PR commits, or the pushed range on `main`.
 
 ### Security
+
+- Revoke service-role truncation of immutable audit trails. Apply migration 0099 after database validation.
+
+- Limit administrator-membership lookup to the current user or trusted service callers. Apply migration 0098 after database validation.
+
+- Enforce free-vendor booth limits after whole statements and serialize competing creations; apply migration 0097 before rollout, after database validation.
+
+- Reject stale order-board advance taps before deriving the next state, including
+  bulk Mark Ready requests against orders another device already made ready.
 
 - Restrict order-number allocation, vendor/printer INSERT privileges and rate-limit
   buckets; exclude private option costs from customer projections and prevent
@@ -31,6 +52,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `pnpm audit --prod --audit-level=high` on every PR.
 
 ### Fixed
+
+- Keep distinct cart selections separate for separator characters and Unicode labels; safely open the intended notification destination and contain audio-unlock failures.
+
+- Improve small brand-link and form-boundary contrast in both themes while preserving primary button fills and allowing utility styles to override base resets.
+
+- Paginate Merqo metrics, vendor activity and admin vendor detail reads; retain
+  booth images referenced beyond the API row cap and include older paid-event
+  reviews. Surface optional cleanup failures without reversing successful writes.
+- Reject non-boolean booth toggle values and intermediate print callback states;
+  recover from rejected QR regeneration and clipboard requests.
+- Keep spreadsheet formula-like menu and sales text literal in CSV exports while
+  retaining numeric money values and correctly quoting carriage returns.
+- Respect Paykit's returned payment state during claim, undo and vendor confirmation races; load independent booth payment and booking prefill requests concurrently.
+- Look up Merqo vendor status by the matched vendor ID so row limits cannot hide active accounts; reject invalid admin payment amounts and show a recoverable error when password-reset session checks fail.
 
 - Reconcile missed realtime order updates, preserve CSV multiline descriptions and
   distinct option statistics, and paginate vendor order totals beyond the API cap.
@@ -930,8 +965,8 @@ available`, matching each item by exact name to update in place rather
   `POST /api/merqo/notify-vendor` (`notifyVendor` in
   `src/lib/merqo-customer-notify.ts`) instead of running a local bot.
   **Any vendor who'd already linked qkit's own bot must reconnect once via
-  merqo's `/profile` page** — a Telegram `chat_id` is scoped to a
-  (bot, user) pair, so the old link is meaningless under a different bot.
+  merqo's `/profile` page** — the user must initiate contact with Merqo's
+  bot before it can send private alerts.
   This is an expected, already-approved consequence of the retirement, not
   a regression.
 

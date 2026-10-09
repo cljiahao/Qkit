@@ -32,6 +32,8 @@ Step-by-step implementation plans, one per feature, each derived from the matchi
 - `2026-08-16-vendor-telegram-connect.md` — "Vendor Telegram Connect (Phase A2) Implementation Plan": deletes qkit's own Telegram bot/tables/webhook/settings section and rewires `notifyVendorTelegram` to call merqo's `notify-vendor` endpoint. Depends on merqo's own Phase A2 plan shipping first.
 - `2026-08-16-shared-plan-comparison-table.md` — "Shared Plan Comparison Table Implementation Plan": builds `@merqo/ui`'s new `PlanComparisonTable` component and migrates qkit's own `/dashboard/plan` page onto it.
 
+- `2026-10-08-merqo-products-audit.md` — Seven-product audit scope, source-inclusive coverage targets, independent review and verification limits. Current completion evidence is in `../../meta/2026-10-08-product-sweep-status.md` and the per-file review ledgers.
+
 ## Parent
 
 [superpowers](../README.md)

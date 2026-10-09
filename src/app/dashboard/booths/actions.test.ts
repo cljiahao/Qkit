@@ -697,6 +697,32 @@ describe("deleteBooth — printkit location deregistration", () => {
 });
 
 describe("toggleBoothActive", () => {
+  it("preserves a completed deletion when storage cleanup throws", async () => {
+    h.state.prevResult = {
+      data: {
+        name: "Cart",
+        image_url:
+          "https://project.supabase.co/storage/v1/object/public/booth-images/v1/banner.webp",
+        menu_items: [],
+      },
+    };
+    h.removeSpy.mockImplementation(() => {
+      throw new Error("storage unavailable");
+    });
+    const result = await deleteBooth(BOOTH_ID);
+    expect(h.removeSpy).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+  });
+  it("rejects a truthy non-boolean before checking entitlement or writing", async () => {
+    h.loadEntitlementMock.mockClear();
+    const result = await toggleBoothActive(
+      BOOTH_ID,
+      "false" as unknown as boolean,
+    );
+    expect(result.success).toBe(false);
+    expect(h.loadEntitlementMock).not.toHaveBeenCalled();
+    expect(h.updateSpy).not.toHaveBeenCalled();
+  });
   it("rejects an invalid booth id without any DB calls", async () => {
     const res = await toggleBoothActive("not-a-uuid", true);
     expect(res).toEqual({ success: false, error: "Invalid booth" });

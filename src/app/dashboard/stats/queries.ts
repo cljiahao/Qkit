@@ -5,6 +5,20 @@ import type { ReviewRow } from "@/lib/reviews";
 import type { Database } from "@/lib/types";
 import { readAllRows } from "@/lib/supabase/read-all";
 
+const REVIEW_COLUMNS = "rating, message, order_number, booth_id, created_at";
+
+async function readBoothBatches<T>(
+  boothIds: string[],
+  read: (ids: string[]) => Promise<T[]>,
+): Promise<T[]> {
+  const ids = [...new Set(boothIds)];
+  const rows: T[] = [];
+  for (let start = 0; start < ids.length; start += 100) {
+    rows.push(...(await read(ids.slice(start, start + 100))));
+  }
+  return rows;
+}
+
 /** Fetch this vendor's orders for a window [gte, lt). RLS scopes to the vendor. */
 export async function fetchOrders(
   supabase: SupabaseClient<Database>,
@@ -13,17 +27,19 @@ export async function fetchOrders(
   lt?: string,
 ): Promise<StatsOrder[]> {
   if (!boothIds.length) return [];
-  const rows = await readAllRows((from, to) => {
-    let query = supabase
-      .from("orders")
-      .select(
-        "status, total_cents, items, created_at, ready_at, payment_status",
-      )
-      .in("booth_id", boothIds)
-      .gte("created_at", gte);
-    if (lt) query = query.lt("created_at", lt);
-    return query.order("id").range(from, to);
-  });
+  const rows = await readBoothBatches(boothIds, (ids) =>
+    readAllRows((from, to) => {
+      let query = supabase
+        .from("orders")
+        .select(
+          "status, total_cents, items, created_at, ready_at, payment_status",
+        )
+        .in("booth_id", ids)
+        .gte("created_at", gte);
+      if (lt) query = query.lt("created_at", lt);
+      return query.order("id").range(from, to);
+    }),
+  );
   return rows.map((row) => ({
     status: row.status,
     total_cents: row.total_cents,
@@ -47,14 +63,16 @@ export async function fetchAllTimeTotals(
   boothIds: string[],
 ): Promise<{ orders: number; revenue_cents: number }> {
   if (!boothIds.length) return { orders: 0, revenue_cents: 0 };
-  const rows = await readAllRows((from, to) =>
-    supabase
-      .from("orders")
-      .select("total_cents")
-      .in("booth_id", boothIds)
-      .neq("status", "cancelled")
-      .order("id")
-      .range(from, to),
+  const rows = await readBoothBatches(boothIds, (ids) =>
+    readAllRows((from, to) =>
+      supabase
+        .from("orders")
+        .select("total_cents")
+        .in("booth_id", ids)
+        .neq("status", "cancelled")
+        .order("id")
+        .range(from, to),
+    ),
   );
   return {
     orders: rows.length,
@@ -74,16 +92,22 @@ export async function fetchReviewRows(
   boothIds: string[],
 ): Promise<ReviewRow[]> {
   if (!boothIds.length) return [];
-  const { data } = await supabase
-    .from("feedback")
-    .select("rating, message, order_number, booth_id, created_at")
-    .eq("source", "customer")
-    .in("booth_id", boothIds)
-    .order("created_at", { ascending: false })
-    .limit(500);
-  // No cast: the select column list matches the generated `feedback` Row, so the
-  // typed client already infers ReviewRow[] — parse-don't-cast holds by inference.
-  return data ?? [];
+  const rows = await readBoothBatches(boothIds, async (ids) => {
+    const { data, error } = await supabase
+      .from("feedback")
+      .select(REVIEW_COLUMNS)
+      .eq("source", "customer")
+      .in("booth_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    // No cast: the select column list matches the generated `feedback` Row, so the
+    // typed client already infers ReviewRow[] — parse-don't-cast holds by inference.
+    if (error) throw new Error("Could not load reviews");
+    return data ?? [];
+  });
+  return rows
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 500);
 }
 
 /**
@@ -101,17 +125,29 @@ export async function fetchEventReviewRows(
   // Neither query depends on the other's result — both only need boothIds —
   // so run them concurrently instead of paying two sequential round-trips.
   const [orderKeys, rows] = await Promise.all([
-    readAllRows((start, end) =>
-      supabase
-        .from("orders")
-        .select("booth_id, order_number")
-        .in("booth_id", boothIds)
-        .gte("created_at", from)
-        .lt("created_at", to)
-        .order("id")
-        .range(start, end),
+    readBoothBatches(boothIds, (ids) =>
+      readAllRows((start, end) =>
+        supabase
+          .from("orders")
+          .select("booth_id, order_number")
+          .in("booth_id", ids)
+          .gte("created_at", from)
+          .lt("created_at", to)
+          .order("id")
+          .range(start, end),
+      ),
     ),
-    fetchReviewRows(supabase, boothIds),
+    readBoothBatches(boothIds, (ids) =>
+      readAllRows((start, end) =>
+        supabase
+          .from("feedback")
+          .select(REVIEW_COLUMNS)
+          .eq("source", "customer")
+          .in("booth_id", ids)
+          .order("id")
+          .range(start, end),
+      ),
+    ),
   ]);
   const inEvent = new Set(
     (orderKeys ?? []).map((o) => `${o.booth_id}::${o.order_number}`),

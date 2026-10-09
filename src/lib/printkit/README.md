@@ -25,17 +25,14 @@ orderNumber})`: fires a job-creation request and returns a
   import time). Unlike `../paykit/client.ts`, an unset
   `NEXT_PUBLIC_PRINTKIT_URL` has **no fallback host** — it degrades to the
   same "not configured yet" result as a missing secret rather than guessing a
-  `*.vercel.app` subdomain, since printkit has no live deployment yet and a
-  wrong guess would POST the bearer secret to an unclaimed/wrong host.
+  `*.vercel.app` subdomain, because guessing could send the bearer secret to an unclaimed or incorrect host.
   Bearer-authenticates as `Authorization: Bearer qkit:<secret>`, validating
   the response body against a local Zod schema.
 - `client.test.ts` — tests, for both functions, the missing-secret degrade
   path, the missing-URL fail-closed path (both never call `fetch`), the
   bearer header/payload shape, non-2xx error-body surfacing, network-failure
   handling, and an invalid-JSON response body (both collapse to `ok:false`
-  without throwing — the latter is exactly what happens today against
-  printkit's current production deployment, since `/api/v1/print-locations`
-  doesn't exist there yet and returns an HTML 404 page).
+  without throwing). These mocked failures do not establish current deployment availability.
 
 `getPrinterStatus(boothId)` is the newest of the three: printkit owns
 whether a booth's printer is set up and reachable, for every kind of printer

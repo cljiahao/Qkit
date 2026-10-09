@@ -32,8 +32,7 @@ amountCents, orderRef})` (idempotent on `orderRef` — safe to call again for
   up by name/phone/date). Every
   function returns a `PaykitResult<T>` (`{ok:true,data}` |
   `{ok:false,status,error}`) and never throws; the shared `paykitRequest`
-  helper reads `PAYKIT_KIT_SECRET` at request time (not import time, since
-  the production key isn't minted yet — see `.env.example`) and
+  helper reads `PAYKIT_KIT_SECRET` at request time (not import time; see the blank `.env.example` configuration template) and
   bearer-authenticates as `Authorization: Bearer qkit:<secret>`, validating
   every response body against a local Zod schema mirroring paykit's own
   `src/lib/api-schemas.ts` wire contract. Every `vendorId`/`transactionId`

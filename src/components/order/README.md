@@ -36,7 +36,16 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   action — this keeps checkout a single short step regardless of how long
   the menu above it is (a multi-section menu no longer buries the fields at
   the bottom of a long scroll). Submit calls `placeOrder` (`@/app/o/[code]/actions`) with a
-  stable per-submit idempotency key (retried once on a network error), then
+  stable idempotency key across automatic and manual retries of an unresolved
+  same-payload submission. After ambiguous transport failures, changing the
+  payload is blocked until the previous request is resolved. The pending key
+  and a normalized SHA-256 payload fingerprint survive reload in per-booth
+  session storage, without storing customer names or phone numbers. A recovery
+  warning asks the customer to re-enter the same details. Corrupt recovery
+  metadata blocks a new submission. When browser storage is unavailable, the
+  key remains in memory and a warning asks the customer to keep the page open
+  until confirmation; an initial order remains available.
+  Success then
   clears the cart, stashes an `addRecentOrder` entry, and navigates to the
   order-status page. The phone field is a genuinely optional convenience
   (cross-kit customer identity, migration `0075`), never required to

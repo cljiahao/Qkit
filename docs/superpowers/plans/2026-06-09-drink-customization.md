@@ -1,5 +1,13 @@
 # Drink Customization Implementation Plan
 
+**Review correction (2026-10-09):** The separator-based `cartKey` sketch
+below can collide because validated IDs and labels can contain its separator.
+The current implementation uses structured JSON tuples for every key,
+including plain items, and deterministic ordering without locale comparison.
+Both customer and walk-up forms use that helper. Regression tests cover
+separator collisions, plain/configured identity collisions and Unicode
+ordering. Do not restore the historical bare-ID or separator algorithm.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let customers customize a drink (single-choice option groups: Style/Temperature/Sugar) in a bottom sheet before adding to cart; collapse the Kopitiam Cart to 3 base drinks (Kopi/Teh/Milo) + options. Options are free.

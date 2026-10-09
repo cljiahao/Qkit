@@ -1,5 +1,15 @@
 # Payment-First Checkout + Self-Checkout Pickup Kiosk Implementation Plan
 
+> **2026-10-09 review:** Historical implementation sketch. Task 1's assignment
+> function needs locking and explicit `PUBLIC` execution revocation; serial
+> retries alone do not test concurrent idempotency. Task 3's upload, Paykit claim
+> and local mirror writes are separate transactions, so its commit description
+> incorrectly promises that a failure cannot leave partial state. Current
+> actions and migrations define recovery and validation. Browser image resizing
+> is not server upload validation, and OCR amount matches do not confirm funds.
+> The kiosk must preserve the order capability and payment checks, without
+> treating a scan as proof of physical presence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Gate a QR order's visibility/order-number/kitchen-ticket on the

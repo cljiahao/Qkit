@@ -48,14 +48,19 @@ export default async function RootLayout({
   // Anonymous-safe (same client shape as the public order page) — read errors
   // fail closed to "no banner" (DEFAULT_PLATFORM_SETTINGS) rather than
   // breaking every single page load site-wide over a display-only feature.
-  const supabase = await createServerClient();
-  const { data, error } = await supabase
-    .from("platform_settings")
-    .select("banner_enabled, banner_message")
-    .eq("id", 1)
-    .maybeSingle();
-  if (error) console.error("platform_settings read failed", error.message);
-  const banner = data ?? DEFAULT_PLATFORM_SETTINGS;
+  let banner = DEFAULT_PLATFORM_SETTINGS;
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from("platform_settings")
+      .select("banner_enabled, banner_message")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) console.error("platform_settings read failed", error.message);
+    if (!error && data) banner = data;
+  } catch {
+    console.error("platform_settings request failed");
+  }
 
   return (
     <html

@@ -1,9 +1,25 @@
 // @vitest-environment jsdom
 import { renderHook, act } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 import { useAsyncAction } from "./use-async-action";
 
 describe("useAsyncAction", () => {
+  it("reports configured form failures and resets pending for a successful retry", async () => {
+    const { result } = renderHook(() => useAsyncAction("Please retry"));
+    await act(async () => {
+      await result.current.run(async () => {
+        throw new Error("Offline");
+      });
+    });
+    expect(toast.error).toHaveBeenCalledWith("Please retry");
+    expect(result.current.pending).toBe(false);
+    await act(async () => {
+      await result.current.run(async () => {});
+    });
+    expect(result.current.pending).toBe(false);
+  });
   it("starts idle and resets pending after the handler resolves", async () => {
     const { result } = renderHook(() => useAsyncAction());
     expect(result.current.pending).toBe(false);

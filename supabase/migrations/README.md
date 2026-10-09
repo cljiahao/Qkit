@@ -2,364 +2,74 @@
 
 ## Purpose
 
-The ordered, append-only SQL schema history for the `qkit` Postgres schema —
-every table, RLS policy, SECURITY DEFINER RPC, trigger, index, and Data-API
-grant/revoke that defines qkit's data model and its Postgres-enforced
-authorization. Applied in filename order via the Supabase CLI; nothing here is
-ever edited after landing — a later migration corrects an earlier one.
+Append-only SQL history defining qkit tables, RLS policies, constrained RPCs,
+triggers, indexes and Data API privileges. Apply migrations in filename order.
+Correct an applied migration with a new migration rather than rewriting it.
 
 ## Contents
 
-95 files, `0000` through `0094`. Read in full: `0000`, `0001`, `0010`, `0030`,
-and the entire `0038`-`0080` tail; skimmed by filename/theme otherwise. The
-schema evolved in five broad waves:
+| Range         | Purpose                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `0000`–`0009` | Schema, vendor/booth/order foundations, admin identity, storage and numbering                                                   |
+| `0010`–`0021` | Entitlements, pricing, stock, rate limiting, feedback and upgrade requests                                                      |
+| `0022`–`0043` | Order timestamps, QR capabilities, server repricing, explicit grants, immutable columns and RLS performance                     |
+| `0044`–`0068` | Per-order proof, schedule enforcement, feedback proof, preferences, social links, staff ordering and menu categories            |
+| `0069`–`0084` | Shared-profile/feedback/support convergence, bot retirement, audit history, printing, booking references and legal-status cache |
+| `0085`–`0094` | Free-payment handling, payment-first numbering, restricted server-assigned columns, proof-upload limits and daily cup caps      |
+| `0095` onward | Forward security, concurrency and settings corrections described below                                                          |
 
-- **Foundation (`0000`-`0009`)** — `0000_create_qkit_schema.sql` creates the
-  `qkit` schema and grants `USAGE` to `anon`/`authenticated`/`service_role`.
-  `0001_initial_schema.sql` creates `vendors`/`booths`/`orders`, the
-  `order_status` enum (`pending→confirmed→preparing→ready→completed`, +`cancelled`), the `updated_at` trigger, baseline RLS (vendor-owns-own-row,
-  public read of active booths, anyone-can-insert orders), and adds `orders`
-  to the `supabase_realtime` publication. `0002`-`0009` add booth image
-  storage, the free/pro `plans` + 1-booth free cap, an `admin` role +
-  identity/audit table, booth working hours, atomic per-booth order
-  numbering, and cascade-delete of orders when a booth is deleted.
-- **Monetization (`0010`-`0021`)** — `0010_monetization.sql` adds
-  `licenses` (time-boxed Pro passes, RLS-readable by their vendor) and
-  `pricing` (single-row, publicly readable admin-editable prices), redefines
-  `can_create_booth` to also honor a live license, and adds
-  `booth_remaining_stock` (per-item remaining-stock JSONB, SECURITY DEFINER).
-  `0011`-`0021` layer on pricing introduction, license amount/window
-  (`valid_from` for scheduled passes), booth serveability
-  (`booth_servable`), a DB-backed rate limiter, customer feedback +
-  vendor-visible NPS, license labels, and vendor upgrade `purchase_requests`.
-- **Order-path hardening (`0022`-`0037`)** — order timestamps
-  (`ready_at`/`completed_at`), vendor tour/onboarding state, booth BYO
-  payment config, a rotating booth access token + short code (closing the
-  sequential-booth-id enumeration path), a per-item stock counter, the public
-  `get_booth_for_order` read (booth-safe projection, never exposing
-  `cost_cents`/`short_code`), `0030_place_order.sql` (the SECURITY DEFINER
-  RPC that becomes the _only_ customer order-write path: validates,
-  idempotency-checks via a unique `(booth_id, idempotency_key)` index,
-  re-prices every line from the stored menu server-side, pools/clamps stock
-  across duplicate lines before the sold-out gate, atomically increments
-  `order_seq`, and closes the direct `INSERT`/`next_order_number` paths for
-  `anon`), then `0031`-`0037` round out short-code regeneration, order
-  column-freeze (`ORDER_IMMUTABLE_COLUMN` trigger on financial/identity
-  columns), the `authenticated`-role lockdown (closing the same direct-write
-  paths for logged-in non-owners, not just `anon`), the shared
-  `order_item_quantities` stock-pooling helper, `WITH CHECK` clauses on the
-  vendor UPDATE policies (closing plan self-escalation and booth
-  re-pointing), rate-limit table cleanup, and booth-image storage bucket
-  limits.
-- **Entitlement, grants & performance (`0038`-`0043`)** —
-  `0038_entitlement_and_hardening.sql` extracts `vendor_entitled` as the
-  single predicate both `can_create_booth` and `booth_servable` call (fixing
-  a drift where `can_create_booth` ignored `valid_from` and let a
-  future-dated pass lift the booth cap early), adds a `payment_method_kind`
-  CHECK constraint, and tightens an internal helper's grants.
-  `0039_rls_select_auth_uid.sql` rewrites every qkit RLS policy's
-  `auth.uid()` calls as `(select auth.uid())` so Postgres evaluates them once
-  per query (planner initPlan) instead of once per row — a pure performance
-  change, semantics unchanged. `0040` fixes the `orders.status` default to
-  `'preparing'` (the value `place_order` actually inserts).
-  `0041_data_api_grants.sql` replaces the CLI's auto-expose behavior with
-  fully explicit per-role, per-table grants (`authenticated` gets what its
-  RLS gates; `anon` gets none — every customer path is a SECURITY DEFINER
-  RPC; `service_role` gets everything) — this is the migration that makes
-  the Data-API surface deterministic across CLI versions.
-  `0042_grant_and_enum_fixes.sql` fixes two bugs the pgTAP suite caught on
-  first real run: `plan` was still vendor-updatable because Postgres can't
-  carve a column out of a table-level UPDATE grant (fixed via a
-  column-scoped grant instead), and `place_order`'s payment-status `CASE`
-  expression didn't cast to the enum. `0043` restores `anon` INSERT on
-  `events` (landing-page analytics silently broke under `0041`'s explicit
-  grants).
-- **Order-token, hours, feedback-integrity & social links (`0044`-`0054`)** —
-  `0044_order_token_and_hours.sql` adds `orders.access_token` (an
-  unguessable per-order UUID closing the sequential-order-number
-  enumeration leak on the status page) and `booth_open` (a SQL mirror of
-  `src/lib/hours.ts`'s `isBoothOpen`, SGT wall-clock, enforced server-side
-  inside `place_order` for the first time). `0045` extends the column-freeze
-  trigger to cover `access_token` (it was addable via a direct PATCH before
-  this). `0046_booth_open_overnight.sql` fixes `booth_open` to also check
-  the _previous_ day's overnight carry (a Fri 22:00-02:00 weekly shift was
-  wrongly reported closed after midnight on a day with no window of its
-  own). `0047` adds `support_messages` (vendor-to-admin help requests).
-  `0048_feedback_order_proof.sql` closes a review-bombing hole:
-  `submit_feedback` now requires a customer review's
-  `(booth_id, order_number, access_token)` to match a real order, not just a
-  length-checked order number. `0049` indexes `feedback` by
-  `(booth_id, created_at)` for the vendor stats-reviews query. `0050` adds
-  `vendors.board_settings` (per-vendor live-order-board aging/overdue/sound/
-  notify preferences, vendor-updatable). `0051_emit_order_completed.sql`
-  adds a trigger that calls `merqo.emit_metric` on an order's first
-  transition into `completed`, so sibling Merqo-suite products (e.g.
-  loopkit) can react to qkit order completions without qkit knowing who's
-  listening. `0052_vendor_social_links.sql` adds `vendors.social_links`
-  (vendor-wide default) and `booths.social_links` (nullable per-booth
-  whole-object override). `0053_booth_for_order_social_links.sql` extends
-  `get_booth_for_order` to resolve and return the effective social links
-  (booth override, else vendor default) so the customer menu page can show
-  them even while the booth is closed. `0054_vendor_profile_backfill.sql`
-  is a one-time, self-healing copy of `vendors.name`/`social_links` into the
-  shared `merqo.vendor_profile` table (see
-  `docs/superpowers/specs/2026-07-16-shared-vendor-profile-design.md` in the
-  sibling `merqo` repo) — `ON CONFLICT DO UPDATE ... WHERE` rather than
-  `DO NOTHING`, so it repairs a vendor whose profile row was lazily created
-  empty by `merqo.get_or_create_vendor_profile` before this migration ran,
-  without ever clobbering a value already set through the new shared-profile
-  write path — guarded to no-op when `merqo.vendor_profile` doesn't exist
-  (qkit's own CI/local `supabase start` builds a fresh DB from only qkit's
-  migrations, with no merqo schema at all). `0055_place_order_free_price.sql`
-  recreates `place_order` so an unset menu-item price stores no
-  `price_cents` key on the order snapshot at all, instead of coalescing to
-  `0` — mirrors how `cost_cents` already worked, and is what lets the UI
-  show "Free" instead of "$0.00" for a deliberately-unpriced item.
-  `0056_place_order_option_deltas.sql` extends the same function's
-  options-validation loop to also sum each selected choice's
-  `price_delta_cents`/`cost_delta_cents` into the line's total/cost, so a
-  vendor can charge extra for a customization (e.g. an oat-milk upcharge)
-  while `place_order` stays the sole authority on the charged amount — a
-  `price_delta_cents` forged into a submitted option is ignored, only the
-  stored menu's own delta is ever trusted. `0057_order_priority_bump.sql`
-  adds a nullable `priority_bumped_at` column to `orders` for the vendor
-  "bump to front" board action — not caught by the existing freeze
-  trigger (denylist, not allowlist), rides the existing
-  `orders_vendor_update` RLS policy with no new policy needed.
-  `0058_platform_settings.sql` adds `qkit.platform_settings` — a
-  public-read singleton (same shape as `qkit.pricing`, `0010`) backing a
-  maintenance banner; no UPDATE policy at all, writes go through the
-  service-role admin action only. `0059_board_settings_undo_seconds.sql`
-  adds `undo_seconds` to `board_settings` (vendor-configurable duration for
-  `OrderCard`'s advance-undo affordance) — since `board_settings` is JSONB
-  rather than a real column, this both bumps the column `DEFAULT` (future
-  inserts) and backfills the key onto every existing row that lacks it
-  (`board_settings ? 'undo_seconds'`). `0060_walkup_orders.sql` adds
-  `orders.source` (`'qr' | 'walkup'`, default `'qr'`) and
-  `qkit.place_walkup_order` — a SECURITY DEFINER RPC for staff-entered
-  counter orders. Direct `INSERT` on `orders` stays revoked for everyone
-  (`0033`), so this can't reuse `place_order`'s anon/short-code model
-  either way; instead it checks `vendor_id = auth.uid()` (same
-  ownership-check pattern as `set_license_label`, `0020`) and otherwise
-  mirrors `place_order`'s repricing/option-delta/stock-check logic
-  verbatim — the money-correctness rules don't change just because staff
-  is typing instead of a customer. Deliberately skips `booth_servable`/
-  `booth_open`: those gate the customer-facing schedule, not a vendor's
-  own staff standing at the counter. `0061_walkup_order_paid_flag.sql`
-  adds a `p_paid` argument to `place_walkup_order` so staff who already
-  collected payment at the counter (cash, tap-to-pay) can land the order
-  with `payment_status = 'confirmed'` in one step, instead of a separate
-  "Confirm payment" tap on the board right after — same end state
-  `confirmOrderPayment` (`src/app/dashboard/order-actions.ts`) produces.
-  A new argument changes the function's signature, so this `DROP FUNCTION`s
-  the old 3-arg version explicitly before `CREATE OR REPLACE`, rather than
-  leaving it behind as a second, stale overload. `0062_board_settings_
-display_options.sql` adds `daily_order_number_reset` (bool, default
-  `false`) and `default_prep_minutes` (int, nullable, default `null`) to
-  `board_settings` — same JSONB-blob `DEFAULT` bump + per-row backfill
-  pattern as `0059`. Both are display-only: `daily_order_number_reset` never
-  touches the real `order_number` counter (the board/status page compute a
-  day-local rank at read time instead — `displayOrderNumber` in
-  `src/lib/orders.ts`), and `default_prep_minutes` only ever feeds a client-
-  side wait-estimate fallback (`estimateWaitSeconds` in `src/lib/stats.ts`),
-  never anything written back to the database.
-  `0063_order_number_no_truncate.sql` fixes a real bug in both `place_order`
-  and `place_walkup_order`'s numbering: `lpad(v_seq::text, 4, '0')` doesn't
-  just zero-pad, Postgres's `lpad` _truncates_ a string already longer than
-  the target length, so a booth's 10000th order got
-  `lpad('10000', 4, '0') = '1000'` — colliding with that booth's real order
-  #1000 and violating `UNIQUE (booth_id, order_number)` (`0001`'s
-  constraint), failing the order outright. Recreates both functions
-  verbatim from their current (`0056`/`0061`) bodies with
-  `lpad(v_seq::text, greatest(4, length(v_seq::text)), '0')` instead — pads
-  short numbers to 4 digits, never shrinks a longer one.
-  `qkit.next_order_number` (`0008`) has the same bug but is dead code (its
-  EXECUTE grant was revoked from every role in `0041`; `place_order` has
-  inlined its own numbering since `0030`), so it's left alone.
-  `0064_booth_arrival_confirmation.sql` adds "scan-to-start" arrival
-  confirmation: `booths.requires_arrival_confirm` (bool, default `false`),
-  and recreates `place_order` (verbatim from its `0063` body otherwise) so a
-  new order's initial `status` is `'pending'` instead of a hardcoded
-  `'preparing'` when the booth has the flag on — for items made fresh per
-  order (e.g. ice cream) where prep shouldn't start until the customer is
-  actually at the counter; the customer's own status page then prompts them
-  to confirm arrival (`confirmArrival`,
-  `src/app/order/[boothId]/[orderNumber]/status-actions.ts`), which flips the
-  order to `'preparing'` itself. `place_walkup_order` is deliberately left
-  untouched — a vendor keying in a counter order in person has no "customer
-  arrives later" to wait for. `0065_ready_auto_clear.sql` adds the
-  ready-order auto-clear sweep: `orders.auto_completed` (bool, default
-  `false`, set only by `sweepReadyOrders` and cleared only by
-  `restoreAutoCompleted` or a fresh manual advance — see
-  `src/app/dashboard/order-actions.ts` — so a completed-orders "Restore to
-  ready" affordance can tell a sweep-driven completion apart from a vendor's
-  own "Mark Picked Up" tap) plus a `ready_auto_clear_min` key added to
-  `board_settings`'s `DEFAULT` and backfilled onto every existing vendor row
-  (same JSONB-blob pattern as `0059`/`0062`), defaulting to `3` minutes — a
-  deliberately conservative default (see the job board's own reasoning
-  against the originally-floated 15 seconds) that a vendor can retune (or
-  set to `null` to disable the sweep) from `/dashboard/settings`.
-  `0066_menu_categories.sql` adds `booths.menu_categories` (jsonb, default
-  `[]`): an ordered list of `{id, label}` menu sections. Each `menu_items`
-  entry may reference one by `id` via its own `category` key (added
-  client-side only, not a DB column — `menu_items` stays a flat jsonb
-  array); a stable id means renaming a section never requires rewriting
-  every item that references it, and an item with no/unknown category id
-  renders in an "Other" bucket, always last. `get_booth_for_order` is
-  recreated (verbatim from its `0053` body otherwise) to also return
-  `menu_categories`, so the customer menu page can group items by section
-  in the same round trip that already fetches the menu. No UI reads or
-  writes this column yet (menu-editor, booth-form, customer menu grouping)
-  — schema/RPC only. `0067_daily_order_number_reset_default_on.sql` flips
-  `daily_order_number_reset`'s column `DEFAULT` from `false` to `true` and,
-  unlike every prior JSONB-blob default bump in this history, also
-  unconditionally overwrites the key on every existing vendor row (not the
-  usual `WHERE NOT (... ? 'key')` backfill guard, since every row already
-  has the key by now) — a deliberate product default change, not a missing-
-  key backfill: qkit's pop-up/event booths expect a small daily-reset
-  ticket number by default, matching e.g. bubble-tea-chain counter
-  numbering. Purely display (see `0062`); the real `order_number` is
-  untouched. `0068_show_wait_estimate.sql` adds `board_settings
-  .show_wait_estimate` (bool, default `true`): an opt-OUT toggle for the
-  customer status page's numeric wait estimate — off leaves only the
-  queue-position label shown, never a minute guess, regardless of how much
-  real order history exists (`getWaitEstimate` in
-  `src/app/order/[boothId]/[orderNumber]/status-actions.ts`). Normal
-  missing-key backfill (unlike `0067`'s unconditional overwrite) since
-  every vendor starts at the same `true` default with nothing to preserve.
-  `0069_drop_vendor_identity_columns.sql` drops `qkit.vendors.name` and
-  `qkit.vendors.social_links` — dead since the 2026-07-17 shared-vendor-profile
-  cutover moved both to `merqo.vendor_profile`, backfilled by `0054`. Every
-  remaining raw reader/writer of these two columns (onboarding, four admin
-  pages) was cut over to `getOrCreateVendorProfile`/`vendorStallNames` in the
-  same change — see
-  `docs/superpowers/specs/2026-07-21-drop-vendor-identity-columns-design.md`.
-  Applied to the shared/live DB 2026-07-22. `0069`'s own review missed one
-  more raw reader: `qkit.get_booth_for_order`
-  (0053, last redefined by `0066`) still read its vendor-level
-  `social_links` fallback straight off `qkit.vendors`.
-  `0070_get_booth_for_order_vendor_profile_social_links.sql` redefines it to
-  read that fallback from `merqo.vendor_profile` instead — a same-database
-  cross-schema `SELECT`, not a new dependency, matching `0054`'s own
-  precedent of qkit reading/writing that table directly. Guarded the same
-  way as `0054`: qkit's own CI/local `supabase start` builds a fresh
-  Postgres from only qkit's migrations, no merqo schema at all, so the read
-  is skipped (leaving the fallback `null`) when `merqo.vendor_profile`
-  doesn't exist there.
-- **Cross-kit convergence (`0071`-`0072`)** — `0071_vendor_feedback_convergence.sql`
-  redefines `qkit.submit_feedback`'s vendor branch (`source='vendor'`) to
-  call the shared `merqo.submit_vendor_feedback` RPC instead of inserting
-  locally, and guard-backfills existing local vendor-NPS rows into
-  `merqo.vendor_feedback`; customer feedback is unchanged. See
-  `docs/superpowers/specs/2026-07-23-qkit-vendor-feedback-convergence-design.md`.
-  `0072_support_messages_convergence.sql` guard-backfills qkit's existing
-  local `support_messages` rows into the shared `merqo.support_messages`
-  table (new submissions move to the shared RPC in application code, not
-  this migration — see `docs/superpowers/specs/2026-07-23-cross-kit-support-messages-remaining-kits-design.md`).
-  Both migrations use the same `information_schema` existence guard as
-  `0054`/`0070`, since qkit's own isolated CI Postgres has no `merqo`
-  schema at all.
-  `0073_drop_stale_local_feedback_support.sql` finishes both cutovers: no
-  client has shipped against either yet, so unlike `0069`'s deferred
-  column drop this lands immediately rather than waiting a deploy cycle —
-  deletes the (already-backfilled) `source='vendor'` rows from
-  `qkit.feedback` and drops its now-dead `nps` column (customer rows only
-  ever used `rating`), and drops `qkit.support_messages` outright (fully
-  superseded for both writes and admin reads). `0074_qkit_wedge_pricing.sql`
-  lowers `qkit.pricing.monthly_cents` from $24.99 to $14.99 (qkit is the
-  family's acquisition wedge, not a standalone premium product — see
-  `docs/business/2026-08-15-per-kit-pricing-rationale.md` in the sibling
-  `Merqo Business` tree), guarded on the known current value so it never
-  clobbers a price an admin has since changed via `/admin`.
-- **Cross-kit customer identity (`0075`)** —
-  `0075_place_order_customer_phone.sql` gives both `place_order` and
-  `place_walkup_order` a new, genuinely optional `p_customer_phone text
-DEFAULT NULL` argument — same signature-change treatment as `0061`'s
-  `p_paid` addition (`DROP FUNCTION` the old signature first, so
-  `CREATE OR REPLACE` can't leave it behind as a stale second overload).
-  When a phone is supplied, each function calls the shared
-  `merqo.upsert_customer(b.vendor_id, p_customer_phone, p_customer_name)`
-  after its own successful order insert, linking the order to the shared
-  `merqo.customers` table (merqo migration `0018`) so a repeat customer can
-  eventually be recognized across kits for the same vendor — see
-  `docs/business/2026-08-16-cross-kit-customer-identity-design.md` in the
-  sibling `Merqo Business` tree. Guarded with the same
-  `information_schema.routines` existence check as `0071`'s
-  `merqo.submit_vendor_feedback` call (qkit's own isolated CI Postgres has
-  no `merqo` schema at all), and skipped entirely when the phone is
-  null/omitted — no new required column, no backfill, zero added checkout
-  friction for a customer who declines to give one.
-- `0076_vendor_telegram.sql` added Phase A of the Telegram order-alerts
-  design (`docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`):
-  `qkit.vendor_telegram` (`vendor_id` PK → `chat_id`, RLS `SELECT` granted
-  to `authenticated` scoped to the caller's own row via
-  `vendor_telegram_own`, no client write grant at all — writes only
-  through the service-role client) and `qkit.telegram_link_tokens`
-  (short-lived deep-link tokens; RLS enabled with zero policies, same
-  "service-role only, no client read either" shape as `qkit.pricing`'s
-  writer restriction). **Superseded by `0077` below** — kept here only as
-  history, since migrations are never edited retroactively.
-- `0077_drop_vendor_telegram.sql` drops both `0076` tables — Phase A2
-  (`docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`)
-  retires qkit's own Telegram bot in favor of merqo's shared one;
-  `placeOrder`'s vendor alert now calls merqo's
-  `POST /api/merqo/notify-vendor` instead (see `src/lib/merqo-customer-
-notify.ts`'s `notifyVendor`). No data migration — a vendor's `chat_id`
-  under qkit's own (now-dead) bot is meaningless under merqo's bot, so
-  every vendor who'd linked qkit's own bot must reconnect once via merqo's
-  `/profile` page.
-- `0080_booth_walkup_default.sql` adds `booths.walkup_default` (bool,
-  default `false`) — the event-mode setup flow's per-booth default that
-  makes walk-up order entry (`place_walkup_order`, `0060`-`0061`) the live
-  board's opening action instead of the QR/menu-first presentation, for a
-  one-off event where staff key in every order and guests never scan a QR
-  themselves. Purely a UI hint read by `src/app/dashboard/
-realtime-order-board.tsx`; changes neither `place_order` nor
-  `place_walkup_order`'s own behavior, and every existing booth defaults to
-  `false` (QR ordering unaffected).
-- `0081_orders_print_status.sql` — `orders.print_status` (enum: not_required/queued/sent/printed/failed) + `print_status_updated_at`, mirroring `payment_status`'s shape. Mirrored/pushed by printkit's callback on a job's status change (see `printkit/client.ts`, `api/printkit/print-status/route.ts`).
-- `0082_booth_print_enabled.sql` — `booths.print_enabled` (bool, default `false`) — per-booth opt-in for printkit label printing; before this column every order on every booth unconditionally fired a print-job-creation call to printkit regardless of whether the vendor had an account or a paired bridge.
-- `0083_booth_paykit_booking_id.sql` — `booths.paykit_booking_id` (nullable text) — a vendor-pasted link to a paykit booking, event-mode booths only (see `walkup_default`, `0080`). Unvalidated at write time (no lookup/matching by name or phone — a prior fuzzy-matching design was rejected as a cross-tenant financial-data leak risk); the vendor already owns both sides, same trust level as the existing "quick add PayNow" config section. Read back via paykit's `GET /api/v1/bookings/{booking_id}` (`getBookingStatus`, `src/lib/paykit/client.ts`) to show live deposit/balance status on the booth edit page.
-- `0084_legal_check_state.sql` — `qkit.legal_check_state` (`email` PK, `checked_at`, `is_current`) — a per-email TTL cache for "is this vendor's terms/privacy acceptance current?". qkit owns no acceptance record (merqo does, `merqo.legal_acceptances`), so the real check is a bearer-authed `GET /api/merqo/legal-status` HTTP call (`src/lib/legal-gate.ts`) that runs on every gated dashboard render — this table throttles it to once per 5 min, the same pattern as merqo's own `vendor_sync_state`. RLS on, zero policies, explicit `service_role` grant (post-0041 tables don't inherit the blanket grant — same as `0078`).
-- `0085_place_order_free_skips_payment.sql` — recreates `place_order`/`place_walkup_order` so `v_expects_payment` also requires `v_total > 0`; a $0 order no longer shows a pay panel just because the booth has a payment method configured. Backfills existing `total_cents = 0, payment_status = 'pending'` rows to `not_required`.
-- `0086_place_order_requires_accept_without_printer.sql` — recreates `place_order` so a new order also lands `'pending'` (needs a vendor "Start now" tap) when `booths.print_enabled` is off, alongside the existing `requires_arrival_confirm` gate (`0064`) — no printed ticket means no physical way to track what's being worked on. `place_walkup_order` untouched, same rationale as `0064`.
-- `0087_payment_first_and_pickup.sql` — first of the payment-first checkout + self-checkout pickup kiosk task series (see `docs/superpowers/specs/2026-09-13-payment-first-checkout-and-self-checkout-pickup-design.md`). Makes `orders.order_number` nullable and adds `payment_proof_path`/`payment_proof_hash` (+ a partial index for duplicate-photo lookup) and a private `payment-proofs` storage bucket (vendor-scoped SELECT policy only, matching `booth-images`' folder pattern). New `qkit.assign_order_number(p_order_id)` atomically assigns a number at payment-claim time instead of at order creation (idempotent under both a sequential retry and a genuinely concurrent double-call for the same order — the closing `UPDATE ... RETURNING` tells a race loser its write did nothing, so it re-reads and returns whatever actually got persisted rather than its own unpersisted number; deliberately not built on the existing unused, truncation-buggy `qkit.next_order_number` from `0008`). Recreates `place_order` so a payment-required order gets no number and is forced to `'pending'` even at an auto-start booth. Also loosens the `0045` column-freeze trigger to allow the one-time `order_number` `NULL` → assigned transition `assign_order_number` needs, while still blocking any change once a number is set — a gap the freeze trigger predates and this task's own pgTAP run surfaced.
-- `0088_restrict_order_number_writes.sql` — `authenticated`'s `UPDATE` grant on `qkit.orders` is table-level, so `0087`'s freeze-trigger exemption alone left a vendor's own client able to set a still-unassigned `order_number` directly, bypassing `assign_order_number`'s locked-sequence numbering. Revokes the table-level grant and re-grants it column-scoped, omitting `order_number` (same fix shape as `0042`'s `vendors.plan` lockdown).
-- `0089_revoke_walkup_order_public_execute.sql` — `place_walkup_order`'s `EXECUTE` grant was left at the default `PUBLIC` (includes `anon`), unlike every other write RPC in this schema; not exploitable (its own `vendor_id = auth.uid()` check always fails for an anonymous caller) but revoked for defense-in-depth consistency, matching `place_order`/`next_order_number`'s own anon-revoke pattern.
-- `0090_booth_printkit_location_id.sql` — adds nullable `booths.printkit_location_id`, mirroring the id `registerPrintLocation` (`src/lib/printkit/client.ts`) already returns but qkit previously discarded. Needed to subscribe to printkit's own bridge Presence channel (keyed by printkit's `print_locations.id`, not qkit's `booths.id`) for live printer-connectivity status — see `dashboard/booths/printer-status.tsx`.
-- `0091_restrict_printkit_location_id_writes.sql` — `printkit_location_id` is server-assigned only, but `authenticated`'s table-level `UPDATE` on `booths` let a vendor set it directly. Same fix shape as `0088`'s `orders.order_number` lockdown; `syncPrintLocation` now writes it via the service-role client instead.
-- `0092_vendor_tours_seen.sql` — adds `vendors.tours_seen` (JSONB map of tour id to ISO timestamp) so each dashboard page tour has its own "seen" state for `@merqo/ui`'s `DashboardTours`, backfilling `{orders: tour_seen_at}` so vendors who saw the original tour are not shown it again.
-- `0093_payment_proofs_bucket_limits.sql` — gives the `payment-proofs` bucket (created unbounded in `0087`) a 1 MB `file_size_limit` and a JPEG/PNG/WebP `allowed_mime_types`, the same hardening `booth-images` got in `0037`. Every screenshot-paid order writes one object here, so an unbounded bucket grows with order volume; before this the only bound was the app layer (the browser resize, and Next's default 1 MB Server Action body limit). Matches `claimPayment`'s `PAYMENT_PROOF_MAX_BYTES`.
-- `0094_booth_daily_cup_cap.sql` — adds `booths.daily_cup_cap` (nullable; NULL means no cap), `qkit.booth_cups_today`/`qkit.booth_cups_left` and the `orders_daily_cup_cap` BEFORE INSERT trigger, so a booth working to a fixed stock stops at a cup count rather than only at a wall-clock time (`booths.hours`). Counts the sum of item quantities over the day's non-cancelled orders, SGT day, since one order can carry several cups. The trigger holds a transaction-scoped advisory lock keyed on the booth and counts inline rather than calling the STABLE `booth_cups_today`, whose snapshot predates the lock; without that, two checkouts racing for the last cups would both pass. `booth_cups_left` is granted to `anon` so the customer menu page can say how many are left without exposing the cap or any order.
+Current ordering uses `place_order` for QR customers and `place_walkup_order`
+for authenticated owners. Both reprice against stored menu choices; submitted
+prices are informational. QR readers use the sanitized `get_booth_for_order`
+projection. Anonymous/authenticated callers cannot directly insert orders.
+Paid QR orders begin `pending` without a number; privileged payment handling
+assigns a number. Print opt-in does not prove physical printer connectivity.
+
+The latest forward corrections are:
+
+- `0095_review_authorization_hardening.sql`: service-only order numbering and
+  generic rate limiting, restricted vendor/booth INSERT columns, nested cost
+  privacy, shared option validation, paid-order stock locking, bounded
+  order-proof feedback and validated server-owned analytics. Missing optional
+  shared metrics are skipped; installed integration errors still propagate.
+- `0096_atomic_board_settings_patch.sql`: caller-scoped partial settings merge
+  with strict keys, types and merged timing validation under a row lock.
+- `0097_atomic_booth_creation_cap.sql`: owner-only statement triggers enforce
+  the free booth cap across inserts and vendor reassignment. Sorted vendor
+  locks and a fresh recount serialize competing writes; cap-enforced free
+  writes require READ COMMITTED. Paid entitlements retain their existing rules.
+- `0098_scoped_admin_membership.sql`: authenticated admin-membership checks are
+  limited to the caller's subject, with privileged service lookups retained;
+  anonymous and default PUBLIC execution are revoked.
+- `0099_audit_truncate_privileges.sql`: service-role `TRUNCATE` is revoked on
+  the existing audit trails while reads/appends and owner maintenance remain.
+
+Column privileges and RLS work together. Revoking one column does not subtract
+it from a table-level grant (`0042`); grant only editable columns. An omitted
+UPDATE `WITH CHECK` uses the `USING` expression for new rows, so the explicit
+checks in older migrations clarify policy intent rather than fixing an
+implicit ownership-reassignment bypass.
 
 ## Connectivity
 
-`0095_review_authorization_hardening.sql` closes the October review's direct
-Data API bypasses: public order-number assignment, Pro self-assignment on
-vendor INSERT, server-assigned printer IDs on booth INSERT, and nested option
-cost disclosure. It also restores the missing daily-cap UPDATE and admin
-banner service-role grants, and locks the booth for paid QR stock checks just
-as walkup/free orders already do. No rows, tables, or public RPC signatures are
-removed. The deployment must include this migration for those database fixes
-to take effect; application deployment alone does not change permissions.
-The generic rate limiter also becomes service-only; application callers use
-the server helper's internal service client. Customer feedback gains an
-in-RPC three-per-five-minute order-token bound, and both QR/walkup order RPCs
-share a private options validator for array shape and selection cardinality.
-Direct analytics INSERTs are replaced by the existing validated server action
-using its service client. Order completion skips the optional shared metrics
-integration only when its function is absent; an installed function's errors
-retain their existing transactional behavior.
+Apply through the Supabase CLI and the project's migration safety workflow.
+Application deployment alone does not apply database permission corrections.
+Keep [the TypeScript schema mirror](../../src/lib/types.ts) aligned with schema
+changes; regenerate from a disposable database when available.
 
-Applied via the Supabase CLI (`supabase db push`/`db reset`, or the
-project's `/supabase-migrate` skill) against the local or hosted Postgres
-instance configured in `../config.toml`. `src/lib/types.ts` is a hand-
-maintained mirror of the resulting schema and must be kept in sync by hand
-(or via `supabase gen types typescript`) after any migration lands.
-`../tests/rls.test.sql` (pgTAP) exercises the RLS policies and RPCs this
-history produces. `../seed/*.sql` scripts insert data against the schema
-these migrations create, and assume specific functions/columns exist
-(e.g. `short_code`, `access_token`, `payment`).
+Shared deployments must apply the corresponding Merqo migrations before
+profile/feedback/support backfills and their local-column/table retirement.
+Existence guards allow isolated qkit development, but do not prove that a
+shared production backfill ran or that deployment ordering was correct.
+Qkit's retired bot requires vendors to authorize the shared Merqo bot; this
+is a bot-authorization change, not evidence that private Telegram chat IDs
+are numerically different between bots.
+
+[Database regressions](../tests/README.md) exercise authorization, RPCs and
+concurrency separately from mocked application tests. The current forward
+fixtures have not been executed in this review because Docker Desktop's
+Linux database engine is unavailable. [Seeds](../seed/README.md) are manual
+fixtures with separate Paykit checkout prerequisites.
 
 ## Parent
 

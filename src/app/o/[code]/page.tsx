@@ -45,14 +45,19 @@ async function loadCupsLeft(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   boothId: string,
 ): Promise<number | null> {
-  const { data, error } = await supabase.rpc("booth_cups_left", {
-    p_booth_id: boothId,
-  });
-  if (error) {
-    console.error("booth_cups_left failed", error.message);
+  try {
+    const { data, error } = await supabase.rpc("booth_cups_left", {
+      p_booth_id: boothId,
+    });
+    if (error) {
+      console.error("booth_cups_left failed", error.message);
+      return null;
+    }
+    return typeof data === "number" ? data : null;
+  } catch {
+    console.error("booth_cups_left request failed");
     return null;
   }
-  return typeof data === "number" ? data : null;
 }
 
 // Below this many cups left, the page says how many are left. Above it the

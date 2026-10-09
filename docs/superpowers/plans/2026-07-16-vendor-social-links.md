@@ -1,5 +1,12 @@
 # Vendor Social & Website Links Implementation Plan
 
+> **2026-10-09 review:** Historical plan. Migration 0042 revoked table-wide
+> vendor updates, so the explicit `UPDATE (social_links)` grant in 0052 is
+> necessary; the table-grant explanation below is stale. Current URL validation
+> and action tests are authoritative. Enabling a booth override copies all
+> vendor defaults: editing only the website retains the copied Instagram link
+> unless it is also cleared, contrary to manual verification step 3 below.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let a vendor add website/Instagram/Facebook/TikTok links once on their profile (applies to every booth) and optionally override them per booth; show the resolved links to a customer on the order-status page footer, after they've placed an order.

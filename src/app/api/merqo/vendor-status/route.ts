@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
-import { bearerOk, listAllAuthUsers } from "@/lib/merqo-auth";
+import {
+  bearerOk,
+  findAuthUserByEmail,
+  listAllAuthUsers,
+} from "@/lib/merqo-auth";
 import { resolveVendorStatus } from "@/lib/merqo-vendor-status";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Plan } from "@/lib/types";
@@ -35,10 +39,7 @@ export async function GET(request: Request) {
   if (!allowed)
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
-  const [usersRes, vendorsRes] = await Promise.all([
-    listAllAuthUsers(supabase, "merqo vendor-status"),
-    supabase.from("vendors").select("id, plan"),
-  ]);
+  const usersRes = await listAllAuthUsers(supabase, "merqo vendor-status");
   if (usersRes.error) {
     console.error("merqo vendor-status: read failed", usersRes.error.message);
     return NextResponse.json(
@@ -46,7 +47,18 @@ export async function GET(request: Request) {
       { status: 503 },
     );
   }
-  if (vendorsRes.error) {
+  const user = findAuthUserByEmail(
+    usersRes.data?.users ?? [],
+    parsed.data.email,
+  );
+  const vendorsRes = user
+    ? await supabase
+        .from("vendors")
+        .select("id, plan")
+        .eq("id", user.id)
+        .maybeSingle()
+    : null;
+  if (vendorsRes?.error) {
     console.error("merqo vendor-status: read failed", vendorsRes.error.message);
     return NextResponse.json(
       { error: "Upstream unavailable" },
@@ -60,7 +72,7 @@ export async function GET(request: Request) {
       id: u.id,
       email: u.email ?? null,
     })),
-    (vendorsRes.data ?? []) as { id: string; plan: Plan }[],
+    (vendorsRes?.data ? [vendorsRes.data] : []) as { id: string; plan: Plan }[],
   );
 
   return NextResponse.json(status);

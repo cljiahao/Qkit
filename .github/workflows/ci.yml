@@ -57,7 +57,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - run: pnpm test
+      - run: pnpm test:coverage
 
   e2e:
     name: e2e (public smoke)
@@ -195,10 +195,12 @@ jobs:
           # src/lib file (e.g. code promoted into @merqo/ui along with its
           # tests) would otherwise hand Stryker a path that no longer
           # exists, and it exits 1 with "No tests were executed".
-          FILES=$(git diff --name-only --diff-filter=d "origin/$GITHUB_BASE_REF...HEAD" \
-            | grep -E '^src/lib/.*\.ts$' \
-            | grep -vE '\.test\.ts$|/types\.ts$|/action-result\.ts$' \
-            | paste -sd, -)
+          CHANGED=$(git diff --name-only --diff-filter=d "origin/$GITHUB_BASE_REF...HEAD")
+          FILES=$(printf '%s\n' "$CHANGED" | awk '
+            /^src\/lib\/.*\.ts$/ && !/\.test\.ts$|\/types\.ts$|\/action-result\.ts$/ {
+              printf "%s%s", separator, $0
+              separator = ","
+            }')
           if [ -z "$FILES" ]; then
             echo "No surviving src/lib changes — skipping mutation."
             exit 0

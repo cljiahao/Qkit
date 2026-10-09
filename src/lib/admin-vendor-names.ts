@@ -2,11 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
 
 /**
- * Resolve each vendor id's stall name from merqo.vendor_profile, one RPC
- * call per unique id, run in parallel. Admin-only, low-traffic call sites —
- * no batch-read RPC exists on the merqo side, and building one isn't
- * justified for this volume (see
- * docs/superpowers/specs/2026-07-21-drop-vendor-identity-columns-design.md).
+ * Resolve unique vendor names in bounded batches so large admin directories
+ * cannot launch an RPC for every vendor simultaneously.
  */
 export async function vendorStallNames<
   Db,
@@ -16,8 +13,13 @@ export async function vendorStallNames<
   vendorIds: string[],
 ): Promise<Map<string, string>> {
   const uniqueIds = [...new Set(vendorIds)];
-  const profiles = await Promise.all(
-    uniqueIds.map((id) => getOrCreateVendorProfile(supabase, id, null)),
-  );
-  return new Map(uniqueIds.map((id, i) => [id, profiles[i].stall_name]));
+  const names = new Map<string, string>();
+  for (let offset = 0; offset < uniqueIds.length; offset += 8) {
+    const ids = uniqueIds.slice(offset, offset + 8);
+    const profiles = await Promise.all(
+      ids.map((id) => getOrCreateVendorProfile(supabase, id, null)),
+    );
+    ids.forEach((id, index) => names.set(id, profiles[index].stall_name));
+  }
+  return names;
 }

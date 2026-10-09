@@ -8,6 +8,7 @@ import { toggleBoothActive } from "./booths/actions";
 import { getWalkupMenu } from "./walkup-menu-actions";
 import { advanceOrder } from "./order-actions";
 import { DEFAULT_BOARD_SETTINGS } from "@/lib/types";
+import { toast } from "sonner";
 import type { BoardOrder } from "@/lib/types";
 
 function order(overrides: Partial<BoardOrder> = {}): BoardOrder {
@@ -569,6 +570,34 @@ describe("RealtimeOrderBoard booth active toggle", () => {
     );
   });
 
+  it("rolls back and reports a rejected booth-toggle request", async () => {
+    vi.mocked(toggleBoothActive).mockRejectedValueOnce(new Error("offline"));
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not update the booth. Refresh to check its status.",
+      ),
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "Kopi Corner is open. Tap to pause.",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the filter dropdown and header toggle after pausing the booth you're filtered to, even with nothing in flight", async () => {
     // Regression: visibleBooths used to drop a paused-and-empty booth
     // unconditionally, including the one the vendor had the board filtered
@@ -757,10 +786,41 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
     await user.click(markReadyButton);
 
     await waitFor(() => {
-      expect(advanceOrder).toHaveBeenCalledWith("o1");
-      expect(advanceOrder).toHaveBeenCalledWith("o2");
+      expect(advanceOrder).toHaveBeenCalledWith("o1", "preparing");
+      expect(advanceOrder).toHaveBeenCalledWith("o2", "preparing");
     });
     expect(advanceOrder).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports both completed and rejected requests in a batch", async () => {
+    vi.mocked(advanceOrder)
+      .mockResolvedValueOnce({ success: true, status: "ready" })
+      .mockRejectedValueOnce(new Error("offline"));
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001" }),
+          order({ id: "o2", order_number: "0002" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(screen.getByRole("button", { name: /^select$/i }));
+    await user.click(
+      screen.getByRole("checkbox", { name: /select order #0001/i }),
+    );
+    await user.click(
+      screen.getByRole("checkbox", { name: /select order #0002/i }),
+    );
+    await user.click(screen.getByRole("button", { name: /mark 2 ready/i }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("1 order couldn't be updated"),
+    );
+    expect(toast.success).toHaveBeenCalledWith("Marked 1 order ready");
+    expect(screen.getByRole("button", { name: /^select$/i })).toBeEnabled();
   });
 });
 

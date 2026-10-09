@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   advanceOrder,
+  revertOrderAdvance,
   confirmOrderPayment,
   confirmPaymentAndStart,
   revertPaymentAndStart,
@@ -10,6 +11,18 @@ import {
   sweepReadyOrders,
   sweepAbandonedPayments,
 } from "./order-actions";
+
+it("rejects omitted runtime undo states before reading or writing", async () => {
+  const result = await revertOrderAdvance(
+    "00000000-0000-4000-8000-000000000001",
+    undefined as unknown as import("@/lib/types").OrderStatus,
+    undefined as unknown as import("@/lib/types").OrderStatus,
+    "pending",
+  );
+  expect(result.success).toBe(false);
+  expect(getUserMock).not.toHaveBeenCalled();
+  expect(update).not.toHaveBeenCalled();
+});
 
 // Mock the supabase server client's fluent chain and the vendor gate. Two
 // chains hang off `from("orders")`: a read (select→eq→maybeSingle) and a write
@@ -39,13 +52,15 @@ const {
   // Create a recursive chain that supports unlimited .eq() calls followed by .lt().
   // All .eq() calls share the same mock (sweepEqMock) so tests can assert on the
   // full filter chain.
-  let sweepEqMock: any;
-  const createChain = (): any => ({
-    eq: sweepEqMock,
-    lt: sweepLt,
-    select: updateSelect,
-  });
-  sweepEqMock = vi.fn(() => createChain());
+  type QueryChain = {
+    eq: (...args: unknown[]) => QueryChain;
+    lt: typeof sweepLt;
+    select: typeof updateSelect;
+  };
+  function createChain(): QueryChain {
+    return { eq: sweepEqMock, lt: sweepLt, select: updateSelect };
+  }
+  const sweepEqMock = vi.fn(() => createChain());
 
   return {
     getUserMock: vi.fn(),
@@ -153,6 +168,27 @@ beforeEach(() => {
 });
 
 describe("advanceOrder", () => {
+  it("does not complete an order made ready before a stale Mark Ready request", async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "ready", payment_status: "claimed" },
+      error: null,
+    });
+    const result = await advanceOrder(ID, "preparing");
+    expect(result.success).toBe(false);
+    expect(update).not.toHaveBeenCalled();
+    expect(confirmCheckoutMock).not.toHaveBeenCalled();
+    expect(recordOrderStatusEventMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed expected status before database access", async () => {
+    const result = await advanceOrder(
+      ID,
+      "invalid" as unknown as import("@/lib/types").OrderStatus,
+    );
+    expect(result.success).toBe(false);
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
   it("advances preparing → ready and stamps ready_at", async () => {
     maybeSingle.mockResolvedValue({
       data: { id: ID, status: "preparing", payment_status: "not_required" },
@@ -163,21 +199,25 @@ describe("advanceOrder", () => {
       status: "ready",
       ready_at: expect.any(String),
     });
+    expect(sweepEqMock).toHaveBeenCalledWith("id", ID);
+    expect(sweepEqMock).toHaveBeenCalledWith("status", "preparing");
   });
 
-  it("auto-confirms an outstanding payment on completion", async () => {
-    maybeSingle.mockResolvedValue({
-      data: { id: ID, status: "ready", payment_status: "claimed" },
-    });
-    const res = await advanceOrder(ID);
-    expect(res).toEqual({ success: true, status: "completed" });
-    expect(update).toHaveBeenCalledWith({
-      status: "completed",
-      completed_at: expect.any(String),
-      payment_status: "confirmed",
-      paid_at: expect.any(String),
-    });
-  });
+  it.each(["pending", "claimed"])(
+    "completes without confirming a %s payment",
+    async (paymentStatus) => {
+      maybeSingle.mockResolvedValue({
+        data: { id: ID, status: "ready", payment_status: paymentStatus },
+      });
+      const res = await advanceOrder(ID);
+      expect(res).toEqual({ success: true, status: "completed" });
+      expect(update).toHaveBeenCalledWith({
+        status: "completed",
+        completed_at: expect.any(String),
+      });
+      expect(confirmCheckoutMock).not.toHaveBeenCalled();
+    },
+  );
 
   it("rejects an order with no legal forward move", async () => {
     maybeSingle.mockResolvedValue({
@@ -207,6 +247,18 @@ describe("advanceOrder", () => {
     });
     const res = await advanceOrder(ID);
     expect(res).toEqual({ success: true, status: "ready" });
+  });
+
+  it("preserves the committed advance if notification preference lookup rejects", async () => {
+    vendorSingle.mockRejectedValueOnce(new Error("database disconnected"));
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, status: "preparing", payment_status: "not_required" },
+    });
+    await expect(advanceOrder(ID)).resolves.toEqual({
+      success: true,
+      status: "ready",
+    });
+    expect(notifyCustomerMock).not.toHaveBeenCalled();
   });
 
   it("does not notify when advancing to a status other than ready", async () => {
@@ -319,7 +371,47 @@ describe("advanceOrder", () => {
   });
 });
 
+describe("revertOrderAdvance payment isolation", () => {
+  it.each(["pending", "claimed"] as const)(
+    "preserves concurrent payment confirmation when the previous payment was %s",
+    async (previousPayment) => {
+      maybeSingle.mockResolvedValue({
+        data: { id: ID, status: "completed", payment_status: "confirmed" },
+      });
+      expect(
+        await revertOrderAdvance(ID, "ready", "completed", previousPayment),
+      ).toEqual({ success: true, status: "ready" });
+      expect(update).toHaveBeenCalledWith({
+        status: "ready",
+        completed_at: null,
+      });
+      expect(sweepEqMock).toHaveBeenCalledWith("id", ID);
+      expect(sweepEqMock).toHaveBeenCalledWith("status", "completed");
+      expect(confirmCheckoutMock).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe("confirmPaymentAndStart", () => {
+  it.each(["pending", "claimed"])(
+    "does not advance when Paykit returns %s",
+    async (status) => {
+      maybeSingle.mockResolvedValue({
+        data: {
+          id: ID,
+          status: "pending",
+          payment_status: "claimed",
+          total_cents: 800,
+        },
+      });
+      confirmCheckoutMock.mockResolvedValue({ ok: true, data: { status } });
+      expect(await confirmPaymentAndStart(ID)).toEqual({
+        success: false,
+        error: "Failed to confirm payment",
+      });
+      expect(update).not.toHaveBeenCalled();
+    },
+  );
   it("confirms payment via paykit and advances to preparing in one write", async () => {
     maybeSingle.mockResolvedValue({
       data: {
@@ -509,6 +601,25 @@ describe("revertPaymentAndStart", () => {
 });
 
 describe("confirmOrderPayment", () => {
+  it.each(["pending", "claimed"])(
+    "does not confirm locally when Paykit returns %s",
+    async (status) => {
+      maybeSingle.mockResolvedValue({
+        data: {
+          id: ID,
+          status: "ready",
+          payment_status: "claimed",
+          total_cents: 800,
+        },
+      });
+      confirmCheckoutMock.mockResolvedValue({ ok: true, data: { status } });
+      expect(await confirmOrderPayment(ID)).toEqual({
+        success: false,
+        error: "Failed to confirm payment",
+      });
+      expect(update).not.toHaveBeenCalled();
+    },
+  );
   it("confirms a claimed order via paykit and mirrors paid_at locally", async () => {
     maybeSingle.mockResolvedValue({
       data: {

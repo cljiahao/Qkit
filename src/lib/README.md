@@ -2,13 +2,10 @@
 
 ## Purpose
 
-Framework-agnostic business logic for qkit: order/booth/entitlement rules, stats
-and margin aggregation, the Zod schemas that validate every server-action/form
-boundary, and the DB type mirror. Kept free of React and Next.js so it is
-unit-testable (and Stryker-mutation-tested) without a DOM or a live database;
-`paykit/`, `printkit/`, and `supabase/` are the subfolders that do carry I/O
-concerns (the paykit and printkit HTTP clients, and the Supabase client
-factories, respectively).
+Business rules, validation, database types and server/browser integration helpers
+for qkit. Pure helpers accept data and clocks from callers and can be tested
+without a DOM or database. Browser alerts, React icon rendering, Supabase clients
+and cross-kit HTTP/RPC adapters retain their own platform dependencies.
 
 ## Contents
 
@@ -82,6 +79,12 @@ graceMs)` picks the objects in a vendor folder that nothing references and
   (silently no-ops without `window` or on quota/private-mode errors).
 - `cart-storage.test.ts` — tests save/load/clear round-tripping and malformed
   or missing storage.
+- `pending-order.ts` — per-booth session replay key and canonical SHA-256 payload
+  digest for recovering uncertain orders after reload, without plaintext customer
+  details. Storage access failures are distinguished from corrupt metadata so
+  initial ordering remains available with a keep-page-open warning.
+- `pending-order.test.ts` — recovery metadata isolation, payload normalization,
+  corrupt data rejection and unavailable storage regressions.
 - `cart.ts` — `cartKey(menuItemId, options)` (stable dedup key sorted by
   option group so selection order doesn't matter) and `cartTotal`.
 - `cart.test.ts` — tests cart-key stability and total summation.
@@ -109,9 +112,6 @@ graceMs)` picks the objects in a vendor folder that nothing references and
   midnight).
 - `hours.test.ts` — tests daily/weekly/overnight open-closed logic and the
   "Opens …" label.
-- `image-resize.ts` — `resizeToWebp(file, maxDim, quality)`: browser-only
-  Canvas resize + WebP re-encode before upload (EXIF-orientation-aware),
-  falling back to the original file on any decode/encode failure.
 - `image-upload-adapter.ts` — `uploadQkitImage`: `@merqo/ui`'s `ImageUploader`
   `onUpload` backend — writes the already-resized blob to the `booth-images`
   Supabase Storage bucket at the path the component built
@@ -148,8 +148,8 @@ graceMs)` picks the objects in a vendor folder that nothing references and
   deliberately excluded — both live behind "Advanced" in
   `option-groups-editor.tsx`, out of CSV scope per the design doc). A hand-
   rolled RFC4180-shaped encode/decode (quoted fields, embedded commas/
-  quotes) rather than a new dependency; does not handle a literal newline
-  inside a quoted field. An item row has `name` filled; a choice row has
+  quotes) rather than a new dependency; preserves LF, CRLF and CR newlines
+  inside quoted fields. An item row has `name` filled; a choice row has
   `name` blank and `group_name`/`choice_label` filled, attached to the item
   row immediately above it (continuation rows) — consecutive choice rows
   sharing a `group_name` form one group, a `group_name` change starts a
@@ -197,9 +197,8 @@ graceMs)` picks the objects in a vendor folder that nothing references and
   checks against `MERQO_METRICS_SECRET`/`MERQO_PROVISION_SECRET` respectively
   — deliberately separate secrets, since leaking the routine metrics-polling
   one must not also grant the tenant-provisioning write. `listAllAuthUsers`
-  (page-1-only, 1000-user cap, logs if that ceiling is hit so pagination gaps
-  don't fail invisibly) and `findAuthUserByEmail` — shared auth-user lookup
-  helpers for the merqo cross-kit admin flows.
+  reads every auth page and fails the lookup on any page error;
+  `findAuthUserByEmail` resolves shared-auth accounts for cross-kit admin flows.
 - `merqo-customer-notify.ts` — `mintCustomerConnectToken(vendorId, kitSlug,
 notifyRef)`/`notifyCustomer(vendorId, notifyRef, message)`/
   `notifyVendor(vendorId, message)`: server-only HTTP client for merqo's
@@ -248,9 +247,9 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
 - `merqo-vendor-activity.test.ts` — tests the 30d order/revenue rollup, the
   zeroed-fresh-vendor case, and that an open message/expiring pass surface
   the same `attention`/`expiring` statuses the admin console shows.
-- `merqo-vendor-profile.ts` — `getOrCreateVendorProfile`/`upsertVendorProfile`:
+- `merqo-vendor-profile.ts` — `getOrCreateVendorProfile`/`patchVendorProfile`:
   cross-schema helper calling merqo's `get_or_create_vendor_profile`/
-  `upsert_vendor_profile` RPCs (`supabase.schema("merqo").rpc(...)`) so
+  `patch_vendor_profile` RPCs (`supabase.schema("merqo").rpc(...)`) so
   stall name + social links read/write against the shared
   `merqo.vendor_profile` table instead of the stale `qkit.vendors` columns.
 - `merqo-vendor-profile.test.ts` — tests the RPC call shape (schema/function
@@ -270,10 +269,11 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   `showNotification` with a page-level `Notification` fallback),
   `unlockAudio` + `playReadyChime`/`playSound` (a shared, gesture-unlocked
   `AudioContext` playing one of five square-wave presets — chime/bell/ding/
-  horn/triple — via WebAudio oscillators).
+  horn/triple — via WebAudio oscillators). Audio unlock failures are contained
+  so browser restrictions cannot interrupt a customer or vendor gesture.
 - `order-alerts.test.ts` — tests permission gating, notification dispatch
-  fallback, and sound-preset scheduling against mocked WebAudio/Notification
-  APIs.
+  fallback, sound-preset scheduling and synchronous/rejected audio-resume
+  failures against mocked WebAudio/Notification APIs.
 - `orders.ts` — order-board core: `BOARD_ORDER_COLUMNS` (explicit column list
   excluding `access_token`), `TERMINAL_STATUSES`/`isTerminal`, `ADVANCE` (legal
   forward-status map + button label), `orderAgeTone`/`elapsedMinutes`/
@@ -282,8 +282,8 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   the same booth has already overtaken, compared on `created_at` and scoped per
   booth: the board badges these, since an order nobody marked while later ones
   went out leaves its customer waiting on a screen that never changes),
-  `buildAdvancePatch` (status transition patch, auto-confirming
-  payment on completion), `sortActiveOrders` (vendor-board display sort,
+  `buildAdvancePatch` (fulfillment status and timestamp patch, without payment
+  writes), `sortActiveOrders` (vendor-board display sort,
   status-agnostic by design — a bumped order leads, then every order by
   `created_at`; takes an `AgeSortOrder`, `"earliest"` default or `"latest"`),
   `ordersAheadOf` (the separate, status-aware kitchen-priority queue used
@@ -314,8 +314,8 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   emphasized wherever the number is shown — `OrderCard`, the TV/queue
   display; `null` in, both fields empty out, for an order still awaiting a
   payment claim with no number assigned yet).
-- `orders.test.ts` — tests status transitions, patch-building (including the
-  payment auto-confirm-on-complete rule), sorting, age/label formatting,
+- `orders.test.ts` — tests status transitions, fulfillment-only patch-building,
+  sorting, age/label formatting,
   `displayOrderNumber`'s baseline arithmetic, 3-digit padding/growth and
   real-number fallbacks, `splitTrailingDigit`'s lead/last split (including
   the single-character and `null` edge cases), and `needsPaymentReview`'s
@@ -388,12 +388,6 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   (maps the internal `StatsSummary`), `salesSummaryToCsv`.
 - `sales-summary.test.ts` — tests the v1 mapping and CSV serialization
   (including cell-quoting of values containing commas/quotes/newlines).
-- `safe-redirect.ts` — `safeRedirectPath(next, fallback)`: open-redirect guard
-  that accepts only a same-origin relative path (leading `/`, not `//` or
-  `/\`, no control characters) and returns `fallback` otherwise. Used by the
-  `/legal/accept` page + action for the `next` param.
-- `safe-redirect.test.ts` — tests the accept/reject cases (relative path,
-  absolute URL, `//`, `/\`, control characters, nullish/non-slash input).
 - `schemas.ts` — the Zod schema library for every form/action/JSONB boundary:
   `loginSchema`, `vendorSchema`, `menuItemFormSchema`/`menuItemSchema`,
   `optionGroupSchema`/`sanitizeOptionGroups`, `boothHoursSchema`/
@@ -419,8 +413,7 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   `pricingFormSchema`/`grantPassSchema`,
   `parseMenuItems`/`parseOrderItems`, `menuCategorySchema`/
   `menuCategoriesSchema`/`parseMenuCategories` (booth's ordered
-  `{id, label}` menu sections, migration 0066 — schema/types only, no UI
-  yet). `boothFormSchema` also carries `walkup_default: z.boolean()
+  `{id, label}` menu sections, edited through the menu manager). `boothFormSchema` also carries `walkup_default: z.boolean()
 .default(false)` (migration 0080, event-mode setup — makes the live board
   auto-open walk-up order entry for that booth) alongside
   `requires_arrival_confirm`. `boothFormSchema` no longer carries
@@ -481,7 +474,7 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   `daily_order_number_reset`/`default_prep_minutes`, migration 0062), and the
   full `Database["qkit"]` `Tables`/`Functions`/`Enums` shape (vendors, admins,
   admin_audit, events, licenses, payments, pricing, feedback,
-  purchase_requests, support_messages, booths — now also `walkup_default:
+  purchase_requests, booths — now also `walkup_default:
 boolean`, migration 0080 — orders, booth_item_sold —
   `vendor_telegram`/`telegram_link_tokens` from migration 0076 were dropped
   again in migration 0077, Phase A2's retirement of qkit's own Telegram bot;
@@ -533,10 +526,9 @@ boolean`, migration 0080 — orders, booth_item_sold —
 Component in `src/app/` depends on for data access; `paykit/` provides the
 HTTP client the customer checkout flow (order-status `page.tsx`,
 `payment-actions.ts`) and the vendor "quick add PayNow" form
-(`dashboard/booths/actions.ts`) both call through. Nearly every other module
-here is pure (no DB, no React, no
-`Date.now()` — clocks/`now` are passed as arguments) so it is directly
-unit-tested and covered by `pnpm test:mutation` (Stryker, scoped to `src/lib`).
+(`dashboard/booths/actions.ts`) both call through. Pure helpers are unit-tested directly. Browser and server adapters use mocked
+platform-boundary tests; Stryker covers its configured subset of `src/lib`, not
+every module listed here.
 `types.ts` is the DB type mirror imported almost everywhere for row shapes;
 `schemas.ts` is the Zod boundary imported by every Server Action and form in
 `src/app/` plus by `realtime-orders.ts` (which validates untrusted Realtime

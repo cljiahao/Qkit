@@ -44,7 +44,13 @@ describe("uploadQkitImage", () => {
       contentType: "image/webp",
     });
 
-    expect(url).toMatch(/^https?:\/\//);
+    expect(url).toBe(
+      "https://proj.supabase.co/storage/v1/object/public/booth-images/vendor-123/some-uuid.webp",
+    );
+    expect(h.getPublicUrlMock).toHaveBeenCalledWith(
+      "booth-images",
+      "vendor-123/some-uuid.webp",
+    );
     expect(h.uploadMock).toHaveBeenCalledWith(
       "booth-images",
       "vendor-123/some-uuid.webp",

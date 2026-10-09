@@ -1,9 +1,18 @@
 // src/lib/supabase/get-entitlement.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { DEFAULT_BOARD_SETTINGS } from "@/lib/types";
 
-const { getOrCreateVendorProfile, getUser } = vi.hoisted(() => ({
+const { getOrCreateVendorProfile, getUser, legal } = vi.hoisted(() => ({
   getOrCreateVendorProfile: vi.fn(),
   getUser: vi.fn(),
+  legal: vi.fn(),
+}));
+
+vi.mock("@/lib/legal-gate", () => ({ requireCurrentLegalAcceptance: legal }));
+vi.mock("next/navigation", () => ({
+  redirect: (path: string) => {
+    throw new Error(`REDIRECT:${path}`);
+  },
 }));
 
 vi.mock("@/lib/merqo-vendor-profile", () => ({ getOrCreateVendorProfile }));
@@ -37,9 +46,10 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import { loadEntitlement } from "./get-entitlement";
+import { loadEntitlement, requireEntitledVendor } from "./get-entitlement";
 
 beforeEach(() => {
+  legal.mockReset().mockResolvedValue(undefined);
   getOrCreateVendorProfile.mockReset();
   getUser.mockReset();
   maybeSingleVendor.mockReset();
@@ -48,6 +58,45 @@ beforeEach(() => {
 });
 
 describe("loadEntitlement", () => {
+  it("returns free anonymous state without private reads", async () => {
+    getUser.mockResolvedValue(null);
+    expect(await loadEntitlement()).toEqual(
+      expect.objectContaining({
+        user: null,
+        vendor: null,
+        licenseExpiresAt: null,
+      }),
+    );
+    expect(maybeSingleVendor).not.toHaveBeenCalled();
+    expect(maybeSingleLicense).not.toHaveBeenCalled();
+  });
+
+  it("surfaces vendor lookup errors instead of misrouting onboarded users", async () => {
+    getUser.mockResolvedValue({ id: "v1" });
+    maybeSingleVendor.mockResolvedValue({
+      data: null,
+      error: { message: "Unavailable" },
+    });
+    await expect(loadEntitlement()).rejects.toThrow("vendor lookup failed");
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
+  });
+
+  it("fills missing board settings and preserves an active pass", async () => {
+    const expires_at = new Date(Date.now() + 86400000).toISOString();
+    getUser.mockResolvedValue({ id: "v1" });
+    maybeSingleVendor.mockResolvedValue({
+      data: { id: "v1", plan: "free" },
+      error: null,
+    });
+    maybeSingleLicense.mockResolvedValue({ data: { expires_at } });
+    getOrCreateVendorProfile.mockResolvedValue({
+      stall_name: "Coffee",
+      social_links: {},
+    });
+    const result = await loadEntitlement();
+    expect(result.licenseExpiresAt).toBe(expires_at);
+    expect(result.vendor?.board_settings).toEqual(DEFAULT_BOARD_SETTINGS);
+  });
   it("merges the merqo profile's stall_name/social_links onto the vendor row", async () => {
     getUser.mockResolvedValue({ id: "v1" });
     maybeSingleVendor.mockResolvedValue({
@@ -128,4 +177,47 @@ describe("loadEntitlement", () => {
 
     expect(vendor?.tours_seen).toEqual({});
   });
+});
+
+describe("entitled vendor gate", () => {
+  it("redirects anonymous users to login", async () => {
+    getUser.mockResolvedValue(null);
+    await expect(requireEntitledVendor()).rejects.toThrow("REDIRECT:/login");
+    expect(legal).not.toHaveBeenCalled();
+  });
+  it("redirects accounts without a vendor to onboarding", async () => {
+    getUser.mockResolvedValue({ id: "v1" });
+    maybeSingleVendor.mockResolvedValue({ data: null, error: null });
+    await expect(requireEntitledVendor()).rejects.toThrow(
+      "REDIRECT:/onboarding",
+    );
+    expect(legal).not.toHaveBeenCalled();
+  });
+  it.each([true, false])(
+    "checks current legal acceptance before granting access: %s",
+    async (accepted) => {
+      getUser.mockResolvedValue({ id: "v1", email: "vendor@example.com" });
+      maybeSingleVendor.mockResolvedValue({
+        data: { id: "v1", plan: "pro" },
+        error: null,
+      });
+      getOrCreateVendorProfile.mockResolvedValue({
+        stall_name: "Coffee",
+        social_links: {},
+      });
+      if (!accepted)
+        legal.mockRejectedValue(new Error("REDIRECT:/legal/accept"));
+      if (accepted)
+        expect(await requireEntitledVendor()).toEqual(
+          expect.objectContaining({
+            vendor: expect.objectContaining({ id: "v1", name: "Coffee" }),
+          }),
+        );
+      else
+        await expect(requireEntitledVendor()).rejects.toThrow(
+          "REDIRECT:/legal/accept",
+        );
+      expect(legal).toHaveBeenCalledWith("vendor@example.com");
+    },
+  );
 });

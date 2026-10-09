@@ -1,14 +1,5 @@
 // @vitest-environment jsdom
-//
-// Follows the pattern established in
-// src/app/order/[boothId]/[orderNumber]/page.dom.test.tsx: page.tsx is a
-// plain async function with no RSC-specific machinery, so it can be awaited
-// directly and its returned element tree rendered like any other component.
-// requireEntitledVendor and the pricing-row read are mocked; this test
-// asserts the feature-comparison grid renders correctly through the shared
-// PlanComparisonTable (@merqo/ui) — same visible behavior (column order,
-// check/dash rendering, row order) the old local FEATURES/Cell markup had,
-// verified against the new render path.
+// Render the page with mocked entitlement and pricing reads.
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, within } from "@testing-library/react";
 import PlanPage from "./page";

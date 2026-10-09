@@ -6,6 +6,15 @@ import {
   setBanner,
 } from "./actions";
 
+it("preserves a plan upgrade when optional request resolution rejects", async () => {
+  purchaseReqEq.mockRejectedValueOnce(new Error("connection reset"));
+  const result = await setVendorPlan({
+    vendorId: "00000000-0000-4000-8000-000000000001",
+    plan: "pro",
+  });
+  expect(result.success).toBe(true);
+});
+
 // Mock the SERVICE client's fluent chains + the admin gate. `from(table)`
 // dispatches per table so we can drive each terminal independently and count
 // the ledger (`payments`) inserts:

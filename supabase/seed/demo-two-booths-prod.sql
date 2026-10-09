@@ -10,21 +10,23 @@
 --   3. Run.
 --
 -- Safe for prod: it does NOT touch auth.users (your account already exists),
--- only upserts your vendor row + replaces YOUR OWN booths. Idempotent — re-run
--- freely. The /seed/*.svg banners ship with the app (public/), so they resolve
+-- refuses accounts with existing booths before changing any data. Use a dedicated
+-- empty demo account. The /seed/*.svg banners ship with the app (public/), so they resolve
 -- on the deployed site with no upload needed.
 
 do $do$
 declare vid uuid := '__VENDOR_ID__';
 begin
+  lock table qkit.booths in share row exclusive mode;
+  if exists (select 1 from qkit.booths where vendor_id = vid) then
+    raise exception 'Demo seed requires a vendor with no existing booths';
+  end if;
+
   -- Your vendor row → Pro (Pro lifts the 1-active-booth cap). Stall name now
   -- lives in merqo.vendor_profile, not this row.
   insert into qkit.vendors (id, plan)
   values (vid, 'pro')
   on conflict (id) do update set plan = 'pro';
-
-  -- Clean slate for YOUR booths only (orders cascade-delete, migration 0009).
-  delete from qkit.booths where vendor_id = vid;
 
   -- Booth 1: Kopitiam Cart — PayNow payment wired.
   insert into qkit.booths

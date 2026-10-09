@@ -167,6 +167,20 @@ export async function loadPreClaimContext(
   };
 }
 
+function validatePaymentProof(
+  photo: File | null,
+): ActionResult<{ data: File }> {
+  if (!photo)
+    return { success: false, error: "A payment screenshot is required." };
+  const proof = paymentProofSchema.safeParse(photo);
+  if (!proof.success)
+    return {
+      success: false,
+      error: proof.error.issues[0]?.message ?? "Invalid payment screenshot.",
+    };
+  return { success: true, data: proof.data };
+}
+
 // Customer is anonymous, so this uses the service-role client (same pattern as
 // the order status page read). Requires an uploaded payment screenshot — the
 // photo upload IS the claim now, not a follow-on step, and doubles as the
@@ -187,16 +201,8 @@ export async function claimPayment(
   token: string,
   photo: File | null,
 ): Promise<ActionResult<{ orderNumber: string }>> {
-  if (!photo) {
-    return { success: false, error: "A payment screenshot is required." };
-  }
-  const proof = paymentProofSchema.safeParse(photo);
-  if (!proof.success) {
-    return {
-      success: false,
-      error: proof.error.issues[0]?.message ?? "Invalid payment screenshot.",
-    };
-  }
+  const proof = validatePaymentProof(photo);
+  if (!proof.success) return proof;
 
   const parsed = parsePreClaimRef(boothId, token);
   if (!parsed.ok)
@@ -265,6 +271,8 @@ export async function claimPayment(
     console.error("claimPayment: paykit claim failed", claim.error);
     return { success: false, error: "Could not record payment. Try again." };
   }
+  if (claim.data.status === "pending")
+    return { success: false, error: "Could not record payment. Try again." };
 
   const { data: orderNumber, error: assignError } = await supabase.rpc(
     "assign_order_number",
@@ -286,7 +294,7 @@ export async function claimPayment(
   const { error: mirrorError } = await supabase
     .from("orders")
     .update({
-      payment_status: "claimed",
+      payment_status: claim.data.status,
       payment_proof_path: path,
       payment_proof_hash: hash,
     })
@@ -366,6 +374,8 @@ export async function unclaimPayment(
       success: false,
       error: "The stall already confirmed your payment.",
     };
+  if (unclaim.data.status !== "pending")
+    return { success: false, error: "Could not undo. Try again." };
 
   const { error } = await supabase
     .from("orders")

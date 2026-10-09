@@ -20,9 +20,10 @@ the real hook file below).
     `.json/.md/.css`), `tsc --noEmit`, a frozen-lockfile install check when
     `package.json` is staged, a gitleaks secret-scan on staged files (if
     gitleaks is installed), then the README-coupling nudge and the comment-
-    hygiene nudge. Every `xargs` call uses `-d '\n'` so a staged filename
-    with a space, quote, or apostrophe doesn't get word-split into multiple
-    (wrong) arguments.
+    hygiene nudge. Formatter/linter calls convert the collected newline-separated
+    paths to NUL-delimited arguments for `xargs -0`, preserving spaces, quotes
+    and apostrophes. The initial Git filename collection is not NUL-delimited,
+    so filenames containing newlines are not supported.
   - `pre-push.sh` — runs `.claude/verify-harness.sh` (integrity check) plus
     `pnpm run check && pnpm test`.
   - `readme-coupling.sh` — pre-commit nudge (non-blocking): warns to stderr
@@ -61,8 +62,9 @@ this is why the Windows-path-with-space argv-rejoin wrapper
 `.lefthook/commit-msg/commit-msg.sh` used to need (lefthook's `{1}` template
 substitution mis-quoted when the checkout path itself contains a space,
 as this repo's does — "Merqo Business") is gone, not ported. `.claude/verify-harness.sh`
-treats every file in this folder as part of the integrity-checked
-enforcement layer recorded in `.claude/harness.json`.
+checks the manifest-listed enforcement paths against committed HEAD blobs.
+It does not verify uncommitted edits or every file in this folder, and it is
+currently invoked by pre-push rather than a CI job.
 
 ## Parent
 

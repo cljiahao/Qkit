@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const { fromMock, rpcMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
@@ -13,6 +13,7 @@ import { GET } from "@/app/api/merqo/metrics/route";
 // thenable query-builder stub: methods return this; awaiting resolves { data, error, count }
 function result(rows: unknown[], count?: number) {
   const r: Record<string, unknown> = {};
+  let page = rows;
   const chain = () => r;
   Object.assign(r, {
     select: chain,
@@ -20,9 +21,13 @@ function result(rows: unknown[], count?: number) {
     in: chain,
     gte: chain,
     order: chain,
+    range: (from: number, to: number) => {
+      page = rows.slice(from, to + 1);
+      return r;
+    },
     then: (
       res: (v: { data: unknown[]; error: null; count: number | null }) => void,
-    ) => res({ data: rows, error: null, count: count ?? null }),
+    ) => res({ data: page, error: null, count: count ?? null }),
   });
   return r;
 }
@@ -30,8 +35,9 @@ function result(rows: unknown[], count?: number) {
 describe("GET /api/merqo/metrics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.MERQO_METRICS_SECRET = "test-secret";
+    vi.stubEnv("MERQO_METRICS_SECRET", "test-secret");
   });
+  afterEach(() => vi.unstubAllEnvs());
 
   const req = (auth?: string) =>
     new Request("http://localhost/api/merqo/metrics", {
@@ -50,33 +56,34 @@ describe("GET /api/merqo/metrics", () => {
   });
 
   it("401 when the server secret is unset", async () => {
-    delete process.env.MERQO_METRICS_SECRET;
+    vi.stubEnv("MERQO_METRICS_SECRET", "");
     const res = await GET(req("Bearer "));
     expect(res.status).toBe(401);
   });
 
   it("200 returns the contract shape on a valid bearer", async () => {
-    fromMock
-      .mockReturnValueOnce(
-        result([
-          { id: "v1", plan: "pro", created_at: new Date().toISOString() },
-        ]),
-      )
-      .mockReturnValueOnce(result([{ id: "b1", vendor_id: "v1" }]))
-      .mockReturnValueOnce(
-        result([
-          {
-            booth_id: "b1",
-            status: "paid",
-            total_cents: 1000,
-            created_at: new Date().toISOString(),
-          },
-        ]),
-      )
-      .mockReturnValueOnce(
-        result([{ amount_cents: 900, created_at: new Date().toISOString() }]),
-      )
-      .mockReturnValueOnce(result([], 2));
+    const tables: Record<string, unknown[]> = {
+      vendors: [
+        { id: "v1", plan: "pro", created_at: new Date().toISOString() },
+      ],
+      booths: [{ id: "b1", vendor_id: "v1" }],
+      orders: [
+        {
+          booth_id: "b1",
+          status: "paid",
+          total_cents: 1000,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      payments: [{ amount_cents: 900, created_at: new Date().toISOString() }],
+      purchase_requests: [],
+    };
+    fromMock.mockImplementation((table: string) =>
+      result(
+        tables[table] ?? [],
+        table === "purchase_requests" ? 2 : undefined,
+      ),
+    );
 
     const res = await GET(req("Bearer test-secret"));
     expect(res.status).toBe(200);
@@ -117,6 +124,8 @@ describe("GET /api/merqo/metrics", () => {
       Object.assign(r, {
         select: chain,
         eq: chain,
+        order: chain,
+        range: chain,
         then: (
           res: (v: {
             data: null;

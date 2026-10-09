@@ -26,7 +26,6 @@ vi.mock("@merqo/ui/legal", () => ({
 
 import { acceptLegalTerms } from "./actions";
 
-const originalFetch = global.fetch;
 const REAL_IP = "203.0.113.5";
 const REAL_UA = "Mozilla/5.0 (test vendor browser)";
 
@@ -42,8 +41,8 @@ function okFetch() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.MERQO_BASE_URL = "https://merqo.example.com";
-  process.env.MERQO_CUSTOMER_SECRET = "test-secret";
+  vi.stubEnv("MERQO_BASE_URL", "https://merqo.example.com");
+  vi.stubEnv("MERQO_CUSTOMER_SECRET", "test-secret");
   upsertMock.mockResolvedValue({ error: null });
   headersMock.mockResolvedValue(
     new Headers({ "x-forwarded-for": REAL_IP, "user-agent": REAL_UA }),
@@ -51,14 +50,24 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  global.fetch = originalFetch;
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("acceptLegalTerms", () => {
+  it("continues after remote acceptance when the optional cache write rejects", async () => {
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "u1", email: "vendor@business.sg" } },
+    });
+    upsertMock.mockRejectedValueOnce(new Error("database unavailable"));
+    vi.stubGlobal("fetch", okFetch());
+    await acceptLegalTerms(formData("/dashboard"));
+    expect(redirectMock).toHaveBeenCalledWith("/dashboard");
+  });
   it("redirects to /login when there is no signed-in user", async () => {
     getUserMock.mockResolvedValue({ data: { user: null } });
     const fetchSpy = okFetch();
-    global.fetch = fetchSpy as never;
+    vi.stubGlobal("fetch", fetchSpy);
 
     await acceptLegalTerms(formData());
 
@@ -71,7 +80,7 @@ describe("acceptLegalTerms", () => {
       data: { user: { id: "u1", email: "Vendor@Business.sg" } },
     });
     const fetchSpy = okFetch();
-    global.fetch = fetchSpy as never;
+    vi.stubGlobal("fetch", fetchSpy);
 
     await acceptLegalTerms(formData("/dashboard/settings"));
 
@@ -105,7 +114,7 @@ describe("acceptLegalTerms", () => {
     getUserMock.mockResolvedValue({
       data: { user: { id: "u1", email: "vendor@business.sg" } },
     });
-    global.fetch = okFetch() as never;
+    vi.stubGlobal("fetch", okFetch());
 
     await acceptLegalTerms(formData("/dashboard"));
 
@@ -121,7 +130,7 @@ describe("acceptLegalTerms", () => {
     getUserMock.mockResolvedValue({
       data: { user: { id: "u1", email: "vendor@business.sg" } },
     });
-    global.fetch = okFetch() as never;
+    vi.stubGlobal("fetch", okFetch());
 
     await acceptLegalTerms(formData());
 
@@ -134,7 +143,7 @@ describe("acceptLegalTerms", () => {
     });
     // merqo maps a 23505 to { ok: true } — both calls independently succeed.
     const fetchSpy = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    global.fetch = fetchSpy as never;
+    vi.stubGlobal("fetch", fetchSpy);
 
     await acceptLegalTerms(formData("/dashboard"));
 
@@ -149,9 +158,10 @@ describe("acceptLegalTerms", () => {
     getUserMock.mockResolvedValue({
       data: { user: { id: "u1", email: "vendor@business.sg" } },
     });
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue({ ok: false, status: 500 }) as never;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 500 }),
+    );
 
     await expect(acceptLegalTerms(formData("/dashboard"))).rejects.toThrow(
       /legal-accept/,
@@ -160,12 +170,12 @@ describe("acceptLegalTerms", () => {
   });
 
   it("throws when MERQO_CUSTOMER_SECRET is unset", async () => {
-    delete process.env.MERQO_CUSTOMER_SECRET;
+    vi.stubEnv("MERQO_CUSTOMER_SECRET", undefined);
     getUserMock.mockResolvedValue({
       data: { user: { id: "u1", email: "vendor@business.sg" } },
     });
     const fetchSpy = okFetch();
-    global.fetch = fetchSpy as never;
+    vi.stubGlobal("fetch", fetchSpy);
 
     await expect(acceptLegalTerms(formData())).rejects.toThrow(
       /MERQO_CUSTOMER_SECRET/,
@@ -177,7 +187,7 @@ describe("acceptLegalTerms", () => {
     getUserMock.mockResolvedValue({
       data: { user: { id: "u1", email: "vendor@business.sg" } },
     });
-    global.fetch = okFetch() as never;
+    vi.stubGlobal("fetch", okFetch());
 
     await acceptLegalTerms(formData("https://evil.example"));
     expect(redirectMock).toHaveBeenCalledWith("/dashboard");
@@ -191,7 +201,7 @@ describe("acceptLegalTerms", () => {
     getUserMock.mockResolvedValue({
       data: { user: { id: "u1", email: "vendor@business.sg" } },
     });
-    global.fetch = okFetch() as never;
+    vi.stubGlobal("fetch", okFetch());
 
     await acceptLegalTerms(formData("/dashboard/plan"));
 

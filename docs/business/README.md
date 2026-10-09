@@ -15,3 +15,6 @@ Standalone strategy document — not read by any code or CI. Referenced from `do
 ## Parent
 
 [docs](../README.md)
+
+The handbook preserves June research. Its dated correction supersedes the erroneous
+DPO claim and warns that the payment-regulation conclusion predates Paykit.

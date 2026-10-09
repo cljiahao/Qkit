@@ -154,8 +154,12 @@ export function BoothForm({
   const [dailyCupCap, setDailyCupCap] = useState(
     initial?.daily_cup_cap != null ? String(initial.daily_cup_cap) : "",
   );
-  const { pending: saving, run: runSave } = useAsyncAction();
-  const { pending: deleting, run: runDelete } = useAsyncAction();
+  const { pending: saving, run: runSave } = useAsyncAction(
+    "Could not save the booth. Refresh to check its status before retrying.",
+  );
+  const { pending: deleting, run: runDelete } = useAsyncAction(
+    "Could not delete the booth. Refresh to check its status before retrying.",
+  );
 
   function onDelete() {
     if (!initial?.boothId) return;

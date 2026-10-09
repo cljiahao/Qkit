@@ -27,6 +27,8 @@ describe("LandingTicket", () => {
     expect(screen.getByText("Ada")).toBeInTheDocument();
     expect(screen.getByText("Kopi")).toBeInTheDocument();
     expect(screen.getByText("$3.60")).toBeInTheDocument();
+    expect(screen.getByText("$7.20")).toBeInTheDocument();
+    expect(screen.getByText("Iced")).toBeInTheDocument();
     expect(screen.getByText("Mark Ready")).toBeInTheDocument();
     expect(container.querySelector(".ticket-aging")).not.toBeNull();
     expect(screen.getByText("Unpaid")).toBeInTheDocument();

@@ -17,6 +17,7 @@ export function usePolling(
   { intervalMs, enabled }: { intervalMs: number; enabled: boolean },
 ) {
   const tickRef = useRef(tick);
+  const inFlight = useRef(false);
   useEffect(() => {
     tickRef.current = tick;
   });
@@ -26,8 +27,26 @@ export function usePolling(
     let timer: ReturnType<typeof setInterval> | undefined;
 
     const run = () => {
-      // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
-      if (!document.hidden) void tickRef.current();
+      if (document.hidden || inFlight.current) return;
+      inFlight.current = true;
+      try {
+        const result = tickRef.current();
+        if (result) {
+          result.then(
+            () => {
+              inFlight.current = false;
+            },
+            () => {
+              inFlight.current = false;
+            },
+          );
+        } else {
+          inFlight.current = false;
+        }
+      } catch {
+        // A failed refresh is retried on the next visible interval.
+        inFlight.current = false;
+      }
     };
     const start = () => {
       if (!timer) timer = setInterval(run, intervalMs);

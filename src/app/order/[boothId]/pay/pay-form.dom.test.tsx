@@ -25,19 +25,26 @@ vi.mock("../[orderNumber]/qr-image", () => ({
 
 const QR_CHECKOUT = { type: "qr" as const, transactionId: "tx", payload: "p" };
 
-// navigator.share/canShare don't exist in jsdom by default — tests that add
-// them via Object.assign must remove them again so later tests see the same
-// unset starting point regardless of execution order.
-const hadShare = "share" in navigator;
-const hadCanShare = "canShare" in navigator;
+const browserDescriptors = [
+  { target: navigator, key: "share" },
+  { target: navigator, key: "canShare" },
+  { target: URL, key: "createObjectURL" },
+  { target: URL, key: "revokeObjectURL" },
+].map(({ target, key }) => ({
+  target,
+  key,
+  descriptor: Object.getOwnPropertyDescriptor(target, key),
+}));
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 afterEach(() => {
-  if (!hadShare) delete (navigator as { share?: unknown }).share;
-  if (!hadCanShare) delete (navigator as { canShare?: unknown }).canShare;
+  for (const { target, key, descriptor } of browserDescriptors) {
+    if (descriptor) Object.defineProperty(target, key, descriptor);
+    else Reflect.deleteProperty(target, key);
+  }
 });
 
 describe("PayForm", () => {

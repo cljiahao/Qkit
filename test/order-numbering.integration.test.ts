@@ -45,7 +45,7 @@ describe.skipIf(!RUN)("next_order_number concurrency (integration)", () => {
 
   afterAll(async () => {
     if (!db) return;
-    // orders → booths has no ON DELETE CASCADE, so delete orders first.
+    // Remove the test fixture explicitly before deleting its auth user.
     if (boothId) {
       await db.from("orders").delete().eq("booth_id", boothId);
       await db.from("booths").delete().eq("id", boothId);
@@ -59,10 +59,8 @@ describe.skipIf(!RUN)("next_order_number concurrency (integration)", () => {
   it("assigns distinct, sequential numbers under N concurrent placements", async () => {
     const N = 25;
 
-    // Mirror placeOrder: atomically claim a number via the rpc, then insert the
-    // order. All N fire at once so they race on UNIQUE (booth_id, order_number).
-    // Pre-0008 this raced on COUNT(*) and collided; the row-locked counter must
-    // now hand out N distinct values with zero 23505s.
+    // Exercise the service-only counter directly; public placement uses the
+    // constrained place_order RPC rather than separate counter and INSERT calls.
     const results = await Promise.all(
       Array.from({ length: N }, async (_, i) => {
         const { data: orderNumber, error: numErr } = await db.rpc(

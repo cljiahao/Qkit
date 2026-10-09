@@ -565,43 +565,59 @@ export const passwordChangeSchema = z
 // Live-order-board preferences (vendors.board_settings). Minutes are capped
 // generously (240 = 4hr) — this isn't a hard product limit, just a guard
 // against fat-fingered values that would make the aging system meaningless.
-export const boardSettingsSchema = z
-  .object({
-    aging_min: z.number().int().min(1).max(240),
-    overdue_min: z.number().int().min(1).max(240),
-    sound_id: z.enum(["chime", "bell", "ding", "horn", "triple", "none"]),
-    desktop_notify: z.boolean(),
-    // Bounded well below the aging/overdue minute range — this is a
-    // seconds-scale undo grace period, not a display threshold. 2s floor
-    // keeps it long enough to actually tap; 15s ceiling matches what a
-    // vendor originally proposed as a reasonable outer bound.
-    undo_seconds: z.number().int().min(2).max(15),
-    daily_order_number_reset: z.boolean(),
-    // false = the status page always shows a queue-position label, never a
-    // minute guess — the "orders ahead of you" line itself is unaffected,
-    // this only gates the numeric estimate layered on top of it (see
-    // getWaitEstimate in status-actions.ts).
-    show_wait_estimate: z.boolean(),
-    // null = no vendor-set fallback (the wait estimate falls back to a
-    // queue-position label instead — see estimateWaitSeconds). 1-60min is a
-    // generous bound against a fat-fingered value, same rationale as the
-    // aging/overdue caps above.
-    default_prep_minutes: z.number().int().min(1).max(60).nullable(),
-    // null = the auto-clear sweep is off. 1-60min mirrors default_prep_minutes'
-    // bound rationale — generous headroom against a fat-fingered value.
-    ready_auto_clear_min: z.number().int().min(1).max(60).nullable(),
-    // Opt-out, not opt-in: the customer already consented to the Telegram
-    // "order ready" ping by connecting (merqo's own consent model, untouched
-    // by this flag). Default true so every pre-existing vendor row (this key
-    // postdates the column) keeps notifying exactly as before this shipped —
-    // only an explicit `false` (a vendor who finds it off-brand) turns it off.
-    customer_telegram_notify_enabled: z.boolean().default(true),
-    pickup_scan_enabled: z.boolean().default(false),
-  })
-  .refine((d) => d.overdue_min > d.aging_min, {
+const boardSettingsFields = z.object({
+  aging_min: z.number().int().min(1).max(240),
+  overdue_min: z.number().int().min(1).max(240),
+  sound_id: z.enum(["chime", "bell", "ding", "horn", "triple", "none"]),
+  desktop_notify: z.boolean(),
+  // Bounded well below the aging/overdue minute range — this is a
+  // seconds-scale undo grace period, not a display threshold. 2s floor
+  // keeps it long enough to actually tap; 15s ceiling matches what a
+  // vendor originally proposed as a reasonable outer bound.
+  undo_seconds: z.number().int().min(2).max(15),
+  daily_order_number_reset: z.boolean(),
+  // false = the status page always shows a queue-position label, never a
+  // minute guess — the "orders ahead of you" line itself is unaffected,
+  // this only gates the numeric estimate layered on top of it (see
+  // getWaitEstimate in status-actions.ts).
+  show_wait_estimate: z.boolean(),
+  // null = no vendor-set fallback (the wait estimate falls back to a
+  // queue-position label instead — see estimateWaitSeconds). 1-60min is a
+  // generous bound against a fat-fingered value, same rationale as the
+  // aging/overdue caps above.
+  default_prep_minutes: z.number().int().min(1).max(60).nullable(),
+  // null = the auto-clear sweep is off. 1-60min mirrors default_prep_minutes'
+  // bound rationale — generous headroom against a fat-fingered value.
+  ready_auto_clear_min: z.number().int().min(1).max(60).nullable(),
+  // Opt-out, not opt-in: the customer already consented to the Telegram
+  // "order ready" ping by connecting (merqo's own consent model, untouched
+  // by this flag). Default true so every pre-existing vendor row (this key
+  // postdates the column) keeps notifying exactly as before this shipped —
+  // only an explicit `false` (a vendor who finds it off-brand) turns it off.
+  customer_telegram_notify_enabled: z.boolean().default(true),
+  pickup_scan_enabled: z.boolean().default(false),
+});
+
+export const boardSettingsSchema = boardSettingsFields.refine(
+  (d) => d.overdue_min > d.aging_min,
+  {
     message: "Overdue must be later than amber",
     path: ["overdue_min"],
-  });
+  },
+);
+
+export const boardSettingsPatchSchema = boardSettingsFields
+  .partial()
+  .extend({
+    customer_telegram_notify_enabled: z.boolean().optional(),
+    pickup_scan_enabled: z.boolean().optional(),
+  })
+  .strict()
+  .refine(
+    (value) => Object.keys(value).length > 0,
+    "Choose a setting to update",
+  );
+export type BoardSettingsPatch = z.infer<typeof boardSettingsPatchSchema>;
 
 export type ProfileNameInput = z.infer<typeof profileNameSchema>;
 export type DisplayNameInput = z.infer<typeof displayNameSchema>;

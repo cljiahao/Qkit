@@ -7,7 +7,7 @@ Static assets served as-is by Next.js from the site root.
 ## Contents
 
 - `seed/` — placeholder menu-item images used by the demo/seed booth data.
-- `sw.js` — the app's service worker. It caches nothing (no offline/stale-asset risk); its only jobs are (a) `self.clients.claim()` on `activate` so already-open tabs are controlled without a reload (needed before `registration.showNotification` can fire), and (b) on `notificationclick`, close the notification and focus an already-open tab or `openWindow` the order URL carried in the notification's `data.url`.
+- `sw.js` — the app's service worker. It caches nothing; it claims open tabs on activation and, on notification clicks, navigates and focuses the matching target tab or opens the notification URL. Navigation accepts only same-origin HTTP(S) URLs without embedded credentials; a closed or unfocusable matching tab falls back to opening the target.
 
 ## Connectivity
 

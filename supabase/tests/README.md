@@ -20,7 +20,21 @@ from the Vitest/Playwright tests elsewhere in the repo.
   validated analytics writes, optional shared metrics with preserved failures,
   and the service-role maintenance-banner grant. Uses `no_plan()` so each
   independently named assertion remains visible without a manual test count.
-- `rls.test.sql` — a single pgTAP file (`plan(131)`, run inside one rolled-back
+- `board-settings-patch.test.sql` — partial preference merges, caller-only RLS,
+  strict patch types, allowed keys and timing limits for `0096`.
+- `booth-creation-cap.test.sql` and `booth-cap-isolation.test.sql` — free booth
+  cap, multirow/reassignment paths, paid entitlement and isolation-mode rules
+  for `0097`; `isolation/` holds separate concurrent-session schedules.
+- `scoped-admin-membership.test.sql` — 20 caller-scope, effective privilege,
+  missing-claim, service-role and RLS compatibility assertions for `0098`.
+- `audit-truncate-privileges.test.sql` — 18 effective privilege and denied
+  service-role truncation assertions for the append-only trails (`0099`).
+- `print-callback-ordering.test.sql` — monotonic print-state callback behavior.
+
+These new regression fixtures are prepared but have not been executed in this
+review: Docker Desktop's Linux database engine is unavailable.
+
+- `rls.test.sql` — a single pgTAP file (`plan(132)`, run inside one rolled-back
   transaction with inline fixed-UUID fixtures — no shared state, no cleanup).
   What it actually asserts, by section:
   - RLS is enabled on `vendors`, `booths`, `orders`, `feedback`,

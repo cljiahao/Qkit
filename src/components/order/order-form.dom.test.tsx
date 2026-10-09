@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
+import { webcrypto } from "node:crypto";
 import { OrderForm } from "./order-form";
 import type { MenuItem, SelectedOption } from "@/lib/types";
 
@@ -77,6 +78,7 @@ function renderForm(closed = false, menuItems: MenuItem[] = [KOPI, TEH]) {
 }
 
 beforeEach(() => {
+  vi.stubGlobal("crypto", webcrypto);
   vi.clearAllMocks();
   window.sessionStorage.clear(); // no stale reorder seed leaking between tests
   placeOrder.mockResolvedValue({
@@ -85,6 +87,11 @@ beforeEach(() => {
     boothId: "b1",
     accessToken: "tok42",
   });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("OrderForm cart", () => {
@@ -434,6 +441,151 @@ describe("OrderForm cart", () => {
     );
     expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
   });
+  it("replays the same key on manual retry after two ambiguous network failures", async () => {
+    placeOrder
+      .mockRejectedValueOnce(new Error("lost response"))
+      .mockRejectedValueOnce(new Error("lost retry response"))
+      .mockResolvedValueOnce({
+        success: true,
+        orderNumber: "0042",
+        boothId: "b1",
+        accessToken: "tok42",
+      });
+    const { toast } = await import("sonner");
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Network issue. Please retry with the same order details.",
+      ),
+    );
+    const name = within(dialog).getByLabelText("Your name");
+    await user.clear(name);
+    await user.type(name, "Grace");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Retry your previous order before changing its details.",
+      ),
+    );
+    expect(placeOrder).toHaveBeenCalledTimes(2);
+    await user.clear(name);
+    await user.type(name, "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42"),
+    );
+    expect(placeOrder).toHaveBeenCalledTimes(3);
+    expect(new Set(placeOrder.mock.calls.map((call) => call[2])).size).toBe(1);
+  });
+  it("recovers the same request key after remount without storing customer details", async () => {
+    placeOrder
+      .mockRejectedValueOnce(new Error("Lost response"))
+      .mockRejectedValueOnce(new Error("Lost retry"));
+    const user = userEvent.setup();
+    const mounted = renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    let dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
+    const firstKey = placeOrder.mock.calls[0][2];
+    const stored = window.sessionStorage.getItem("qkit:pending-order:b1")!;
+    expect(JSON.parse(stored)).toEqual({
+      key: firstKey,
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(stored).not.toContain("Ada");
+    expect(stored).not.toContain("kopi");
+    mounted.unmount();
+    renderForm();
+    expect(toast.error).toHaveBeenCalledWith(
+      "A previous order is awaiting confirmation. Re-enter the same details to recover it.",
+    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42"),
+    );
+    expect(placeOrder.mock.calls[2][2]).toBe(firstKey);
+    expect(window.sessionStorage.getItem("qkit:pending-order:b1")).toBeNull();
+  });
+  it("blocks a corrupt restored attempt instead of minting a second order key", async () => {
+    window.sessionStorage.setItem("qkit:pending-order:b1", "{broken");
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not safely restore this order. Check with the vendor before ordering again.",
+      ),
+    );
+    expect(placeOrder).not.toHaveBeenCalled();
+  });
+  it.each(["setItem", "getItem"] as const)(
+    "allows an initial order and reuses its in-memory key when storage %s is blocked",
+    async (method) => {
+      placeOrder
+        .mockRejectedValueOnce(new Error("Lost response"))
+        .mockRejectedValueOnce(new Error("Lost retry"));
+      const storage = vi
+        .spyOn(Storage.prototype, method)
+        .mockImplementation(() => {
+          throw new DOMException("Blocked", "SecurityError");
+        });
+      const user = userEvent.setup();
+      renderForm();
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await user.click(screen.getByRole("button", { name: /Continue/ }));
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+      await user.click(
+        within(dialog).getByRole("button", { name: /Place order/ }),
+      );
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith(
+          "This order can only be recovered on this page. Keep it open until confirmation.",
+        ),
+      );
+      await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
+      expect(push).not.toHaveBeenCalled();
+      await user.click(
+        within(dialog).getByRole("button", { name: /Place order/ }),
+      );
+      await waitFor(() =>
+        expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42"),
+      );
+      expect(placeOrder).toHaveBeenCalledTimes(3);
+      expect(new Set(placeOrder.mock.calls.map((call) => call[2])).size).toBe(
+        1,
+      );
+      storage.mockRestore();
+    },
+  );
 
   it("renders the phone field as optional and submits successfully when left blank", async () => {
     const user = userEvent.setup();

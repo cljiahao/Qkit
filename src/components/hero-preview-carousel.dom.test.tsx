@@ -15,7 +15,10 @@ function mockMatchMedia(reduced: boolean) {
     onchange: null,
   }));
 }
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe("HeroPreviewCarousel", () => {
   it("renders all 4 boards and 4 dots", () => {
@@ -29,11 +32,11 @@ describe("HeroPreviewCarousel", () => {
     mockMatchMedia(true);
     const { container } = render(<HeroPreviewCarousel />);
     const before = container.querySelector('[data-dot][data-active="true"]');
+    expect(before).toBeInTheDocument();
     act(() => {
       vi.advanceTimersByTime(11_000);
     });
     const after = container.querySelector('[data-dot][data-active="true"]');
     expect(after).toBe(before);
-    vi.useRealTimers();
   });
 });

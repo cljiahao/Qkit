@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 import userEvent from "@testing-library/user-event";
 
 const updateBoardSettings = vi.fn();
@@ -43,6 +44,7 @@ const DEFAULTS: BoardSettings = {
 const PREP_ESTIMATE = { avgMinutes: null, sampleCount: 0, minSample: 10 };
 
 beforeEach(() => {
+  vi.clearAllMocks();
   updateBoardSettings.mockReset();
   playSound.mockClear();
   unlockAudio.mockClear();
@@ -51,6 +53,27 @@ beforeEach(() => {
 });
 
 describe("SettingsForm thresholds", () => {
+  it("reports a timing transport rejection and leaves values available for retry", async () => {
+    updateBoardSettings
+      .mockRejectedValueOnce(new Error("Offline"))
+      .mockResolvedValueOnce({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+    const aging = screen.getByLabelText(/turn amber after/i);
+    await user.clear(aging);
+    await user.type(aging, "3");
+    const save = screen.getByRole("button", { name: /save timing/i });
+    await user.click(save);
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not save timing settings. Please try again.",
+      ),
+    );
+    expect(aging).toHaveValue(3);
+    expect(save).toBeEnabled();
+    await user.click(save);
+    await waitFor(() => expect(updateBoardSettings).toHaveBeenCalledTimes(2));
+  });
   it("rejects overdue <= aging without calling the action", async () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
@@ -79,6 +102,14 @@ describe("SettingsForm thresholds", () => {
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ aging_min: 3, overdue_min: 10 }),
     );
+    expect(Object.keys(updateBoardSettings.mock.calls[0][0]).sort()).toEqual([
+      "aging_min",
+      "customer_telegram_notify_enabled",
+      "overdue_min",
+      "pickup_scan_enabled",
+      "ready_auto_clear_min",
+      "undo_seconds",
+    ]);
   });
 
   it("saves a changed undo window", async () => {
@@ -174,6 +205,23 @@ describe("SettingsForm pickup-scan toggle", () => {
 });
 
 describe("SettingsForm sound", () => {
+  it("restores the saved selection after a transport failure so the same preset can be retried", async () => {
+    updateBoardSettings
+      .mockRejectedValueOnce(new Error("Offline"))
+      .mockResolvedValueOnce({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+    await user.click(screen.getByRole("radio", { name: "Bell" }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not save your sound. Please try again.",
+      ),
+    );
+    expect(screen.getByRole("radio", { name: "Chime" })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: "Bell" }));
+    await waitFor(() => expect(updateBoardSettings).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("radio", { name: "Bell" })).toBeChecked();
+  });
   it("selecting a preset previews it and saves immediately", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
@@ -181,13 +229,34 @@ describe("SettingsForm sound", () => {
 
     await user.click(screen.getByRole("radio", { name: "Bell" }));
     expect(playSound).toHaveBeenCalledWith("bell");
-    expect(updateBoardSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ sound_id: "bell" }),
-    );
+    expect(updateBoardSettings).toHaveBeenCalledWith({ sound_id: "bell" });
   });
 });
 
 describe("SettingsForm desktop notifications", () => {
+  it("keeps the last saved toggle after transport failure so retry enables rather than disables it", async () => {
+    updateBoardSettings
+      .mockRejectedValueOnce(new Error("Offline"))
+      .mockResolvedValueOnce({ success: true });
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+    const toggle = screen.getByRole("switch", {
+      name: "Desktop notifications",
+    });
+    await user.click(toggle);
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not update notifications. Please try again.",
+      ),
+    );
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(updateBoardSettings.mock.calls.map((call) => call[0])).toEqual([
+      { desktop_notify: true },
+      { desktop_notify: true },
+    ]);
+  });
   it("turning on requests permission then saves", async () => {
     updateBoardSettings.mockResolvedValue({ success: true });
     const user = userEvent.setup();
@@ -197,9 +266,7 @@ describe("SettingsForm desktop notifications", () => {
       screen.getByRole("switch", { name: /desktop notifications/i }),
     );
     expect(requestNotifyPermission).toHaveBeenCalled();
-    expect(updateBoardSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ desktop_notify: true }),
-    );
+    expect(updateBoardSettings).toHaveBeenCalledWith({ desktop_notify: true });
   });
 
   it("reverts and shows an error when permission is denied", async () => {
@@ -214,6 +281,9 @@ describe("SettingsForm desktop notifications", () => {
     expect(
       screen.getByRole("switch", { name: /desktop notifications/i }),
     ).not.toBeChecked();
+    expect(toast.error).toHaveBeenCalledWith(
+      "Notifications blocked. Enable them for this site in your browser settings, then try again.",
+    );
   });
 
   it("offers an in-browser enable button when already on but not granted, without touching the account setting", async () => {
@@ -261,6 +331,11 @@ describe("SettingsForm customer order screen", () => {
     expect(updateBoardSettings).toHaveBeenCalledWith(
       expect.objectContaining({ daily_order_number_reset: true }),
     );
+    expect(Object.keys(updateBoardSettings.mock.calls[0][0]).sort()).toEqual([
+      "daily_order_number_reset",
+      "default_prep_minutes",
+      "show_wait_estimate",
+    ]);
   });
 
   it("saves the show-wait-estimate toggle and disables the backup-prep input while it's off", async () => {

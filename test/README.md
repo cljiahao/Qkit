@@ -15,6 +15,8 @@ database. Neither suite reads application environment files during collection.
 ## Contents
 
 - `db-env.ts` — validates explicit integration-test configuration when a test runs.
+- `demo-base-url.test.ts` — allows loopback demo origins and rejects remote,
+  credentialed or path-bearing targets before synthetic browser writes.
 
 - `api/` — route-handler tests, one file per route, mirroring
   `src/app/api/`'s structure one-for-one; see its own README.
@@ -31,7 +33,7 @@ database. Neither suite reads application environment files during collection.
   `RUN_DB_TESTS` env var so the default `pnpm test` run doesn't fail when no
   local DB is up). Seeds a throwaway auth user → vendor → booth via the
   service-role client, fires 25 concurrent `next_order_number` RPC calls +
-  order inserts (mirroring what `place_order` does internally), and asserts
+  service-role order inserts, and asserts
   all 25 order numbers are distinct, sequential (`0001`..`0025`, no gaps),
   and that exactly 25 rows landed — proving the row-locked counter doesn't
   collide the way the pre-migration `COUNT(*)`-based numbering did. Uses explicitly supplied isolated-test credentials and tears down its
@@ -42,7 +44,8 @@ database. Neither suite reads application environment files during collection.
   server client) can still call `get_or_create_vendor_profile` via
   `.schema("merqo").rpc(...)` — i.e. the cross-schema RPC pattern
   `merqo-vendor-profile.ts` relies on actually works against the live
-  shared Supabase project.
+  shared Supabase project. It removes only its randomly identified fixture in
+  `finally`, including assertion failures.
 - `setup.ts` — the global Vitest setup file: imports
   `@testing-library/jest-dom/vitest` matchers, polyfills
   `Element.prototype.hasPointerCapture`/`setPointerCapture`/
@@ -58,6 +61,9 @@ database. Neither suite reads application environment files during collection.
   `jsdom` via a `// @vitest-environment jsdom` docblock; plain
   node-environment `lib` tests would throw if this touched `document`
   unconditionally).
+- `service-worker.test.ts` — imports the repository worker with isolated global fixtures
+  with mocked clients to verify exact notification targets, unrelated tabs,
+  missing window APIs and rejection of unsafe navigation URLs.
 
 ## Connectivity
 

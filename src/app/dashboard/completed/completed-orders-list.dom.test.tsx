@@ -151,7 +151,9 @@ describe("CompletedOrdersList", () => {
       />,
     );
     // Default pageSize is 12 — the 13th order starts on page 2.
-    expect(screen.queryByText("#0012")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0012"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Next page" }));
     expect(
       screen.getByText(byOrderNumber("#0012"), ORDER_NUMBER_OPTS),
@@ -215,7 +217,9 @@ describe("CompletedOrdersList", () => {
     expect(
       screen.getByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
-    expect(screen.queryByText("#0002")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
   });
 
   it("filters by search text matching order number or customer name", async () => {
@@ -239,7 +243,9 @@ describe("CompletedOrdersList", () => {
       "priya",
     );
 
-    expect(screen.queryByText("#0001")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
@@ -287,8 +293,12 @@ describe("CompletedOrdersList", () => {
     expect(
       screen.getByText(byOrderNumber("#0001"), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
-    expect(screen.queryByText("#0002")).not.toBeInTheDocument();
-    expect(screen.queryByText("#0003")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0003"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "7 days" }));
     expect(
@@ -297,7 +307,9 @@ describe("CompletedOrdersList", () => {
     expect(
       screen.getByText(byOrderNumber("#0002"), ORDER_NUMBER_OPTS),
     ).toBeInTheDocument();
-    expect(screen.queryByText("#0003")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(byOrderNumber("#0003"), ORDER_NUMBER_OPTS),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "All time" }));
     expect(

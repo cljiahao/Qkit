@@ -32,8 +32,9 @@ pnpm format       # prettier --write
 ```
 
 E2E (Playwright, `e2e/`) is a small critical-path smoke against a REAL local
-Supabase — it covers what the mocked unit/component tests cannot (RLS, the
-`proxy.ts` auth guard, the full order lifecycle). To run:
+Supabase — it covers the `proxy.ts` auth guard and customer checkout through
+payment claim and initial numbered tracking. Vendor fulfillment and pickup are
+not covered by this smoke suite. To run:
 
 1. Docker running, then `supabase start`
 2. apply migrations + the `supabase/seed/coffee-cart.sql` seed
@@ -107,9 +108,9 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   `src/app/o/[code]/notify.ts`) now calls `notifyVendor` in
   `src/lib/merqo-customer-notify.ts` instead of a local lookup + Bot API
   call — same name, same call site, same never-blocks-order-placement
-  guarantee, only the internals changed. No data carried over: a vendor's
-  qkit-bot `chat_id` is meaningless under merqo's bot (Telegram scopes
-  `chat_id` per bot×user pair), so every vendor who'd linked qkit's own bot
+  guarantee, only the internals changed. No connection data carried over: private chat IDs identify the same
+  Telegram user across bots, but the user must initiate a conversation with
+  each bot before it can message them. Vendors who linked qkit's retired bot
   must reconnect once via merqo's own `/profile` page. The superseded Phase
   A design lives on as history at
   `docs/superpowers/specs/2026-08-16-telegram-order-alerts-design.md`; the
@@ -383,8 +384,15 @@ cutover's own scope:
   instead without a further migration.
 - `orders.payment_status` stays qkit's local mirror, written after a
   successful paykit call, not replaced — the rest of the order-lifecycle
-  logic that depends on it (cancel-blocking, auto-confirm-on-complete in
-  `buildAdvancePatch`, the realtime board) is unaffected by this cutover.
+  logic that depends on it (cancel-blocking and explicit payment confirmation in
+  `confirmOrderPayment`, the realtime board) is unaffected by this cutover.
+
+**Fulfillment/payment separation (2026-10-09):** the August cutover retained
+local auto-confirmation on pickup. The audit supersedes that behavior:
+`buildAdvancePatch` and fulfillment undo now modify only fulfillment state.
+Only explicit Paykit-backed confirmation updates the payment mirror; completed
+unpaid orders retain a settlement action. See
+`docs/meta/2026-10-09-qkit-fulfillment-payment-isolation-review.md`.
 
 **Follow-up gaps closed (2026-08-12):** paykit added an unclaim endpoint and
 started returning full config fields on its vendor-config GET; qkit's side

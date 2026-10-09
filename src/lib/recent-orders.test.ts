@@ -1,33 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { installBrowserStorage } from "../../test/browser-storage";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addRecentOrder,
   getRecentOrders,
   getRecentOrdersForBooth,
 } from "./recent-orders";
 
-// jsdom isn't configured for this suite (node env), so stub a minimal
-// localStorage on the global before each test.
-function installStorage() {
-  let store: Record<string, string> = {};
-  const ls = {
-    getItem: (k: string) => store[k] ?? null,
-    setItem: (k: string, v: string) => {
-      store[k] = v;
-    },
-    removeItem: (k: string) => {
-      delete store[k];
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-  vi.stubGlobal("window", { localStorage: ls });
-  vi.stubGlobal("localStorage", ls);
-}
-
 beforeEach(() => {
   vi.unstubAllGlobals();
-  installStorage();
+  installBrowserStorage("localStorage");
 });
 
 describe("recent-orders", () => {
@@ -202,4 +183,9 @@ describe("recent-orders", () => {
     // Malformed entries dropped.
     expect(getRecentOrders()).toEqual([]);
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });

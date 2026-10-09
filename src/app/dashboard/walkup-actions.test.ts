@@ -30,6 +30,15 @@ beforeEach(() => {
 });
 
 describe("placeWalkupOrder", () => {
+  it("rejects a non-boolean payment flag before invoking the RPC", async () => {
+    const result = await placeWalkupOrder(
+      BOOTH_ID,
+      makeInput(),
+      "false" as unknown as boolean,
+    );
+    expect(result).toEqual({ success: false, error: "Invalid payment state" });
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
   it("rejects an invalid booth id without calling the RPC", async () => {
     const res = await placeWalkupOrder("not-a-uuid", makeInput(), false);
     expect(res).toEqual({ success: false, error: "Invalid booth" });

@@ -144,3 +144,18 @@ describe("salesSummaryToCsv", () => {
     expect(csv).toContain('"Kopi ""O""\nHot",1,1.00,1.00');
   });
 });
+
+it("neutralizes untrusted CSV text while keeping negative money numeric and quoting carriage returns", () => {
+  const out = toSalesSummaryV1(summary(), meta);
+  out.top_items = [
+    { label: "=1+1", quantity: 1, revenue_cents: 100, profit_cents: -100 },
+    { label: "Tea\rHot", quantity: 1, revenue_cents: 100, profit_cents: 0 },
+  ];
+  out.range = "  +SUM(1)";
+  out.booth_id = "@formula";
+  const csv = salesSummaryToCsv(out);
+  expect(csv).toContain("'=1+1,1,1.00,-1.00");
+  expect(csv).toContain("Range,'  +SUM(1)");
+  expect(csv).toContain("Booth,'@formula");
+  expect(csv).toContain('"Tea\rHot",1,1.00,0.00');
+});

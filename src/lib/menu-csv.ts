@@ -1,9 +1,11 @@
 import type { MenuItemFormInput } from "./schemas";
 import type { OptionGroup } from "./types";
+import { spreadsheetText } from "./spreadsheet-text";
 
 // Quoted fields retain their embedded line breaks across export and import.
 
-function csvField(value: string): string {
+function csvField(raw: string): string {
+  const value = spreadsheetText(raw);
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 

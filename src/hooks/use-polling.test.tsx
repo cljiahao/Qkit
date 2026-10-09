@@ -64,3 +64,51 @@ describe("usePolling", () => {
     expect(tick).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("pending and failed refreshes", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    setHidden(false);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    setHidden(false);
+  });
+
+  it("keeps one request in flight across interval changes and visibility events", async () => {
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const tick = vi.fn().mockReturnValueOnce(pending);
+    const { rerender, unmount } = renderHook(
+      ({ intervalMs }) => usePolling(tick, { intervalMs, enabled: true }),
+      { initialProps: { intervalMs: 1000 } },
+    );
+    vi.advanceTimersByTime(4000);
+    rerender({ intervalMs: 500 });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(tick).toHaveBeenCalledTimes(1);
+    finish();
+    await Promise.resolve();
+    vi.advanceTimersByTime(500);
+    expect(tick).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it("contains rejected and synchronous refresh failures and retries", async () => {
+    const tick = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockImplementationOnce(() => {
+        throw new Error("sync");
+      });
+    const { unmount } = renderHook(() =>
+      usePolling(tick, { intervalMs: 1000, enabled: true }),
+    );
+    await Promise.resolve();
+    vi.advanceTimersByTime(2000);
+    expect(tick).toHaveBeenCalledTimes(3);
+    unmount();
+  });
+});

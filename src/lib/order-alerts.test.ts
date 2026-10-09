@@ -118,7 +118,10 @@ describe("fireReadyNotification", () => {
     await fireReadyNotification("Mama's Kitchen", "0042");
     expect(ctor).toHaveBeenCalledWith(
       "Order #0042 is ready",
-      expect.objectContaining({ tag: "qkit-order-0042" }),
+      expect.objectContaining({
+        tag: "qkit-order-0042",
+        body: "Mama's Kitchen. Please collect it now.",
+      }),
     );
   });
 
@@ -149,7 +152,10 @@ describe("fireNewOrderNotification", () => {
     await fireNewOrderNotification("Mama's Kitchen", "0042");
     expect(ctor).toHaveBeenCalledWith(
       "New order #0042",
-      expect.objectContaining({ tag: "qkit-new-order-0042" }),
+      expect.objectContaining({
+        tag: "qkit-new-order-0042",
+        body: "Mama's Kitchen. Tap to view.",
+      }),
     );
   });
 });
@@ -184,6 +190,31 @@ describe("playReadyChime + unlockAudio", () => {
     const { ctx } = mockAudio("suspended");
     unlockAudio();
     expect(ctx.resume).toHaveBeenCalled();
+  });
+
+  it("unlockAudio contains a synchronous browser resume failure", () => {
+    const { ctx } = mockAudio("suspended");
+    ctx.resume.mockImplementation(() => {
+      throw new Error("audio blocked");
+    });
+    expect(() => unlockAudio()).not.toThrow();
+    expect(ctx.resume).toHaveBeenCalledOnce();
+  });
+
+  it("unlockAudio handles a rejected resume promise", async () => {
+    const { ctx } = mockAudio("suspended");
+    const failure = Promise.reject(new Error("context closed"));
+    const catchSpy = vi.spyOn(failure, "catch");
+    ctx.resume.mockReturnValue(failure);
+    unlockAudio();
+    expect(catchSpy).toHaveBeenCalledOnce();
+    await expect(catchSpy.mock.results[0].value).resolves.toBeUndefined();
+  });
+
+  it("unlockAudio leaves a running context alone", () => {
+    const { ctx } = mockAudio("running");
+    unlockAudio();
+    expect(ctx.resume).not.toHaveBeenCalled();
   });
 
   it("returns false if the AudioContext throws", async () => {

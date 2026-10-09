@@ -211,24 +211,6 @@ function revertPendingUndo(orderId: string, pending: PendingUndo) {
       );
 }
 
-/**
- * Whether a successful undo should also clear the local optimistic "paid"
- * flag. Never true for the merged action's own undo — revertPaymentAndStart
- * deliberately leaves payment_status confirmed (paykit's own confirm can't
- * be undone), so clearing this flag here would flash a false "not paid"
- * state before the real order data catches back up. For a plain advance
- * undo, only when reverting the auto-confirm buildAdvancePatch applied on
- * completion (mirrors advanceStatus's own condition for setting it).
- */
-function shouldUnconfirmOnUndo(pending: PendingUndo): boolean {
-  if (pending.action === "paymentAndStart") return false;
-  return (
-    pending.revertFrom === "completed" &&
-    (pending.prevPaymentStatus === "pending" ||
-      pending.prevPaymentStatus === "claimed")
-  );
-}
-
 export function OrderCard({
   order,
   displayNumber,
@@ -394,21 +376,11 @@ export function OrderCard({
     const revertTo = status;
     const prevPaymentStatus = order.payment_status;
     return run(async () => {
-      const res = await advanceOrder(order.id);
+      const res = await advanceOrder(order.id, revertTo);
       if (!res.success) {
         toast.error(res.error);
       } else {
         setStatus(res.status);
-        // Mirrors buildAdvancePatch: only a payment that was actually
-        // outstanding gets auto-confirmed on completion. A `not_required`
-        // order has nothing to confirm — flagging it anyway would pop a
-        // stray "Paid" badge into the aging-clock's spot for one frame.
-        if (
-          res.status === "completed" &&
-          (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed")
-        )
-          setConfirmedLocally(true);
-
         // Instant tap, no confirm gate — a short undo window is the recovery
         // path instead (see undoMs). onUndoWindowChange keeps a just-
         // completed order on the active board for this window; without it,
@@ -438,13 +410,12 @@ export function OrderCard({
         toast.error(res.error);
       } else {
         setStatus(res.status);
-        if (shouldUnconfirmOnUndo(pending)) setConfirmedLocally(false);
         // Undo only un-starts the order here — the payment half already went
         // through paykit for real and can't be undone (same principle as
         // cancelOrder's "Refund the customer directly" on a confirmed
         // payment), so make that explicit rather than let the vendor assume
         // "Undo" also unconfirmed the payment.
-        else if (pending.action === "paymentAndStart")
+        if (pending.action === "paymentAndStart")
           toast.success(
             "Payment stays confirmed. Refund via paykit if needed.",
           );
@@ -610,7 +581,7 @@ export function OrderCard({
                 <button
                   type="button"
                   aria-label={`Bump order #${number} to front`}
-                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 bg-secondary/40 p-1 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-secondary hover:text-primary"
+                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 bg-secondary/40 p-1 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-secondary hover:text-secondary-foreground"
                   disabled={updating}
                   onClick={bump}
                 >
@@ -745,41 +716,45 @@ export function OrderCard({
             both payment-review button shapes below (the plain confirm button
             and the merged "Mark paid & start" one), since both require
             payStatus === "claimed". */}
-        {!closed && payStatus === "claimed" && order.payment_proof_path && (
-          <ProofPhotoTrigger
-            order={order}
-            expanded={proofExpanded}
-            onToggle={() => setProofExpanded((v) => !v)}
-          />
-        )}
+        {status !== "cancelled" &&
+          payStatus === "claimed" &&
+          order.payment_proof_path && (
+            <ProofPhotoTrigger
+              order={order}
+              expanded={proofExpanded}
+              onToggle={() => setProofExpanded((v) => !v)}
+            />
+          )}
 
-        {/* Payment prompts only while the order is live — a cancelled/completed
-            order must not solicit or re-confirm payment. A still-pending order
-            gets the merged review action instead (below) — no separate
-            confirm-payment prompt for it. */}
-        {!closed && status !== "pending" && payStatus === "claimed" && (
-          <div className="px-4 pb-3">
-            <Button
-              className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
-              onClick={confirmPayment}
-              disabled={updating}
-            >
-              <Banknote className="size-5" /> Confirm payment received
-            </Button>
-          </div>
-        )}
-        {!closed && status !== "pending" && payStatus === "pending" && (
-          <div className="px-4 pb-3">
-            <Button
-              size="sm"
-              className="h-10 w-full rounded-lg bg-status-payment-claimed font-semibold text-white hover:bg-status-payment-claimed/90"
-              onClick={confirmPayment}
-              disabled={updating}
-            >
-              Mark as paid
-            </Button>
-          </div>
-        )}
+        {/* Fulfillment can finish before payment is confirmed. Pending orders
+            use the merged review action; completed unpaid orders remain settleable. */}
+        {status !== "cancelled" &&
+          status !== "pending" &&
+          payStatus === "claimed" && (
+            <div className="px-4 pb-3">
+              <Button
+                className="h-12 w-full rounded-lg bg-status-payment-claimed text-base font-bold text-white hover:bg-status-payment-claimed/90"
+                onClick={confirmPayment}
+                disabled={updating}
+              >
+                <Banknote className="size-5" /> Confirm payment received
+              </Button>
+            </div>
+          )}
+        {status !== "cancelled" &&
+          status !== "pending" &&
+          payStatus === "pending" && (
+            <div className="px-4 pb-3">
+              <Button
+                size="sm"
+                className="h-10 w-full rounded-lg bg-status-payment-claimed font-semibold text-white hover:bg-status-payment-claimed/90"
+                onClick={confirmPayment}
+                disabled={updating}
+              >
+                Mark as paid
+              </Button>
+            </div>
+          )}
 
         {/* Reconciled "Mark paid & start" review action — see
             paymentReviewNeeded above. */}

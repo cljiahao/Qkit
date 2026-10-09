@@ -34,6 +34,14 @@ import {
 } from "@/lib/utils";
 import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
 import { loadCart, saveCart, clearCart } from "@/lib/cart-storage";
+import {
+  loadPendingOrder,
+  savePendingOrder,
+  clearPendingOrder,
+  orderFingerprint,
+  type PendingOrder,
+  RecoveryStorageError,
+} from "@/lib/pending-order";
 import { addRecentOrder } from "@/lib/recent-orders";
 import { reconcileReorder } from "@/lib/reorder";
 import { takeReorder } from "@/lib/reorder-handoff";
@@ -73,6 +81,28 @@ export function OrderForm({
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [cartExpanded, setCartExpanded] = useState(false);
   const hydrated = useRef(false);
+  const [unresolvedSubmit, setUnresolvedSubmit] = useState<PendingOrder | null>(
+    null,
+  );
+
+  useEffect(() => {
+    try {
+      if (loadPendingOrder(boothId))
+        toast.error(
+          "A previous order is awaiting confirmation. Re-enter the same details to recover it.",
+        );
+    } catch (error) {
+      if (error instanceof RecoveryStorageError) {
+        toast.error(
+          "Order recovery storage is unavailable. Stay on this page if you place an order.",
+        );
+        return;
+      }
+      toast.error(
+        "Could not restore the previous order attempt. Check with the vendor before ordering again.",
+      );
+    }
+  }, [boothId]);
 
   const {
     register,
@@ -246,6 +276,44 @@ export function OrderForm({
   const total = cartTotal(cartItems);
   const itemCount = cartItems.reduce((n, it) => n + it.quantity, 0);
 
+  async function prepareOrderAttempt(
+    input: PlaceOrderInput,
+  ): Promise<string | null> {
+    try {
+      const fingerprint = await orderFingerprint(input);
+      let pending = unresolvedSubmit;
+      let canPersist = true;
+      try {
+        pending ??= loadPendingOrder(boothId);
+      } catch (error) {
+        if (!(error instanceof RecoveryStorageError)) throw error;
+        canPersist = false;
+      }
+      if (pending && pending.fingerprint !== fingerprint) {
+        toast.error("Retry your previous order before changing its details.");
+        return null;
+      }
+      const attempt = pending ?? { key: crypto.randomUUID(), fingerprint };
+      setUnresolvedSubmit(attempt);
+      try {
+        savePendingOrder(boothId, attempt);
+      } catch (error) {
+        if (!(error instanceof RecoveryStorageError)) throw error;
+        canPersist = false;
+      }
+      if (!canPersist)
+        toast.error(
+          "This order can only be recovered on this page. Keep it open until confirmation.",
+        );
+      return attempt.key;
+    } catch {
+      toast.error(
+        "Could not safely restore this order. Check with the vendor before ordering again.",
+      );
+      return null;
+    }
+  }
+
   async function onSubmit(formData: {
     customerName: string;
     customerPhone?: string;
@@ -265,10 +333,11 @@ export function OrderForm({
       customerPhone: formData.customerPhone,
       items: cartItems,
     };
-    // One idempotency key for this submit, generated BEFORE the try so it stays
-    // stable across the one retry below — a dropped-then-resent request can't
-    // create a second order (place_order replays the prior result for the key).
-    const idem = crypto.randomUUID();
+    const idem = await prepareOrderAttempt(input);
+    if (idem === null) {
+      setSubmitting(false);
+      return;
+    }
     // One retry on a transient network failure (patchy event-site signal) so a
     // dropped request doesn't lose the order. The DB order number is atomic, so
     // a retried submit can't duplicate.
@@ -279,10 +348,19 @@ export function OrderForm({
       try {
         result = await placeOrder(code, input, idem);
       } catch {
-        toast.error("Network issue. Please try again.");
+        toast.error("Network issue. Please retry with the same order details.");
         setSubmitting(false);
         return;
       }
+    }
+
+    try {
+      clearPendingOrder(boothId);
+      setUnresolvedSubmit(null);
+    } catch {
+      toast.error(
+        "Could not clear the saved order attempt. Check this order before ordering again.",
+      );
     }
 
     if (!result.success) {
@@ -331,9 +409,9 @@ export function OrderForm({
 
   function renderItemCard(item: MenuItem) {
     const hasOptions = !!item.option_groups && item.option_groups.length > 0;
-    // Inline +/- only for plain items (keyed by id). Items with option
-    // groups instead go through the sheet, managed in the cart summary.
-    const plainInCart = hasOptions ? undefined : cart.get(item.id);
+    // Configured items use the sheet and cart-summary controls.
+    const plainKey = cartKey(item.id);
+    const plainInCart = hasOptions ? undefined : cart.get(plainKey);
     const left = remainingFor(remaining, item.id);
     const soldOut = left !== null && left <= 0;
     let cardTone: string;
@@ -396,7 +474,7 @@ export function OrderForm({
                 variant="outline"
                 size="icon"
                 className="size-11 rounded-lg"
-                onClick={() => decrement(item.id)}
+                onClick={() => decrement(plainKey)}
                 aria-label={`Remove one ${item.name}`}
               >
                 <Minus className="size-3.5" />
@@ -408,7 +486,7 @@ export function OrderForm({
                 type="button"
                 size="icon"
                 className="size-11 rounded-lg"
-                onClick={() => increment(item.id)}
+                onClick={() => increment(plainKey)}
                 aria-label={`Add one ${item.name}`}
               >
                 <Plus className="size-3.5" />

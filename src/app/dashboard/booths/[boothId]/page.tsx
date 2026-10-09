@@ -98,8 +98,10 @@ export default async function EditBoothPage({ params }: Props) {
 
   const menuItemCount = parseMenuItems(booth.menu_items).length;
 
-  const payment = await initialPayment(vendor.id, booth.payment);
-  const bookingStatus = await initialBookingStatus(booth.paykit_booking_id);
+  const [payment, bookingStatus] = await Promise.all([
+    initialPayment(vendor.id, booth.payment),
+    initialBookingStatus(booth.paykit_booking_id),
+  ]);
 
   return (
     <div className="mx-auto max-w-lg md:max-w-4xl">

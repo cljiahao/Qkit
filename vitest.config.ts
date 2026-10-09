@@ -5,6 +5,7 @@ import { defineConfig } from "vitest/config";
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  envDir: false,
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "src"),
@@ -25,9 +26,11 @@ export default defineConfig({
     include: ["test/**/*.{test,spec}.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "lcov"],
-      include: ["src/**/*.ts", "src/**/*.tsx"],
-      exclude: ["**/*.test.{ts,tsx}", "**/*.d.ts"],
+      reporter: ["text", "lcov", "json-summary"],
+      include: ["src/**/*.ts", "src/**/*.tsx", "public/**/*.js"],
+      // Tesseract assets match pinned upstream code after CRLF normalization.
+      exclude: ["**/*.test.{ts,tsx}", "**/*.d.ts", "public/tesseract/**"],
+      thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },
     },
   },
 });

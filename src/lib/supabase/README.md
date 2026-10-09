@@ -81,3 +81,8 @@ to gate access and resolve plan/pass entitlement (`@/lib/plan`'s
 
 read-all.ts provides readAllRows for ordered queries that must return complete
 results across the PostgREST row cap. It fails on incomplete/error responses.
+
+`read-keyset.ts` provides `readKeysetRows` for mutable queues. Callers select an
+ID, order ascending by ID and fetch after the previous page's last ID. This
+keeps a completing/removing earlier order from shifting an offset and hiding
+the next order. Failed reads and nonadvancing cursors reject the whole result.

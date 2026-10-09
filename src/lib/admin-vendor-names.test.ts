@@ -47,4 +47,55 @@ describe("vendorStallNames", () => {
     expect(result.size).toBe(0);
     expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
   });
+
+  it("limits concurrent profile requests and preserves mapping across out-of-order completion", async () => {
+    const releases: (() => void)[] = [];
+    let active = 0;
+    let maximum = 0;
+    getOrCreateVendorProfile.mockImplementation((_client, id: string) => {
+      active += 1;
+      maximum = Math.max(maximum, active);
+      return new Promise((resolve) => {
+        releases.push(() => {
+          active -= 1;
+          resolve({ stall_name: `Stall ${id}` });
+        });
+      });
+    });
+    const ids = Array.from({ length: 17 }, (_, index) => `vendor-${index}`);
+    const result = vendorStallNames({} as never, [...ids, ids[0]]);
+    expect(getOrCreateVendorProfile).toHaveBeenCalledTimes(8);
+    releases
+      .splice(0)
+      .reverse()
+      .forEach((release) => release());
+    await vi.waitFor(() =>
+      expect(getOrCreateVendorProfile).toHaveBeenCalledTimes(16),
+    );
+    releases
+      .splice(0)
+      .reverse()
+      .forEach((release) => release());
+    await vi.waitFor(() =>
+      expect(getOrCreateVendorProfile).toHaveBeenCalledTimes(17),
+    );
+    releases.splice(0).forEach((release) => release());
+    expect([...(await result)]).toEqual(ids.map((id) => [id, `Stall ${id}`]));
+    expect(maximum).toBe(8);
+    expect(active).toBe(0);
+  });
+
+  it("rejects failed profile reads without starting later batches or returning partial names", async () => {
+    getOrCreateVendorProfile.mockRejectedValueOnce(
+      new Error("Profile unavailable"),
+    );
+    getOrCreateVendorProfile.mockResolvedValue({ stall_name: "Available" });
+    await expect(
+      vendorStallNames(
+        {} as never,
+        Array.from({ length: 9 }, (_, index) => `vendor-${index}`),
+      ),
+    ).rejects.toThrow("Profile unavailable");
+    expect(getOrCreateVendorProfile).toHaveBeenCalledTimes(8);
+  });
 });

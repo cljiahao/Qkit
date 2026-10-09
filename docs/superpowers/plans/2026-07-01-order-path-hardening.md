@@ -1,5 +1,13 @@
 # Order Path Hardening — Implementation Plan (Phase A)
 
+> **2026-10-09 review:** Preserve this migration history, but use current SQL and
+> tests as the security contract. The sketches leave default `PUBLIC` function
+> execution, revoke direct writes from only `anon`, and retain a broad public
+> read policy; those controls do not establish the intended boundary for every
+> role. Current migrations close the grants and validate stock/options under
+> database locks. A booth short code authorizes ordering; it does not authorize
+> reading or mutating another customer's sequentially numbered order.
+
 <!-- Internal codename in git history / commit scope: "order-v2". The example
      commit messages below intentionally keep the `feat(order-v2)` scope to match
      the actual (kept) history; docs use "order-path hardening" going forward. -->

@@ -20,9 +20,9 @@ merqo's own `/profile` page instead; see
 ## Contents
 
 - `actions.ts` — `updateBoardSettings(input)` server action: validates
-  `input` against `boardSettingsSchema`, confirms the caller is signed in,
-  then updates `vendors.board_settings` (RLS `vendors_self_update` scopes the
-  write to the caller's own row) and revalidates `/dashboard`.
+  `input` against `boardSettingsPatchSchema`, confirms the caller is signed in,
+  then atomically merges section-owned fields through `patch_board_settings`
+  under the caller's vendor RLS policies and revalidates `/dashboard`.
 - `page.tsx` — `SettingsPage` server component. Calls `requireEntitledVendor()`,
   renders the header/back-button chrome, and passes `vendor.board_settings` as
   `initial` into `SettingsForm`. Also fetches the vendor's booth ids and its
@@ -102,12 +102,9 @@ md:grid-cols-2` over all four: a CSS grid's row tracks size to the tallest
     whichever fallback a customer would actually see right now — "their
     queue position" if `default_prep_minutes` is blank, "this backup
     number" once one's set — so the field doesn't read as inert when
-    there's nothing to back up yet. Each section calls `updateBoardSettings`
-    independently through `useAsyncAction`
-    (via a shared `currentSettings()` helper) and `router.refresh()`s on
-    success; every call sends the full `BoardSettings` shape (it's one JSONB
-    blob), so each section's handler carries every other section's current
-    values along to avoid clobbering them.
+    there's nothing to back up yet. Each section calls `updateBoardSettings` independently through `useAsyncAction`
+    and refreshes on success. It sends only its section-owned fields; the atomic
+    database patch preserves fields saved by other tabs or devices.
 - `settings-form.dom.test.tsx` — RTL/jsdom tests (no local `TooltipProvider`
   needed — the per-field info tooltips come from `@merqo/ui`'s
   `InfoTooltip`, which wraps itself internally — with a `prepEstimate` prop
@@ -139,7 +136,13 @@ aging_min` and an out-of-range `undo_seconds` client-side without calling
 `page.tsx` is the route entry (`/dashboard/settings`), reached from the
 dashboard nav; it fetches the vendor row via `requireEntitledVendor` and hands
 it to `SettingsForm`. `SettingsForm` calls `actions.ts#updateBoardSettings`,
-which persists to Supabase and revalidates the `/dashboard` layout so the
+which validates a strict partial patch and calls the invoker `patch_board_settings`
+RPC (migration 0096). Each section sends only its owned fields; the database
+locks the vendor row, validates the merged timing constraints and merges the JSON,
+so saves from stale tabs preserve other sections. Existing vendor RLS remains
+the authorization boundary. Configured async form handlers also show transport
+failures and keep entered values available for retry. The action revalidates the
+`/dashboard` layout so the
 order board (`src/app/dashboard`) and the customer status page
 (`src/app/order/[boothId]/[orderNumber]`) pick up the new settings on next
 render — `OrderCard` reads `agingMin`/`overdueMin`/`undoMs` (the last as

@@ -9,10 +9,13 @@ const { toggleBoothActive } = vi.hoisted(() => ({
 }));
 vi.mock("./actions", () => ({ toggleBoothActive }));
 
-const toastFn = vi.fn();
+const { toastFn, toastError } = vi.hoisted(() => ({
+  toastFn: vi.fn(),
+  toastError: vi.fn(),
+}));
 vi.mock("sonner", () => ({
   toast: Object.assign((...args: unknown[]) => toastFn(...args), {
-    error: vi.fn(),
+    error: toastError,
     success: vi.fn(),
   }),
 }));
@@ -138,6 +141,7 @@ describe("CloseBoothControl (active)", () => {
       timeout: 4000,
     });
     expect(onChanged).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith("Could not update booth");
   }, 6000);
 });
 
@@ -180,5 +184,6 @@ describe("CloseBoothControl (paused)", () => {
 
     await waitFor(() => expect(toggleBoothActive).toHaveBeenCalled());
     expect(onChanged).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith("Could not update booth");
   });
 });

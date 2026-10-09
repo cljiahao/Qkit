@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 
 const { updateUserMock, removeReplacedAvatarMock } = vi.hoisted(() => ({
   updateUserMock: vi.fn(),
@@ -60,6 +61,7 @@ function renderForm(avatarUrl: string | null) {
 // these deletes each avatar change left the previous image in storage forever.
 describe("ProfileForm avatar storage cleanup", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     updateUserMock.mockReset().mockResolvedValue({ error: null });
     removeReplacedAvatarMock.mockReset().mockResolvedValue(undefined);
   });
@@ -99,6 +101,18 @@ describe("ProfileForm avatar storage cleanup", () => {
     renderForm(null);
     await user.click(screen.getByRole("button", { name: "finish upload" }));
     await waitFor(() => expect(updateUserMock).toHaveBeenCalled());
+    expect(removeReplacedAvatarMock).not.toHaveBeenCalled();
+  });
+  it("reports an uncertain transport failure without deleting either possible saved avatar", async () => {
+    updateUserMock.mockRejectedValueOnce(new Error("Connection lost"));
+    const user = userEvent.setup();
+    renderForm(OLD_AVATAR);
+    await user.click(screen.getByRole("button", { name: "finish upload" }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not save your profile icon. Refresh before trying again.",
+      ),
+    );
     expect(removeReplacedAvatarMock).not.toHaveBeenCalled();
   });
 });

@@ -50,7 +50,9 @@ export function ProfileForm({
   // Stall name (vendors.name) — persisted via a server action + RLS.
   const [name, setName] = useState(stallName);
   const [nameError, setNameError] = useState<string | null>(null);
-  const { pending: savingName, run: runName } = useAsyncAction();
+  const { pending: savingName, run: runName } = useAsyncAction(
+    "Could not save your stall name. Please try again.",
+  );
 
   // Profile icon (auth user_metadata.avatar_url) — the ImageUploader handles the
   // storage upload; we persist the returned URL on the auth user, same channel
@@ -61,19 +63,25 @@ export function ProfileForm({
   // Display name (auth user_metadata) — persisted via the browser auth client.
   const [display, setDisplay] = useState(displayName);
   const [displayError, setDisplayError] = useState<string | null>(null);
-  const { pending: savingDisplay, run: runDisplay } = useAsyncAction();
+  const { pending: savingDisplay, run: runDisplay } = useAsyncAction(
+    "Could not save your display name. Please try again.",
+  );
 
   // Change password — persisted via the browser auth client.
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [pwError, setPwError] = useState<string | null>(null);
-  const { pending: savingPw, run: runPw } = useAsyncAction();
+  const { pending: savingPw, run: runPw } = useAsyncAction(
+    "Could not update your password. Please try again.",
+  );
 
   // Social/website links (vendors.social_links) — profile-level defaults, can
   // be overridden per booth on the booth's own edit page.
   const [links, setLinks] = useState<SocialLinks>(socialLinks);
   const [linksError, setLinksError] = useState<string | null>(null);
-  const { pending: savingLinks, run: runLinks } = useAsyncAction();
+  const { pending: savingLinks, run: runLinks } = useAsyncAction(
+    "Could not save your links. Please try again.",
+  );
 
   function saveLinks() {
     const parsed = socialLinksSchema.safeParse(links);
@@ -115,21 +123,28 @@ export function ProfileForm({
     const previousAvatar = avatar;
     setAvatar(url);
     return runAvatar(async () => {
-      const { error } = await supabase.auth.updateUser({
-        data: { avatar_url: url },
-      });
-      if (error) {
+      try {
+        const { error } = await supabase.auth.updateUser({
+          data: { avatar_url: url },
+        });
+        if (error) {
+          setAvatar(previousAvatar);
+          // The upload landed but the save did not, so the new object is
+          // referenced nowhere.
+          if (url && url !== previousAvatar) void removeReplacedAvatar(url);
+          toast.error(error.message);
+          return;
+        }
+        if (previousAvatar && previousAvatar !== url)
+          void removeReplacedAvatar(previousAvatar);
+        toast.success(url ? "Profile icon saved" : "Profile icon removed");
+        router.refresh();
+      } catch {
         setAvatar(previousAvatar);
-        // The upload landed but the save did not, so the new object is
-        // referenced nowhere.
-        if (url && url !== previousAvatar) void removeReplacedAvatar(url);
-        toast.error(error.message);
-        return;
+        toast.error(
+          "Could not save your profile icon. Refresh before trying again.",
+        );
       }
-      if (previousAvatar && previousAvatar !== url)
-        void removeReplacedAvatar(previousAvatar);
-      toast.success(url ? "Profile icon saved" : "Profile icon removed");
-      router.refresh();
     });
   }
 

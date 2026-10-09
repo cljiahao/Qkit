@@ -10,7 +10,7 @@
 -- app/browser boot. (Supabase's official RLS-testing path.)
 
 begin;
-select plan(131);
+select plan(132);
 
 -- ── Fixtures (created as the superuser test role → RLS bypassed here) ─────────
 -- Two vendors, each with one INACTIVE booth (inactive so the public-read policy
@@ -30,6 +30,16 @@ insert into qkit.vendors (id)
 values
   ('00000000-0000-0000-0000-00000000000a'),
   ('00000000-0000-0000-0000-00000000000b');
+
+-- Active licenses precede multi-booth fixtures because service writes also obey the creation cap.
+insert into qkit.licenses (id, vendor_id, valid_from, expires_at)
+values
+  ('00000000-0000-0000-0000-0000000c0001',
+   '00000000-0000-0000-0000-00000000000a', now() - interval '1 day',
+   now() + interval '1 day'),
+  ('00000000-0000-0000-0000-0000000c0002',
+   '00000000-0000-0000-0000-00000000000b', now() - interval '1 day',
+   now() + interval '1 day');
 
 insert into qkit.booths (id, vendor_id, name, is_active)
 values
@@ -71,16 +81,6 @@ values
    '00000000-0000-0000-0000-00000000000a', 'event'),
   ('00000000-0000-0000-0000-0000000e0002',
    '00000000-0000-0000-0000-00000000000b', 'monthly');
-
--- Licenses, one per vendor (unlabelled, currently active).
-insert into qkit.licenses (id, vendor_id, valid_from, expires_at)
-values
-  ('00000000-0000-0000-0000-0000000c0001',
-   '00000000-0000-0000-0000-00000000000a', now() - interval '1 day',
-   now() + interval '1 day'),
-  ('00000000-0000-0000-0000-0000000c0002',
-   '00000000-0000-0000-0000-00000000000b', now() - interval '1 day',
-   now() + interval '1 day');
 
 -- Vendor C: its OWN single active booth with a known short_code and a
 -- stock-capped menu item — used by the order-path RPC tests below
@@ -621,7 +621,15 @@ select throws_like(
   '%ORDER_EXPIRED%',
   'place_order raises ORDER_EXPIRED for an unknown code');
 
--- Over-cap single line: cap1 has stock 2, 1 already sold above (remaining 1).
+-- Two preceding orders reserved cap1. Leave one unit so duplicate lines test aggregation.
+update qkit.booths
+set menu_items = jsonb_set(menu_items, '{0,stock}', '3'::jsonb)
+where id = '00000000-0000-0000-0000-0000000b0004';
+
+-- Over-cap single line: one unit remains.
+select is(
+  (qkit.booth_remaining_stock('00000000-0000-0000-0000-0000000b0004')->>'cap1')::int,
+  1, 'duplicate-line stock fixture leaves one unit before aggregation checks');
 select throws_like(
   $$ select qkit.place_order(
        'rlstestcode1', 'Bob',

@@ -4,6 +4,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const regenerate = vi.fn();
+const errorToast = vi.fn();
+vi.mock("sonner", () => ({
+  toast: {
+    error: (...args: unknown[]) => errorToast(...args),
+    success: vi.fn(),
+  },
+}));
 vi.mock("../../actions", () => ({
   regenerateShortCode: (...args: unknown[]) => regenerate(...args),
 }));
@@ -14,6 +21,20 @@ import { RegenerateButton } from "./regenerate-button";
 beforeEach(() => regenerate.mockReset());
 
 describe("RegenerateButton", () => {
+  it("keeps confirmation usable and explains a rejected action", async () => {
+    regenerate.mockRejectedValueOnce(new Error("network disconnected"));
+    render(<RegenerateButton boothId="b-1" boothName="Kopitiam Cart" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /regenerate qr/i }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /regenerate|confirm/i }),
+    );
+    expect(errorToast).toHaveBeenCalledWith(
+      "Could not regenerate QR. Try again.",
+    );
+    expect(screen.getByRole("button", { name: "Regenerate QR" })).toBeEnabled();
+  });
   it("names the booth in the confirmation and calls the action on confirm", async () => {
     regenerate.mockResolvedValue({ success: true });
     render(<RegenerateButton boothId="b-1" boothName="Kopitiam Cart" />);

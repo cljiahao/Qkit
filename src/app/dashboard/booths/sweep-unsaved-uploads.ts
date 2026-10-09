@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import type { createServerClient } from "@/lib/supabase/server";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { getVendorConfig } from "@/lib/paykit/client";
 import {
   boothImagePaths,
@@ -38,11 +39,14 @@ export async function sweepUnsavedUploads(
     const paykit = await getVendorConfig(user.id);
     if (!paykit.ok) return;
 
-    const { data: booths, error: boothsError } = await supabase
-      .from("booths")
-      .select("image_url, menu_items")
-      .eq("vendor_id", user.id);
-    if (boothsError || !booths) return;
+    const booths = await readAllRows((from, to) =>
+      supabase
+        .from("booths")
+        .select("image_url, menu_items")
+        .eq("vendor_id", user.id)
+        .order("id")
+        .range(from, to),
+    );
 
     const objects: { name: string; created_at?: string | null }[] = [];
     for (let page = 0; page < MAX_PAGES; page++) {

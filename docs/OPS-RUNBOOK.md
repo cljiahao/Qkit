@@ -37,7 +37,7 @@ any of these as a bug, check the var is set on Vercel → Production first:
 
 Hand over: exact error text, timestamp, vendor/booth name. Check
 `qkit.merqo.io/admin`'s "Stuck Orders" tile and the vendor's "Last order"
-timestamp first — both are visible without any dashboard login and narrow
+timestamp first — both require authenticated platform-admin access and narrow
 down whether it's one vendor or the whole platform.
 
 ## Parent

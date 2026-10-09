@@ -80,13 +80,7 @@ function BackupPrepHelpText({
   );
 }
 
-/**
- * Validate + save one BoardSettings section (thresholds, display): both
- * saveThresholds and saveDisplay parse the full settings blob, surface a
- * field error on failure, and otherwise PATCH + toast + refresh — this is
- * that shared shape, parameterized on which local error setter and success
- * toast each section uses.
- */
+/** Validate local settings, then persist only the section's owned fields. */
 function saveBoardSettingsSection(
   parsed: ReturnType<typeof boardSettingsSchema.safeParse>,
   setError: (message: string | null) => void,
@@ -94,6 +88,7 @@ function saveBoardSettingsSection(
   run: (fn: () => Promise<void>) => Promise<void>,
   successMessage: string,
   router: ReturnType<typeof useRouter>,
+  keys: (keyof BoardSettingsInput)[],
 ) {
   if (!parsed.success) {
     setError(parsed.error.issues[0]?.message ?? fallbackErrorMessage);
@@ -101,7 +96,10 @@ function saveBoardSettingsSection(
   }
   setError(null);
   return run(async () => {
-    const res = await updateBoardSettings(parsed.data);
+    const patch = Object.fromEntries(
+      keys.map((key) => [key, parsed.data[key]]),
+    );
+    const res = await updateBoardSettings(patch);
     if (!res.success) {
       toast.error(res.error);
       return;
@@ -120,7 +118,6 @@ function saveBoardSettingsSection(
  */
 function useDesktopNotifySection(
   initialDesktopNotify: boolean,
-  currentSettings: () => BoardSettingsInput,
   router: ReturnType<typeof useRouter>,
 ) {
   const [desktopNotify, setDesktopNotify] = useState(initialDesktopNotify);
@@ -129,7 +126,9 @@ function useDesktopNotifySection(
   // trigger a re-render, so this is tracked explicitly and only updated after
   // OUR OWN request calls — never re-read from the browser mid-render.
   const [permission, setPermission] = useState(() => notifyPermission());
-  const { pending: savingNotify, run: runNotify } = useAsyncAction();
+  const { pending: savingNotify, run: runNotify } = useAsyncAction(
+    "Could not update notifications. Please try again.",
+  );
 
   // Gesture-gated — only ever called from a click, the one reliable moment
   // to unlock audio + ask permission (web.dev double-opt-in guidance).
@@ -154,16 +153,14 @@ function useDesktopNotifySection(
     return runNotify(async () => {
       const next = !desktopNotify;
       if (next && !(await grantPermission())) return;
-      setDesktopNotify(next);
       const res = await updateBoardSettings({
-        ...currentSettings(),
         desktop_notify: next,
       });
       if (!res.success) {
         toast.error(res.error);
-        setDesktopNotify(!next);
         return;
       }
+      setDesktopNotify(next);
       toast.success(next ? "Notifications on" : "Notifications off");
       router.refresh();
     });
@@ -284,10 +281,14 @@ export function SettingsForm({
     initial.pickup_scan_enabled ?? false,
   );
   const [thresholdError, setThresholdError] = useState<string | null>(null);
-  const { pending: savingThresholds, run: runThresholds } = useAsyncAction();
+  const { pending: savingThresholds, run: runThresholds } = useAsyncAction(
+    "Could not save timing settings. Please try again.",
+  );
 
   const [soundId, setSoundId] = useState<SoundId>(initial.sound_id);
-  const { pending: savingSound, run: runSound } = useAsyncAction();
+  const { pending: savingSound, run: runSound } = useAsyncAction(
+    "Could not save your sound. Please try again.",
+  );
 
   const {
     desktopNotify,
@@ -295,7 +296,7 @@ export function SettingsForm({
     savingNotify,
     toggleDesktopNotify,
     enableInBrowser,
-  } = useDesktopNotifySection(initial.desktop_notify, currentSettings, router);
+  } = useDesktopNotifySection(initial.desktop_notify, router);
 
   const [dailyReset, setDailyReset] = useState(
     initial.daily_order_number_reset,
@@ -309,11 +310,11 @@ export function SettingsForm({
       : "",
   );
   const [displayError, setDisplayError] = useState<string | null>(null);
-  const { pending: savingDisplay, run: runDisplay } = useAsyncAction();
+  const { pending: savingDisplay, run: runDisplay } = useAsyncAction(
+    "Could not save the customer screen settings. Please try again.",
+  );
 
-  // Every save writes the FULL BoardSettings shape (it's one JSONB blob) —
-  // each section's handler carries the other sections' current values along
-  // so it doesn't clobber them.
+  // Validate local values together; each save sends only its section's fields.
   function currentSettings() {
     return {
       aging_min: Number(agingMin),
@@ -340,25 +341,39 @@ export function SettingsForm({
       runThresholds,
       "Thresholds saved",
       router,
+      [
+        "aging_min",
+        "overdue_min",
+        "undo_seconds",
+        "ready_auto_clear_min",
+        "customer_telegram_notify_enabled",
+        "pickup_scan_enabled",
+      ],
     );
   }
 
   function chooseSound(id: SoundId) {
+    const previous = soundId;
     setSoundId(id);
     // Play it right on click — a separate "switch, then press Preview" step
     // is one tap too many just to hear what you picked.
     unlockAudio();
     void playSound(id);
     return runSound(async () => {
-      const res = await updateBoardSettings({
-        ...currentSettings(),
-        sound_id: id,
-      });
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const res = await updateBoardSettings({
+          sound_id: id,
+        });
+        if (!res.success) {
+          setSoundId(previous);
+          toast.error(res.error);
+          return;
+        }
+        router.refresh();
+      } catch (error) {
+        setSoundId(previous);
+        throw error;
       }
-      router.refresh();
     });
   }
 
@@ -370,6 +385,11 @@ export function SettingsForm({
       runDisplay,
       "Order display saved",
       router,
+      [
+        "daily_order_number_reset",
+        "show_wait_estimate",
+        "default_prep_minutes",
+      ],
     );
   }
 

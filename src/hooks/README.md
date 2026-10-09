@@ -16,8 +16,11 @@ order-status page.
   per-call-dynamic-closure shape — `run(async () => { … })` per call, not one
   action bound up front — with zero changes needed. `run` still wraps the handler
   in `try/finally` so `pending` always resets even if the handler throws; `error`
-  now surfaces the last rejection and `reset()` clears it. Also re-exports
-  `navigatingAway()` from `@merqo/ui`, a promise that never resolves, used to
+  now surfaces the last rejection and `reset()` clears it.
+  An optional `failureMessage` handles form transport failures with a concise
+  toast and preserves retry availability; the default still propagates errors
+  for callers with their own handling. Settings, profile and booth forms opt in.
+  Also re-exports `navigatingAway()` from `@merqo/ui`, a promise that never resolves, used to
   keep `pending` true through a `router.push`/`router.replace` transition so a
   button doesn't flash re-enabled while the old page is still showing.
 - `use-async-action.test.tsx` — RTL tests: pending resets on success, resets on a

@@ -30,7 +30,10 @@ export async function EventStatsView({
 }: Props) {
   const from = activeEvent.valid_from;
   const to = activeEvent.expires_at;
-  const orders = await fetchOrders(supabase, allBoothIds, from, to);
+  const [orders, eventRows] = await Promise.all([
+    fetchOrders(supabase, allBoothIds, from, to),
+    fetchEventReviewRows(supabase, allBoothIds, from, to),
+  ]);
   const summary = computeStats(orders);
   const spanDays = Math.max(
     1,
@@ -41,7 +44,6 @@ export async function EventStatsView({
   const series = windowSeries(orders, Date.parse(to), buckets, bucketMs);
   // Reviews for orders placed during this event — by order date, so late
   // reviews (written after the event ended) still belong to it.
-  const eventRows = await fetchEventReviewRows(supabase, allBoothIds, from, to);
   const eventGroups = groupReviewsByBooth(eventRows, boothList);
   const eventOverall = summarizeReviews(eventRows);
 
