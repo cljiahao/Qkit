@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Section } from "@/components/ticket-section";
+import { Hint } from "@/components/hint";
 import { InfoTooltip, TwoColumnSections } from "@merqo/ui";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { boardSettingsSchema, type BoardSettingsInput } from "@/lib/schemas";
@@ -205,12 +206,6 @@ function DesktopNotifySection({
       icon={<Bell className="size-5" />}
       title="Notifications"
       description="A popup for a new order when this tab is backgrounded."
-      tooltip={
-        <>
-          Works on Android and desktop browsers. On iPhone or iPad, add qkit to
-          your Home Screen first (a regular Safari tab can&apos;t show these).
-        </>
-      }
     >
       <div className="flex items-center gap-3">
         <Switch
@@ -227,13 +222,20 @@ function DesktopNotifySection({
         >
           {desktopNotify ? "On" : "Off"}
         </span>
+        {/* A tap-to-open hint beside the switch, not the section title's
+            hover tooltip: this one is written for iPhone and iPad, where a
+            hover tooltip cannot be opened at all. */}
+        <Hint label="About notifications on iPhone and iPad">
+          Works on Android and desktop browsers. On iPhone or iPad, add qkit to
+          your Home Screen first. A regular Safari tab cannot show these.
+        </Hint>
       </div>
       {desktopNotify && permission !== "granted" && (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs text-muted-foreground">
             {isNotifySupported()
               ? "Not allowed in this browser yet. This device won't show popups until you enable it."
-              : "Not supported in this browser. See above for iPhone/iPad."}
+              : "Not supported in this browser. On iPhone or iPad, add qkit to your Home Screen first."}
           </p>
           {isNotifySupported() && (
             <Button
@@ -446,7 +448,7 @@ export function SettingsForm({
                       </Label>
                       <InfoTooltip
                         content="Minutes after an order is placed before its ticket turns amber, flagging it as starting to wait."
-                        ariaLabel="More about this setting"
+                        ariaLabel="About the amber threshold"
                         trigger="tap"
                       />
                     </div>
@@ -474,7 +476,7 @@ export function SettingsForm({
                       </Label>
                       <InfoTooltip
                         content="Minutes before a still-waiting ticket turns red instead of amber. Must be later than the amber threshold."
-                        ariaLabel="More about this setting"
+                        ariaLabel="About the red threshold"
                         trigger="tap"
                       />
                     </div>
@@ -513,7 +515,7 @@ export function SettingsForm({
                       </Label>
                       <InfoTooltip
                         content="Mark Ready / Mark Picked Up applies right away. For this many seconds after, the button turns into Undo instead, in case of a wrong tap."
-                        ariaLabel="More about this setting"
+                        ariaLabel="About undoing a tap"
                         trigger="tap"
                       />
                     </div>
@@ -544,7 +546,7 @@ export function SettingsForm({
                       </Label>
                       <InfoTooltip
                         content="A ready order nobody marks Picked Up clears itself after this many minutes. Leave blank to turn off. Restore a wrongly-cleared order from Completed orders."
-                        ariaLabel="More about this setting"
+                        ariaLabel="About clearing ready orders"
                         trigger="tap"
                       />
                     </div>
@@ -579,7 +581,7 @@ export function SettingsForm({
                   Notify customers on Telegram when their order is ready
                   <InfoTooltip
                     content="Fires the same Telegram ping a customer opted into on the order-status page. Turning this off doesn't touch their connection, it just stops this booth from using it."
-                    ariaLabel="More about this setting"
+                    ariaLabel="About notifying customers on Telegram"
                     trigger="tap"
                   />
                 </span>
@@ -595,7 +597,7 @@ export function SettingsForm({
                   Self-checkout pickup
                   <InfoTooltip
                     content="Customers scan their own order-status QR at a pickup kiosk instead of staff marking pickup manually."
-                    ariaLabel="More about this setting"
+                    ariaLabel="About self-checkout pickup"
                     trigger="tap"
                   />
                 </span>
@@ -648,7 +650,7 @@ export function SettingsForm({
                   key={opt.id}
                   value={opt.id}
                   className={cn(
-                    "rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5",
+                    "rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 [@media(pointer:coarse)]:min-h-11",
                     "data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary",
                   )}
                 >
@@ -673,7 +675,7 @@ export function SettingsForm({
                 Simple daily order number
                 <InfoTooltip
                   content="Customers and staff see a small ticket number like #003 instead of #0847. Records, receipts, and reports still use the permanent number underneath."
-                  ariaLabel="More about this setting"
+                  ariaLabel="About daily order numbers"
                   trigger="tap"
                 />
               </span>
@@ -689,7 +691,7 @@ export function SettingsForm({
                 Show wait-time estimate
                 <InfoTooltip
                   content={`Off shows only the queue position ("2 orders ahead of you"), never a minute guess. Doesn't affect the queue position itself, only the estimate layered on top of it.`}
-                  ariaLabel="More about this setting"
+                  ariaLabel="About the wait estimate"
                   trigger="tap"
                 />
               </span>
@@ -707,7 +709,7 @@ export function SettingsForm({
                 </Label>
                 <InfoTooltip
                   content="Estimates a customer's wait until this booth has enough of today's own order history. Leave blank to show queue position instead."
-                  ariaLabel="More about this setting"
+                  ariaLabel="About the fallback estimate"
                   trigger="tap"
                 />
               </div>

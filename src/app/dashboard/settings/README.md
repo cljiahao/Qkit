@@ -36,7 +36,12 @@ merqo's own `/profile` page instead; see
 - `settings-form.tsx` — `SettingsForm({ initial, prepEstimate })` client
   component, the actual UI. Every (i) hint is an `InfoTooltip` with
   `trigger="tap"`: this form is filled in on iPads and phones, where a
-  hover-only tooltip never opens. Four `Section` cards (from `ticket-section.tsx`)
+  hover-only tooltip never opens. Each has its own accessible name ("About
+  the amber threshold", not nine copies of "More about this setting"), worded
+  so it does not contain the field's own label. The Notifications section's
+  iPhone/iPad note is a `Hint` beside its switch, not `Section`'s `tooltip`
+  (a hover tooltip rendered by `@merqo/ui`, which is exactly what its
+  intended readers cannot open). Four `Section` cards (from `ticket-section.tsx`)
   split across `@merqo/ui`'s `TwoColumnSections` (`columnOne`/`columnTwo`
   props, each an independent `flex flex-col gap-5` stack side by side on
   `md`+ — the same shared component `../profile/profile-form.tsx` uses) —

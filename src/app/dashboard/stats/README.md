@@ -38,19 +38,27 @@ feedback reads. The live review list keeps its explicit 500-row recent limit.
 - `export-button.tsx` — `ExportButton({ summary, range, boothId })`: builds a
   `SalesSummaryV1` via `@/lib/sales-summary` and downloads it as a CSV blob
   named `qkit-sales-<range>.csv`.
+- `tile-layout.ts` — `WIDE_ON_PHONE`: the class that gives a tile the whole
+  row on a phone. The strip is two tiles across there, about 118px of text
+  each, which cut the revenue figure ("$1,804.…") and the best seller's name
+  short. Revenue and Best seller take it via each tile's `wide` prop. A plain
+  module because one tile file is a Client Component: a Server Component
+  importing a string from it would get a client reference, not the string.
 - `kpi-row.tsx` — `StatTile` (qkit's bordered/fade-rise card shell wrapping
   `@merqo/ui`'s shared `StatTile` content — label + delta pill + mono value
   - caption) and `KpiRow({ summary, deltas, pro, rangeLabel,
 allTime })`: renders Revenue/Orders (as `StatBreakdownTile`s with a
     per-item hover/tap breakdown) + Avg order, and (Pro only) Fulfilled
     (completed/decided with a cancelled-count tooltip) and Refunds.
-- `margin-table.tsx` — `MarginTable({ summary })` (Pro): ranks
+- `margin-table.tsx` — `MarginTable({ summary })` (Pro; the Item column wraps,
+  so a long name no longer pushes Profit and Margin off a phone screen
+  behind a sideways scroll): ranks
   `summary.topItems` by `profit_cents` (only where `cost_cents > 0`), shown
   only when the vendor has entered at least one item cost; renders via
   `@merqo/ui`'s shared `DataTable`. `"use client"` — its `columns`
   (`cell`/`getRowKey` functions) can't cross the server→client boundary into
   `DataTable`, which is a Client Component with callback props defined on the client side.
-- `options-breakdown.tsx` — `OptionsBreakdown({ options })`: horizontal bar
+- `options-breakdown.tsx` — `OptionsBreakdown({ options })`: wraps labels to show the full customization choice in a horizontal bar
   list of the most-picked customization choices (e.g. "Iced", "Less sugar"),
   hidden when no item has options.
 - `page.tsx` — `StatsPage` (route entry, `revalidate=0`): resolves the

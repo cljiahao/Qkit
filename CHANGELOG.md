@@ -8,8 +8,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Bulk pickup checks each order is still ready and reports partial failures without changing payment state.
 - Anonymous basket holds no longer disable purchases or trim another customer's cart; actual stock and vendor order limits still apply.
 - Shared image handling releases failed render resources and safely decodes storage paths; money fields reject amounts outside safe integer precision.
+- Stats on a phone: the revenue figure and the best seller's name are no
+  longer cut off ("$1,804.…"); each now takes the full row. The profit table
+  fits the screen (a long item name wraps instead of pushing Profit and
+  Margin off to the side), and an option's name is shown in full in the
+  options breakdown.
+- Finger-sized on touch screens: the date-range buttons on Completed and
+  Stats, "Export CSV", the "By volume / By revenue" switch, and the new-order
+  sound choices. They were 24 to 36px tall.
+- The note about notifications on iPhone and iPad opens on a tap. It was a
+  hover tooltip, which an iPhone or iPad cannot open.
+- Each hint on Board settings has its own name for screen readers. All nine
+  were announced as "More about this setting".
 - The (i) hints on Board settings and on a booth's Payment options open on a
   tap. They only opened on hover, so on an iPad or phone they did nothing.
 - The Telegram new-order alert names the order by its ticket number. With
@@ -143,6 +156,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Mark several orders picked up in one tap. Select now ticks ready orders as
+  well as ones being made: "Mark N Ready" moves the ticked orders that are
+  still being made, "Mark N Picked Up" clears the ticked ones that are ready.
+  At the end of an event, Select all then two taps clears the whole board.
 - The order board's "Select" mode has "Select all", so a stall that had no
   time to mark orders one by one during service can tick every order still
   being made and send them to Ready with one "Mark N Ready". It lives inside
