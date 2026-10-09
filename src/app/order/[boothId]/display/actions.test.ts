@@ -88,7 +88,7 @@ describe("getBoothQueueDisplay", () => {
     const active = [1, 2, 3].map((n) => ({
       order_number: String(n).padStart(4, "0"),
       status: "preparing",
-      created_at: `2026-06-12T10:0${n}:00Z`,
+      created_at: new Date(Date.now() - (4 - n) * 60_000).toISOString(),
       priority_bumped_at: null,
     }));
     fromMock
@@ -109,7 +109,7 @@ describe("getBoothQueueDisplay", () => {
           {
             order_number: "0001",
             status: "ready",
-            created_at: "2026-06-12T10:00:00Z",
+            created_at: PLACED_FIRST,
             priority_bumped_at: null,
           },
         ],

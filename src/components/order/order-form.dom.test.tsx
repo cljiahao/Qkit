@@ -945,19 +945,39 @@ describe("OrderForm booth limits and basket holds", () => {
 });
 
 describe("OrderForm stock notice", () => {
-  it("says how many items are left today when stock is low", () => {
-    render(
-      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={3} />,
-    );
-    expect(screen.getByText("Only 3 items left today")).toBeInTheDocument();
-  });
+  it.each([1, 3, 10])(
+    "says how many items are left today when stock is low: %s",
+    (left) => {
+      render(
+        <OrderForm
+          code="code123"
+          boothId="b1"
+          menuItems={[KOPI]}
+          left={left}
+        />,
+      );
+      expect(
+        screen.getByText(
+          `Only ${left} ${left === 1 ? "item" : "items"} left today`,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
 
-  it("says nothing about stock while plenty is left", () => {
-    render(
-      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={40} />,
-    );
-    expect(screen.queryByText(/left today/)).not.toBeInTheDocument();
-  });
+  it.each([11, 40, 500])(
+    "says nothing about stock while plenty is left: %s",
+    (left) => {
+      render(
+        <OrderForm
+          code="code123"
+          boothId="b1"
+          menuItems={[KOPI]}
+          left={left}
+        />,
+      );
+      expect(screen.queryByText(/left today/)).not.toBeInTheDocument();
+    },
+  );
 
   it("counts other baskets' holds, so the number matches what can be added", async () => {
     holdCart.mockResolvedValue({

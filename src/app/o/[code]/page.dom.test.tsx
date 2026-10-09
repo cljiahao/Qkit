@@ -49,11 +49,12 @@ const booth = {
 beforeEach(() => {
   vi.clearAllMocks();
   rpc
+    .mockReset()
     .mockResolvedValueOnce({ data: booth, error: null })
     .mockResolvedValue({ data: null, error: null });
 });
 describe("public QR entry", () => {
-  it("keeps the menu available when the optional cup count request rejects", async () => {
+  it("keeps the menu available when the optional availability request rejects", async () => {
     rpc
       .mockReset()
       .mockResolvedValueOnce({ data: booth, error: null })
@@ -68,6 +69,10 @@ describe("public QR entry", () => {
     render(await entry());
     expect(rpc).toHaveBeenNthCalledWith(1, "get_booth_for_order", {
       p_short_code: "qr-code",
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "booth_availability", {
+      p_booth_id: "a",
+      p_session: null,
     });
     expect(recent).toHaveBeenCalledWith({ boothId: "a" });
     expect(form).toHaveBeenCalledWith(
@@ -94,23 +99,31 @@ describe("public QR entry", () => {
     },
   );
   it.each([1, 10, 11, null, "invalid"])(
-    "only shows useful low-stock counts: %s",
+    "passes validated raw basket limits to the order form: %s",
     async (data) => {
+      const availability =
+        data === "invalid"
+          ? data
+          : {
+              remaining: {},
+              held: {},
+              left: data,
+              left_held: 0,
+              max_per_order: 4,
+            };
       rpc
         .mockReset()
         .mockResolvedValueOnce({ data: booth, error: null })
-        .mockResolvedValue({ data, error: null });
+        .mockResolvedValue({ data: availability, error: null });
       render(await entry());
-      if (data === 1 || data === 10)
-        expect(
-          screen.getByText(
-            `Only ${data} ${data === 1 ? "cup" : "cups"} left today`,
-          ),
-        ).toBeInTheDocument();
-      else
-        expect(
-          screen.queryByText(/Only .* left today/),
-        ).not.toBeInTheDocument();
+      expect(form).toHaveBeenCalledWith(
+        expect.objectContaining({
+          left: data === "invalid" ? null : data,
+          maxPerOrder: data === "invalid" ? null : 4,
+          closed: false,
+        }),
+      );
+      expect(screen.queryByText(/Only .* left today/)).not.toBeInTheDocument();
     },
   );
   it("does not block browsing when decorative stock lookup fails", async () => {
@@ -127,16 +140,48 @@ describe("public QR entry", () => {
     [{ ...booth, is_active: false }, null, "Closed right now"],
     [{ ...booth, servable: false }, null, "Not taking orders"],
     [{ ...booth, servable: false }, 0, "Sold out for today"],
-  ])("prioritizes the precise closure reason", async (data, cups, title) => {
+  ])(
+    "prioritizes the precise closure reason",
+    async (data, itemsLeft, title) => {
+      rpc
+        .mockReset()
+        .mockResolvedValueOnce({ data, error: null })
+        .mockResolvedValue({
+          data: {
+            remaining: {},
+            held: {},
+            left: itemsLeft,
+            left_held: 0,
+            max_per_order: null,
+          },
+          error: null,
+        });
+      render(await entry());
+      expect(screen.getByText(title)).toBeInTheDocument();
+      expect(form).toHaveBeenCalledWith(
+        expect.objectContaining({ closed: true }),
+      );
+    },
+  );
+  it("restores stock held by other baskets before deciding the booth is sold out", async () => {
     rpc
       .mockReset()
-      .mockResolvedValueOnce({ data, error: null })
-      .mockResolvedValue({ data: cups, error: null });
+      .mockResolvedValueOnce({ data: booth, error: null })
+      .mockResolvedValue({
+        data: {
+          remaining: {},
+          held: {},
+          left: 0,
+          left_held: 3,
+          max_per_order: 4,
+        },
+        error: null,
+      });
     render(await entry());
-    expect(screen.getByText(title)).toBeInTheDocument();
     expect(form).toHaveBeenCalledWith(
-      expect.objectContaining({ closed: true }),
+      expect.objectContaining({ left: 3, maxPerOrder: 4, closed: false }),
     );
+    expect(screen.queryByText("Sold out for today")).not.toBeInTheDocument();
   });
   it("shows the vendor's image and contact links when paused", async () => {
     rpc
