@@ -5,8 +5,8 @@ import {
   bearerOk,
   findAuthUserByEmail,
   listAllAuthUsers,
-} from "@/lib/merqo-auth";
-import { resolveVendorStatus } from "@/lib/merqo-vendor-status";
+} from "@/lib/merqo/auth";
+import { resolveVendorStatus } from "@/lib/merqo/vendor-status";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Plan } from "@/lib/types";
 

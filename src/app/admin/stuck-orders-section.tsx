@@ -1,5 +1,5 @@
-import { OrderStatusBadge } from "@/components/order-status-badge";
-import { Paginated } from "@/components/paginated";
+import { OrderStatusBadge } from "@/components/board/order-status-badge";
+import { Paginated } from "@/components/widgets/paginated";
 import { elapsedLabel } from "@/lib/orders";
 import type { StuckOrder } from "@/lib/stuck-orders";
 

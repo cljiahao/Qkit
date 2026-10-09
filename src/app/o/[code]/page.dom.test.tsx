@@ -28,7 +28,7 @@ vi.mock("@/components/order/expired-code", () => ({
     return <p>Unavailable QR</p>;
   },
 }));
-vi.mock("@/components/media-image", () => ({
+vi.mock("@/components/widgets/media-image", () => ({
   MediaImage: () => <span>Booth image</span>,
 }));
 import OrderEntryPage from "./page";

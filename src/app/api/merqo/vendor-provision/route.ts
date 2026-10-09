@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
-import { provisionBearerOk } from "@/lib/merqo-auth";
-import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+import { provisionBearerOk } from "@/lib/merqo/auth";
+import { getOrCreateVendorProfile } from "@/lib/merqo/vendor-profile";
 import { recordAudit } from "@/lib/audit";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 

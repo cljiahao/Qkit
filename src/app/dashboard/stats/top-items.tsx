@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { SegmentedControl } from "@/components/segmented-control";
+import { SegmentedControl } from "@/components/widgets/segmented-control";
 import { formatPrice } from "@/lib/utils";
 import type { TopItem } from "@/lib/stats";
 

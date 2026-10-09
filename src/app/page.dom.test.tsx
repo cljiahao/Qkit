@@ -20,10 +20,10 @@ vi.mock("@/components/landing/nav", () => ({
   },
 }));
 vi.mock("@/components/landing/footer", () => ({ Footer: () => null }));
-vi.mock("@/components/hero-preview-carousel", () => ({
+vi.mock("@/components/landing/hero-preview-carousel", () => ({
   HeroPreviewCarousel: () => null,
 }));
-vi.mock("@/components/landing-cta", () => ({
+vi.mock("@/components/landing/landing-cta", () => ({
   LandingCta: ({ href, children }: { href: string; children: ReactNode }) => (
     <a href={href}>{children}</a>
   ),

@@ -2,7 +2,7 @@
 
 import { createServerClient } from "@/lib/supabase/server";
 import { supportMessageSchema, type SupportMessageInput } from "@/lib/schemas";
-import { submitSupportMessage as submitSupportMessageRpc } from "@/lib/merqo-support";
+import { submitSupportMessage as submitSupportMessageRpc } from "@/lib/merqo/support";
 import type { ActionResult } from "@/lib/action-result";
 
 /**

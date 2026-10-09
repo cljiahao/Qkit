@@ -20,7 +20,7 @@ import { EventsPanel } from "./events-panel";
 import { ReviewsCard } from "./reviews-card";
 import { EventStatsView } from "./event-stats-view";
 import { fetchOrders, fetchAllTimeTotals, fetchReviewRows } from "./queries";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

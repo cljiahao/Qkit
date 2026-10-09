@@ -8,7 +8,7 @@ import { Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Ticket } from "@/components/ticket";
+import { Ticket } from "@/components/widgets/ticket";
 import { vendorSchema, type VendorInput } from "@/lib/schemas";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { createVendor } from "./actions";

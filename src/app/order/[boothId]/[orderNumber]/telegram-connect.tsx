@@ -1,4 +1,4 @@
-import { mintCustomerConnectToken } from "@/lib/merqo-customer-notify";
+import { mintCustomerConnectToken } from "@/lib/merqo/customer-notify";
 
 /**
  * Server component, same shape as EarnLink: mints a single-order-scoped

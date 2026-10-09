@@ -10,7 +10,7 @@ import type { Database } from "@/lib/types";
 import { fetchOrders, fetchEventReviewRows } from "./queries";
 import { StatsView } from "./stats-view";
 import { ReviewsCard } from "./reviews-card";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/widgets/page-header";
 
 interface Props {
   supabase: SupabaseClient<Database>;

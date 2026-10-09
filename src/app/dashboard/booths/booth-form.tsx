@@ -36,8 +36,8 @@ import {
   ImageUploader,
   PendingImageUploadError,
 } from "@merqo/ui";
-import { Section } from "@/components/ticket-section";
-import { MediaImage } from "@/components/media-image";
+import { Section } from "@/components/widgets/ticket-section";
+import { MediaImage } from "@/components/widgets/media-image";
 import {
   removeUnsavedImages,
   uploadQkitImage,
@@ -53,7 +53,7 @@ import { CloseBoothControl } from "./close-booth-control";
 import { saveBooth, deleteBooth } from "./actions";
 import { boothFormSchema } from "@/lib/schemas";
 import type { Entitlement } from "@/lib/plan";
-import { ProLock } from "@/components/pro-lock";
+import { ProLock } from "@/components/widgets/pro-lock";
 import type { BoothHours } from "@/lib/hours";
 import type { PaymentConfig, SocialLinks } from "@/lib/types";
 import type { BookingStatus } from "@/lib/paykit/client";

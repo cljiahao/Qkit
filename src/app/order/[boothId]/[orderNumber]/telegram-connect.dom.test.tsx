@@ -6,7 +6,7 @@ import { TelegramConnect } from "./telegram-connect";
 const { mintCustomerConnectTokenMock } = vi.hoisted(() => ({
   mintCustomerConnectTokenMock: vi.fn(),
 }));
-vi.mock("@/lib/merqo-customer-notify", () => ({
+vi.mock("@/lib/merqo/customer-notify", () => ({
   mintCustomerConnectToken: mintCustomerConnectTokenMock,
 }));
 

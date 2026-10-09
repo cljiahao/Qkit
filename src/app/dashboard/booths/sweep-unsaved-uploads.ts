@@ -6,7 +6,7 @@ import {
   boothImagePaths,
   unsavedUploadPaths,
   uploadedPaths,
-} from "@/lib/booth-images";
+} from "@/lib/booth/images";
 
 const BUCKET = "booth-images";
 const PAGE = 1000;

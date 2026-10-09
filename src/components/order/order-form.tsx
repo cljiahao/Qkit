@@ -18,11 +18,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ZoomableImage } from "@/components/zoomable-image";
-import { MediaImage } from "@/components/media-image";
-import { ItemCustomizer } from "@/components/item-customizer";
-import { AllergenBadges } from "@/components/allergen-badges";
-import { Ticket } from "@/components/ticket";
+import { ZoomableImage } from "@/components/widgets/zoomable-image";
+import { MediaImage } from "@/components/widgets/media-image";
+import { ItemCustomizer } from "@/components/order/item-customizer";
+import { AllergenBadges } from "@/components/order/allergen-badges";
+import { Ticket } from "@/components/widgets/ticket";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import {
   cn,

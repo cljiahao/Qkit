@@ -1,5 +1,5 @@
-import { FeedbackForm } from "@/components/feedback-form";
-import { PageHeader } from "@/components/page-header";
+import { FeedbackForm } from "@/components/widgets/feedback-form";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

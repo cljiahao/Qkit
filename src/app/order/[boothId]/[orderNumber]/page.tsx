@@ -7,8 +7,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import {
   getOrCreateVendorProfile,
   type VendorProfile,
-} from "@/lib/merqo-vendor-profile";
-import { Ticket } from "@/components/ticket";
+} from "@/lib/merqo/vendor-profile";
+import { Ticket } from "@/components/widgets/ticket";
 import {
   cn,
   formatOptions,
@@ -28,12 +28,12 @@ import {
 import { displayOrderNumber, isStaleOrderView, isTerminal } from "@/lib/orders";
 import { shortDateTime } from "@/lib/tz";
 import { firstOrderNumberToday } from "@/lib/daily-order-number";
-import { FeedbackForm } from "@/components/feedback-form";
-import { ReorderButton } from "@/components/reorder-button";
+import { FeedbackForm } from "@/components/widgets/feedback-form";
+import { ReorderButton } from "@/components/order/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
 import { EarnLink } from "./earn-link";
 import { TelegramConnect } from "./telegram-connect";
-import { SocialLinksRow } from "@/components/social-links-row";
+import { SocialLinksRow } from "@/components/widgets/social-links-row";
 
 // showPay is false for most orders (queue-only booths, or once payment is a
 // moot point), so PayPanel shouldn't ship in every order-status page's JS.

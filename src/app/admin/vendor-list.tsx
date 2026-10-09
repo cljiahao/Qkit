@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ChevronRight, Ticket } from "lucide-react";
-import { Paginated } from "@/components/paginated";
+import { Paginated } from "@/components/widgets/paginated";
 import { StatusChip } from "./vendor-status";
-import type { VendorStatus } from "@/lib/admin-vendor-health";
+import type { VendorStatus } from "@/lib/admin/vendor-health";
 import type { Plan } from "@/lib/types";
 
 export type VendorListItem = {

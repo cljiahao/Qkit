@@ -4,7 +4,7 @@ import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
 import { CompletedOrdersList } from "./completed-orders-list";
 import type { BoardOrder } from "@/lib/types";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

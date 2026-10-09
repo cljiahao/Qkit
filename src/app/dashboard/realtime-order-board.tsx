@@ -43,9 +43,9 @@ import {
 import { useRealtimeOrders } from "@/hooks/use-realtime-orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
 import type { OptionCodes } from "@/lib/ticket";
-import { OrderCard } from "@/components/order-card";
-import { Ticket } from "@/components/ticket";
-import { Hint } from "@/components/hint";
+import { OrderCard } from "@/components/board/order-card";
+import { Ticket } from "@/components/widgets/ticket";
+import { Hint } from "@/components/widgets/hint";
 import {
   displayOrderNumber,
   overtakenOrderIds,
@@ -53,7 +53,7 @@ import {
   sortActiveOrders,
   type AgeSortOrder,
 } from "@/lib/orders";
-import { boothColor } from "@/lib/booth-color";
+import { boothColor } from "@/lib/booth/color";
 import { fireNewOrderNotification, playSound } from "@/lib/order-alerts";
 import { toggleBoothActive } from "./booths/actions";
 import {
@@ -62,7 +62,7 @@ import {
   sweepAbandonedPayments,
 } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
-import { SegmentedControl } from "@/components/segmented-control";
+import { SegmentedControl } from "@/components/widgets/segmented-control";
 import { CustomerScreenButton } from "./customer-screen-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";

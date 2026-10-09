@@ -4,10 +4,10 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { DEFAULT_PRICING } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
-import { Ticket as TicketCard } from "@/components/ticket";
+import { Ticket as TicketCard } from "@/components/widgets/ticket";
 import { UpgradeCta } from "./upgrade-cta";
 import { PassCountdown } from "./pass-countdown";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

@@ -27,7 +27,7 @@ The callback route is guarded by `printkitCallbackBearerOk(request)` from
 in `../../../lib/paykit/client.ts`), since this endpoint has exactly one
 caller (printkit). Writes land on `orders.print_status`/
 `print_status_updated_at` via `createServiceClient()`, surfaced on the
-dashboard board as `PrintBadge` in `@/components/order-card.tsx`.
+dashboard board as `PrintBadge` in `@/components/board/order-card.tsx`.
 
 The printer-status route instead requires the signed-in vendor and an owned
 booth before calling Printkit; it exposes no machine secret to the browser.

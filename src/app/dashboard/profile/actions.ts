@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import { patchVendorProfile } from "@/lib/merqo-vendor-profile";
+import { patchVendorProfile } from "@/lib/merqo/vendor-profile";
 import {
   profileNameSchema,
   socialLinksSchema,

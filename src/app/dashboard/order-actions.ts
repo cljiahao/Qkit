@@ -15,7 +15,7 @@ import {
   isTerminal,
 } from "@/lib/orders";
 import { createCheckout, confirmCheckout } from "@/lib/paykit/client";
-import { notifyCustomer } from "@/lib/merqo-customer-notify";
+import { notifyCustomer } from "@/lib/merqo/customer-notify";
 import { recordAudit, recordOrderStatusEvent } from "@/lib/audit";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus, PaymentStatus } from "@/lib/types";

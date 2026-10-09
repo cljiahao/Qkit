@@ -7,7 +7,7 @@ const { getOrCreateVendorProfile, getUser, insert } = vi.hoisted(() => ({
   insert: vi.fn(),
 }));
 
-vi.mock("@/lib/merqo-vendor-profile", () => ({ getOrCreateVendorProfile }));
+vi.mock("@/lib/merqo/vendor-profile", () => ({ getOrCreateVendorProfile }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: vi.fn().mockResolvedValue({
     auth: { getUser: () => getUser() },

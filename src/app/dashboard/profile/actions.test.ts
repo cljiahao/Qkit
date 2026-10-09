@@ -8,7 +8,7 @@ const { patchVendorProfile, getOrCreateVendorProfile, getUser } = vi.hoisted(
   }),
 );
 
-vi.mock("@/lib/merqo-vendor-profile", () => ({
+vi.mock("@/lib/merqo/vendor-profile", () => ({
   patchVendorProfile,
   getOrCreateVendorProfile,
 }));

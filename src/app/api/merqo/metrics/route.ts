@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { readAllRows } from "@/lib/supabase/read-all";
 import { createServiceClient } from "@/lib/supabase/server";
-import { bearerOk } from "@/lib/merqo-auth";
-import { computeMerqoMetrics } from "@/lib/merqo-metrics";
+import { bearerOk } from "@/lib/merqo/auth";
+import { computeMerqoMetrics } from "@/lib/merqo/metrics";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Plan } from "@/lib/types";
 

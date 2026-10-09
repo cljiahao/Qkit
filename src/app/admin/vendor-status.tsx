@@ -1,5 +1,5 @@
 import { StatusBadge } from "@merqo/ui";
-import type { VendorStatus } from "@/lib/admin-vendor-health";
+import type { VendorStatus } from "@/lib/admin/vendor-health";
 
 /**
  * Colour + label for each vendor status. One accent per band, reusing the

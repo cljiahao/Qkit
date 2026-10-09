@@ -7,11 +7,11 @@ import {
   bearerOk,
   findAuthUserByEmail,
   listAllAuthUsers,
-} from "@/lib/merqo-auth";
-import { latestActivePassByVendor } from "@/lib/admin-stats";
-import { computeVendorActivity } from "@/lib/merqo-vendor-activity";
+} from "@/lib/merqo/auth";
+import { latestActivePassByVendor } from "@/lib/admin/stats";
+import { computeVendorActivity } from "@/lib/merqo/vendor-activity";
 import type { Plan } from "@/lib/types";
-import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo/support";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const revalidate = 0;

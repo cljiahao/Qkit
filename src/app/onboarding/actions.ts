@@ -1,7 +1,7 @@
 "use server";
 
 import { createServerClient } from "@/lib/supabase/server";
-import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+import { getOrCreateVendorProfile } from "@/lib/merqo/vendor-profile";
 import { vendorSchema, type VendorInput } from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 

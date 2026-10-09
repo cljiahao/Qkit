@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { Search } from "lucide-react";
-import { OrderCard } from "@/components/order-card";
-import { Ticket } from "@/components/ticket";
-import { Paginated } from "@/components/paginated";
-import { SegmentedControl } from "@/components/segmented-control";
+import { OrderCard } from "@/components/board/order-card";
+import { Ticket } from "@/components/widgets/ticket";
+import { Paginated } from "@/components/widgets/paginated";
+import { SegmentedControl } from "@/components/widgets/segmented-control";
 import { Input } from "@/components/ui/input";
 import {
   Select,

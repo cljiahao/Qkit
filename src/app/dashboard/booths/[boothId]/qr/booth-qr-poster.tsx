@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import QRCode from "react-qr-code";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Ticket } from "@/components/ticket";
-import { orderPath } from "@/lib/booth-code";
+import { Ticket } from "@/components/widgets/ticket";
+import { orderPath } from "@/lib/booth/code";
 import { RegenerateButton } from "./regenerate-button";
 import { EYEBROW_CLASS } from "@/lib/utils";
 

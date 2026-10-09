@@ -36,7 +36,7 @@ vi.mock("./earn-link", () => ({ EarnLink: () => null }));
 vi.mock("./telegram-connect", () => ({
   TelegramConnect: () => <div data-testid="telegram-connect" />,
 }));
-vi.mock("@/lib/merqo-vendor-profile", () => ({
+vi.mock("@/lib/merqo/vendor-profile", () => ({
   getOrCreateVendorProfile: vi.fn().mockResolvedValue(null),
 }));
 // Exposes the exact URL passed to react-qr-code as a DOM attribute, so tests

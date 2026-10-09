@@ -18,7 +18,7 @@ import {
   boothImagePaths,
   orphanedImagePaths,
   failedSaveUploadPaths,
-} from "@/lib/booth-images";
+} from "@/lib/booth/images";
 import { upsertVendorConfig } from "@/lib/paykit/client";
 import { registerPrintLocation } from "@/lib/printkit/client";
 import { sweepUnsavedUploads } from "./sweep-unsaved-uploads";

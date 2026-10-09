@@ -12,8 +12,8 @@ import { parseAvailability } from "@/lib/availability";
 import { OrderForm } from "@/components/order/order-form";
 import { RecentOrders } from "@/components/order/recent-orders";
 import { ExpiredCode } from "@/components/order/expired-code";
-import { MediaImage } from "@/components/media-image";
-import { SocialLinksRow } from "@/components/social-links-row";
+import { MediaImage } from "@/components/widgets/media-image";
+import { SocialLinksRow } from "@/components/widgets/social-links-row";
 
 export const revalidate = 0;
 

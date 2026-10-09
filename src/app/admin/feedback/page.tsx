@@ -1,14 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Star } from "lucide-react";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin/access";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
-import { vendorStallNames } from "@/lib/admin-vendor-names";
+import { vendorStallNames } from "@/lib/admin/vendor-names";
 import { cn, EYEBROW_CLASS } from "@/lib/utils";
 import { npsBreakdown } from "@/lib/nps";
 import { summarizeReviews, type ReviewRow } from "@/lib/reviews";
-import { Paginated } from "@/components/paginated";
-import { Ticket } from "@/components/ticket";
-import { PageHeader } from "@/components/page-header";
+import { Paginated } from "@/components/widgets/paginated";
+import { Ticket } from "@/components/widgets/ticket";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

@@ -10,7 +10,7 @@
 // limit entirely).
 
 import { createServiceClient } from "@/lib/supabase/server";
-import { notifyVendor } from "@/lib/merqo-customer-notify";
+import { notifyVendor } from "@/lib/merqo/customer-notify";
 import { createPrintJob } from "@/lib/printkit/client";
 import { vendorFacingOrderNumber } from "@/lib/daily-order-number";
 

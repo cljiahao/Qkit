@@ -5,8 +5,8 @@ import {
   bearerOk,
   listAllAuthUsers,
   findAuthUserByEmail,
-} from "@/lib/merqo-auth";
-import { resolveUpgradeOutcome } from "@/lib/merqo-upgrade-request";
+} from "@/lib/merqo/auth";
+import { resolveUpgradeOutcome } from "@/lib/merqo/upgrade-request";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const revalidate = 0;

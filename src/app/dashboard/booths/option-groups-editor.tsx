@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OPTION_CODE_MAX, suggestOptionCode } from "@/lib/ticket";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ProLock } from "@/components/pro-lock";
+import { ProLock } from "@/components/widgets/pro-lock";
 import { canHaveOptionGroups, type Entitlement } from "@/lib/plan";
 import { ALLERGEN_TAGS, type AllergenTag } from "@/lib/schemas";
 import type { OptionChoice, OptionGroup } from "@/lib/types";

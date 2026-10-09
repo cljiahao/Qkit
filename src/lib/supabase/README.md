@@ -25,7 +25,7 @@ answered.
   backfills `board_settings` with `DEFAULT_BOARD_SETTINGS` if migration 0050
   hasn't reached the DB yet. After the vendor/license read, overwrites
   `vendor.name`/`vendor.social_links` with the values from the shared
-  `merqo.vendor_profile` table (via `@/lib/merqo-vendor-profile`'s
+  `merqo.vendor_profile` table (via `@/lib/merqo/vendor-profile`'s
   `getOrCreateVendorProfile`, `supabase.schema("merqo").rpc(...)`) — those
   two fields don't exist on `qkit.vendors` at all as of migration 0069 —
   `merqo.vendor_profile` is the only source. `requireEntitledVendor()` is the

@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-vi.mock("@/lib/merqo-vendor-profile", () => ({ getOrCreateVendorProfile }));
+vi.mock("@/lib/merqo/vendor-profile", () => ({ getOrCreateVendorProfile }));
 vi.mock("@/lib/supabase/get-user", () => ({ getUser }));
 
 const maybeSingleVendor = vi.fn();
