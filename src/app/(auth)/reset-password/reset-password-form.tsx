@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { Ticket } from "@/components/ticket";
+import { Ticket } from "@/components/widgets/ticket";
 import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { passwordChangeSchema } from "@/lib/schemas";
 import { FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";

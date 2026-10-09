@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { provisionBearerOk } from "@/lib/merqo-auth";
+import { provisionBearerOk } from "@/lib/merqo/auth";
 
 function req(auth?: string) {
   return new Request("http://localhost/api/merqo/vendor-provision", {

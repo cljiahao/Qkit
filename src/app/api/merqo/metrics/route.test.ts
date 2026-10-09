@@ -8,7 +8,7 @@ const { bearerOk, rateLimit, createServiceClient, fixtures, failPage } =
     fixtures: {} as Record<string, unknown[]>,
     failPage: { table: "", from: -1 },
   }));
-vi.mock("@/lib/merqo-auth", () => ({ bearerOk }));
+vi.mock("@/lib/merqo/auth", () => ({ bearerOk }));
 vi.mock("@/lib/rate-limit", () => ({
   clientIp: () => "ip",
   rateLimit,

@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImageUploader, SocialLinksFields, TwoColumnSections } from "@merqo/ui";
-import { Section } from "@/components/ticket-section";
-import { MediaImage } from "@/components/media-image";
+import { Section } from "@/components/widgets/ticket-section";
+import { MediaImage } from "@/components/widgets/media-image";
 import {
   uploadQkitImage,
   removeReplacedAvatar,

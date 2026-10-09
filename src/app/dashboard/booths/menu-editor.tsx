@@ -51,10 +51,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ImageUploader, InfoTooltip, MoneyInput } from "@merqo/ui";
-import { MediaImage } from "@/components/media-image";
+import { MediaImage } from "@/components/widgets/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@merqo/ui";
-import { ProLock } from "@/components/pro-lock";
+import { ProLock } from "@/components/widgets/pro-lock";
 import { OptionGroupsEditor } from "./option-groups-editor";
 import { canAddMenuItem, type Entitlement } from "@/lib/plan";
 import { cn } from "@/lib/utils";

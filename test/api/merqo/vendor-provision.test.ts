@@ -11,7 +11,7 @@ vi.mock("@/lib/supabase/server", () => ({
 const { getOrCreateVendorProfileMock } = vi.hoisted(() => ({
   getOrCreateVendorProfileMock: vi.fn(),
 }));
-vi.mock("@/lib/merqo-vendor-profile", () => ({
+vi.mock("@/lib/merqo/vendor-profile", () => ({
   getOrCreateVendorProfile: getOrCreateVendorProfileMock,
 }));
 

@@ -14,8 +14,8 @@ vi.mock("@/lib/rate-limit", () => ({
   rateLimit: allowed,
   clientIp: () => "test-ip",
 }));
-vi.mock("@/lib/merqo-auth", async (original) => ({
-  ...(await original<typeof import("@/lib/merqo-auth")>()),
+vi.mock("@/lib/merqo/auth", async (original) => ({
+  ...(await original<typeof import("@/lib/merqo/auth")>()),
   bearerOk: auth,
   listAllAuthUsers: users,
 }));

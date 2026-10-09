@@ -1,7 +1,7 @@
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { BackButton } from "@merqo/ui";
 import { ProfileForm } from "./profile-form";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

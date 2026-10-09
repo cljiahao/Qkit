@@ -12,11 +12,11 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ImageUploader, InfoTooltip } from "@merqo/ui";
-import { MediaImage } from "@/components/media-image";
+import { MediaImage } from "@/components/widgets/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@merqo/ui";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
-import { SEGMENT_GROUP_CLASS } from "@/components/segmented-control";
+import { SEGMENT_GROUP_CLASS } from "@/components/widgets/segmented-control";
 import type { PaymentConfig } from "@/lib/types";
 
 type Kind = "none" | "pointer" | "paynow";

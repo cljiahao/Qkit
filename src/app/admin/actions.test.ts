@@ -52,7 +52,7 @@ const {
   platformSettingsEq: vi.fn(),
 }));
 
-vi.mock("@/lib/admin", () => ({ requireAdmin: requireAdminMock }));
+vi.mock("@/lib/admin/access", () => ({ requireAdmin: requireAdminMock }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 

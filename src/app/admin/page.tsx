@@ -3,15 +3,15 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AuditLogEntry } from "@merqo/ui";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin/access";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
-import { vendorStallNames } from "@/lib/admin-vendor-names";
+import { vendorStallNames } from "@/lib/admin/vendor-names";
 import {
   activationFunnel,
   latestActivePassByVendor,
   summarizeEvents,
   summarizeVendors,
-} from "@/lib/admin-stats";
+} from "@/lib/admin/stats";
 import { pctChange, windowSeries, type StatsOrder } from "@/lib/stats";
 import { formatPrice, MS_PER_DAY } from "@/lib/utils";
 import type { Plan } from "@/lib/types";
@@ -21,7 +21,7 @@ import { type AdminVendorRow } from "./vendor-manage";
 import { PricingSection } from "./pricing-section";
 import { BannerForm } from "./banner-form";
 import { ActivationFunnelView } from "./activation-funnel";
-import { Paginated } from "@/components/paginated";
+import { Paginated } from "@/components/widgets/paginated";
 import { Stat } from "./stat";
 import { ResolveRequestButton } from "./resolve-request-button";
 import { ResolveMessageButton } from "./resolve-message-button";
@@ -33,8 +33,8 @@ import {
   statusSinceByOrder,
   type OrderStatusEventLite,
 } from "@/lib/stuck-orders";
-import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
-import { PageHeader } from "@/components/page-header";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo/support";
+import { PageHeader } from "@/components/widgets/page-header";
 
 // Lazy-loaded: pulls in recharts, code-split out of the initial admin bundle.
 const TrendChart = dynamic(() =>

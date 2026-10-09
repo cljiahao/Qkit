@@ -24,7 +24,7 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 // Stub the customization sheet: when open, expose one button that adds the
 // item with a fixed option so the option path is exercised without radix.
-vi.mock("@/components/item-customizer", () => ({
+vi.mock("@/components/order/item-customizer", () => ({
   ItemCustomizer: ({
     item,
     onAdd,

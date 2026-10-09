@@ -1,7 +1,7 @@
 "use client";
 
 import { Ticket } from "lucide-react";
-import { Ticket as TicketCard } from "@/components/ticket";
+import { Ticket as TicketCard } from "@/components/widgets/ticket";
 import { useNow } from "@/hooks/use-now";
 import { sgtWeekdayTime } from "@/lib/tz";
 

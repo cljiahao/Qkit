@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { patchVendorProfile } from "./merqo-vendor-profile";
+import { patchVendorProfile } from "./merqo/vendor-profile";
 function clientFor(data: unknown, error: unknown = null) {
   const rpc = vi.fn(async () => ({ data, error }));
   return { client: { schema: () => ({ rpc }) } as never, rpc };

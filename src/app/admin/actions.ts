@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin/access";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
   bannerFormSchema,
@@ -17,7 +17,7 @@ import {
 import { MS_PER_DAY } from "@/lib/utils";
 import type { ActionResult } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
-import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo/support";
 
 const setPlanSchema = z.object({
   vendorId: z.string().uuid(),

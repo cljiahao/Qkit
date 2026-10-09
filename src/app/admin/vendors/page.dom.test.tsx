@@ -10,12 +10,12 @@ const { gate, fixtures, from, filters, names, list } = vi.hoisted(() => ({
   names: vi.fn(),
   list: vi.fn(),
 }));
-vi.mock("@/lib/admin", () => ({ requireAdmin: gate }));
+vi.mock("@/lib/admin/access", () => ({ requireAdmin: gate }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ from }),
   createServiceClient: async () => ({ schema: () => ({ from }) }),
 }));
-vi.mock("@/lib/admin-vendor-names", () => ({ vendorStallNames: names }));
+vi.mock("@/lib/admin/vendor-names", () => ({ vendorStallNames: names }));
 vi.mock("../vendor-list", () => ({
   VendorList: (props: { vendors: VendorListItem[] }) => {
     list(props);

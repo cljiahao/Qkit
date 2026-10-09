@@ -10,7 +10,7 @@ import {
   type Vendor,
   type SocialLinks,
 } from "@/lib/types";
-import { getOrCreateVendorProfile } from "@/lib/merqo-vendor-profile";
+import { getOrCreateVendorProfile } from "@/lib/merqo/vendor-profile";
 import { requireCurrentLegalAcceptance } from "@/lib/legal-gate";
 
 /**

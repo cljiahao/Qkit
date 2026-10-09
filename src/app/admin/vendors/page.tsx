@@ -1,21 +1,21 @@
 import { readAllRows } from "@/lib/supabase/read-all";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin/access";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
-import { vendorStallNames } from "@/lib/admin-vendor-names";
-import { latestActivePassByVendor, summarizeVendors } from "@/lib/admin-stats";
+import { vendorStallNames } from "@/lib/admin/vendor-names";
+import { latestActivePassByVendor, summarizeVendors } from "@/lib/admin/stats";
 import {
   buildVendorHealth,
   passHoursLeft,
   statusRank,
   type VendorLite,
-} from "@/lib/admin-vendor-health";
+} from "@/lib/admin/vendor-health";
 import { pctChange } from "@/lib/stats";
 import { MS_PER_DAY } from "@/lib/utils";
-import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo/support";
 import { Stat } from "../stat";
 import { VendorList, type VendorListItem } from "../vendor-list";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

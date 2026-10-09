@@ -1,4 +1,4 @@
-import type { ActivationFunnel } from "@/lib/admin-stats";
+import type { ActivationFunnel } from "@/lib/admin/stats";
 
 const STAGES = [
   { key: "signedUp", label: "Signed up" },

@@ -41,7 +41,7 @@ surfaces a loyalty "earn a stamp" link once the order completes.
 - `telegram-connect.tsx` — `TelegramConnect({ orderId, vendorId })` (async
   server component, same shape as `EarnLink`): mints a single-order-scoped
   connect token from merqo (`mintCustomerConnectToken`,
-  `@/lib/merqo-customer-notify`, `notify_ref` `` `qkit:${orderId}` ``) and
+  `@/lib/merqo/customer-notify`, `notify_ref` `` `qkit:${orderId}` ``) and
   renders the deep-link button plus a one-line disclosure preview — merqo's
   own connect flow holds the actual consent copy, this never restates or
   diverges from it — or `null` on any mint failure (a merqo outage must
@@ -128,7 +128,7 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   is still waiting), the resolved social links (`SocialLinksRow`,
   `@/components`, booth override else the vendor's shared default from
   `merqo.vendor_profile` via `getOrCreateVendorProfile` —
-  `@/lib/merqo-vendor-profile` — degrading to booth-only links on any RPC
+  `@/lib/merqo/vendor-profile` — degrading to booth-only links on any RPC
   error rather than breaking the page for a customer holding a valid, paid
   order link) pulled up next to the status/ETA block rather than the
   footer (a customer watches this page idle for several minutes; the
@@ -285,7 +285,7 @@ the per-order `access_token` is the sole authorization. `payment-actions.ts`
 calls out to paykit's checkout API (`@/lib/paykit/client`) for the claim/
 unclaim transitions; `EarnLink` calls out to the separate LoopKit service,
 and `TelegramConnect` calls out to merqo's `customer-connect-token`
-endpoint (`@/lib/merqo-customer-notify`) — the first kit → merqo HTTP
+endpoint (`@/lib/merqo/customer-notify`) — the first kit → merqo HTTP
 direction in this codebase. `collect-actions.ts`'s `confirmCollection` is
 called from `../pickup/pickup-scanner.tsx`, the self-checkout pickup kiosk
 — a separate, public entry point that shares this same directory's

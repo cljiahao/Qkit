@@ -10,7 +10,7 @@ Push-provisioning endpoint: Merqo hub calls this to create a free-tier `vendors`
 
 ## Connectivity
 
-Calls `createServiceClient()`, `provisionBearerOk()` (`@/lib/merqo-auth`), `getOrCreateVendorProfile()` (`@/lib/merqo-vendor-profile`, also used by `onboarding/actions.ts`), and `recordAudit()` (`@/lib/audit`).
+Calls `createServiceClient()`, `provisionBearerOk()` (`@/lib/merqo/auth`), `getOrCreateVendorProfile()` (`@/lib/merqo/vendor-profile`, also used by `onboarding/actions.ts`), and `recordAudit()` (`@/lib/audit`).
 
 ## Parent
 

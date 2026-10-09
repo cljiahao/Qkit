@@ -25,7 +25,7 @@ having to poll printkit.
 This endpoint has exactly one caller: printkit's own print-job worker, as a
 job finishes — see printkit's own repo for the caller side. Feeds
 `orders.print_status`, read
-by `@/components/order-card.tsx`'s `PrintBadge` (renders only on `"failed"`;
+by `@/components/board/order-card.tsx`'s `PrintBadge` (renders only on `"failed"`;
 `"queued"`/`"sent"`/`"printed"`/`"not_required"` are silent, v0.1 scope).
 
 Callbacks carry their accepted delivery attempt's timestamp. Atomic filters

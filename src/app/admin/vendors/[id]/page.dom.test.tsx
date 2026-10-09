@@ -12,12 +12,12 @@ const { gate, fixtures, from, predicates, profile, manage, resolve } =
     manage: vi.fn(),
     resolve: vi.fn(),
   }));
-vi.mock("@/lib/admin", () => ({ requireAdmin: gate }));
+vi.mock("@/lib/admin/access", () => ({ requireAdmin: gate }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ from }),
   createServiceClient: async () => ({ schema: () => ({ from }) }),
 }));
-vi.mock("@/lib/merqo-vendor-profile", () => ({
+vi.mock("@/lib/merqo/vendor-profile", () => ({
   getOrCreateVendorProfile: profile,
 }));
 vi.mock("next/navigation", () => ({

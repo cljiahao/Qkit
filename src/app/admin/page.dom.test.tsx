@@ -27,12 +27,12 @@ const {
   ranges: vi.fn(),
   failures: {} as Record<string, number>,
 }));
-vi.mock("@/lib/admin", () => ({ requireAdmin }));
+vi.mock("@/lib/admin/access", () => ({ requireAdmin }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: async () => ({ from }),
   createServiceClient: async () => ({ schema: () => ({ from }) }),
 }));
-vi.mock("@/lib/admin-vendor-names", () => ({ vendorStallNames: names }));
+vi.mock("@/lib/admin/vendor-names", () => ({ vendorStallNames: names }));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("./pricing-section", () => ({

@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { loadEntitlement } from "@/lib/supabase/get-entitlement";
-import { isAdmin } from "@/lib/admin";
+import { isAdmin } from "@/lib/admin/access";
 import { requireCurrentLegalAcceptance } from "@/lib/legal-gate";
 import { DashboardNav } from "./dashboard-nav";
-import { DashboardTour } from "@/components/dashboard-tour";
+import { DashboardTour } from "@/components/tour/dashboard-tour";
 
 export default async function DashboardLayout({
   children,

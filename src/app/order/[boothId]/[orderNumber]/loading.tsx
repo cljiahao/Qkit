@@ -1,4 +1,4 @@
-import { Ticket } from "@/components/ticket";
+import { Ticket } from "@/components/widgets/ticket";
 
 // Skeleton for the order-status ticket while the server reads the order —
 // same shadow as the real card (page.tsx) so the swap-in doesn't shift look.

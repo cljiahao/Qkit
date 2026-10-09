@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { MediaImage } from "@/components/media-image";
+import { MediaImage } from "@/components/widgets/media-image";
 import { toast } from "sonner";
 import { Copy, Pencil, QrCode, Tv } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Ticket } from "@/components/ticket";
+import { Ticket } from "@/components/widgets/ticket";
 
 interface BoothRow {
   id: string;

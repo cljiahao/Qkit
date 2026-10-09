@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 /**
  * Constant-time bearer check against PRINTKIT_CALLBACK_SECRET. A plain
- * shared secret, NO kit_slug prefix — mirrors src/lib/merqo-auth.ts's
+ * shared secret, NO kit_slug prefix — mirrors src/lib/merqo/auth.ts's
  * bearerOk() exactly (own dedicated env var per endpoint, same reasoning:
  * qkit has exactly one caller for this route). Do not generalize this into
  * a shared helper with bearerOk/provisionBearerOk — each guards a

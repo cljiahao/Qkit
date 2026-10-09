@@ -103,7 +103,7 @@ vi.mock("@/lib/paykit/client", () => ({
 const { notifyCustomerMock } = vi.hoisted(() => ({
   notifyCustomerMock: vi.fn(),
 }));
-vi.mock("@/lib/merqo-customer-notify", () => ({
+vi.mock("@/lib/merqo/customer-notify", () => ({
   notifyCustomer: notifyCustomerMock,
 }));
 

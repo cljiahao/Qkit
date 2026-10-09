@@ -6,7 +6,7 @@ Vendor-facing feedback page — a dedicated full-page destination for sharing fe
 
 ## Contents
 
-- `page.tsx` — `DashboardFeedbackPage()` (`revalidate = 0`): renders a header ("Help shape qkit" / "Feedback") and `FeedbackForm` from `@/components/feedback-form` with `source="vendor"`, `metric="nps"`, and the prompt "How likely are you to recommend qkit to another vendor?".
+- `page.tsx` — `DashboardFeedbackPage()` (`revalidate = 0`): renders a header ("Help shape qkit" / "Feedback") and `FeedbackForm` from `@/components/widgets/feedback-form` with `source="vendor"`, `metric="nps"`, and the prompt "How likely are you to recommend qkit to another vendor?".
 
 ## Connectivity
 

@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Hanken_Grotesk, Space_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import { Providers } from "@/components/providers";
-import { ServiceWorkerRegistrar } from "@/components/service-worker-registrar";
-import { MaintenanceBanner } from "@/components/maintenance-banner";
+import { Providers } from "@/components/layout/providers";
+import { ServiceWorkerRegistrar } from "@/components/layout/service-worker-registrar";
+import { MaintenanceBanner } from "@/components/layout/maintenance-banner";
 import { DEFAULT_PLATFORM_SETTINGS } from "@/lib/platform-settings";
 import { createServerClient } from "@/lib/supabase/server";
 import { BRAND_EMBER } from "@/lib/brand-icon";

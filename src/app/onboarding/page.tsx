@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getVendor } from "@/lib/supabase/get-vendor";
-import { isAdmin } from "@/lib/admin";
+import { isAdmin } from "@/lib/admin/access";
 import { OnboardingForm } from "./onboarding-form";
 
 export const revalidate = 0;

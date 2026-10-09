@@ -38,7 +38,7 @@ the current (non-legacy) customer ordering entry point.
   `vendorFacingOrderNumber` from `@/lib/daily-order-number` (the day's ticket number when the vendor has
   daily reset on, so the alert reads "#002" like the ticket and not the
   permanent "#0847"; the same helper `notifyPrintkit` labels with), then calls
-  `@/lib/merqo-customer-notify`'s `notifyVendor(vendorId, message)` — a
+  `@/lib/merqo/customer-notify`'s `notifyVendor(vendorId, message)` — a
   merqo outage or a vendor who never connected can never affect
   `placeOrder`'s own returned result. See
   `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`
@@ -139,7 +139,7 @@ Reached at `/o/<short_code>` from a booth's QR code. `page.tsx` renders
 `OrderForm` (`@/components/order/order-form.tsx`), which imports and calls
 this folder's `actions.ts#placeOrder` directly on submit; on success it
 navigates to `/order/[boothId]/[orderNumber]?t=<accessToken>` for live status.
-`placeOrder` also calls `@/lib/merqo-customer-notify`'s `notifyVendor` via its
+`placeOrder` also calls `@/lib/merqo/customer-notify`'s `notifyVendor` via its
 own `notifyVendorTelegram` helper — merqo's shared bot resolves the vendor's
 linked chat itself; a vendor connects that link once via merqo's own
 `/profile` page, not through anything in this repo. It likewise calls

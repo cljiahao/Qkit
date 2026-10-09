@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { SegmentedControl } from "@/components/segmented-control";
+import { SegmentedControl } from "@/components/widgets/segmented-control";
 import {
   Select,
   SelectContent,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ProLock } from "@/components/pro-lock";
+import { ProLock } from "@/components/widgets/pro-lock";
 import type { Entitlement } from "@/lib/plan";
 import type { WeekdayKey } from "@/lib/tz";
 import type { BoothHours, DayWindow } from "@/lib/hours";

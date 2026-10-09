@@ -60,13 +60,22 @@ src/app/order/[boothId]/[orderNumber]/ — live order status page
 src/app/o/[code]/               — short-QR customer entry point + placeOrder action
 src/proxy.ts                    — Supabase session refresh + /dashboard guard (Next 16)
 src/lib/supabase/               — browser / server / service clients + mw helper
-src/lib/merqo-customer-notify.ts — mintCustomerConnectToken/notifyCustomer/notifyVendor:
+src/lib/merqo/                  — everything between qkit and merqo, the hub
+src/lib/merqo/customer-notify.ts — mintCustomerConnectToken/notifyCustomer/notifyVendor:
                                     HTTP client calling merqo's customer-connect-token/
                                     notify-customer/notify-vendor endpoints (kit → merqo,
                                     the new direction — see below)
+src/lib/admin/                  — admin-only logic (access gate, fleet stats, vendor health)
+src/lib/booth/                  — booth helpers (access limits, short codes, colours, images)
 src/lib/types.ts                — DB types (mirror of supabase/migrations)
 src/lib/schemas.ts              — Zod schemas for forms + actions
 src/components/ui/              — shadcn primitives (CLI-managed, do not hand-edit)
+src/components/widgets/         — presentational pieces used by more than one feature
+src/components/layout/          — app-shell pieces mounted once in the root layout
+src/components/board/           — the vendor's order ticket and what hangs off it
+src/components/order/           — the customer ordering flow
+src/components/landing/         — the landing page
+src/components/tour/            — the dashboard's guided tours
 src/hooks/use-realtime-orders.ts — Supabase realtime subscription
 supabase/migrations/            — SQL schema + RLS + realtime publication
 ```
@@ -106,7 +115,7 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   `POST /api/merqo/notify-vendor`). Migration `0077` drops both `0076`
   tables; `placeOrder`'s vendor alert (`notifyVendorTelegram` in
   `src/app/o/[code]/notify.ts`) now calls `notifyVendor` in
-  `src/lib/merqo-customer-notify.ts` instead of a local lookup + Bot API
+  `src/lib/merqo/customer-notify.ts` instead of a local lookup + Bot API
   call — same name, same call site, same never-blocks-order-placement
   guarantee, only the internals changed. No connection data carried over: private chat IDs identify the same
   Telegram user across bots, but the user must initiate a conversation with
@@ -122,7 +131,7 @@ supabase/migrations/            — SQL schema + RLS + realtime publication
   call up to this point flows merqo → kit, e.g. metrics pull,
   vendor-provision). No new qkit table, no new webhook — the customer's
   Telegram connection lives entirely in `merqo.customers`, owned by merqo.
-  `src/lib/merqo-customer-notify.ts` calls merqo's bearer-secret
+  `src/lib/merqo/customer-notify.ts` calls merqo's bearer-secret
   (`MERQO_CUSTOMER_SECRET`) `POST /api/merqo/customer-connect-token` (mints
   a deep-link token, rendered by the order-status page's `TelegramConnect`
   component while an order isn't yet `ready`) and `POST
@@ -199,6 +208,16 @@ a conscious choice — don't let a future drift-check "fix" them):
   `.harness-base` 3-way-merge machinery.)
 - **password min-12 on the login schema** (5.5) — would lock out existing 8-char
   sign-ins; Supabase Auth config owns the real policy.
+- **`src/features/<name>/`** (2026-10-09 structure cleanup) — a feature's
+  components live beside its routes in `src/app/**`, each folder with its own
+  README. Moving them is hundreds of import edits for a layout that reads no
+  better. Shared pieces do follow the standard: `src/components/widgets/`,
+  `src/components/layout/`, `src/components/ui/`.
+- **Barrel `index.ts` files** (same cleanup) — these folders mix Server and
+  Client Components. A barrel re-exporting both pulls server code towards
+  client bundles, and a Server Component importing a plain value through a
+  `"use client"` barrel gets a client reference, not the value (the
+  `SOCIAL_LINK_FIELDS` crash of 2026-09-18). Import by full path.
 
 Adopted: build-artefact `Read` denies in `settings.json` (context hygiene, 5.4).
 
@@ -439,7 +458,7 @@ wrapped so a failure can never affect order placement itself (tested
 explicitly, not just claimed — see `actions.place-order.test.ts`'s "vendor
 alert" block) — only its internals changed, from a local
 `vendor_telegram`/Bot API call to `notifyVendor` in
-`src/lib/merqo-customer-notify.ts`. See the Data model section above and
+`src/lib/merqo/customer-notify.ts`. See the Data model section above and
 `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`.
 Distinct from, but sharing the same underlying-bot concept as, the
 still-draft customer-facing

@@ -4,8 +4,8 @@ import { Bell } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/admin";
-import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
+import { requireAdmin } from "@/lib/admin/access";
+import type { MerqoSupportMessagesSchema } from "@/lib/merqo/support";
 import { AdminNav } from "./admin-nav";
 
 export default async function AdminLayout({

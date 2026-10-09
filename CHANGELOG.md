@@ -97,6 +97,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Internal: `src/components` and `src/lib` are grouped into folders. Shared
+  components sit in `widgets/`, `layout/`, `board/`, `tour/`, `landing/` and
+  `order/`; the `merqo-*`, `admin*` and `booth-*` library files sit in
+  `lib/merqo/`, `lib/admin/` and `lib/booth/`. Files moved and imports
+  followed; no code inside them changed.
 - Internal: the customer order page and the walk-up dialog share one basket
   hook (`useCart`) for adding, increasing and decreasing lines. Each had its
   own identical copy. No change to how either behaves.

@@ -68,7 +68,7 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   for the matching container-width bump so the two panes have room). A
   booth with 0 or 1 category falls back to the original flat "Menu" list,
   no sidebar chrome. Each card row also renders `AllergenBadges`
-  (`@/components/allergen-badges`, 2026-09-01) from `item.allergens` —
+  (`@/components/order/allergen-badges`, 2026-09-01) from `item.allergens` —
   works even while the booth is closed and browse-only, since it doesn't
   depend on opening `ItemCustomizer` (which items with no option groups
   never even offer a button for).
@@ -90,6 +90,35 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   hydration mismatch — there's no server-side customer identity), rendering
   a collapsed-then-"Show all" list of `Link`s to each past order's status
   page.
+- `allergen-badges.tsx` — `AllergenBadges({ tags })`: icon-only allergen row
+  for a menu card (2026-09-01) — one `InfoTooltip` (`@merqo/ui`, `trigger="tap"`
+  since this is a mobile-first customer surface where hover never fires) per
+  tag, icon from `@/lib/allergen-icons`, tap/hover reveals the capitalized
+  name. Card-level, so it only reads `item.allergens` (fixed allergens) —
+  no selection has happened yet at list level, unlike `item-customizer.tsx`'s
+  live choice-derived union. Renders nothing for an empty/`undefined` list.
+  Used by `order/order-form.tsx`'s menu card row; the dedicated Customize
+  sheet keeps its own icon+word badges (see `item-customizer.tsx` below).
+- `item-customizer.tsx` — `ItemCustomizer({ item, onClose, onAdd })`: a
+  bottom `Sheet` for picking a menu item's option groups (single-select via
+  `ToggleGroup type="single"`, multi-select via `type="multiple"`, keyed by
+  item id so switching items remounts with fresh default selections) before
+  adding it to the cart. Shows a live running price delta (informational
+  only — `place_order` re-derives the authoritative total server-side from
+  the stored menu) and an always-visible allergen badge list (the item's
+  fixed allergens unioned with every currently-selected choice's allergens,
+  never behind an accordion — a safety signal, not optional complexity),
+  each badge pairing its `@/lib/allergen-icons` icon with the tag's name
+  (2026-09-01 — was text-only; the card-level `AllergenBadges` above stays
+  icon-only, this dialog keeps the fuller icon+word treatment).
+- `item-customizer.dom.test.tsx` — RTL tests for the running-total math
+  (single-select replace vs. multi-select sum across groups) and the
+  allergen badges (fixed vs. selection-derived, added/dropped on choice
+  change).
+- `reorder-button.tsx` — `ReorderButton({ boothId, lines, customerName,
+label })`: stashes a past order's lines via `stashReorder` and navigates to
+  the booth's menu page, where `OrderForm` reconciles them against the live
+  menu/stock.
 
 ## Connectivity
 
@@ -98,7 +127,7 @@ that same route's `ExpiredCode` fallback when the short code doesn't resolve.
 `OrderForm` calls the `placeOrder` server action living in
 `src/app/o/[code]/actions.ts` and, on success, routes to
 `/order/[boothId]/[orderNumber]`. `ReorderButton`
-(`@/components/reorder-button.tsx`) and the status page's "Order again" link
+(`@/components/order/reorder-button.tsx`) and the status page's "Order again" link
 are what stash the reorder handoff `OrderForm` reads on mount.
 
 ## Parent

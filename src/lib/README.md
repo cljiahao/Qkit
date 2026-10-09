@@ -11,28 +11,6 @@ and cross-kit HTTP/RPC adapters retain their own platform dependencies.
 
 - `action-result.ts` — `ActionResult<T>` discriminated union
   (`{success:true}&T | {success:false,error}`) returned by every Server Action.
-- `admin-stats.ts` — `activationFunnel` (signed-up → booth → order → Pro,
-  distinct-vendor counts), `latestActivePassByVendor` (per-vendor live-license
-  expiry map), `summarizeVendors`/`summarizeEvents` (plan/signup and event-type
-  rollups) for the `/admin` overview.
-- `admin-stats.test.ts` — unit tests for the above four aggregation functions.
-- `admin-vendor-health.ts` — `vendorStatus`/`buildVendorHealth`: classifies each
-  vendor into a banded `VendorStatus` (`attention`/`expiring`/`stuck`/`quiet`/
-  `new`/`healthy`, first-match-wins) plus `statusRank` (triage sort key) and
-  `passHoursLeft`; deliberately not a synthetic numeric score.
-- `admin-vendor-health.test.ts` — tests status classification rules and the
-  health-map rollup.
-- `admin-vendor-names.ts` — `vendorStallNames(supabase, vendorIds)`: resolves
-  each vendor id's stall name from `merqo.vendor_profile` (via
-  `getOrCreateVendorProfile`), one RPC per unique id run in parallel —
-  admin-only, low-traffic call sites, no batch-read RPC exists on the merqo
-  side.
-- `admin-vendor-names.test.ts` — tests parallel resolution, dedup of repeated
-  ids into a single call each, and the empty-list no-op.
-- `admin.ts` — `isAdmin(userId)` (row-presence check against the `admins`
-  table) and `requireAdmin()`, the `/admin` route/action gate that 404s (not
-  403s, to avoid revealing the route) signed-out or non-admin users.
-- `admin.test.ts` — tests the admin gate's 404-on-unauthorized behavior.
 - `allergen-icons.ts` — `ALLERGEN_ICONS: Record<AllergenTag, string>`, an
   emoji per `ALLERGEN_TAGS` value. Moved here 2026-09-01 (was
   `dashboard/booths/allergen-icons.ts`) once the customer-facing
@@ -40,33 +18,6 @@ and cross-kit HTTP/RPC adapters retain their own platform dependencies.
   icon set — a shared `lib/` module rather than a dashboard-scoped one
   reaching across into `components/`. Rendering-only, no schema/data-model
   change.
-- `booth-access.ts` — `servableBoothIds`/`isBoothPaused`: which of a vendor's
-  active booths are customer-servable under their entitlement (unlimited plans
-  serve all; free serves only the oldest `maxBooths`), mirroring the
-  `booth_servable` SQL function so DB and dashboard agree.
-- `booth-access.test.ts` — tests serveability under free vs. unlimited
-  entitlements and the "paused" classification.
-- `booth-code.ts` — `orderPath(code)`: builds the `/o/{code}` customer entry
-  URL from a booth's short code.
-- `booth-code.test.ts` — tests URL encoding of the order path.
-- `booth-color.ts` — `boothColor(boothId)`: deterministic hash into an 8-color
-  oklch palette (`BOOTH_COLORS`) so a booth's accent dot is stable without a DB
-  column.
-- `booth-color.test.ts` — tests hash stability/distribution.
-- `booth-images.ts` — `boothImagePaths`, `orphanedImagePaths`: extract
-  in-bucket storage paths from booth-images public URLs and diff before/after
-  booth state to find storage objects safe to delete after an image swap or
-  booth deletion. URL-to-path parsing is `@merqo/ui`'s shared
-  `storagePathFromPublicUrl` (this file carried its own copy until
-  2026-09-22); the shared one also rejects a path with an empty segment.
-  `uploadedPaths(urls)` maps any other URLs (avatar, paykit QR) to paths the
-  same way, and `unsavedUploadPaths(folder, objects, referenced, nowMs,
-graceMs)` picks the objects in a vendor folder that nothing references and
-  that are older than `UNSAVED_UPLOAD_GRACE_MS` (24h): uploads from a form the
-  vendor never saved. Used by `dashboard/booths/sweep-unsaved-uploads.ts`.
-- `booth-images.test.ts` — tests path extraction, orphan-path diffing, and the
-  unsaved-upload selection (grace boundary, referenced objects kept, folders
-  and bad timestamps skipped).
 - `brand-icon.tsx` — `brandIcon(size)` React element plus `BRAND_EMBER`/
   `BRAND_OAT` color constants; renders the "Q" app mark for `ImageResponse`-
   generated favicon/manifest/apple-touch icons.
@@ -220,73 +171,6 @@ vendorId, boothId, orderNumber)`: the day's rank when the vendor has daily
   (2026-09-02) — this function itself is unchanged.
 - `menu-sections.test.ts` — tests category-order grouping, the Other bucket,
   empty-section dropping, and the no-categories-defined case.
-- `merqo-auth.ts` — `bearerOk`/`provisionBearerOk`: constant-time bearer-token
-  checks against `MERQO_METRICS_SECRET`/`MERQO_PROVISION_SECRET` respectively
-  — deliberately separate secrets, since leaking the routine metrics-polling
-  one must not also grant the tenant-provisioning write. `listAllAuthUsers`
-  reads every auth page and fails the lookup on any page error;
-  `findAuthUserByEmail` resolves shared-auth accounts for cross-kit admin flows.
-- `merqo-customer-notify.ts` — `mintCustomerConnectToken(vendorId, kitSlug,
-notifyRef)`/`notifyCustomer(vendorId, notifyRef, message)`/
-  `notifyVendor(vendorId, message)`: server-only HTTP client for merqo's
-  `POST /api/merqo/customer-connect-token`/`POST /api/merqo/notify-customer`/
-  `POST /api/merqo/notify-vendor` endpoints (bearer `MERQO_CUSTOMER_SECRET`,
-  `AbortSignal.timeout(3000)`) — the first **kit → merqo** HTTP direction in
-  this codebase (every other cross-kit call flows merqo → kit).
-  `notifyVendor` is the Phase A2 replacement for qkit's own now-retired
-  Telegram bot (`placeOrder`'s vendor order-alert call — see
-  `docs/superpowers/specs/2026-08-16-vendor-telegram-connect-design.md`).
-  All three fail closed: `mintCustomerConnectToken` Zod-validates the response
-  and returns `null` on any non-2xx/timeout/network error or unexpected body,
-  `notifyCustomer`/`notifyVendor` catch + log and never throw, same
-  fail-closed philosophy as `fetchEarnConfig` in `earn-link.tsx`. All three
-  share one `merqoFetch` helper for the bearer-auth/timeout mechanics.
-- `merqo-customer-notify.test.ts` — tests the request body/header shape for
-  all three calls and the fail-closed/never-throw behavior on non-2xx,
-  timeout, and network-error cases.
-- `merqo-downgrade-request.ts` — `resolveDowngradeOutcome(hasVendorRow,
-currentPlan)`: pure decision (`not_found`/`already_free`/`downgrade`) for the
-  admin downgrade-vendor action.
-- `merqo-downgrade-request.test.ts` — tests the three outcome branches.
-- `merqo-metrics.ts` — `computeMerqoMetrics`: qkit's own business metrics
-  (revenue/GMV, active vendors, weekly order deltas, signups, plan mix,
-  pending upgrade requests, activation funnel) built on top of
-  `admin-stats.ts`'s `summarizeVendors`/`activationFunnel`.
-- `merqo-metrics.test.ts` — tests the metrics aggregation against synthetic
-  vendor/booth/order/payment fixtures.
-- `merqo-support.ts` — `submitSupportMessage`: cross-schema RPC wrapper
-  calling merqo's `submit_support_message` (`supabase.schema("merqo").rpc(...)`)
-  so a vendor's Get-help message lands in the shared cross-kit
-  `merqo.support_messages` inbox — qkit's own local `support_messages`
-  table was dropped (migration `0073`) once every reader/writer converged.
-  Also exports `MerqoSupportMessagesSchema`, the hand-written mirror of that
-  table's row shape shared by every admin page/route that reads it (each
-  narrows via its own `.select(...)` string rather than redeclaring the type).
-- `merqo-upgrade-request.ts` — `resolveUpgradeOutcome(hasVendorRow,
-hasPendingRequest)`: pure decision (`not_found`/`already_pending`/`create`)
-  for the admin/vendor upgrade-to-Pro request flow.
-- `merqo-upgrade-request.test.ts` — tests the three outcome branches.
-- `merqo-vendor-activity.ts` — `computeVendorActivity(vendor, booths, orders,
-passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
-/api/merqo/vendor-activity` — orders/revenue (30d) and booth counts, plus a
-  `status` delegated to `admin-vendor-health.ts`'s `buildVendorHealth` so it
-  matches the admin console's own triage rather than re-deriving it.
-- `merqo-vendor-activity.test.ts` — tests the 30d order/revenue rollup, the
-  zeroed-fresh-vendor case, and that an open message/expiring pass surface
-  the same `attention`/`expiring` statuses the admin console shows.
-- `merqo-vendor-profile.ts` — `getOrCreateVendorProfile`/`patchVendorProfile`:
-  cross-schema helper calling merqo's `get_or_create_vendor_profile`/
-  `patch_vendor_profile` RPCs (`supabase.schema("merqo").rpc(...)`) so
-  stall name + social links read/write against the shared
-  `merqo.vendor_profile` table instead of the stale `qkit.vendors` columns.
-- `merqo-vendor-profile.test.ts` — tests the RPC call shape (schema/function
-  name, args) and that a Postgres error surfaces as a thrown `Error` with the
-  underlying message.
-- `merqo-vendor-status.ts` — `resolveVendorStatus(email, authUsers, vendors)`:
-  two-step email → auth user → vendor plan lookup (vendors has no email
-  column) for admin vendor search.
-- `merqo-vendor-status.test.ts` — tests the email-to-vendor resolution,
-  including no-match cases.
 - `nps.ts` — `npsBreakdown(scores)`: Net Promoter Score classification
   (promoters 9-10 / passives 7-8 / detractors 0-6) and the -100..100 score.
 - `nps.test.ts` — tests the breakdown math and the empty-responses case.
@@ -523,7 +407,7 @@ boolean`, migration 0080 — orders, booth_item_sold —
   via `supabase gen types typescript`).
 - `tour-ids.ts` — `TOUR_IDS`/`TourId`/`tourIdSchema`: the allowlist for
   dashboard tourIds, kept in its own zero-React module rather than
-  `@/components/tour-steps` (which pulls in `react-dom/server` for the
+  `@/components/tour/tour-steps` (which pulls in `react-dom/server` for the
   orders tour's example badge markup) since `tour-actions.ts`'s
   `markTourSeen` — a `"use server"` action, a real HTTP endpoint callable
   with any argument regardless of what the UI sends — needs to `safeParse`
@@ -560,6 +444,9 @@ boolean`, migration 0080 — orders, booth_item_sold —
   the vendor's walk-up order dialog).
 - `utils.test.ts` — tests price formatting, dollar-string parsing edge cases,
   and pluralization.
+- `admin/` — admin-only logic (access gate, fleet stats, vendor health, vendor names). See its own README.
+- `booth/` — booth helpers (access and serve limits, short codes, colours, image paths). See its own README.
+- `merqo/` — everything between qkit and merqo, the hub (route auth, metrics, plan requests, vendor status/activity/profile, support, notify calls). See its own README.
 
 ## Connectivity
 

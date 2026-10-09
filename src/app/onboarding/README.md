@@ -16,7 +16,7 @@ broken dashboard.
   double-submit or back-nav retry is harmless. On both the fresh-insert and
   the already-exists path, seeds the chosen stall name into the shared merqo
   vendor-profile table via `getOrCreateVendorProfile(supabase, user.id, name)`
-  (`@/lib/merqo-vendor-profile`, idempotent).
+  (`@/lib/merqo/vendor-profile`, idempotent).
 - `onboarding-form.tsx` — `OnboardingForm` client component: a single
   "Stall name" input (`react-hook-form` + `zodResolver(vendorSchema)`) inside
   a `Ticket` card, styled as "Step 1 of 1". On submit calls `createVendor`

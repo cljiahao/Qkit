@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const bearerOkMock = vi.fn();
 
-vi.mock("@/lib/merqo-auth", async () => {
+vi.mock("@/lib/merqo/auth", async () => {
   const actual =
-    await vi.importActual<typeof import("@/lib/merqo-auth")>(
-      "@/lib/merqo-auth",
+    await vi.importActual<typeof import("@/lib/merqo/auth")>(
+      "@/lib/merqo/auth",
     );
   return {
     ...actual,

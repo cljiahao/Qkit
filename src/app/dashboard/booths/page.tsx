@@ -5,11 +5,11 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { parseMenuItems } from "@/lib/schemas";
 import { canAddBooth } from "@/lib/plan";
-import { servableBoothIds, isBoothPaused } from "@/lib/booth-access";
-import { ProLock } from "@/components/pro-lock";
-import { Ticket } from "@/components/ticket";
+import { servableBoothIds, isBoothPaused } from "@/lib/booth/access";
+import { ProLock } from "@/components/widgets/pro-lock";
+import { Ticket } from "@/components/widgets/ticket";
 import { BoothList } from "./booth-list";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader } from "@/components/widgets/page-header";
 
 export const revalidate = 0;
 

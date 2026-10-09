@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ItemCustomizer } from "@/components/item-customizer";
+import { ItemCustomizer } from "@/components/order/item-customizer";
 import { cartKey, cartTotal } from "@/lib/cart";
 import { useCart } from "@/hooks/use-cart";
 import { remainingFor, type Remaining } from "@/lib/stock";
