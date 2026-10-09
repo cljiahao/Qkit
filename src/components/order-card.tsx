@@ -250,6 +250,15 @@ function shouldUnconfirmOnUndo(pending: PendingUndo): boolean {
   );
 }
 
+// A walk-up order keyed in without a name is saved as "Walk-up", and tagging
+// that one "· walk-up" printed the word twice on the ticket.
+function showsWalkupTag(order: BoardOrder): boolean {
+  return (
+    order.source === "walkup" &&
+    order.customer_name.trim().toLowerCase() !== "walk-up"
+  );
+}
+
 export function OrderCard({
   order,
   displayNumber,
@@ -634,7 +643,7 @@ export function OrderCard({
               it. */}
           <p className="mt-1.5 text-base leading-snug font-medium break-words">
             {order.customer_name}
-            {order.source === "walkup" && (
+            {showsWalkupTag(order) && (
               <span className="font-normal text-muted-foreground">
                 {" "}
                 · walk-up
