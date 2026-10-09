@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ItemCustomizer } from "@/components/item-customizer";
-import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
+import { cartKey, cartTotal } from "@/lib/cart";
+import { useCart } from "@/hooks/use-cart";
 import { remainingFor, type Remaining } from "@/lib/stock";
 import {
   count,
@@ -35,7 +36,7 @@ import { getWalkupMenu } from "./walkup-menu-actions";
 import { placeWalkupOrder, type WalkupPayment } from "./walkup-actions";
 import { confirmOrderPayment } from "./order-actions";
 import { WalkupPayStep } from "./walkup-pay-step";
-import type { CartItem, MenuItem, SelectedOption } from "@/lib/types";
+import type { MenuItem, SelectedOption } from "@/lib/types";
 
 interface Booth {
   id: string;
@@ -108,7 +109,15 @@ export function WalkupOrderDialog({
   const [payStep, setPayStep] = useState<PayStep | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [loadingMenu, setLoadingMenu] = useState(false);
-  const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
+  const {
+    cart,
+    setCart,
+    entries: cartEntries,
+    items: cartItems,
+    add: addLine,
+    increment: incrementLine,
+    decrement,
+  } = useCart();
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [customerName, setCustomerName] = useState("Walk-up");
   const [submitting, setSubmitting] = useState(false);
@@ -159,21 +168,7 @@ export function WalkupOrderDialog({
     return () => {
       active = false;
     };
-  }, [open, boothId]);
-
-  function updateCart(
-    key: string,
-    fn: (existing: CartItem | undefined) => CartItem | null | undefined,
-  ) {
-    setCart((prev) => {
-      const result = fn(prev.get(key));
-      if (result === undefined) return prev;
-      const next = new Map(prev);
-      if (result === null) next.delete(key);
-      else next.set(key, result);
-      return next;
-    });
-  }
+  }, [open, boothId, setCart]);
 
   function qtyInCartFor(menuItemId: string): number {
     let n = 0;
@@ -194,34 +189,13 @@ export function WalkupOrderDialog({
 
   function addConfigured(item: MenuItem, options: SelectedOption[]) {
     if (blockedByStock(item.id)) return;
-    const delta = sumOptionDeltas(item, options);
-    const combined = (item.price_cents ?? 0) + delta;
-    const price_cents =
-      item.price_cents == null && delta === 0 ? undefined : combined;
-    updateCart(cartKey(item.id, options), (existing) => ({
-      menuItemId: item.id,
-      name: item.name,
-      price_cents,
-      options: options.length ? options : undefined,
-      quantity: existing ? existing.quantity + 1 : 1,
-    }));
+    addLine(item, options);
   }
 
   function increment(key: string) {
     const entry = cart.get(key);
     if (entry && blockedByStock(entry.menuItemId)) return;
-    updateCart(key, (existing) =>
-      existing ? { ...existing, quantity: existing.quantity + 1 } : undefined,
-    );
-  }
-
-  function decrement(key: string) {
-    updateCart(key, (existing) => {
-      if (!existing) return undefined;
-      return existing.quantity <= 1
-        ? null
-        : { ...existing, quantity: existing.quantity - 1 };
-    });
+    incrementLine(key);
   }
 
   function onAddClick(item: MenuItem) {
@@ -261,8 +235,6 @@ export function WalkupOrderDialog({
     else onOpenChange(false);
   }
 
-  const cartEntries = Array.from(cart.entries());
-  const cartItems = Array.from(cart.values());
   const total = cartTotal(cartItems);
   const itemCount = cartItems.reduce((n, it) => n + it.quantity, 0);
   const hasItems = cartItems.length > 0;

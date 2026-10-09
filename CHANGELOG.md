@@ -97,6 +97,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Internal: the customer order page and the walk-up dialog share one basket
+  hook (`useCart`) for adding, increasing and decreasing lines. Each had its
+  own identical copy. No change to how either behaves.
 - The sort switch on the order board is finger-sized on a touch screen (44px,
   was 36px), like every other switch of its kind.
 - Internal: four copies of the pill switch and eleven copies of the page

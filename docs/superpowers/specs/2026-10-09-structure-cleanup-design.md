@@ -178,12 +178,7 @@ for the six call sites pass unchanged apart from import paths. New tests for
 **D3 `src/hooks/use-cart.ts`.**
 
 ```ts
-function useCart(options: {
-  initial?: Map<string, CartItem>;
-  // True when one more of this item must be refused. The caller owns the
-  // message, since the two forms explain a refusal differently.
-  isBlocked: (menuItemId: string, items: CartItem[]) => boolean;
-}): {
+function useCart(): {
   cart: Map<string, CartItem>;
   setCart: Dispatch<SetStateAction<Map<string, CartItem>>>;
   entries: [string, CartItem][];
@@ -191,19 +186,28 @@ function useCart(options: {
   add: (item: MenuItem, options: SelectedOption[]) => void;
   increment: (key: string) => void;
   decrement: (key: string) => void;
-  clear: () => void;
 };
 ```
 
-`order-form.tsx` passes the availability-based check, `walkup-order-dialog.tsx`
-the stock-only one. `setCart` stays exposed because `order-form.tsx` trims
-the basket when another customer's hold takes stock, and restores it from
-storage. Which item is being customised stays in each component: it is view
-state.
+The hook knows nothing about stock or limits. Each form asks its own "may
+one more be added?" and only then calls `add` or `increment`.
+
+As first drafted, the hook took an `isBlocked` option. That does not work
+for `order-form.tsx`: its check reads availability, availability is fetched
+from the basket's contents, and the basket comes from the hook, so the
+option would have to be passed before the value it reads exists. Keeping the
+check in the caller removes the cycle and leaves the hook with one job.
+
+`setCart` stays exposed because `order-form.tsx` trims the basket when
+another customer's hold takes stock, and restores it from storage, and the
+walk-up dialog clears it between customers. Which item is being customised
+stays in each component: it is view state.
 
 This is the ordering path, so it gets its own PR. Acceptance: both forms'
-existing tests pass unchanged; new hook tests cover add, repeat add,
-increment, decrement to zero, a blocked add and a blocked increment.
+existing tests pass unchanged (they do, including the blocked-add cases,
+which now exercise each form's own check); new hook tests cover add, repeat
+add, options as separate lines, price folding, increment, decrement to
+removal, and an unknown key.
 
 ## Phase 3: folder regroup (moves only)
 
