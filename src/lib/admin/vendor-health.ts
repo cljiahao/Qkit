@@ -14,7 +14,7 @@ export type VendorStatus =
   | "expiring"
   // onboarding stalled, or paying (Pro) with nothing to show
   | "stuck"
-  // was active, gone silent
+  // once active, now silent
   | "quiet"
   // just signed up, still onboarding
   | "new"
