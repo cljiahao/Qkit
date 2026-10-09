@@ -58,14 +58,23 @@ describe("SettingsForm hints", () => {
     expect(
       screen.queryByText(/before its ticket turns amber/i),
     ).not.toBeInTheDocument();
-    const hints = screen.getAllByRole("button", {
-      name: "More about this setting",
-    });
-    await user.click(hints[0]);
+    await user.click(
+      screen.getByRole("button", { name: "About the amber threshold" }),
+    );
 
     expect(
       await screen.findByText(/before its ticket turns amber/i),
     ).toBeInTheDocument();
+  });
+
+  it("gives every hint its own name", () => {
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+
+    const names = screen
+      .getAllByRole("button", { name: /^About / })
+      .map((b) => b.getAttribute("aria-label"));
+    expect(names).toHaveLength(10);
+    expect(new Set(names).size).toBe(10);
   });
 });
 

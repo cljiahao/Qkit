@@ -122,7 +122,7 @@ export function CompletedOrdersList({
               onClick={() => setDateRange(r.value)}
               aria-pressed={dateRange === r.value}
               className={cn(
-                "rounded-md px-3 py-1.5 font-medium transition-colors",
+                "rounded-md px-3 py-1.5 font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
                 dateRange === r.value
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground",

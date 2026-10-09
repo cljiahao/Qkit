@@ -20,7 +20,9 @@ export function OptionsBreakdown({ options }: { options: OptionCount[] }) {
             key={`${o.group}-${o.choice}`}
             className="flex items-center gap-3"
           >
-            <span className="w-28 shrink-0 truncate text-sm">
+            {/* Wraps, not truncates: cut short it read "Spice Level: Ext…",
+                losing the choice, which is the half that matters. */}
+            <span className="w-28 shrink-0 text-sm leading-snug break-words sm:w-40">
               <span className="text-muted-foreground">{o.group}: </span>
               <span className="font-medium">{o.choice}</span>
             </span>

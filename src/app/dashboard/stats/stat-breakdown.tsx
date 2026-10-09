@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WIDE_ON_PHONE } from "./tile-layout";
 import {
   Popover,
   PopoverAnchor,
@@ -24,6 +25,7 @@ export function StatBreakdownTile({
   breakdownLabel = "By item",
   deltaSlot,
   primary,
+  wide,
   index = 0,
 }: {
   label: string;
@@ -33,6 +35,8 @@ export function StatBreakdownTile({
   breakdownLabel?: string;
   deltaSlot?: ReactNode;
   primary?: boolean;
+  // Takes the whole row on a phone (see WIDE_ON_PHONE).
+  wide?: boolean;
   index?: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -65,6 +69,7 @@ export function StatBreakdownTile({
             "fade-rise flex w-full flex-col gap-2 rounded-xl border bg-card p-4 text-left transition-colors",
             primary ? "border-primary/30" : "border-border",
             hasRows ? "hover:border-primary/40" : "cursor-default",
+            wide && WIDE_ON_PHONE,
           )}
           style={{ animationDelay: `${index * 60}ms` }}
         >

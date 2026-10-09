@@ -2,6 +2,7 @@ import { cn, formatPrice } from "@/lib/utils";
 import type { StatsSummary } from "@/lib/stats";
 import { StatTile as SharedStatTile, DeltaPill } from "@merqo/ui";
 import { StatBreakdownTile, type BreakdownRow } from "./stat-breakdown";
+import { WIDE_ON_PHONE } from "./tile-layout";
 
 type Deltas = {
   revenue: number | null;
@@ -34,6 +35,7 @@ export function StatTile({
   caption,
   hint,
   primary,
+  wide,
   index = 0,
 }: {
   label: string;
@@ -43,6 +45,8 @@ export function StatTile({
   /** Hover tooltip (native title), e.g. the cancelled count behind Fulfilled. */
   hint?: string;
   primary?: boolean;
+  /** Takes the whole row on a phone, where half a row cuts its value off. */
+  wide?: boolean;
   index?: number;
 }) {
   return (
@@ -50,6 +54,7 @@ export function StatTile({
       className={cn(
         "fade-rise rounded-xl border bg-card p-4",
         primary ? "border-primary/30" : "border-border",
+        wide && WIDE_ON_PHONE,
       )}
       style={{ animationDelay: `${index * 60}ms` }}
     >
@@ -123,7 +128,7 @@ export function KpiRow({
   const pct = Math.round(summary.fulfilmentRate * 100);
   const fulfilledCaption =
     summary.cancelled > 0
-      ? `${pct}% fulfilled · ${summary.cancelled} cancelled`
+      ? `${pct}% · ${summary.cancelled} cancelled`
       : `${pct}% fulfilled`;
 
   return (
@@ -136,6 +141,7 @@ export function KpiRow({
         breakdownLabel="Revenue by item"
         deltaSlot={<Delta pct={deltas?.revenue ?? null} />}
         primary
+        wide
         index={0}
       />
       <StatBreakdownTile
