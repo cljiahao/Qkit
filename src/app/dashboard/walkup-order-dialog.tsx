@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,9 @@ import type { CartItem, MenuItem, SelectedOption } from "@/lib/types";
 interface Booth {
   id: string;
   name: string;
+  // An event booth, where staff key in every order: the dialog stays open
+  // for the next customer instead of closing after each one.
+  walkup_default?: boolean;
 }
 
 interface Props {
@@ -49,9 +52,16 @@ interface Props {
   // before offering this; a paused booth isn't a walk-up target.
   booths: Booth[];
   initialBoothId?: string;
+  // The number staff will see on the ticket for an order just placed. The
+  // board owns the day's numbering (daily reset shows #002 for permanent
+  // number 0847); without this the dialog can only show the permanent one.
+  displayNumber?: (boothId: string, orderNumber: string) => string;
 }
 
-// An order this dialog has placed and not yet been paid for.
+const permanentNumber = (_boothId: string, orderNumber: string) => orderNumber;
+
+// An order this dialog has placed and not yet been paid for. orderNumber is
+// the number as shown on the ticket, not the permanent one.
 interface PayStep extends WalkupPayment {
   orderNumber: string;
 }
@@ -73,6 +83,11 @@ interface PayStep extends WalkupPayment {
  * paid". A booth with no payment set up never sees the second step, or any
  * payment control.
  *
+ * Once an order is done (placed, and paid or left for later) the dialog
+ * closes, except at an event booth (walkup_default), where it clears for the
+ * next customer: there the dialog is the till, and reopening it per order is
+ * a wasted tap in a queue.
+ *
  * Split-pane layout (menu left, order summary right) rather than a single
  * scrolling column: a staff member building a multi-item order needs to see
  * what's already in the cart and hit submit without scrolling past the whole
@@ -84,6 +99,7 @@ export function WalkupOrderDialog({
   onOpenChange,
   booths,
   initialBoothId,
+  displayNumber = permanentNumber,
 }: Props) {
   const [boothId, setBoothId] = useState(initialBoothId ?? booths[0]?.id ?? "");
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -96,6 +112,9 @@ export function WalkupOrderDialog({
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [customerName, setCustomerName] = useState("Walk-up");
   const [submitting, setSubmitting] = useState(false);
+  // Numbers each menu request, so a slow answer for an earlier booth, opening
+  // or customer is dropped instead of overwriting the current one.
+  const menuRequest = useRef(0);
 
   // Fresh state each time the dialog opens. A leftover cart/booth from the
   // last walk-up order has no business surviving into the next one.
@@ -114,19 +133,21 @@ export function WalkupOrderDialog({
   useEffect(() => {
     if (!open || !boothId) return;
     let active = true;
+    menuRequest.current += 1;
+    const request = menuRequest.current;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingMenu(true);
     setCart(new Map());
     // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
     void getWalkupMenu(boothId)
       .then((res) => {
-        if (!active) return;
+        if (!active || menuRequest.current !== request) return;
         setMenuItems(res?.menuItems ?? []);
         setRemaining(res?.remaining ?? {});
         setExpectsPayment(res?.expectsPayment ?? false);
       })
       .catch(() => {
-        if (!active) return;
+        if (!active || menuRequest.current !== request) return;
         setMenuItems([]);
         setRemaining({});
         setExpectsPayment(false);
@@ -211,6 +232,35 @@ export function WalkupOrderDialog({
     }
   }
 
+  const staysOpen =
+    booths.find((b) => b.id === boothId)?.walkup_default === true;
+
+  // Clears the dialog for the next customer and re-reads stock behind it, with
+  // no loading state: the menu on screen is still right, only the "N left"
+  // counts may have moved. A failed refresh is left alone; place_walkup_order
+  // checks stock again whatever the screen says.
+  function nextCustomer() {
+    setCart(new Map());
+    setCustomerName("Walk-up");
+    setPayStep(null);
+    menuRequest.current += 1;
+    const request = menuRequest.current;
+    // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
+    void getWalkupMenu(boothId)
+      .then((res) => {
+        if (!res || menuRequest.current !== request) return;
+        setMenuItems(res.menuItems);
+        setRemaining(res.remaining);
+        setExpectsPayment(res.expectsPayment);
+      })
+      .catch(() => {});
+  }
+
+  function finishOrder() {
+    if (staysOpen) nextCustomer();
+    else onOpenChange(false);
+  }
+
   const cartEntries = Array.from(cart.entries());
   const cartItems = Array.from(cart.values());
   const total = cartTotal(cartItems);
@@ -246,10 +296,10 @@ export function WalkupOrderDialog({
         toast.error(res.error);
         return;
       }
-      toast.success(`Order #${res.orderNumber} added to the board`);
-      if (res.payment)
-        setPayStep({ orderNumber: res.orderNumber, ...res.payment });
-      else onOpenChange(false);
+      const shown = displayNumber(boothId, res.orderNumber);
+      toast.success(`Order #${shown} added to the board`);
+      if (res.payment) setPayStep({ ...res.payment, orderNumber: shown });
+      else finishOrder();
     } catch {
       toast.error(
         "Could not confirm the order. Check the board before trying again.",
@@ -268,7 +318,7 @@ export function WalkupOrderDialog({
         return;
       }
       toast.success(`Order #${step.orderNumber} paid`);
-      onOpenChange(false);
+      finishOrder();
     } catch {
       toast.error(
         "Could not confirm the payment. Mark it as paid from the ticket on the board.",
@@ -400,7 +450,7 @@ export function WalkupOrderDialog({
             checkout={payStep.checkout}
             confirming={confirming}
             onPaid={() => onPaid(payStep)}
-            onLater={() => onOpenChange(false)}
+            onLater={finishOrder}
           />
         )}
 

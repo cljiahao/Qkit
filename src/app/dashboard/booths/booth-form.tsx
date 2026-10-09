@@ -67,6 +67,10 @@ interface Props {
   // page.tsx, ?mode=event) — never applies once `initial` is set, an
   // existing booth's own saved value always wins.
   eventMode?: boolean;
+  // The vendor's payment details from paykit, whatever this booth is set to
+  // (and for a booth not created yet): picking a payment method starts from
+  // them instead of blanks.
+  savedPayment?: PaymentConfig | null;
   initial?: {
     boothId: string;
     name: string;
@@ -76,9 +80,6 @@ interface Props {
     // Display-only; items are edited on the dedicated menu-manager page.
     menuItemCount: number;
     payment: PaymentConfig | null;
-    // The vendor's payment details from paykit, whatever this booth is set
-    // to: picking a payment method again restores them instead of blanks.
-    savedPayment?: PaymentConfig | null;
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
     walkup_default: boolean;
@@ -209,6 +210,7 @@ export function BoothForm({
   entitlement,
   vendorSocialLinks,
   eventMode = false,
+  savedPayment = null,
   initial,
 }: Props) {
   const router = useRouter();
@@ -537,7 +539,7 @@ export function BoothForm({
             <PaymentSection
               vendorId={vendorId}
               value={payment}
-              saved={initial?.savedPayment ?? null}
+              saved={savedPayment}
               onChange={setPayment}
             />
           </Section>
