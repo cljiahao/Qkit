@@ -10,6 +10,11 @@ Next.js 16 App Router, React 19, strict TypeScript, Tailwind v4, shadcn/Radix,
 React Hook Form, Zod, Supabase Auth/Postgres/Realtime, and the shared `@merqo/ui`
 package. Use `package.json` and `pnpm-lock.yaml` for exact versions.
 
+The shared UI dependency is pinned to a reviewed immutable Git commit. Its
+exact archive identity is approved for package preparation in
+`pnpm-workspace.yaml`; update that permission alongside the dependency and
+lockfile when adopting a new shared UI revision.
+
 qkit uses Supabase, **not** templateCentral's better-auth/Drizzle data layer.
 Database authorization is enforced through RLS and SQL privileges. Service-role
 operations must remain server-only and explicitly constrain their target.

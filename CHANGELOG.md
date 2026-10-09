@@ -8,6 +8,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Shared image handling releases failed render resources and safely decodes storage paths; money fields reject amounts outside safe integer precision.
 - A booth saved with "No online payment" stays that way. The booth page filled
   its Payment section from the vendor's payment details, which are shared by
   every booth, so a booth without payment opened showing PayNow selected, and
