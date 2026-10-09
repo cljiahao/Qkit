@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- An order is called by one number everywhere. With daily numbering on, the
+  ticket read "#002" while the new-order toast, the desktop notification and
+  the walk-up dialog (its toasts and the payment step's title) named the same
+  order by its permanent number, "#0847".
+- Picking PayNow or a payment link on a new booth starts from the payment
+  details you already saved, the same as on an existing booth. It started
+  blank, so a second booth meant retyping the payee name and UEN.
 - A booth saved with "No online payment" stays that way. The booth page filled
   its Payment section from the vendor's payment details, which are shared by
   every booth, so a booth without payment opened showing PayNow selected, and
@@ -69,6 +76,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- At an event booth (one set to walk-up order entry) the walk-up dialog stays
+  open after each order and clears for the next customer, with stock counts
+  refreshed. It used to close after every order, so a queue meant tapping
+  "New order" each time. Other booths are unchanged: the dialog closes when
+  the order is done.
 - Taking payment for a walk-up order is now a second step. "Add order" places
   the order, then the dialog shows the amount and the booth's own payment QR
   (PayNow with the amount already filled in, or the payment link or QR image)

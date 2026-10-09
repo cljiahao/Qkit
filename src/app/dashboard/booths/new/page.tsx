@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { canAddBooth } from "@/lib/plan";
+import { savedVendorPayment } from "@/lib/paykit/saved-vendor-payment";
 import { BoothForm } from "../booth-form";
 
 export const revalidate = 0;
@@ -27,6 +28,11 @@ export default async function NewBoothPage({ searchParams }: Props) {
   if (!canAddBooth(entitlement, count ?? 0)) {
     redirect("/dashboard/plan");
   }
+
+  // A second booth should not make the vendor retype a UEN: the Payment
+  // section starts from the details already on file when that method is
+  // picked. The new booth itself still opens on "No online payment".
+  const savedPayment = await savedVendorPayment(vendor.id);
 
   return (
     <div className="mx-auto max-w-lg md:max-w-4xl">
@@ -54,6 +60,7 @@ export default async function NewBoothPage({ searchParams }: Props) {
         vendorId={vendor.id}
         entitlement={entitlement}
         vendorSocialLinks={vendor.social_links}
+        savedPayment={savedPayment}
         eventMode={eventMode}
       />
     </div>

@@ -6,7 +6,9 @@ import { RealtimeOrderBoard } from "./realtime-order-board";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { toggleBoothActive } from "./booths/actions";
 import { getWalkupMenu } from "./walkup-menu-actions";
+import { placeWalkupOrder } from "./walkup-actions";
 import { advanceOrder } from "./order-actions";
+import { toast } from "sonner";
 import { DEFAULT_BOARD_SETTINGS } from "@/lib/types";
 import type { BoardOrder } from "@/lib/types";
 
@@ -714,6 +716,79 @@ describe("RealtimeOrderBoard event-mode (walkup_default)", () => {
     await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b2"));
     expect(getWalkupMenu).not.toHaveBeenCalledWith("b1");
   });
+
+  it.each([
+    {
+      name: "the day's rank when the booth already has a baseline",
+      reset: true,
+      baselines: { b1: "0845" } as Record<string, string>,
+      expected: "Order #003 added to the board",
+    },
+    {
+      name: "#001 for the booth's first order of the day",
+      reset: true,
+      baselines: {} as Record<string, string>,
+      expected: "Order #001 added to the board",
+    },
+    {
+      name: "the permanent number when daily reset is off",
+      reset: false,
+      baselines: {} as Record<string, string>,
+      expected: "Order #0847 added to the board",
+    },
+  ])(
+    "names a walk-up order by $name",
+    async ({ reset, baselines, expected }) => {
+      vi.mocked(getWalkupMenu).mockResolvedValue({
+        menuItems: [
+          {
+            id: "m1",
+            name: "Kopi",
+            description: "",
+            available: true,
+            price_cents: 350,
+          },
+        ],
+        remaining: {},
+        expectsPayment: false,
+        paymentKind: null,
+      });
+      vi.mocked(placeWalkupOrder).mockResolvedValue({
+        success: true,
+        orderNumber: "0847",
+        accessToken: "tok",
+        payment: null,
+      });
+      const user = userEvent.setup();
+      render(
+        <RealtimeOrderBoard
+          booths={[
+            {
+              id: "b1",
+              name: "Event Stall",
+              is_active: true,
+              open: true,
+              walkup_default: true,
+            },
+          ]}
+          initialOrders={[]}
+          boardSettings={{
+            ...DEFAULT_BOARD_SETTINGS,
+            daily_order_number_reset: reset,
+          }}
+          dailyOrderNumberBaselines={baselines}
+        />,
+        { wrapper: TooltipProvider },
+      );
+
+      await user.click(await screen.findByRole("button", { name: "Add" }));
+      await user.click(
+        screen.getByRole("button", { name: /add order · 1 item/i }),
+      );
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalledWith(expected));
+    },
+  );
 
   it("does not auto-open for a walk-up booth that is switched off", () => {
     render(

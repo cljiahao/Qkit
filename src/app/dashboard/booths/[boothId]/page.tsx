@@ -6,11 +6,8 @@ import {
   parseBoothHours,
   parseSocialLinks,
 } from "@/lib/schemas";
-import {
-  getVendorConfig,
-  getBookingStatus,
-  type BookingStatus,
-} from "@/lib/paykit/client";
+import { getBookingStatus, type BookingStatus } from "@/lib/paykit/client";
+import { savedVendorPayment } from "@/lib/paykit/saved-vendor-payment";
 import { BoothForm } from "../booth-form";
 import type { PaymentConfig } from "@/lib/types";
 
@@ -25,34 +22,6 @@ function initialPaymentFromMarker(data: unknown): PaymentConfig | null {
   const kind = (data as { kind?: string } | null)?.kind;
   if (kind === "paynow") return { kind: "paynow", payee_name: "" };
   if (kind === "pointer") return { kind: "pointer", label: "" };
-  return null;
-}
-
-/**
- * The vendor's payment details as saved in paykit (the real editable fields),
- * or null when there are none or paykit's call degrades.
- */
-async function savedVendorPayment(
-  vendorId: string,
-): Promise<PaymentConfig | null> {
-  const result = await getVendorConfig(vendorId);
-  if (!result.ok || !result.data.hasConfig) return null;
-
-  const d = result.data;
-  if (d.kind === "paynow")
-    return {
-      kind: "paynow",
-      payee_name: d.payeeName ?? "",
-      ...(d.uen ? { uen: d.uen } : {}),
-      ...(d.mobile ? { mobile: d.mobile } : {}),
-    };
-  if (d.kind === "pointer")
-    return {
-      kind: "pointer",
-      label: d.label ?? "",
-      ...(d.url ? { url: d.url } : {}),
-      ...(d.qrImageUrl ? { qr_image_url: d.qrImageUrl } : {}),
-    };
   return null;
 }
 
@@ -122,6 +91,7 @@ export default async function EditBoothPage({ params }: Props) {
         vendorId={vendor.id}
         entitlement={entitlement}
         vendorSocialLinks={vendor.social_links}
+        savedPayment={savedPayment}
         initial={{
           boothId: booth.id,
           name: booth.name,
@@ -130,7 +100,6 @@ export default async function EditBoothPage({ params }: Props) {
           hours: parseBoothHours(booth.hours),
           menuItemCount,
           payment,
-          savedPayment,
           social_links: booth.social_links
             ? parseSocialLinks(booth.social_links)
             : null,
