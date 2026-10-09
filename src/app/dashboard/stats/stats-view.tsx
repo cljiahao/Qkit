@@ -156,6 +156,7 @@ export function StatsView({
                 label="Best seller"
                 value={bestSeller.label}
                 caption={`${bestSeller.quantity} sold`}
+                wide
               />
             )}
             {busiestHour !== null && (

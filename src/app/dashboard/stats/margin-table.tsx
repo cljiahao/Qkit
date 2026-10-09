@@ -10,7 +10,15 @@ import { formatPrice } from "@/lib/utils";
 import type { StatsSummary, TopItem } from "@/lib/stats";
 
 const columns: DataTableColumn<TopItem>[] = [
-  { header: "Item", cell: (i) => i.label },
+  // The name wraps. Kept on one line (the table cell's default) a long item
+  // name made the table twice the width of a phone, with Profit and Margin,
+  // the two columns this table exists for, off screen behind a sideways
+  // scroll.
+  {
+    header: "Item",
+    cell: (i) => i.label,
+    className: "min-w-24 whitespace-normal!",
+  },
   {
     header: "Sold",
     cell: (i) => i.quantity,

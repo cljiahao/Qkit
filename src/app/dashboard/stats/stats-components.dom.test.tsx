@@ -58,13 +58,25 @@ describe("KpiRow", () => {
     // Shown as fulfilled / decided (18 completed of 18 + 2 cancelled) + a
     // caption that surfaces the cancelled count visibly (mobile has no hover).
     expect(screen.getByText("18/20")).toBeInTheDocument();
-    expect(screen.getByText("90% fulfilled · 2 cancelled")).toBeInTheDocument();
+    expect(screen.getByText("90% · 2 cancelled")).toBeInTheDocument();
     // Cancelled has no tile of its own; its count rides in the Fulfilled caption
     // (and the range detail stays in the tooltip).
     expect(screen.queryByText("Cancelled")).not.toBeInTheDocument();
     expect(fulfilled.closest("[title]")).toHaveAttribute(
       "title",
       "2 cancelled",
+    );
+  });
+
+  it("gives the revenue figure the whole row on a phone", () => {
+    render(<KpiRow summary={summary()} deltas={null} pro />);
+    // Half a row is about 118px of text there, which cut "$1,804.80" short.
+    expect(screen.getByText("Revenue").closest("button")).toHaveClass(
+      "col-span-2",
+      "sm:col-span-1",
+    );
+    expect(screen.getByText("Orders").closest("button")).not.toHaveClass(
+      "col-span-2",
     );
   });
 
@@ -83,6 +95,33 @@ describe("MarginTable", () => {
       <MarginTable summary={summary({ grossMargin: null })} />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("lets the item name wrap so Profit and Margin stay on a phone screen", () => {
+    render(
+      <MarginTable
+        summary={summary({
+          grossMargin: {
+            revenue_cents: 100,
+            cost_cents: 40,
+            profit_cents: 60,
+            marginPct: 60,
+          },
+          topItems: [
+            {
+              label: "Tonkotsu Ramen with Extra Chashu",
+              quantity: 1,
+              revenue_cents: 100,
+              cost_cents: 40,
+              profit_cents: 60,
+            },
+          ],
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("Tonkotsu Ramen with Extra Chashu").closest("td"),
+    ).toHaveClass("whitespace-normal!");
   });
 
   it("shows gross margin + per-item profit, ranked by profit", () => {

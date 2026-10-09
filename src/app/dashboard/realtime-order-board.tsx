@@ -410,26 +410,38 @@ function boothFilterLabel(
 
 // The board's one batch control. Idle, it is a single "Select" button with a
 // tap-to-open hint. In select mode it becomes Cancel, Select all (which flips
-// to Clear all once everything is ticked) and "Mark N Ready", whose count is
-// the confirmation.
+// to Clear all once everything is ticked) and the action itself, whose count
+// is the confirmation: "Mark N Ready" for the ticked orders still being made,
+// "Mark N Picked Up" for the ticked ones already ready. Both show only when
+// both kinds are ticked, which is the end-of-event case: a vendor who had no
+// time to mark anything clears the whole board in two taps.
 function BatchControls({
   selectMode,
-  selectedCount,
+  readyCount,
+  pickupCount,
+  pickupByDefault,
   allSelected,
   busy,
   onStart,
   onCancel,
   onToggleAll,
   onMarkReady,
+  onMarkPickedUp,
 }: {
   selectMode: boolean;
-  selectedCount: number;
+  // Ticked orders that are still preparing, and ticked orders that are ready.
+  readyCount: number;
+  pickupCount: number;
+  // Which button stands in, disabled, while nothing is ticked: pick-up when
+  // no order on the board is still being made.
+  pickupByDefault: boolean;
   allSelected: boolean;
   busy: boolean;
   onStart: () => void;
   onCancel: () => void;
   onToggleAll: () => void;
   onMarkReady: () => void;
+  onMarkPickedUp: () => void;
 }) {
   if (!selectMode)
     return (
@@ -443,10 +455,14 @@ function BatchControls({
           Select
         </Button>
         <Hint label="About Select">
-          Tick several orders, or all of them, and mark them ready in one tap.
+          Tick several orders, or all of them, and mark them ready or picked up
+          in one tap.
         </Hint>
       </div>
     );
+  const nothingTicked = readyCount === 0 && pickupCount === 0;
+  const showReady = readyCount > 0 || (nothingTicked && !pickupByDefault);
+  const showPickup = pickupCount > 0 || (nothingTicked && pickupByDefault);
   return (
     <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
       <Button
@@ -465,19 +481,36 @@ function BatchControls({
       >
         {allSelected ? "Clear all" : "Select all"}
       </Button>
-      <Button
-        size="sm"
-        className={BATCH_BUTTON}
-        disabled={selectedCount === 0 || busy}
-        onClick={onMarkReady}
-      >
-        Mark {selectedCount} Ready
-      </Button>
+      {showReady && (
+        <Button
+          size="sm"
+          className={BATCH_BUTTON}
+          disabled={readyCount === 0 || busy}
+          onClick={onMarkReady}
+        >
+          Mark {readyCount} Ready
+        </Button>
+      )}
+      {showPickup && (
+        <Button
+          size="sm"
+          className={BATCH_BUTTON}
+          disabled={pickupCount === 0 || busy}
+          onClick={onMarkPickedUp}
+        >
+          Mark {pickupCount} Picked Up
+        </Button>
+      )}
     </div>
   );
 }
 
-function useMarkReadySelection() {
+// An order the batch control can act on: one step from done either way.
+function isBatchable(order: BoardOrder): boolean {
+  return order.status === "preparing" || order.status === "ready";
+}
+
+function useBatchSelection() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const toggleSelect = useCallback((id: string) => {
@@ -488,24 +521,29 @@ function useMarkReadySelection() {
       return next;
     });
   }, []);
-  const [markingReady, setMarkingReady] = useState(false);
-  async function markSelectedReady() {
-    const ids = Array.from(selectedIds);
-    setMarkingReady(true);
+  const [advancing, setAdvancing] = useState(false);
+  // Moves each of `ids` one step on (advanceOrder: preparing to ready, ready
+  // to picked up) and unticks them. Anything else still ticked stays ticked,
+  // so a mixed selection is finished with the other button; unticking the
+  // ones just moved is what stops a second tap from moving them again.
+  async function advanceSelected(ids: string[], outcome: string) {
+    setAdvancing(true);
     try {
       const results = await Promise.all(ids.map((id) => advanceOrder(id)));
       const ok = results.filter((r) => r.success).length;
       const failed = results.length - ok;
       if (ok > 0)
-        toast.success(`Marked ${ok} order${ok === 1 ? "" : "s"} ready`);
+        toast.success(`Marked ${ok} order${ok === 1 ? "" : "s"} ${outcome}`);
       if (failed > 0)
         toast.error(
           `${failed} order${failed === 1 ? "" : "s"} couldn't be updated`,
         );
-      setSelectedIds(new Set());
-      setSelectMode(false);
+      const left = new Set(selectedIds);
+      for (const id of ids) left.delete(id);
+      setSelectedIds(left);
+      if (left.size === 0) setSelectMode(false);
     } finally {
-      setMarkingReady(false);
+      setAdvancing(false);
     }
   }
   return {
@@ -514,8 +552,8 @@ function useMarkReadySelection() {
     selectedIds,
     setSelectedIds,
     toggleSelect,
-    markingReady,
-    markSelectedReady,
+    advancing,
+    advanceSelected,
   };
 }
 
@@ -621,9 +659,9 @@ export function RealtimeOrderBoard({
     selectedIds,
     setSelectedIds,
     toggleSelect,
-    markingReady,
-    markSelectedReady,
-  } = useMarkReadySelection();
+    advancing,
+    advanceSelected,
+  } = useBatchSelection();
   const [walkupOpen, setWalkupOpen] = useState(false);
   const [boothDialogOpen, setBoothDialogOpen] = useState(false);
   const bumpAway = useAwayBadge();
@@ -817,8 +855,13 @@ export function RealtimeOrderBoard({
   const preparingIds = visible
     .filter((o) => o.status === "preparing")
     .map((o) => o.id);
-  const preparingCount = preparingIds.length;
-  const allSelected = preparingIds.every((id) => selectedIds.has(id));
+  const readyIds = visible.filter((o) => o.status === "ready").map((o) => o.id);
+  const batchableIds = [...preparingIds, ...readyIds];
+  const allSelected = batchableIds.every((id) => selectedIds.has(id));
+  // Counted against what is on the board now, not the raw selection: an order
+  // ticked while preparing may have been marked ready from another device.
+  const tickedPreparing = preparingIds.filter((id) => selectedIds.has(id));
+  const tickedReady = readyIds.filter((id) => selectedIds.has(id));
   // Split the board so an order the vendor hasn't accepted yet (no printer
   // connected, or the booth waits for the customer's own arrival tap) can't
   // get buried under everything already being worked on.
@@ -849,7 +892,7 @@ export function RealtimeOrderBoard({
             : null
         }
         onUndoWindowChange={handleUndoWindowChange}
-        selectable={selectMode && order.status === "preparing"}
+        selectable={selectMode && isBatchable(order)}
         selected={selectedIds.has(order.id)}
         onToggleSelect={toggleSelect}
       />
@@ -1091,21 +1134,24 @@ export function RealtimeOrderBoard({
             </button>
           ))}
         </div>
-        {preparingCount > 0 && (
+        {batchableIds.length > 0 && (
           <BatchControls
             selectMode={selectMode}
-            selectedCount={selectedIds.size}
+            readyCount={tickedPreparing.length}
+            pickupCount={tickedReady.length}
+            pickupByDefault={preparingIds.length === 0}
             allSelected={allSelected}
-            busy={markingReady}
+            busy={advancing}
             onStart={() => setSelectMode(true)}
             onCancel={() => {
               setSelectMode(false);
               setSelectedIds(new Set());
             }}
             onToggleAll={() =>
-              setSelectedIds(allSelected ? new Set() : new Set(preparingIds))
+              setSelectedIds(allSelected ? new Set() : new Set(batchableIds))
             }
-            onMarkReady={markSelectedReady}
+            onMarkReady={() => advanceSelected(tickedPreparing, "ready")}
+            onMarkPickedUp={() => advanceSelected(tickedReady, "picked up")}
           />
         )}
       </div>

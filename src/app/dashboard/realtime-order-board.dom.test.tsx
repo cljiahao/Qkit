@@ -843,11 +843,11 @@ describe("RealtimeOrderBoard event-mode (walkup_default)", () => {
 });
 
 describe("RealtimeOrderBoard batch mark-ready", () => {
-  it("has no Select control when no order is preparing", () => {
+  it("has no Select control when no order is preparing or ready", () => {
     render(
       <RealtimeOrderBoard
         booths={BOOTHS}
-        initialOrders={[order({ id: "o1", status: "ready" })]}
+        initialOrders={[order({ id: "o1", status: "pending" })]}
         boardSettings={DEFAULT_BOARD_SETTINGS}
       />,
       { wrapper: TooltipProvider },
@@ -891,7 +891,7 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
     expect(advanceOrder).toHaveBeenCalledTimes(2);
   });
 
-  it("selects every preparing order with Select all, leaving ready ones alone", async () => {
+  it("splits a mixed Select all into a ready step and a pick-up step", async () => {
     const user = userEvent.setup();
     render(
       <RealtimeOrderBoard
@@ -908,15 +908,70 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
 
     await user.click(screen.getByRole("button", { name: /^select$/i }));
     await user.click(screen.getByRole("button", { name: "Select all" }));
-    // Nothing happens until the vendor reads the count and confirms it.
+    // Nothing happens until the vendor reads the counts and confirms one.
     expect(advanceOrder).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Mark 1 Picked Up" }),
+    ).toBeEnabled();
 
-    await user.click(screen.getByRole("button", { name: /mark 2 ready/i }));
+    await user.click(screen.getByRole("button", { name: "Mark 2 Ready" }));
 
     await waitFor(() => expect(advanceOrder).toHaveBeenCalledTimes(2));
     expect(advanceOrder).toHaveBeenCalledWith("o1");
     expect(advanceOrder).toHaveBeenCalledWith("o2");
     expect(advanceOrder).not.toHaveBeenCalledWith("o3");
+    expect(toast.success).toHaveBeenCalledWith("Marked 2 orders ready");
+
+    // The two just moved are unticked, so the ready button has nothing left
+    // to act on; the order that was already ready is still ticked.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /mark \d+ ready/i }),
+      ).not.toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole("button", { name: "Mark 1 Picked Up" }));
+
+    await waitFor(() => expect(advanceOrder).toHaveBeenCalledTimes(3));
+    expect(advanceOrder).toHaveBeenLastCalledWith("o3");
+    expect(toast.success).toHaveBeenCalledWith("Marked 1 order picked up");
+    // Nothing left ticked: select mode ends.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^select$/i }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("marks every ready order picked up when nothing is still being made", async () => {
+    const user = userEvent.setup();
+    render(
+      <RealtimeOrderBoard
+        booths={BOOTHS}
+        initialOrders={[
+          order({ id: "o1", order_number: "0001", status: "ready" }),
+          order({ id: "o2", order_number: "0002", status: "ready" }),
+        ]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    await user.click(screen.getByRole("button", { name: /^select$/i }));
+    // With nothing ticked the stand-in button is the one that applies here.
+    expect(
+      screen.getByRole("button", { name: "Mark 0 Picked Up" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /mark \d+ ready/i }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Select all" }));
+    await user.click(screen.getByRole("button", { name: "Mark 2 Picked Up" }));
+
+    await waitFor(() => expect(advanceOrder).toHaveBeenCalledTimes(2));
+    expect(advanceOrder).toHaveBeenCalledWith("o1");
+    expect(advanceOrder).toHaveBeenCalledWith("o2");
+    expect(toast.success).toHaveBeenCalledWith("Marked 2 orders picked up");
   });
 
   it("turns Select all into Clear all once everything is ticked", async () => {

@@ -46,7 +46,7 @@ export function StatsControls({ range, booth, booths, allowedRanges }: Props) {
               <Link
                 key={r.value}
                 href="/dashboard/plan"
-                className="flex items-center gap-1 rounded-md px-3 py-1.5 font-medium text-muted-foreground/60 hover:text-foreground"
+                className="flex items-center gap-1 rounded-md px-3 py-1.5 font-medium text-muted-foreground/60 hover:text-foreground [@media(pointer:coarse)]:min-h-11"
                 title="Upgrade to unlock longer ranges"
               >
                 <Lock className="size-3" />
@@ -60,7 +60,7 @@ export function StatsControls({ range, booth, booths, allowedRanges }: Props) {
               type="button"
               onClick={() => setParam("range", r.value)}
               aria-pressed={range === r.value}
-              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              className={`rounded-md px-3 py-1.5 font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
                 range === r.value
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground"

@@ -34,7 +34,7 @@ export function ExportButton({
     <button
       type="button"
       onClick={download}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground [@media(pointer:coarse)]:min-h-11"
     >
       <Download className="size-3.5" />
       Export CSV
