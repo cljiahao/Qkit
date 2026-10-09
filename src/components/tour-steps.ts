@@ -99,7 +99,7 @@ const BOOTHS: TourStep[] = [
     element: sel("new-booth"),
     title: "Start here",
     description:
-      "Tap New booth to create your stall: a name, a photo, and your menu. Menu is the only required part — Payment, Printing, and Booking Status are all optional and can be added anytime from the booth's own edit page.",
+      "Tap New booth to create your stall: a name, a photo, and your menu. Menu is the only required part. Payment, Printing, and Booking Status are all optional and can be added anytime from the booth's own edit page.",
   },
 ];
 

@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { OrderCard } from "@/components/order-card";
 import { Ticket } from "@/components/ticket";
 import { Paginated } from "@/components/paginated";
+import { SegmentedControl } from "@/components/segmented-control";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import type { BoardOrder } from "@/lib/types";
 
 interface Booth {
@@ -114,24 +114,12 @@ export function CompletedOrdersList({
       )}
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
-          {DATE_RANGES.map((r) => (
-            <button
-              key={r.value}
-              type="button"
-              onClick={() => setDateRange(r.value)}
-              aria-pressed={dateRange === r.value}
-              className={cn(
-                "rounded-md px-3 py-1.5 font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                dateRange === r.value
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          ariaLabel="Date range"
+          options={DATE_RANGES}
+          value={dateRange}
+          onChange={setDateRange}
+        />
         {multiBooth && (
           <Select value={boothFilter} onValueChange={setBoothFilter}>
             <SelectTrigger

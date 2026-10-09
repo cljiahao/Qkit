@@ -10,6 +10,7 @@ import type { Database } from "@/lib/types";
 import { fetchOrders, fetchEventReviewRows } from "./queries";
 import { StatsView } from "./stats-view";
 import { ReviewsCard } from "./reviews-card";
+import { PageHeader } from "@/components/page-header";
 
 interface Props {
   supabase: SupabaseClient<Database>;
@@ -56,13 +57,15 @@ export async function EventStatsView({
         >
           <ArrowLeft className="size-3.5" /> All stats
         </Link>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Event · {shortDay(Date.parse(from))} – {shortDay(Date.parse(to))} ·
-          always available
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          {eventLabel(activeEvent)}
-        </h1>
+        <PageHeader
+          eyebrow={
+            <>
+              Event · {shortDay(Date.parse(from))} – {shortDay(Date.parse(to))}{" "}
+              · always available
+            </>
+          }
+          title={eventLabel(activeEvent)}
+        />
       </div>
       {/* Paid window → full stats regardless of current plan. Hide the trend
           chart for an empty (zero-revenue) event. */}

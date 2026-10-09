@@ -23,7 +23,8 @@ import { upsertVendorConfig } from "@/lib/paykit/client";
 import { registerPrintLocation } from "@/lib/printkit/client";
 import { sweepUnsavedUploads } from "./sweep-unsaved-uploads";
 import type { ActionResult } from "@/lib/action-result";
-import type { Database, PaymentKind } from "@/lib/types";
+import type { Database } from "@/lib/types";
+import { paymentMarker } from "@/lib/payment-marker";
 
 type BoothRow = Database["qkit"]["Tables"]["booths"]["Update"] & {
   name: string;
@@ -196,20 +197,6 @@ async function checkActiveBoothCap(
 
 type SaveBoothResult = ActionResult<{ boothId: string }>;
 type DeleteBoothResult = ActionResult;
-
-// booths.payment now stores only a minimal `{kind}` marker, not the full
-// config (payee_name/uen/mobile/label/url/qr_image_url live in paykit's
-// vendor_payment_config instead — see saveBooth below). The marker exists
-// solely because `qkit.place_order` (supabase/migrations/0056, unmodified in
-// this cutover) reads `booths.payment->>'kind'` to decide a new order's
-// initial payment_status (pending vs not_required) and there is no SQL-side
-// way to ask paykit instead. `stripe` is reserved-but-dark and unreachable
-// from the form's UI — treat it the same as "no payment" here.
-function paymentMarker(
-  kind: PaymentKind | undefined,
-): { kind: PaymentKind } | null {
-  return kind === "paynow" || kind === "pointer" ? { kind } : null;
-}
 
 /**
  * Hard-delete a booth and (via ON DELETE CASCADE, migration 0009) all of its

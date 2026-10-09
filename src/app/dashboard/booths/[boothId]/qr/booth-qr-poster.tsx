@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Ticket } from "@/components/ticket";
 import { orderPath } from "@/lib/booth-code";
 import { RegenerateButton } from "./regenerate-button";
+import { EYEBROW_CLASS } from "@/lib/utils";
 
 // Demo-recording only: shows the real production domain on the QR/share-link
 // card instead of the local dev URL, so a screen recording doesn't put
@@ -95,9 +96,7 @@ export function BoothQrPoster({ boothId, name, isActive, code }: Props) {
       </div>
 
       <Ticket shadow="none" className="bg-card p-8 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Scan to order
-        </p>
+        <p className={EYEBROW_CLASS}>Scan to order</p>
         <h1 className="font-display mt-2 text-3xl font-semibold leading-tight">
           {name}
         </h1>

@@ -59,7 +59,7 @@ describe("renameEvent", () => {
     const res = await renameEvent({ licenseId: LICENSE_ID, label: "Fair" });
     expect(res).toEqual({
       success: false,
-      error: "Could not rename — please try again.",
+      error: "Could not rename. Please try again.",
     });
   });
 });

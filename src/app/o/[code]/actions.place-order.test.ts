@@ -137,7 +137,7 @@ describe("placeOrder", () => {
     const res = await placeOrder("gone", validInput, IDEM);
     expect(res).toEqual({
       success: false,
-      error: "This code expired — please rescan.",
+      error: "This code expired. Please rescan.",
     });
   });
 
@@ -172,7 +172,7 @@ describe("placeOrder", () => {
     const res = await placeOrder("code123", validInput, IDEM);
     expect(res).toEqual({
       success: false,
-      error: "Too many orders too fast — wait a moment and try again.",
+      error: "Too many orders too fast. Wait a moment and try again.",
     });
     // place_order must NOT be reached once the limiter denies.
     expect(seen).toEqual(["check_rate_limit"]);
@@ -206,15 +206,15 @@ describe("placeOrder", () => {
     ],
     [
       "ORDER_SOLD_OUT: m1",
-      "Sorry — an item just sold out. Please adjust your order.",
+      "Sorry, an item just sold out. Please adjust your order.",
     ],
     [
       "ORDER_ITEM_UNAVAILABLE: m1",
-      "Sorry — an item just sold out. Please adjust your order.",
+      "Sorry, an item just sold out. Please adjust your order.",
     ],
     [
       "ORDER_RATE_LIMITED: booth flood",
-      "Too many orders too fast — wait a moment and try again.",
+      "Too many orders too fast. Wait a moment and try again.",
     ],
     [
       "ORDER_INVALID: too many items",

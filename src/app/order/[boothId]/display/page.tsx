@@ -1,16 +1,14 @@
 import { notFound } from "next/navigation";
-import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getBoothQueueDisplay } from "./actions";
 import { QueueDisplay } from "./queue-display";
+import { uuidSchema } from "@/lib/schemas";
 
 export const revalidate = 0;
 
 interface Props {
   params: Promise<{ boothId: string }>;
 }
-
-const boothIdSchema = z.string().uuid();
 
 /**
  * Public, unauthenticated TV/second-screen view of one booth's live queue —
@@ -20,7 +18,7 @@ const boothIdSchema = z.string().uuid();
  */
 export default async function BoothQueueDisplayPage({ params }: Props) {
   const { boothId } = await params;
-  if (!boothIdSchema.safeParse(boothId).success) notFound();
+  if (!uuidSchema.safeParse(boothId).success) notFound();
 
   const supabase = await createServiceClient();
   const { data: booth } = await supabase

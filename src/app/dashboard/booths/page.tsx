@@ -9,6 +9,7 @@ import { servableBoothIds, isBoothPaused } from "@/lib/booth-access";
 import { ProLock } from "@/components/pro-lock";
 import { Ticket } from "@/components/ticket";
 import { BoothList } from "./booth-list";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -43,12 +44,7 @@ export default async function BoothsPage() {
     <div>
       <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Your stalls
-          </p>
-          <h1 className="font-display text-3xl font-semibold leading-none sm:text-4xl">
-            Booths
-          </h1>
+          <PageHeader eyebrow="Your stalls" title="Booths" responsive />
         </div>
         {canCreate ? (
           <Button asChild className="rounded-lg" data-tour="new-booth">

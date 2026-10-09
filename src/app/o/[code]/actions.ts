@@ -3,7 +3,11 @@ import { z } from "zod";
 import { headers } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
+import {
+  placeOrderSchema,
+  type PlaceOrderInput,
+  uuidSchema,
+} from "@/lib/schemas";
 import { logEvent } from "@/app/actions/events";
 import type { ActionResult } from "@/lib/action-result";
 import { notifyVendorTelegram, notifyPrintkit } from "./notify";
@@ -15,24 +19,22 @@ type Result = ActionResult<{
 }>;
 
 const codeSchema = z.string().min(1).max(64);
-const idemSchema = z.string().uuid();
 
 const GENERIC_FAILURE = "Could not place order. Please try again.";
 
 // Map a place_order RAISE prefix to a customer-facing message.
 function messageFor(raw: string): string {
-  if (raw.includes("ORDER_EXPIRED"))
-    return "This code expired — please rescan.";
+  if (raw.includes("ORDER_EXPIRED")) return "This code expired. Please rescan.";
   if (raw.includes("ORDER_UNSERVABLE"))
     return "This booth isn't taking orders right now";
   if (raw.includes("ORDER_SOLD_OUT") || raw.includes("ORDER_ITEM_UNAVAILABLE"))
-    return "Sorry — an item just sold out. Please adjust your order.";
+    return "Sorry, an item just sold out. Please adjust your order.";
   if (raw.includes("ORDER_CAP_REACHED"))
     return "This stall has served everything it had for today.";
   if (raw.includes("ORDER_TOO_LARGE"))
     return "That is more than this stall takes in one order. Remove a few items and try again.";
   if (raw.includes("ORDER_RATE_LIMITED"))
-    return "Too many orders too fast — wait a moment and try again.";
+    return "Too many orders too fast. Wait a moment and try again.";
   return GENERIC_FAILURE;
 }
 
@@ -47,7 +49,7 @@ async function releaseHold(
   boothId: string,
   holdSession: string | undefined,
 ): Promise<void> {
-  if (!idemSchema.safeParse(holdSession).success) return;
+  if (!uuidSchema.safeParse(holdSession).success) return;
   try {
     await supabase.rpc("hold_cart", {
       p_booth_id: boothId,
@@ -66,8 +68,8 @@ export async function placeOrder(
   holdSession?: string,
 ): Promise<Result> {
   if (!codeSchema.safeParse(code).success)
-    return { success: false, error: "This code expired — please rescan." };
-  if (!idemSchema.safeParse(idempotencyKey).success)
+    return { success: false, error: "This code expired. Please rescan." };
+  if (!uuidSchema.safeParse(idempotencyKey).success)
     return { success: false, error: "Invalid request" };
   const parsed = placeOrderSchema.safeParse(input);
   if (!parsed.success)
@@ -83,7 +85,7 @@ export async function placeOrder(
   if (!allowed)
     return {
       success: false,
-      error: "Too many orders too fast — wait a moment and try again.",
+      error: "Too many orders too fast. Wait a moment and try again.",
     };
 
   // Blank ("" or whitespace-only, from a field left empty) is treated the same

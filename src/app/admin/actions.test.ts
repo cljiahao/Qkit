@@ -183,7 +183,7 @@ describe("setVendorPlan", () => {
     expect(res).toEqual({
       success: false,
       error:
-        "Plan updated, but recording the payment failed — add it to the ledger manually.",
+        "Plan updated, but recording the payment failed. Add it to the ledger manually.",
     });
     // The plan update and the audit row still landed.
     expect(vendorsUpdate).toHaveBeenCalledWith({ plan: "pro" });

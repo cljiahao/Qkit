@@ -1,32 +1,10 @@
 "use server";
-import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
-import { parseMenuItems } from "@/lib/schemas";
+import { parseMenuItems, uuidSchema } from "@/lib/schemas";
 import { parseRemaining } from "@/lib/stock";
 import type { MenuItem, PaymentKind } from "@/lib/types";
 import type { Remaining } from "@/lib/stock";
-
-const boothIdSchema = z.string().uuid();
-
-// Same rule place_walkup_order (migration 0061) applies server-side: a
-// booth "expects payment" only for a live, non-stripe config. stripe is
-// reserved but dark — treated the same as no payment config at all.
-function expectsPaymentFor(kind: PaymentKind | null): boolean {
-  return kind !== null && kind !== "stripe";
-}
-
-// booths.payment stores only a minimal `{kind}` marker since the paykit
-// cutover (see dashboard/booths/actions.ts's paymentMarker) — the full
-// config (payee_name/uen/etc) lives in paykit, not here. `parsePaymentConfig`
-// would reject that marker outright (it requires the full shape) and
-// silently report `expectsPayment: false` for every configured booth, so
-// this reads just the `kind` discriminant instead of the full config.
-function markerKind(data: unknown): PaymentKind | null {
-  const kind = (data as { kind?: string } | null)?.kind;
-  return kind === "paynow" || kind === "pointer" || kind === "stripe"
-    ? kind
-    : null;
-}
+import { expectsPayment, paymentKindOf } from "@/lib/payment-marker";
 
 /**
  * The menu + live stock for one of the caller's own booths, for the walk-up
@@ -43,7 +21,7 @@ export async function getWalkupMenu(boothId: string): Promise<{
   expectsPayment: boolean;
   paymentKind: PaymentKind | null;
 } | null> {
-  if (!boothIdSchema.safeParse(boothId).success) return null;
+  if (!uuidSchema.safeParse(boothId).success) return null;
 
   const supabase = await createServerClient();
   // RLS (booths_vendor_all) scopes this to the caller's own booths; a
@@ -59,12 +37,12 @@ export async function getWalkupMenu(boothId: string): Promise<{
     p_booth_id: boothId,
   });
 
-  const paymentKind = markerKind(booth.payment);
+  const paymentKind = paymentKindOf(booth.payment);
 
   return {
     menuItems: parseMenuItems(booth.menu_items),
     remaining: parseRemaining(remainingData),
-    expectsPayment: expectsPaymentFor(paymentKind),
+    expectsPayment: expectsPayment(paymentKind),
     paymentKind,
   };
 }

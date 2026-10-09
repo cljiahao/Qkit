@@ -62,6 +62,7 @@ import {
   sweepAbandonedPayments,
 } from "./order-actions";
 import { WalkupOrderDialog } from "./walkup-order-dialog";
+import { SegmentedControl } from "@/components/segmented-control";
 import { CustomerScreenButton } from "./customer-screen-dialog";
 import { cn } from "@/lib/utils";
 import type { BoardOrder, BoardSettings } from "@/lib/types";
@@ -387,6 +388,11 @@ function resolveBoothFilter(
 // Heights here are the compact ones a mouse gets. On a touch device the
 // `pointer: coarse` rule in globals.css raises every one of these to 44px.
 const BATCH_BUTTON = "rounded-full";
+
+const SORT_ORDERS: { value: AgeSortOrder; label: string }[] = [
+  { value: "earliest", label: "Earliest" },
+  { value: "latest", label: "Latest" },
+];
 const HEADER_BUTTON = "rounded-full";
 
 /** What the booth filter's trigger reads: the same text as the chosen item. */
@@ -1113,33 +1119,12 @@ export function RealtimeOrderBoard({
             surface too, not stay pinned below every preparing order just
             because of its status. A bumped order still always leads either
             way (see sortActiveOrders). */}
-        <div
-          role="group"
-          aria-label="Sort by order age"
-          className="inline-flex rounded-lg border border-border p-0.5 text-sm"
-        >
-          {(
-            [
-              { value: "earliest", label: "Earliest" },
-              { value: "latest", label: "Latest" },
-            ] as const
-          ).map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => setSortOrder(o.value)}
-              aria-pressed={sortOrder === o.value}
-              className={cn(
-                "rounded-md px-3 py-1.5 font-medium transition-colors [@media(pointer:coarse)]:min-h-9",
-                sortOrder === o.value
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          ariaLabel="Sort by order age"
+          options={SORT_ORDERS}
+          value={sortOrder}
+          onChange={setSortOrder}
+        />
         {batchableIds.length > 0 && (
           <BatchControls
             selectMode={selectMode}

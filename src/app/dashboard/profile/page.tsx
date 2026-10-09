@@ -1,6 +1,7 @@
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { BackButton } from "@merqo/ui";
 import { ProfileForm } from "./profile-form";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -21,16 +22,10 @@ export default async function ProfilePage() {
         <div className="mb-2 -ml-2.5">
           <BackButton href="/dashboard" label="Back to board" />
         </div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Your account
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          Profile
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <PageHeader eyebrow="Your account" title="Profile">
           Your stall name, profile icon, how we address you, and your sign-in
           password. Each section saves on its own.
-        </p>
+        </PageHeader>
       </header>
 
       <ProfileForm

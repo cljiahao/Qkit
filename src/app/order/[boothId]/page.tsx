@@ -1,12 +1,10 @@
 import { redirect, notFound } from "next/navigation";
-import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
+import { uuidSchema } from "@/lib/schemas";
 
 interface Props {
   params: Promise<{ boothId: string }>;
 }
-
-const boothIdSchema = z.string().uuid();
 
 // Compatibility shim for the /order/{boothId} route: three callers only know the
 // booth id — the reorder button, the status page's "Order again" link, and any
@@ -16,7 +14,7 @@ const boothIdSchema = z.string().uuid();
 // Service client: the customer is anonymous and anon cannot read booths directly.
 export default async function OrderBoothRedirect({ params }: Props) {
   const { boothId } = await params;
-  if (!boothIdSchema.safeParse(boothId).success) notFound();
+  if (!uuidSchema.safeParse(boothId).success) notFound();
 
   const supabase = await createServiceClient();
   const { data } = await supabase

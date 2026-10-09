@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Star } from "lucide-react";
 import { shortDateTime } from "@/lib/tz";
 import type { BoothReviews, ReviewSummary } from "@/lib/reviews";
+import { EYEBROW_CLASS } from "@/lib/utils";
 
 const PAGE = 5;
 
@@ -260,9 +261,7 @@ export function ReviewsCard({
 
   return (
     <section className="space-y-4 rounded-xl border border-border bg-card p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        {title}
-      </h2>
+      <h2 className={EYEBROW_CLASS}>{title}</h2>
       {body}
     </section>
   );

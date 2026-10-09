@@ -1,12 +1,12 @@
 "use server";
 
-import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
 import {
   boardSettingsSchema,
   orderStatusSchema,
   paymentStatusSchema,
+  uuidSchema,
 } from "@/lib/schemas";
 import {
   ABANDONED_PAYMENT_MS,
@@ -34,8 +34,6 @@ import type { OrderStatus, PaymentStatus } from "@/lib/types";
 // recorded for the vendor-facing actions worth being able to reconstruct or
 // dispute later. Both are best-effort/non-blocking: a write failure there is
 // only logged, never surfaced to the caller.
-
-const idSchema = z.string().uuid();
 
 type StatusResult = ActionResult<{ status: OrderStatus }>;
 
@@ -91,7 +89,7 @@ export async function advanceOrder(
   expectedStatus?: OrderStatus,
 ): Promise<StatusResult> {
   if (
-    !idSchema.safeParse(orderId).success ||
+    !uuidSchema.safeParse(orderId).success ||
     (expectedStatus !== undefined &&
       !orderStatusSchema.safeParse(expectedStatus).success)
   )
@@ -102,7 +100,7 @@ export async function advanceOrder(
 
   // A stale Mark Ready tap must never complete an order another device made ready.
   if (expectedStatus !== undefined && order.status !== expectedStatus)
-    return { success: false, error: "Order changed — please refresh." };
+    return { success: false, error: "Order changed. Please refresh." };
 
   const adv = ADVANCE[order.status];
   if (!adv) return { success: false, error: "Order can't be advanced" };
@@ -121,7 +119,7 @@ export async function advanceOrder(
     return { success: false, error: "Failed to update order" };
   }
   if (!rows || rows.length === 0)
-    return { success: false, error: "Order changed — please refresh." };
+    return { success: false, error: "Order changed. Please refresh." };
 
   if (userId) {
     await recordOrderStatusEvent({
@@ -172,7 +170,7 @@ export async function revertOrderAdvance(
   revertFrom: OrderStatus,
   prevPaymentStatus: PaymentStatus,
 ): Promise<StatusResult> {
-  if (!idSchema.safeParse(orderId).success)
+  if (!uuidSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
   if (
     !orderStatusSchema.safeParse(revertTo).success ||
@@ -210,7 +208,7 @@ export async function revertOrderAdvance(
     return { success: false, error: "Failed to undo" };
   }
   if (!rows || rows.length === 0)
-    return { success: false, error: "Order changed — please refresh." };
+    return { success: false, error: "Order changed. Please refresh." };
 
   if (userId) {
     await recordOrderStatusEvent({
@@ -244,7 +242,7 @@ export async function confirmPaymentAndStart(
 ): Promise<
   ActionResult<{ status: OrderStatus; prevPaymentStatus: PaymentStatus }>
 > {
-  if (!idSchema.safeParse(orderId).success)
+  if (!uuidSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
   const { supabase, order, userId } = await loadOwnOrder(orderId);
@@ -349,7 +347,7 @@ export async function revertPaymentAndStart(
   orderId: string,
   _prevPaymentStatus: PaymentStatus,
 ): Promise<ActionResult<{ status: OrderStatus }>> {
-  if (!idSchema.safeParse(orderId).success)
+  if (!uuidSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
   const { supabase, userId } = await loadOwnOrder(orderId);
@@ -394,7 +392,7 @@ export async function revertPaymentAndStart(
 export async function restoreAutoCompleted(
   orderId: string,
 ): Promise<StatusResult> {
-  if (!idSchema.safeParse(orderId).success)
+  if (!uuidSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
   const { supabase, order, userId } = await loadOwnOrder(orderId);
@@ -418,7 +416,7 @@ export async function restoreAutoCompleted(
     return { success: false, error: "Failed to restore order" };
   }
   if (!rows || rows.length === 0)
-    return { success: false, error: "Order changed — please refresh." };
+    return { success: false, error: "Order changed. Please refresh." };
 
   if (userId) {
     await recordOrderStatusEvent({
@@ -457,7 +455,7 @@ export async function restoreAutoCompleted(
 export async function confirmOrderPayment(
   orderId: string,
 ): Promise<ActionResult> {
-  if (!idSchema.safeParse(orderId).success)
+  if (!uuidSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
   const { supabase, order, userId } = await loadOwnOrder(orderId);
@@ -526,7 +524,7 @@ export async function confirmOrderPayment(
  * docs/superpowers/specs/2026-07-18-manual-queue-priority-override-design.md).
  */
 export async function bumpOrder(orderId: string): Promise<ActionResult> {
-  if (!idSchema.safeParse(orderId).success)
+  if (!uuidSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
   const { supabase, order } = await loadOwnOrder(orderId);
@@ -549,7 +547,7 @@ export async function bumpOrder(orderId: string): Promise<ActionResult> {
     return { success: false, error: "Failed to bump order" };
   }
   if (!rows || rows.length === 0)
-    return { success: false, error: "Order changed — please refresh." };
+    return { success: false, error: "Order changed. Please refresh." };
 
   return { success: true };
 }
@@ -563,7 +561,7 @@ export async function bumpOrder(orderId: string): Promise<ActionResult> {
  * carries stale "this was completed" bookkeeping.
  */
 export async function cancelOrder(orderId: string): Promise<ActionResult> {
-  if (!idSchema.safeParse(orderId).success)
+  if (!uuidSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
 
   const { supabase, order, userId } = await loadOwnOrder(orderId);
@@ -599,7 +597,7 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     return { success: false, error: "Failed to cancel order" };
   }
   if (!rows || rows.length === 0)
-    return { success: false, error: "Order changed — please refresh." };
+    return { success: false, error: "Order changed. Please refresh." };
 
   if (userId) {
     await recordOrderStatusEvent({

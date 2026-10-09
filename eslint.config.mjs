@@ -115,6 +115,28 @@ const eslintConfig = [
     },
   },
   {
+    // The same convention for copy that reaches a person from a `.ts` file:
+    // an action's `error` result, a message a mapper returns, a tour step's
+    // text. The `.tsx` gate above cannot see these, and a dozen had built up.
+    // Still scoped to the shapes that carry copy, not every string literal.
+    files: ["src/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "Property[key.name=/^(error|message|title|description)$/] > Literal[value=/\\u2014/]",
+          message: "No em dash in user-facing text — use a period or comma.",
+        },
+        {
+          selector: "ReturnStatement > Literal[value=/\\u2014/]",
+          message: "No em dash in user-facing text — use a period or comma.",
+        },
+      ],
+    },
+  },
+  {
     // Tests and one-off scripts routinely label table-driven cases and
     // fixtures with short trailing notes; that reads better inline, so the
     // gate would be pure noise there.

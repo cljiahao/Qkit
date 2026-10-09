@@ -1,11 +1,10 @@
 # Structure Cleanup: Shared Pieces, Local Duplicates, Folder Layout — Design
 
 **Date:** 2026-10-09
-**Status:** Draft for approval. Do not start until merqo-io/Qkit#196
-("Harden security boundaries and coverage across qkit") has merged: it
-changes 256 files, including most of the files this spec touches. Every
-finding below must be re-checked against `main` after that merge, since #196
-may have moved or rewritten the code it describes.
+**Status:** Approved 2026-10-09. #196 merged the same day and every finding
+below was re-checked against `main` afterwards: all seven duplicates still
+held, and a wider search put the em-dash count at 18 strings, not 12. Phase 1 shipped
+first; Phases 2 and 3 follow as their own PRs.
 
 ## Summary
 

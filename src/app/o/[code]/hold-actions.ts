@@ -4,8 +4,7 @@ import { headers } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { parseAvailability, type Availability } from "@/lib/availability";
-
-const idSchema = z.string().uuid();
+import { uuidSchema } from "@/lib/schemas";
 
 // Only what a hold counts: which item and how many. Options and prices are
 // irrelevant to stock, which is pooled per menu item.
@@ -32,8 +31,8 @@ export async function holdCart(
   session: string,
   lines: HoldLine[],
 ): Promise<Availability | null> {
-  if (!idSchema.safeParse(boothId).success) return null;
-  if (!idSchema.safeParse(session).success) return null;
+  if (!uuidSchema.safeParse(boothId).success) return null;
+  if (!uuidSchema.safeParse(session).success) return null;
   const parsed = holdLinesSchema.safeParse(lines);
   if (!parsed.success) return null;
 
@@ -64,8 +63,8 @@ export async function readAvailability(
   boothId: string,
   session: string,
 ): Promise<Availability | null> {
-  if (!idSchema.safeParse(boothId).success) return null;
-  if (!idSchema.safeParse(session).success) return null;
+  if (!uuidSchema.safeParse(boothId).success) return null;
+  if (!uuidSchema.safeParse(session).success) return null;
 
   const supabase = await createServerClient();
   const { data, error } = await supabase.rpc("booth_availability", {

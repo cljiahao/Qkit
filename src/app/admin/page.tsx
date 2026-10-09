@@ -34,6 +34,7 @@ import {
   type OrderStatusEventLite,
 } from "@/lib/stuck-orders";
 import type { MerqoSupportMessagesSchema } from "@/lib/merqo-support";
+import { PageHeader } from "@/components/page-header";
 
 // Lazy-loaded: pulls in recharts, code-split out of the initial admin bundle.
 const TrendChart = dynamic(() =>
@@ -298,12 +299,7 @@ export default async function AdminPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-5 py-7">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Internal
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          Overview
-        </h1>
+        <PageHeader eyebrow="Internal" title="Overview" />
       </div>
 
       {requests.length > 0 && (

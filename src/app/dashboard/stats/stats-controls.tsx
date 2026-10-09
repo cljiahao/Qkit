@@ -1,8 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Lock } from "lucide-react";
+import { SegmentedControl } from "@/components/segmented-control";
 import {
   Select,
   SelectContent,
@@ -37,40 +36,20 @@ export function StatsControls({ range, booth, booths, allowedRanges }: Props) {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="inline-flex rounded-lg border border-border p-0.5 text-sm">
-        {RANGES.map((r) => {
-          const locked = !allowedRanges.includes(r.value);
-          if (locked) {
-            // Out-of-plan range: link to the upgrade page instead of switching.
-            return (
-              <Link
-                key={r.value}
-                href="/dashboard/plan"
-                className="flex items-center gap-1 rounded-md px-3 py-1.5 font-medium text-muted-foreground/60 hover:text-foreground [@media(pointer:coarse)]:min-h-11"
-                title="Upgrade to unlock longer ranges"
-              >
-                <Lock className="size-3" />
-                {r.label}
-              </Link>
-            );
-          }
-          return (
-            <button
-              key={r.value}
-              type="button"
-              onClick={() => setParam("range", r.value)}
-              aria-pressed={range === r.value}
-              className={`rounded-md px-3 py-1.5 font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
-                range === r.value
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {r.label}
-            </button>
-          );
-        })}
-      </div>
+      <SegmentedControl
+        ariaLabel="Date range"
+        value={range}
+        onChange={(value) => setParam("range", value)}
+        options={RANGES.map((r) =>
+          allowedRanges.includes(r.value)
+            ? r
+            : {
+                ...r,
+                lockedHref: "/dashboard/plan",
+                lockedTitle: "Upgrade to unlock longer ranges",
+              },
+        )}
+      />
 
       {booths.length > 1 && (
         <Select value={booth} onValueChange={(v) => setParam("booth", v)}>

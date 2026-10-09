@@ -10,16 +10,16 @@ import { getBookingStatus, type BookingStatus } from "@/lib/paykit/client";
 import { savedVendorPayment } from "@/lib/paykit/saved-vendor-payment";
 import { BoothForm } from "../booth-form";
 import type { PaymentConfig } from "@/lib/types";
+import { paymentKindOf } from "@/lib/payment-marker";
 
 /**
- * Degrade-path fallback for `initialPayment` below, used when paykit's
- * `getVendorConfig` call fails (e.g. `PAYKIT_KIT_SECRET` unset in this
- * environment) — `booths.payment` only ever stores a minimal `{kind}`
- * marker (see saveBooth/paymentMarker in ../actions.ts), so this can only
- * re-select the right radio option; every text field starts blank.
+ * The booth's payment method with every detail blank, from its `{kind}`
+ * marker alone (see `@/lib/payment-marker`). Used when paykit's
+ * `getVendorConfig` call fails or reports nothing (e.g. `PAYKIT_KIT_SECRET`
+ * unset in this environment): it can only re-select the right radio option.
  */
 function initialPaymentFromMarker(data: unknown): PaymentConfig | null {
-  const kind = (data as { kind?: string } | null)?.kind;
+  const kind = paymentKindOf(data);
   if (kind === "paynow") return { kind: "paynow", payee_name: "" };
   if (kind === "pointer") return { kind: "pointer", label: "" };
   return null;

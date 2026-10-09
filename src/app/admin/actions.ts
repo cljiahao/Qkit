@@ -103,7 +103,7 @@ export async function setVendorPlan(
     return {
       success: false,
       error:
-        "Plan updated, but recording the payment failed — add it to the ledger manually.",
+        "Plan updated, but recording the payment failed. Add it to the ledger manually.",
     };
   return { success: true };
 }
@@ -199,7 +199,7 @@ export async function grantPass(input: GrantPassInput): Promise<ActionResult> {
     return {
       success: false,
       error:
-        "Pass granted, but recording the payment failed — add it to the ledger manually.",
+        "Pass granted, but recording the payment failed. Add it to the ledger manually.",
     };
   return { success: true };
 }

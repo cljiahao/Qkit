@@ -12,6 +12,14 @@ export const FORM_LABEL_CLASS =
 /** Shared inline field-error style across the vendor form pages. */
 export const FORM_ERROR_CLASS = "text-sm font-medium text-destructive";
 
+/**
+ * The small-caps label above a page title or a block of content ("ORDER
+ * HISTORY", "AMOUNT TO PAY"). Wider-tracked than FORM_LABEL_CLASS, which
+ * labels a single field.
+ */
+export const EYEBROW_CLASS =
+  "text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground";
+
 /** Milliseconds in one hour. Shared by hourly stats bucketing. */
 export const MS_PER_HOUR = 3_600_000;
 

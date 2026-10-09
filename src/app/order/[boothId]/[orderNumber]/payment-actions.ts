@@ -243,7 +243,7 @@ export async function claimPayment(
   const ip = clientIp(await headers());
   const allowed = await rateLimit(`claim:${boothId}:${ip}`, 10, 60);
   if (!allowed)
-    return { success: false, error: "Too many attempts — wait a moment." };
+    return { success: false, error: "Too many attempts. Wait a moment." };
 
   const { data: order } = await supabase
     .from("orders")
@@ -360,7 +360,7 @@ export async function unclaimPayment(
   const ip = clientIp(await headers());
   const allowed = await rateLimit(`unclaim:${boothId}:${ip}`, 10, 60);
   if (!allowed)
-    return { success: false, error: "Too many attempts — wait a moment." };
+    return { success: false, error: "Too many attempts. Wait a moment." };
 
   const ctx = await loadCheckoutContext(supabase, boothId, orderNumber, token);
   if (!ctx) return { success: false, error: "Invalid order" };
