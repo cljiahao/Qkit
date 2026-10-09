@@ -6,7 +6,8 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
   order_id: z.string().uuid(),
-  status: z.enum(["queued", "sent", "printed", "failed"]),
+  status: z.enum(["printed", "failed"]),
+  attempt_at: z.string().datetime({ precision: 6 }),
 });
 
 export async function POST(request: Request) {
@@ -48,9 +49,20 @@ export async function POST(request: Request) {
     .from("orders")
     .update({
       print_status: parsed.data.status,
-      print_status_updated_at: new Date().toISOString(),
+      print_status_updated_at: parsed.data.attempt_at,
     })
     .eq("id", parsed.data.order_id)
+    // The validated canonical UTC grammar excludes filter punctuation.
+    .or(
+      [
+        "print_status.in.(not_required,queued)",
+        "print_status_updated_at.is.null",
+        "print_status_updated_at.lt." + parsed.data.attempt_at,
+        "and(print_status_updated_at.eq." +
+          parsed.data.attempt_at +
+          ",print_status.neq.printed)",
+      ].join(","),
+    )
     .select("id")
     .maybeSingle();
 
@@ -66,7 +78,20 @@ export async function POST(request: Request) {
   }
 
   if (!data) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    const { data: existing, error: readError } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("id", parsed.data.order_id)
+      .maybeSingle();
+    if (readError)
+      return NextResponse.json(
+        { error: "Upstream unavailable" },
+        { status: 503 },
+      );
+    if (!existing)
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    // Older or duplicate attempts are acknowledged without changing state.
+    return NextResponse.json({ ok: true, stale: true });
   }
 
   return NextResponse.json({ ok: true });

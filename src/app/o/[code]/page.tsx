@@ -54,20 +54,25 @@ async function loadBasketLimits(
   supabase: Awaited<ReturnType<typeof createServerClient>>,
   boothId: string,
 ): Promise<{ left: number | null; maxPerOrder: number | null }> {
-  const { data, error } = await supabase.rpc("booth_availability", {
-    p_booth_id: boothId,
-    p_session: null,
-  });
-  if (error) console.error("booth_availability failed", error.message);
-  const availability = error ? null : parseAvailability(data);
-  if (!availability) return { left: null, maxPerOrder: null };
-  return {
-    left:
-      availability.left === null
-        ? null
-        : availability.left + availability.leftHeld,
-    maxPerOrder: availability.maxPerOrder,
-  };
+  try {
+    const { data, error } = await supabase.rpc("booth_availability", {
+      p_booth_id: boothId,
+      p_session: null,
+    });
+    if (error) console.error("booth_availability failed", error.message);
+    const availability = error ? null : parseAvailability(data);
+    if (!availability) return { left: null, maxPerOrder: null };
+    return {
+      left:
+        availability.left === null
+          ? null
+          : availability.left + availability.leftHeld,
+      maxPerOrder: availability.maxPerOrder,
+    };
+  } catch {
+    console.error("booth_availability request failed");
+    return { left: null, maxPerOrder: null };
+  }
 }
 
 export default async function OrderEntryPage({ params }: Props) {

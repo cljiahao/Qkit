@@ -1,19 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// vi.mock factories are hoisted above plain `const` declarations, so any
-// mock referenced inside a factory must itself come from vi.hoisted (a bare
-// `const upsertVendorProfile = vi.fn()` above vi.mock throws a temporal-dead-
-// zone ReferenceError as soon as actions.ts imports the mocked module).
-const { upsertVendorProfile, getOrCreateVendorProfile, getUser } = vi.hoisted(
+const { patchVendorProfile, getOrCreateVendorProfile, getUser } = vi.hoisted(
   () => ({
-    upsertVendorProfile: vi.fn(),
+    patchVendorProfile: vi.fn(),
     getOrCreateVendorProfile: vi.fn(),
     getUser: vi.fn(),
   }),
 );
 
 vi.mock("@/lib/merqo-vendor-profile", () => ({
-  upsertVendorProfile,
+  patchVendorProfile,
   getOrCreateVendorProfile,
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -26,12 +22,10 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import { updateStallName, updateSocialLinks } from "./actions";
 
 beforeEach(() => {
-  upsertVendorProfile.mockReset();
+  patchVendorProfile.mockReset();
   getOrCreateVendorProfile.mockReset();
   getUser.mockReset();
   getUser.mockResolvedValue({ data: { user: { id: "v1" } } });
-  // Both actions read the current profile first (see actions.ts) before
-  // upserting the one changed field.
   getOrCreateVendorProfile.mockResolvedValue({
     vendor_id: "v1",
     stall_name: "Existing",
@@ -40,33 +34,78 @@ beforeEach(() => {
 });
 
 describe("updateStallName", () => {
-  it("calls upsertVendorProfile with the new name and existing social links unset (name-only save)", async () => {
-    upsertVendorProfile.mockResolvedValue({
+  it("calls patchVendorProfile with the new name and existing social links unset (name-only save)", async () => {
+    patchVendorProfile.mockResolvedValue({
       vendor_id: "v1",
       stall_name: "New Name",
       social_links: {},
     });
     const result = await updateStallName({ name: "New Name" });
     expect(result.success).toBe(true);
-    expect(upsertVendorProfile).toHaveBeenCalled();
+    expect(patchVendorProfile).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ auth: expect.any(Object) }),
+      "v1",
+      { stallName: "New Name" },
+    );
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
   });
 
-  it("returns an error for an invalid name without calling upsertVendorProfile", async () => {
+  it("returns an error for an invalid name without calling patchVendorProfile", async () => {
     const result = await updateStallName({ name: "" });
     expect(result.success).toBe(false);
-    expect(upsertVendorProfile).not.toHaveBeenCalled();
+    expect(patchVendorProfile).not.toHaveBeenCalled();
   });
 });
 
 describe("updateSocialLinks", () => {
-  it("calls upsertVendorProfile with the parsed links", async () => {
-    upsertVendorProfile.mockResolvedValue({
+  it("calls patchVendorProfile with the parsed links", async () => {
+    patchVendorProfile.mockResolvedValue({
       vendor_id: "v1",
       stall_name: "Existing",
       social_links: { website: "https://example.com" },
     });
     const result = await updateSocialLinks({ website: "https://example.com" });
     expect(result.success).toBe(true);
-    expect(upsertVendorProfile).toHaveBeenCalled();
+    expect(patchVendorProfile).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ auth: expect.any(Object) }),
+      "v1",
+      { socialLinks: { website: "https://example.com" } },
+    );
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
   });
+});
+
+const profileUpdates = [
+  { name: "stall name", run: () => updateStallName({ name: "New Name" }) },
+  {
+    name: "social links",
+    run: () => updateSocialLinks({ website: "https://example.com" }),
+  },
+];
+
+it.each(profileUpdates)(
+  "rejects unsigned $name saves without writes",
+  async ({ run }) => {
+    getUser.mockResolvedValue({ data: { user: null } });
+    expect(await run()).toEqual({ success: false, error: "Not signed in" });
+    expect(patchVendorProfile).not.toHaveBeenCalled();
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
+  },
+);
+
+it.each(profileUpdates)(
+  "reports failed $name writes without creating a profile",
+  async ({ run }) => {
+    patchVendorProfile.mockRejectedValue(new Error("Database offline"));
+    expect(await run()).toMatchObject({ success: false });
+    expect(patchVendorProfile).toHaveBeenCalledTimes(1);
+    expect(getOrCreateVendorProfile).not.toHaveBeenCalled();
+  },
+);
+
+it("rejects unsafe social link protocols before profile writes", async () => {
+  const result = await updateSocialLinks({ website: "javascript:alert(1)" });
+  expect(result.success).toBe(false);
+  expect(patchVendorProfile).not.toHaveBeenCalled();
+  expect(getUser).not.toHaveBeenCalled();
 });

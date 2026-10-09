@@ -5,7 +5,6 @@ import { KpiRow } from "./kpi-row";
 import { MarginTable } from "./margin-table";
 import { ServiceSpeedChart } from "./service-speed-chart";
 import { StatsView } from "./stats-view";
-import { fmtWait, waitClock } from "./chart-format";
 import type { StatsSummary, TopItem } from "@/lib/stats";
 
 function topItem(over: Partial<TopItem> = {}): TopItem {
@@ -307,35 +306,5 @@ describe("StatsView", () => {
       />,
     );
     expect(screen.queryByText(/all time/)).not.toBeInTheDocument();
-  });
-});
-
-describe("waitClock", () => {
-  it("shows bare seconds under a minute", () => {
-    expect(waitClock(0)).toBe("0s");
-    expect(waitClock(59)).toBe("59s");
-  });
-
-  it("floors minutes off the rounded total (no over-rounding)", () => {
-    expect(waitClock(60)).toBe("1m 0s");
-    expect(waitClock(110)).toBe("1m 50s"); // not "2m 50s"
-    expect(waitClock(119)).toBe("1m 59s");
-  });
-
-  it("rounds fractional seconds without a 60s carry", () => {
-    expect(waitClock(119.6)).toBe("2m 0s"); // rounds to 120, not "1m 60s"
-  });
-});
-
-describe("fmtWait", () => {
-  it("shows whole seconds under a minute", () => {
-    expect(fmtWait(0)).toBe("0s");
-    expect(fmtWait(45)).toBe("45s");
-    expect(fmtWait(59)).toBe("59s");
-  });
-
-  it("shows one-decimal minutes at/over a minute", () => {
-    expect(fmtWait(60)).toBe("1.0m");
-    expect(fmtWait(252)).toBe("4.2m");
   });
 });

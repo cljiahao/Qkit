@@ -1,18 +1,5 @@
 // @vitest-environment jsdom
-//
-// This repo has no existing pattern for rendering a full async Server
-// Component page/layout through RTL (every other *.test.ts(x) under
-// src/app tests a server action or lib function in isolation, never a
-// layout's/page's own JSX output). DashboardLayout is a plain async
-// function with no RSC-specific machinery of its own — its "use server"
-// signOut closure is never invoked here — so it can be awaited directly
-// like any other function and its returned element tree rendered via RTL,
-// same as any client component. That's what lets this test catch a
-// regression a suite built only around `<DashboardNav>` in isolation
-// cannot: dashboard-nav.dom.test.tsx renders DashboardNav standalone, so
-// it never sees layout.tsx's own wrapper markup around it — exactly the
-// case where a duplicate <header> (layout.tsx's old wrapper + @merqo/ui's
-// DashboardNav rendering its own <header> internally) slipped through.
+// Render the layout to catch duplicate landmarks outside the shared nav.
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { ENTITLEMENTS } from "@/lib/plan";
@@ -61,14 +48,7 @@ describe("DashboardLayout", () => {
     expect(container.querySelectorAll("header")).toHaveLength(1);
   });
 
-  // jsdom doesn't compute layout/positioning, so it can't directly prove the
-  // header actually sticks on scroll. What it CAN prove is the structural
-  // precondition that makes sticky positioning work: the header's immediate
-  // wrapper must be `display: contents` so the wrapper's own box doesn't
-  // become the header's `position: sticky` containing block (a plain div
-  // wrapper — no `contents` — would be exactly the header's height, leaving
-  // the sticky header no room to move and silently breaking it; see the
-  // comment in layout.tsx above this wrapper for the full explanation).
+  // jsdom verifies the sticky header wrapper, not browser scrolling.
   it("wraps the header in a display:contents div, not a plain div, so sticky positioning has room to work", async () => {
     const jsx = await DashboardLayout({ children: <div>page content</div> });
     const { container } = render(jsx);

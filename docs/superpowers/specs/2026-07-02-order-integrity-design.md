@@ -5,6 +5,8 @@
 **Depends on:** audit findings `docs/superpowers/specs/2026-07-01-project-audit-findings.md` (B2)
 **Sibling:** Phase A `2026-07-01-order-path-hardening-design.md` did the same move-enforcement-into-Postgres for the **customer** write path; this does it for the **vendor** write path.
 
+**Review correction (2026-10-09):** The original missing-`WITH CHECK` explanation below is inaccurate. PostgreSQL reuses an UPDATE policy's `USING` expression for new-row checks when `WITH CHECK` is omitted. Explicit checks remain useful, but omission alone did not prove ownership reassignment. Column immutability and direct-write privileges are separate concerns. See [PostgreSQL policy semantics](https://www.postgresql.org/docs/17/sql-createpolicy.html). Applied migration history is preserved.
+
 ## Problem (B2, confirmed)
 
 The vendor order board (`src/components/order-card.tsx`) mutates orders **directly from the browser** via the Supabase browser client — `advanceStatus`, `confirmPayment`, `cancelOrder` each fire `UPDATE orders …`. The only guard is RLS policy `orders_vendor_update` (`0001:91`), which has a `USING` row filter but **no `WITH CHECK`**.

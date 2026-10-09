@@ -1,5 +1,12 @@
 # Booth & Menu Management Implementation Plan
 
+> **2026-10-09 review:** Historical bootstrap. Build success does not validate
+> action authorization or storage policy behavior; current action/component
+> tests and database fixtures cover those contracts. The client-priced direct
+> insert and booth-ID ordering URL below were replaced by constrained RPCs and
+> short-code entry. Client MIME checks and filename extensions are untrusted;
+> current upload validation and bucket restrictions define the upload boundary.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give vendors an in-app UI to create/edit their booths (name, banner image, active toggle, menu editor with optional per-item prices), persisted to Supabase, and make the customer/order surfaces hide money when items are unpriced.

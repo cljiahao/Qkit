@@ -52,6 +52,27 @@ beforeEach(() => {
 });
 
 describe("BoothForm walk-up-default toggle", () => {
+  it("reports uncertain save failures without clearing inputs or deleting uploaded objects", async () => {
+    saveBooth.mockRejectedValueOnce(new Error("Offline"));
+    const user = userEvent.setup();
+    render(
+      <BoothForm
+        vendorId="v1"
+        entitlement={ENTITLEMENT}
+        vendorSocialLinks={{}}
+      />,
+    );
+    await user.type(screen.getByLabelText("Booth name"), "Ice Cream Cart");
+    await user.click(screen.getByRole("button", { name: /save booth/i }));
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        "Could not save the booth. Refresh to check its status before retrying.",
+      ),
+    );
+    expect(screen.getByLabelText("Booth name")).toHaveValue("Ice Cream Cart");
+    expect(screen.getByRole("button", { name: /save booth/i })).toBeEnabled();
+    expect(routerReplace).not.toHaveBeenCalled();
+  });
   it("starts off for a plain new booth and submits walkup_default: false", async () => {
     const user = userEvent.setup();
     render(

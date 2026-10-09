@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, Circle } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -60,48 +61,63 @@ export default async function AdminVendorDetailPage({
 
   // All four scoped to this one vendor (never the fleet fetch-all) and
   // independent of each other — one round trip instead of vendor-then-rest.
-  const [
-    { data: vendor },
-    { data: booths },
-    { data: licenses },
-    { data: messages },
-  ] = await Promise.all([
+  const [vendorRes, booths, licenses, messages] = await Promise.all([
     supabase
       .from("vendors")
       .select("id, plan, created_at")
       .eq("id", id)
       .maybeSingle(),
-    supabase
-      .from("booths")
-      .select("id, name, is_active, created_at")
-      .eq("vendor_id", id),
-    supabase
-      .from("licenses")
-      .select("vendor_id, valid_from, expires_at, note")
-      .eq("vendor_id", id)
-      .order("valid_from", { ascending: false }),
-    merqoClient
-      .schema("merqo")
-      .from("support_messages")
-      .select("id, category, body, status, created_at")
-      .eq("kit_slug", "qkit")
-      .eq("user_id", id)
-      .order("created_at", { ascending: false }),
+    readAllRows((from, to) =>
+      supabase
+        .from("booths")
+        .select("id, name, is_active, created_at")
+        .eq("vendor_id", id)
+        .order("id")
+        .range(from, to),
+    ),
+    readAllRows((from, to) =>
+      supabase
+        .from("licenses")
+        .select("vendor_id, valid_from, expires_at, note")
+        .eq("vendor_id", id)
+        .order("valid_from", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ),
+    readAllRows((from, to) =>
+      merqoClient
+        .schema("merqo")
+        .from("support_messages")
+        .select("id, category, body, status, created_at")
+        .eq("kit_slug", "qkit")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ),
   ]);
+  if (vendorRes.error) throw new Error("Could not load vendor");
+  const vendor = vendorRes.data;
   if (!vendor) notFound();
 
-  const stallName = (await getOrCreateVendorProfile(supabase, id, null))
+  const stallName = (await getOrCreateVendorProfile(merqoClient, id, null))
     .stall_name;
 
   const boothRows = booths ?? [];
   const boothIds = boothRows.map((b) => b.id);
-  const { data: orders } = boothIds.length
-    ? await supabase
-        .from("orders")
-        .select("booth_id, status, total_cents, created_at")
-        .in("booth_id", boothIds)
-    : { data: [] };
-  const orderRows = orders ?? [];
+  const orderRows = [];
+  for (let offset = 0; offset < boothIds.length; offset += 100) {
+    orderRows.push(
+      ...(await readAllRows((from, to) =>
+        supabase
+          .from("orders")
+          .select("booth_id, status, total_cents, created_at")
+          .in("booth_id", boothIds.slice(offset, offset + 100))
+          .order("id")
+          .range(from, to),
+      )),
+    );
+  }
 
   const passByVendor = latestActivePassByVendor(licenses ?? [], now);
   const passExpiresAt = passByVendor.get(id) ?? null;

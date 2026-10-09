@@ -120,7 +120,7 @@ export async function placeOrder(
     .safeParse(data);
   if (!out.success) {
     // The RPC succeeded but returned an unexpected shape — a real bug worth a log.
-    console.error("placeOrder: malformed RPC output", JSON.stringify(data));
+    console.error("placeOrder: malformed RPC output");
     return {
       success: false,
       error: "Could not place order. Please try again.",

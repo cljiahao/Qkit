@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -21,15 +21,20 @@ const ENTITLEMENT: Entitlement = {
 function Host({
   initial,
   itemAllergens = [],
+  onChange,
 }: {
   initial: OptionGroup[];
   itemAllergens?: AllergenTag[];
+  onChange?: (groups: OptionGroup[]) => void;
 }) {
   const [groups, setGroups] = useState(initial);
   return (
     <OptionGroupsEditor
       groups={groups}
-      onChange={setGroups}
+      onChange={(next) => {
+        setGroups(next);
+        onChange?.(next);
+      }}
       entitlement={ENTITLEMENT}
       itemAllergens={itemAllergens}
     />
@@ -55,13 +60,22 @@ describe("OptionGroupsEditor price input", () => {
 
   it("setting a choice's price updates that choice's price_delta_cents", async () => {
     const user = userEvent.setup();
-    render(<Host initial={[MILK_GROUP]} />);
+    const changed = vi.fn();
+    render(<Host initial={[MILK_GROUP]} onChange={changed} />);
     const priceInputs = screen.getAllByPlaceholderText(/price/i);
     // Second choice is "Oat Milk".
     await user.type(priceInputs[1], "1.00");
     // A subsequent "Add choice" click re-renders from the updated state —
     // simplest observable proof is re-querying the input's own value.
     expect(priceInputs[1]).toHaveValue("1.00");
+    expect(changed).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        choices: [
+          { id: "reg", label: "Regular" },
+          { id: "oat", label: "Oat Milk", price_delta_cents: 100 },
+        ],
+      }),
+    ]);
   });
 
   // Regression: a fully-reformatted-every-keystroke controlled input resets

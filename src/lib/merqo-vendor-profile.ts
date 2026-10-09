@@ -23,11 +23,11 @@ type MerqoSchema = {
         Args: { p_vendor_id: string; p_default_stall_name: string | null };
         Returns: VendorProfile;
       };
-      upsert_vendor_profile: {
+      patch_vendor_profile: {
         Args: {
           p_vendor_id: string;
-          p_stall_name: string;
-          p_social_links: Record<string, string>;
+          p_stall_name: string | null;
+          p_social_links: Record<string, string> | null;
         };
         Returns: VendorProfile;
       };
@@ -68,25 +68,27 @@ export async function getOrCreateVendorProfile<
   return data;
 }
 
-export async function upsertVendorProfile<
+/** Omitted fields retain their authoritative database value. */
+export async function patchVendorProfile<
   Db,
   SchemaName extends string & Exclude<keyof Db, "__InternalSupabase">,
 >(
   supabase: SupabaseClient<Db, SchemaName>,
   vendorId: string,
-  stallName: string,
-  socialLinks: Record<string, string>,
+  patch: { stallName?: string; socialLinks?: Record<string, string> },
 ): Promise<VendorProfile> {
-  const merqoClient = supabase as unknown as SupabaseClient<MerqoSchema>;
-  const { data, error } = await merqoClient
+  const args = {
+    p_vendor_id: vendorId,
+    p_stall_name: patch.stallName ?? null,
+    p_social_links: patch.socialLinks ?? null,
+  };
+  const client = supabase as unknown as SupabaseClient<MerqoSchema>;
+  const { data, error } = await client
     .schema("merqo")
-    .rpc("upsert_vendor_profile", {
-      p_vendor_id: vendorId,
-      p_stall_name: stallName,
-      p_social_links: socialLinks,
-    });
-  if (error) {
-    throw new Error(`upsert_vendor_profile failed: ${error.message}`);
-  }
+    .rpc("patch_vendor_profile", args);
+  if (error || !data)
+    throw new Error(
+      `patch_vendor_profile failed: ${error?.message ?? "empty response"}`,
+    );
   return data;
 }

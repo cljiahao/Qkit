@@ -2,19 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import { boardSettingsSchema, type BoardSettingsInput } from "@/lib/schemas";
+import {
+  boardSettingsPatchSchema,
+  type BoardSettingsPatch,
+} from "@/lib/schemas";
 import type { ActionResult } from "@/lib/action-result";
 
 /**
  * Update the vendor's live-order-board preferences (vendors.board_settings).
- * The authenticated role is granted UPDATE on (name, tours_seen,
- * board_settings) under RLS vendors_self_update (migration 0050), so this runs
- * on the normal server client scoped to the caller's own row.
+ * The invoker RPC locks and merges the caller's vendor row under existing RLS.
  */
 export async function updateBoardSettings(
-  input: BoardSettingsInput,
+  input: BoardSettingsPatch,
 ): Promise<ActionResult> {
-  const parsed = boardSettingsSchema.safeParse(input);
+  const parsed = boardSettingsPatchSchema.safeParse(input);
   if (!parsed.success)
     return {
       success: false,
@@ -27,10 +28,9 @@ export async function updateBoardSettings(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not signed in" };
 
-  const { error } = await supabase
-    .from("vendors")
-    .update({ board_settings: parsed.data })
-    .eq("id", user.id);
+  const { error } = await supabase.rpc("patch_board_settings", {
+    p_patch: parsed.data,
+  });
 
   if (error) {
     console.error("updateBoardSettings failed", error.message);

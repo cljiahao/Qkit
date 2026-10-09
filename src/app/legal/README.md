@@ -18,7 +18,7 @@ it and, on `accept/`, records the vendor's acceptance with merqo.
   `requireCurrentLegalAcceptance` (`@/lib/legal-gate`) redirects a signed-in
   vendor to when their accepted terms/privacy versions are behind
   `@merqo/ui`'s `LEGAL_VERSIONS`. Reads the `next` search param (through
-  `safeRedirectPath`, `@/lib/safe-redirect`) and renders the client form.
+  `safeRedirectPath`, `@merqo/ui`) and renders the client form.
   Deliberately runs **no** legal-gate check itself — it is what the gate
   redirects to, so gating it would loop.
 - `accept/accept-form.tsx` — `AcceptForm`, a client component wrapping

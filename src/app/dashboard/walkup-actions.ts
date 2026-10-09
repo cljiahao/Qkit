@@ -109,6 +109,8 @@ export async function placeWalkupOrder(
 ): Promise<Result> {
   if (!boothIdSchema.safeParse(boothId).success)
     return { success: false, error: "Invalid booth" };
+  if (!z.boolean().safeParse(paid).success)
+    return { success: false, error: "Invalid payment state" };
   const parsed = placeOrderSchema.safeParse(input);
   if (!parsed.success)
     return { success: false, error: "Invalid order details" };
@@ -132,10 +134,7 @@ export async function placeWalkupOrder(
     .object({ order_number: z.string(), access_token: z.string() })
     .safeParse(data);
   if (!out.success) {
-    console.error(
-      "placeWalkupOrder: malformed RPC output",
-      JSON.stringify(data),
-    );
+    console.error("placeWalkupOrder: malformed RPC output");
     return {
       success: false,
       error: "Could not place order. Please try again.",

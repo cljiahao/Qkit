@@ -24,7 +24,7 @@ this repo) for the cross-kit design.
   `licenses`, and open `merqo.support_messages` (service-client cast to the
   `merqo` schema, same pattern as `admin/page.tsx`/`admin/vendors/[id]/
 page.tsx` — merqo's own RLS on that table gates on `merqo_team` membership,
-  not qkit's service role alone), then that vendor's `orders` (scoped to
+  not qkit admin membership; the authenticated machine endpoint uses its service role to bypass that RLS), then that vendor's `orders` (scoped to
   those booth ids), and delegates the actual aggregation to
   `computeVendorActivity` (`@/lib/merqo-vendor-activity`).
 - `route.test.ts` — tests the 401/400/404/200/503 status branches against a

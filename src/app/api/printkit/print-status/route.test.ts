@@ -1,3 +1,6 @@
+const ATTEMPT_AT = "2026-10-08T01:00:00.123456Z";
+const orMock = vi.fn();
+const existsMock = vi.fn();
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const printkitCallbackBearerOkMock = vi.fn();
@@ -14,7 +17,10 @@ vi.mock("@/lib/qkit-printkit-auth", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createServiceClient: () =>
     Promise.resolve({
-      from: () => ({ update: updateMock }),
+      from: () => ({
+        update: updateMock,
+        select: () => ({ eq: () => ({ maybeSingle: existsMock }) }),
+      }),
       rpc: rpcMock,
     }),
 }));
@@ -28,26 +34,34 @@ function requestWith(body: unknown) {
       authorization: "Bearer secret",
       "content-type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(
+      typeof body === "object" && body !== null
+        ? { attempt_at: ATTEMPT_AT, ...body }
+        : body,
+    ),
   });
 }
 
+const ORDER_ID = "11111111-1111-1111-1111-111111111111";
+
+beforeEach(() => {
+  printkitCallbackBearerOkMock.mockReset();
+  updateMock.mockReset();
+  eqMock.mockReset();
+  selectMock.mockReset();
+  maybeSingleMock.mockReset();
+  rpcMock.mockReset().mockResolvedValue({ data: true, error: null });
+  updateMock.mockReturnValue({ eq: eqMock });
+  eqMock.mockReturnValue({ or: orMock });
+  orMock.mockReset().mockReturnValue({ select: selectMock });
+  existsMock
+    .mockReset()
+    .mockResolvedValue({ data: { id: ORDER_ID }, error: null });
+  selectMock.mockReturnValue({ maybeSingle: maybeSingleMock });
+  maybeSingleMock.mockResolvedValue({ data: { id: ORDER_ID }, error: null });
+});
+
 describe("POST /api/printkit/print-status", () => {
-  beforeEach(() => {
-    printkitCallbackBearerOkMock.mockReset();
-    updateMock.mockReset();
-    eqMock.mockReset();
-    selectMock.mockReset();
-    maybeSingleMock.mockReset();
-    rpcMock.mockReset().mockResolvedValue({ data: true, error: null });
-    updateMock.mockReturnValue({ eq: eqMock });
-    eqMock.mockReturnValue({ select: selectMock });
-    selectMock.mockReturnValue({ maybeSingle: maybeSingleMock });
-    maybeSingleMock.mockResolvedValue({ data: { id: ORDER_ID }, error: null });
-  });
-
-  const ORDER_ID = "11111111-1111-1111-1111-111111111111";
-
   it("returns 401 when the bearer secret doesn't verify", async () => {
     printkitCallbackBearerOkMock.mockReturnValue(false);
 
@@ -71,16 +85,17 @@ describe("POST /api/printkit/print-status", () => {
     expect(updateMock).not.toHaveBeenCalled();
   });
 
-  it("returns 400 on an invalid status value", async () => {
-    printkitCallbackBearerOkMock.mockReturnValue(true);
+  it.each(["bogus", "queued", "sent"])(
+    "returns 400 for unsupported callback status %s",
+    async (status) => {
+      printkitCallbackBearerOkMock.mockReturnValue(true);
 
-    const res = await POST(
-      requestWith({ order_id: ORDER_ID, status: "bogus" }),
-    );
+      const res = await POST(requestWith({ order_id: ORDER_ID, status }));
 
-    expect(res.status).toBe(400);
-    expect(updateMock).not.toHaveBeenCalled();
-  });
+      expect(res.status).toBe(400);
+      expect(updateMock).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns 400 on a non-UUID order_id, not a 503", async () => {
     printkitCallbackBearerOkMock.mockReturnValue(true);
@@ -124,6 +139,7 @@ describe("POST /api/printkit/print-status", () => {
   it("returns 404 when no order matches order_id (silent no-op prevention)", async () => {
     printkitCallbackBearerOkMock.mockReturnValue(true);
     maybeSingleMock.mockResolvedValue({ data: null, error: null });
+    existsMock.mockResolvedValue({ data: null, error: null });
 
     const res = await POST(
       requestWith({ order_id: ORDER_ID, status: "printed" }),
@@ -132,3 +148,43 @@ describe("POST /api/printkit/print-status", () => {
     expect(res.status).toBe(404);
   });
 });
+
+it("acknowledges a stale terminal callback without rewriting the order", async () => {
+  printkitCallbackBearerOkMock.mockReturnValue(true);
+  maybeSingleMock.mockResolvedValue({ data: null, error: null });
+  existsMock.mockResolvedValue({
+    data: { id: "11111111-1111-1111-1111-111111111111" },
+    error: null,
+  });
+  const response = await POST(
+    requestWith({
+      order_id: "11111111-1111-1111-1111-111111111111",
+      status: "failed",
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ ok: true, stale: true });
+  expect(orMock).toHaveBeenCalledWith(
+    expect.stringContaining("print_status.neq.printed"),
+  );
+});
+it.each([
+  undefined,
+  "2026-10-08T01:00:00Z",
+  "2026-10-08T01:00:00.123456Z),print_status.eq.failed",
+])(
+  "rejects missing or noncanonical attempt identity %j",
+  async (attempt_at) => {
+    printkitCallbackBearerOkMock.mockReturnValue(true);
+    updateMock.mockClear();
+    const response = await POST(
+      requestWith({
+        order_id: "11111111-1111-1111-1111-111111111111",
+        status: "failed",
+        attempt_at,
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(updateMock).not.toHaveBeenCalled();
+  },
+);

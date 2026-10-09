@@ -21,19 +21,28 @@ describe.skipIf(!RUN)(
       });
 
       const vendorId = randomUUID();
-      const { data, error } = await db
-        .schema("merqo")
-        .rpc("get_or_create_vendor_profile", {
-          p_vendor_id: vendorId,
-          p_default_stall_name: "Spike Test Stall",
-        });
+      try {
+        const { data, error } = await db
+          .schema("merqo")
+          .rpc("get_or_create_vendor_profile", {
+            p_vendor_id: vendorId,
+            p_default_stall_name: "Spike Test Stall",
+          });
 
-      expect(error).toBeNull();
-      expect(data).toMatchObject({
-        vendor_id: vendorId,
-        stall_name: "Spike Test Stall",
-        social_links: {},
-      });
+        expect(error).toBeNull();
+        expect(data).toMatchObject({
+          vendor_id: vendorId,
+          stall_name: "Spike Test Stall",
+          social_links: {},
+        });
+      } finally {
+        const { error } = await db
+          .schema("merqo")
+          .from("vendor_profile")
+          .delete()
+          .eq("vendor_id", vendorId);
+        if (error) throw error;
+      }
     });
   },
 );

@@ -224,6 +224,10 @@ describe("csvToMenuItems — choice rows", () => {
       `${HEADER}\nKopi,,1.40,,true,,,,\n,,,,,Style,one,O (black),free`,
     );
     expect(rows[0]!.choices[0]!.error).toContain("Invalid choice price");
+    const negative = csvToMenuItems(
+      `${HEADER}\nKopi,,1.40,,true,,,,\n,,,,,Style,one,O (black),-1`,
+    );
+    expect(negative[0]!.choices[0]!.error).toContain("Invalid choice price");
   });
 
   it("flags a choice row with no item row above it", () => {
@@ -273,8 +277,10 @@ describe("optionGroupsFromCsvChoices", () => {
   it("maps group_type any to multiple: true, one to multiple: false", () => {
     const groups = optionGroupsFromCsvChoices([
       choice({ groupName: "Add-ons", groupType: "any" }),
+      choice({ groupName: "Style", groupType: "one" }),
     ]);
     expect(groups[0]!.multiple).toBe(true);
+    expect(groups[1]!.multiple).toBe(false);
   });
 
   it("skips errored choice rows entirely", () => {
@@ -287,9 +293,47 @@ describe("optionGroupsFromCsvChoices", () => {
   });
 
   it("gives every group and choice a fresh id", () => {
-    const groups = optionGroupsFromCsvChoices([choice()]);
-    expect(groups[0]!.id).toBeTruthy();
-    expect(groups[0]!.choices[0]!.id).toBeTruthy();
+    const groups = [
+      ...optionGroupsFromCsvChoices([choice(), choice({ choiceLabel: "Oat" })]),
+      ...optionGroupsFromCsvChoices([choice(), choice({ choiceLabel: "Oat" })]),
+    ];
+    const ids = groups.flatMap((group) => [
+      group.id,
+      ...group.choices.map((value) => value.id),
+    ]);
+    expect(ids.every((id) => id.length > 0)).toBe(true);
+    expect(new Set(ids).size).toBe(6);
+  });
+});
+
+describe("spreadsheet-safe menu text", () => {
+  it.each([
+    "=1+1",
+    "+SUM(1)",
+    "-1+2",
+    "@SUM(1)",
+    "  =1+1",
+    "\tformula",
+    "\rformula",
+    "\nformula",
+  ])("exports %j as literal text", (value) => {
+    const csv = menuItemsToCsv([
+      item({
+        name: value,
+        description: value,
+        option_groups: [
+          {
+            id: "g",
+            label: value,
+            multiple: false,
+            choices: [{ id: "c", label: value, price_delta_cents: -100 }],
+          },
+        ],
+      }),
+    ]);
+    expect(csv.split("'").length - 1).toBe(4);
+    expect(csv).toContain(",-1.00");
+    expect(csvToMenuItems(csv)[0].name).toBe("'" + value);
   });
 });
 

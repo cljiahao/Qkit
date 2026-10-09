@@ -210,26 +210,13 @@ export function isAbandonedPayment(createdAt: string, nowMs: number): boolean {
 export function buildAdvancePatch(
   next: OrderStatus,
   nowIso: string,
-  paymentStatus?: PaymentStatus,
 ): {
   status: OrderStatus;
   ready_at?: string;
   completed_at?: string;
-  payment_status?: PaymentStatus;
-  paid_at?: string;
 } {
   if (next === "ready") return { status: next, ready_at: nowIso };
   if (next === "completed") {
-    // Handing the order over implies the money has changed hands, so a
-    // still-outstanding payment is auto-confirmed — 'completed' never leaves a
-    // dangling claim, and confirmed-revenue stays trustworthy.
-    if (paymentStatus === "pending" || paymentStatus === "claimed")
-      return {
-        status: next,
-        completed_at: nowIso,
-        payment_status: "confirmed",
-        paid_at: nowIso,
-      };
     return { status: next, completed_at: nowIso };
   }
   return { status: next };

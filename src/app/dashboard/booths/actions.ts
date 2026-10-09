@@ -38,8 +38,12 @@ async function removeBoothImages(
   context: string,
 ) {
   if (paths.length === 0) return;
-  const { error } = await supabase.storage.from("booth-images").remove(paths);
-  if (error) console.error(`${context} image cleanup failed`, error.message);
+  try {
+    const { error } = await supabase.storage.from("booth-images").remove(paths);
+    if (error) console.error(`${context} image cleanup failed`, error.message);
+  } catch (error) {
+    console.error(`${context} image cleanup failed`, error);
+  }
 }
 
 // Mirrors printkit's location id onto the booth row via service-role
@@ -303,16 +307,20 @@ async function discardUnsavedUploads(
 ) {
   const parsed = freshUploadsSchema.safeParse(freshUploads);
   if (!parsed.success || parsed.data.length === 0) return;
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
-  await removeBoothImages(
-    supabase,
-    failedSaveUploadPaths(parsed.data, user.id, persisted),
-    "saveBooth",
-  );
+  try {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    await removeBoothImages(
+      supabase,
+      failedSaveUploadPaths(parsed.data, user.id, persisted),
+      "saveBooth",
+    );
+  } catch (error) {
+    console.error("saveBooth image cleanup failed", error);
+  }
 }
 
 // The booth-wide daily total is a stock cap, the same entitlement as the
@@ -502,6 +510,8 @@ export async function toggleBoothActive(
 ): Promise<ActionResult> {
   if (!z.string().uuid().safeParse(boothId).success)
     return { success: false, error: "Invalid booth" };
+  if (!z.boolean().safeParse(active).success)
+    return { success: false, error: "Invalid active state" };
 
   const { user, entitlement } = await loadEntitlement();
   if (!user) return { success: false, error: "Not authenticated" };

@@ -7,6 +7,9 @@ top items, service speed, and customer reviews — gated by plan (free/pass see
 "today" only, Pro unlocks history, trends and margin) and by paid "event"
 passes that keep a permanent, ungated stats snapshot for that window.
 
+Paid-event reviews match orders placed in the event window across complete paged
+feedback reads. The live review list keeps its explicit 500-row recent limit.
+
 ## Contents
 
 - `actions.ts` — `renameEvent({ licenseId, label })` server action: renames a
@@ -54,11 +57,8 @@ allTime })`: renders Revenue/Orders (as `StatBreakdownTile`s with a
   only when the vendor has entered at least one item cost; renders via
   `@merqo/ui`'s shared `DataTable`. `"use client"` — its `columns`
   (`cell`/`getRowKey` functions) can't cross the server→client boundary into
-  `DataTable`, which is a Client Component because `@merqo/ui` ships as one
-  all-`"use client"` bundle.
-- `options-breakdown.tsx` — `OptionsBreakdown({ options })` (labels wrap
-  rather than truncate: cut short one read "Spice Level: Ext…", losing the
-  choice): horizontal bar
+  `DataTable`, which is a Client Component with callback props defined on the client side.
+- `options-breakdown.tsx` — `OptionsBreakdown({ options })`: wraps labels to show the full customization choice in a horizontal bar
   list of the most-picked customization choices (e.g. "Iced", "Less sugar"),
   hidden when no item has options.
 - `page.tsx` — `StatsPage` (route entry, `revalidate=0`): resolves the
@@ -122,4 +122,6 @@ folder so range labels and wait/hour formatting can't drift between them.
 
 Order statistics paginate in a stable id order through the API row cap. A failed
 page raises an error rather than showing partial totals. Review displays retain
-the documented 500-row cap. queries.test.ts covers row-cap and later-page failures.
+the documented 500-row global cap. Booth/pass lists paginate; all stats query
+booth-ID filters are deduplicated and split into batches of at most 100 IDs.
+queries.test.ts covers row caps, large booth filters and later-page failures.

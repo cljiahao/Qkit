@@ -1,5 +1,12 @@
 # qkit Payments Seam Implementation Plan
 
+> **2026-10-09 review:** This local payment adapter design was retired by the
+> 2026-08-11 Paykit cutover. Qkit stores a `{kind}` marker and mirrors Paykit's
+> transaction state. Do not recreate `src/lib/payments/` or the anonymous
+> `claimPayment(boothId, orderNumber)` sketch: sequential numbers do not authorize
+> customer writes. Current actions require the saved order capability. A payment
+> claim is a customer assertion, not confirmation that funds arrived.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a bring-your-own payment seam so a booth can attach PayNow / any payment link / static QR (Stripe reserved-but-dark), turning the order queue into an optional payment queue.

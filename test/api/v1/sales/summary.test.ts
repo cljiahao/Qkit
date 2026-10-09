@@ -8,13 +8,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock the two server dependencies: loadEntitlement (auth + plan) and the
 // Supabase server client (booths + orders reads). vi.hoisted so the fns exist
 // before the hoisted vi.mock factories run.
-const { loadEntitlementMock, fromMock, rpcMock } = vi.hoisted(() => ({
-  loadEntitlementMock: vi.fn(),
-  fromMock: vi.fn(),
-  // Always-allow rate limiter stub — the route's own rate-limit gate isn't
-  // what this suite exercises.
-  rpcMock: vi.fn(() => Promise.resolve({ data: true, error: null })),
-}));
+const { loadEntitlementMock, fromMock, rpcMock, queryFilter } = vi.hoisted(
+  () => ({
+    loadEntitlementMock: vi.fn(),
+    fromMock: vi.fn(),
+    queryFilter: vi.fn(),
+    // Always-allow rate limiter stub — the route's own rate-limit gate isn't
+    // what this suite exercises.
+    rpcMock: vi.fn(() => Promise.resolve({ data: true, error: null })),
+  }),
+);
 
 vi.mock("@/lib/supabase/get-entitlement", () => ({
   loadEntitlement: loadEntitlementMock,
@@ -29,12 +32,18 @@ import { GET } from "@/app/api/v1/sales/summary/route";
 
 // A chainable, awaitable query-builder stub. Every builder method returns the
 // same object; awaiting it resolves to { data } — mirroring supabase-js.
-function queryResult(data: unknown) {
+function queryResult(table: string, data: unknown) {
   let from = 0;
   const b: Record<string, unknown> = {
     select: () => b,
-    eq: () => b,
-    in: () => b,
+    eq: (column: string, value: unknown) => {
+      queryFilter(table, "eq", column, value);
+      return b;
+    },
+    in: (column: string, value: unknown) => {
+      queryFilter(table, "in", column, value);
+      return b;
+    },
     gte: () => b,
     lt: () => b,
     order: () => b,
@@ -53,7 +62,7 @@ function queryResult(data: unknown) {
 // Route the two `from(...)` calls (booths, then orders) to preset results.
 function wireSupabase(booths: { id: string }[], orders: unknown[] = []) {
   fromMock.mockImplementation((table: string) =>
-    queryResult(table === "booths" ? booths : orders),
+    queryResult(table, table === "booths" ? booths : orders),
   );
 }
 
@@ -71,6 +80,7 @@ function req(query = "") {
 beforeEach(() => {
   loadEntitlementMock.mockReset();
   fromMock.mockReset();
+  queryFilter.mockReset();
   rpcMock.mockReset().mockResolvedValue({ data: true, error: null });
 });
 
@@ -158,6 +168,10 @@ describe("GET /api/v1/sales/summary", () => {
     const body = await res.json();
 
     expect(body.booth_id).toBe("b1");
+    expect(queryFilter).toHaveBeenCalledWith("booths", "eq", "vendor_id", "v1");
+    expect(queryFilter).toHaveBeenCalledWith("orders", "in", "booth_id", [
+      "b1",
+    ]);
   });
 
   it("falls back to 'all' when the requested booth is not owned", async () => {
@@ -168,5 +182,9 @@ describe("GET /api/v1/sales/summary", () => {
     const body = await res.json();
 
     expect(body.booth_id).toBe("all");
+    expect(queryFilter).toHaveBeenCalledWith("orders", "in", "booth_id", [
+      "b1",
+      "b2",
+    ]);
   });
 });

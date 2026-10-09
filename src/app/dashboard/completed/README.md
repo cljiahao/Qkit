@@ -50,9 +50,9 @@ loadError, historyLimit, todayStartIso })` client component: a date-range
 Reached at `/dashboard/completed`, linked from `dashboard-nav.tsx`'s `LINKS`.
 `page.tsx` runs the same booths→orders query shape as `../page.tsx` (the live
 board), just filtered to `completed` instead of excluding it, and passes the
-result to `completed-orders-list.tsx`. `OrderCard` (`@/components`) renders
-read-only here — its action buttons are all gated on `!closed`, which a
-completed order never is.
+result to `completed-orders-list.tsx`. `OrderCard` (`@/components`) hides fulfillment actions for completed orders.
+Payment review and explicit settlement remain available for unpaid completed
+orders; collection never confirms payment.
 
 ## Parent
 

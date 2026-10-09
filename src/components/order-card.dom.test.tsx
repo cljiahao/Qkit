@@ -290,7 +290,7 @@ describe("OrderCard", () => {
     await user.click(screen.getByRole("button", { name: "Mark Ready" }));
 
     // No confirmation dialog — the tap already happened. Recovery is Undo.
-    expect(advanceOrder).toHaveBeenCalledWith("o1");
+    expect(advanceOrder).toHaveBeenCalledWith("o1", "preparing");
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /undo/i })).toBeInTheDocument(),
     );
@@ -353,7 +353,7 @@ describe("OrderCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
 
-    expect(advanceOrder).toHaveBeenCalledWith("o1");
+    expect(advanceOrder).toHaveBeenCalledWith("o1", "ready");
   });
 
   it("shows an auto-clear drain bar on Mark Picked Up when ready and auto-clear is on", () => {
@@ -542,6 +542,104 @@ describe("OrderCard — batch select", () => {
 });
 
 describe("OrderCard payment", () => {
+  it.each(["pending", "claimed"] as const)(
+    "keeps a completed %s payment settleable without displaying Paid",
+    async (paymentStatus) => {
+      const user = userEvent.setup();
+      render(
+        <OrderCard
+          order={makeOrder({
+            status: "completed",
+            payment_status: paymentStatus,
+          })}
+        />,
+        { wrapper: TooltipProvider },
+      );
+      expect(screen.queryByText(/^Paid$/i)).not.toBeInTheDocument();
+      const label =
+        paymentStatus === "claimed"
+          ? /confirm payment received/i
+          : /mark as paid/i;
+      await user.click(screen.getByRole("button", { name: label }));
+      expect(confirmOrderPayment).toHaveBeenCalledWith("o1");
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("button", { name: label }),
+        ).not.toBeInTheDocument(),
+      );
+    },
+  );
+
+  it("pickup and its undo preserve a real confirmation made during the undo window", async () => {
+    const user = userEvent.setup();
+    advanceOrder.mockResolvedValue({ success: true, status: "completed" });
+    revertOrderAdvance.mockResolvedValue({ success: true, status: "ready" });
+    render(
+      <OrderCard
+        order={makeOrder({ status: "ready", payment_status: "claimed" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(screen.getByRole("button", { name: "Mark Picked Up" }));
+    await screen.findByRole("button", { name: /undo/i });
+    expect(screen.queryByText(/^Paid$/i)).not.toBeInTheDocument();
+    expect(confirmOrderPayment).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole("button", { name: /confirm payment received/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /confirm payment received/i }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(confirmOrderPayment).toHaveBeenCalledWith("o1");
+    await user.click(screen.getByRole("button", { name: /undo/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Mark Picked Up" }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: /confirm payment received|mark as paid/i,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Says paid. Check the payment"),
+    ).not.toBeInTheDocument();
+    expect(confirmOrderPayment).toHaveBeenCalledTimes(1);
+    expect(revertOrderAdvance).toHaveBeenCalledWith(
+      "o1",
+      "ready",
+      "completed",
+      "claimed",
+    );
+  });
+
+  it("a failed Paykit confirmation leaves a completed order unpaid and retryable", async () => {
+    const user = userEvent.setup();
+    confirmOrderPayment.mockResolvedValue({
+      success: false,
+      error: "Failed to confirm payment",
+    });
+    render(
+      <OrderCard
+        order={makeOrder({ status: "completed", payment_status: "claimed" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    await user.click(
+      screen.getByRole("button", { name: /confirm payment received/i }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Failed to confirm payment"),
+    );
+    expect(screen.queryByText(/^Paid$/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /confirm payment received/i }),
+    ).toBeEnabled();
+  });
+
   it("shows a Confirm payment button for a claimed order", () => {
     render(<OrderCard order={makeOrder({ payment_status: "claimed" })} />, {
       wrapper: TooltipProvider,

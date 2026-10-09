@@ -42,10 +42,14 @@ export function VendorManage({ vendor }: { vendor: AdminVendorRow }) {
       ? vendor.passExpiresAt
       : null;
 
-  // Shared by grant + make-pro: parse the $ field to cents (blank/invalid = 0 = comp).
-  function parseAmountCents(): number {
+  // A blank amount is a comp; malformed input must not erase a real payment.
+  function parseAmountCents(): number | null {
     const r = parseDollarsToCents(amount);
-    return r.ok && r.cents !== undefined ? r.cents : 0;
+    if (!r.ok) {
+      toast.error("Enter a valid payment amount");
+      return null;
+    }
+    return r.cents ?? 0;
   }
 
   function reset() {
@@ -67,6 +71,7 @@ export function VendorManage({ vendor }: { vendor: AdminVendorRow }) {
   function flip() {
     const next: Plan = vendor.plan === "pro" ? "free" : "pro";
     const amountCents = parseAmountCents();
+    if (amountCents === null) return;
     startTransition(async () => {
       const res = await setVendorPlan({
         vendorId: vendor.id,
@@ -90,6 +95,7 @@ export function VendorManage({ vendor }: { vendor: AdminVendorRow }) {
 
   function grant(d: number) {
     const amountCents = parseAmountCents();
+    if (amountCents === null) return;
     startTransition(async () => {
       const res = await grantPass({
         vendorId: vendor.id,

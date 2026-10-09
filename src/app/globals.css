@@ -15,6 +15,7 @@
   --popover: oklch(0.99 0.012 86.9);
   --popover-foreground: oklch(0.273 0.014 67.2);
   --primary: oklch(0.654 0.12 78);
+  --primary-text: oklch(0.46 0.095 78);
   --primary-foreground: oklch(0.273 0.014 67.2);
   --secondary: oklch(0.504 0.059 127.4);
   --secondary-foreground: oklch(0.918 0.038 86.9);
@@ -24,7 +25,7 @@
   --accent-foreground: oklch(0.3 0.03 50);
   --destructive: oklch(0.55 0.2 27);
   --border: oklch(0.75 0.025 70);
-  --input: oklch(0.735 0.022 72);
+  --input: oklch(0.59 0.02 72);
   --ring: oklch(0.654 0.12 78);
   --radius: 0.5rem;
 
@@ -52,6 +53,7 @@
   --popover: oklch(0.263 0.015 67.2);
   --popover-foreground: oklch(0.906 0.043 88);
   --primary: oklch(0.745 0.13 78);
+  --primary-text: oklch(0.745 0.13 78);
   --primary-foreground: oklch(0.243 0.012 67.2);
   --secondary: oklch(0.635 0.075 129.5);
   --secondary-foreground: oklch(0.243 0.012 67.2);
@@ -61,7 +63,7 @@
   --accent-foreground: oklch(0.94 0.012 80);
   --destructive: oklch(0.62 0.2 27);
   --border: oklch(0.36 0.02 55);
-  --input: oklch(0.38 0.02 55);
+  --input: oklch(0.61 0.02 55);
   --ring: oklch(0.745 0.13 78);
 
   --status-pending: oklch(0.78 0.15 80);
@@ -84,6 +86,8 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  /* Brand text needs its own contrast; fills, borders and focus keep primary. */
+  --text-color-primary: var(--primary-text);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -117,9 +121,11 @@
   --font-mono: var(--font-space-mono), ui-monospace, monospace;
 }
 
-* {
-  border-color: var(--color-border);
-  outline-color: var(--color-ring);
+@layer base {
+  * {
+    border-color: var(--color-border);
+    outline-color: var(--color-ring);
+  }
 }
 
 body {

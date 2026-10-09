@@ -5,25 +5,42 @@ import { getProofPhotoUrl, findDuplicateProofOrder } from "./proof-actions";
 // (select→eq→maybeSingle, keyed per test to the order under test) and the
 // duplicate-hash lookup (select→eq→neq→limit→maybeSingle). `createSignedUrl`
 // is its own mock on the `storage.from("payment-proofs")` chain.
-const { orderSingle, duplicateSingle, createSignedUrl } = vi.hoisted(() => ({
-  orderSingle: vi.fn(),
-  duplicateSingle: vi.fn(),
-  createSignedUrl: vi.fn(),
-}));
+const { orderSingle, duplicateSingle, createSignedUrl, queryStep } = vi.hoisted(
+  () => ({
+    orderSingle: vi.fn(),
+    duplicateSingle: vi.fn(),
+    createSignedUrl: vi.fn(),
+    queryStep: vi.fn(),
+  }),
+);
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: () =>
     Promise.resolve({
       from: () => ({
         select: () => ({
-          eq: () => ({
-            maybeSingle: orderSingle,
-            neq: () => ({ limit: () => ({ maybeSingle: duplicateSingle }) }),
-          }),
+          eq: (column: string, value: unknown) => {
+            queryStep("eq", column, value);
+            return {
+              maybeSingle: orderSingle,
+              neq: (column: string, value: unknown) => {
+                queryStep("neq", column, value);
+                return {
+                  limit: (count: number) => {
+                    queryStep("limit", count);
+                    return { maybeSingle: duplicateSingle };
+                  },
+                };
+              },
+            };
+          },
         }),
       }),
       storage: {
-        from: () => ({ createSignedUrl }),
+        from: (bucket: string) => {
+          queryStep("bucket", bucket);
+          return { createSignedUrl };
+        },
       },
     }),
 }));
@@ -32,6 +49,7 @@ beforeEach(() => {
   orderSingle.mockReset();
   duplicateSingle.mockReset();
   createSignedUrl.mockReset();
+  queryStep.mockReset();
 });
 
 describe("getProofPhotoUrl", () => {
@@ -46,6 +64,13 @@ describe("getProofPhotoUrl", () => {
     });
     const url = await getProofPhotoUrl("11111111-1111-1111-1111-111111111111");
     expect(url).toBe("https://signed.example/payment-proofs/...");
+    expect(queryStep).toHaveBeenCalledWith(
+      "eq",
+      "id",
+      "11111111-1111-1111-1111-111111111111",
+    );
+    expect(queryStep).toHaveBeenCalledWith("bucket", "payment-proofs");
+    expect(createSignedUrl).toHaveBeenCalledWith("vendor-1/order-1.png", 300);
   });
 
   it("returns null for an order with no uploaded proof", async () => {
@@ -92,6 +117,17 @@ describe("findDuplicateProofOrder", () => {
       "11111111-1111-1111-1111-111111111111",
     );
     expect(other).toBe("0031");
+    expect(queryStep).toHaveBeenCalledWith(
+      "eq",
+      "payment_proof_hash",
+      "abc123",
+    );
+    expect(queryStep).toHaveBeenCalledWith(
+      "neq",
+      "id",
+      "11111111-1111-1111-1111-111111111111",
+    );
+    expect(queryStep).toHaveBeenCalledWith("limit", 1);
   });
 
   it("returns null when no other order shares the hash", async () => {

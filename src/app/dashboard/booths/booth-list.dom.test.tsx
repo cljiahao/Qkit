@@ -1,7 +1,28 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BoothList } from "./booth-list";
+const errorToast = vi.fn();
+const clipboardDescriptor = Object.getOwnPropertyDescriptor(
+  navigator,
+  "clipboard",
+);
+
+beforeEach(() => errorToast.mockClear());
+
+afterEach(() => {
+  if (clipboardDescriptor) {
+    Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+  } else {
+    Reflect.deleteProperty(navigator, "clipboard");
+  }
+});
+vi.mock("sonner", () => ({
+  toast: {
+    error: (...args: unknown[]) => errorToast(...args),
+    success: vi.fn(),
+  },
+}));
 
 const BOOTH = {
   id: "b1",
@@ -14,6 +35,19 @@ const BOOTH = {
 };
 
 describe("BoothList", () => {
+  it("explains clipboard failure without an unhandled rejection", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    });
+    render(<BoothList booths={[BOOTH]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy order link" }));
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledWith(
+        "Could not copy the link. Open the booth QR to share it.",
+      ),
+    );
+  });
   it("links the TV display button to the booth's public display route in a new tab", () => {
     render(<BoothList booths={[BOOTH]} />);
 

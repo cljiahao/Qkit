@@ -381,15 +381,8 @@ function resolveBoothFilter(
 }
 
 /**
- * Batch mark-ready mode (F3): lets a vendor check off several `preparing`
- * orders, or all of them with "Select all", and advance them to `ready` in one
- * tap instead of one at a time. "Select all" is how a stall catches the board
- * up after a service with no time to mark orders as they went out; it lives
- * inside this mode rather than as its own button so the board keeps one batch
- * control, and so ticking, then reading "Mark 14 Ready", is the confirmation.
- * Reuses the same advanceOrder server action each OrderCard's own single tap
- * calls — no new bulk RPC, per-row optimistic-concurrency guard still applies
- * to each id individually.
+ * Batch fulfillment advances preparing→ready or ready→completed, with an
+ * expected-status guard on each order. Payment confirmation stays separate.
  */
 // Heights here are the compact ones a mouse gets. On a touch device the
 // `pointer: coarse` rule in globals.css raises every one of these to 44px.
@@ -526,11 +519,19 @@ function useBatchSelection() {
   // to picked up) and unticks them. Anything else still ticked stays ticked,
   // so a mixed selection is finished with the other button; unticking the
   // ones just moved is what stops a second tap from moving them again.
-  async function advanceSelected(ids: string[], outcome: string) {
+  async function advanceSelected(
+    ids: string[],
+    expectedStatus: "preparing" | "ready",
+  ) {
+    const outcome = expectedStatus === "preparing" ? "ready" : "picked up";
     setAdvancing(true);
     try {
-      const results = await Promise.all(ids.map((id) => advanceOrder(id)));
-      const ok = results.filter((r) => r.success).length;
+      const results = await Promise.allSettled(
+        ids.map((id) => advanceOrder(id, expectedStatus)),
+      );
+      const ok = results.filter(
+        (r) => r.status === "fulfilled" && r.value.success,
+      ).length;
       const failed = results.length - ok;
       if (ok > 0)
         toast.success(`Marked ${ok} order${ok === 1 ? "" : "s"} ${outcome}`);
@@ -621,16 +622,21 @@ export function RealtimeOrderBoard({
   function setBoothActive(b: BoothView, active: boolean) {
     setActiveOverrides((prev) => new Map(prev).set(b.id, active));
     void (async () => {
-      const res = await toggleBoothActive(b.id, active);
-      if (!res.success) {
-        toast.error(res.error);
+      try {
+        const res = await toggleBoothActive(b.id, active);
+        if (!res.success) {
+          toast.error(res.error);
+          setActiveOverrides((prev) => new Map(prev).set(b.id, !active));
+          return;
+        }
+        toast(active ? `${b.name} is open for orders` : `${b.name} is paused`, {
+          action: { label: "Undo", onClick: () => setBoothActive(b, !active) },
+        });
+        router.refresh();
+      } catch {
         setActiveOverrides((prev) => new Map(prev).set(b.id, !active));
-        return;
+        toast.error("Could not update the booth. Refresh to check its status.");
       }
-      toast(active ? `${b.name} is open for orders` : `${b.name} is paused`, {
-        action: { label: "Undo", onClick: () => setBoothActive(b, !active) },
-      });
-      router.refresh();
     })();
   }
   const activeBoothCount = booths.filter(boothIsActive).length;
@@ -1150,8 +1156,8 @@ export function RealtimeOrderBoard({
             onToggleAll={() =>
               setSelectedIds(allSelected ? new Set() : new Set(batchableIds))
             }
-            onMarkReady={() => advanceSelected(tickedPreparing, "ready")}
-            onMarkPickedUp={() => advanceSelected(tickedReady, "picked up")}
+            onMarkReady={() => advanceSelected(tickedPreparing, "preparing")}
+            onMarkPickedUp={() => advanceSelected(tickedReady, "ready")}
           />
         )}
       </div>

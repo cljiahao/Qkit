@@ -114,12 +114,16 @@ async function resolveVendorRequests(
   supabase: Awaited<ReturnType<typeof createServiceClient>>,
   vendorId: string,
 ): Promise<void> {
-  const { error } = await supabase
-    .from("purchase_requests")
-    .update({ status: "resolved" })
-    .eq("vendor_id", vendorId)
-    .eq("status", "pending");
-  if (error) console.error("resolveVendorRequests failed", error.message);
+  try {
+    const { error } = await supabase
+      .from("purchase_requests")
+      .update({ status: "resolved" })
+      .eq("vendor_id", vendorId)
+      .eq("status", "pending");
+    if (error) console.error("resolveVendorRequests failed", error.message);
+  } catch (error) {
+    console.error("resolveVendorRequests failed", error);
+  }
 }
 
 /**

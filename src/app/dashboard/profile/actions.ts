@@ -2,10 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import {
-  getOrCreateVendorProfile,
-  upsertVendorProfile,
-} from "@/lib/merqo-vendor-profile";
+import { patchVendorProfile } from "@/lib/merqo-vendor-profile";
 import {
   profileNameSchema,
   socialLinksSchema,
@@ -17,7 +14,7 @@ import type { ActionResult } from "@/lib/action-result";
 /**
  * Update the vendor's stall name. Persisted in merqo.vendor_profile (shared
  * across kits, see docs/superpowers/specs/2026-07-16-shared-vendor-profile-design.md)
- * via the upsert_vendor_profile RPC — not a local qkit.vendors write.
+ * via the patch_vendor_profile RPC — not a local qkit.vendors write.
  */
 export async function updateStallName(
   input: ProfileNameInput,
@@ -36,13 +33,9 @@ export async function updateStallName(
   if (!user) return { success: false, error: "Not signed in" };
 
   try {
-    const current = await getOrCreateVendorProfile(supabase, user.id, null);
-    await upsertVendorProfile(
-      supabase,
-      user.id,
-      parsed.data.name,
-      current.social_links,
-    );
+    await patchVendorProfile(supabase, user.id, {
+      stallName: parsed.data.name,
+    });
   } catch (err) {
     console.error(
       "updateStallName failed",
@@ -77,13 +70,7 @@ export async function updateSocialLinks(
   if (!user) return { success: false, error: "Not signed in" };
 
   try {
-    const current = await getOrCreateVendorProfile(supabase, user.id, null);
-    await upsertVendorProfile(
-      supabase,
-      user.id,
-      current.stall_name,
-      parsed.data,
-    );
+    await patchVendorProfile(supabase, user.id, { socialLinks: parsed.data });
   } catch (err) {
     console.error(
       "updateSocialLinks failed",

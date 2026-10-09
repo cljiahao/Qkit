@@ -12,6 +12,8 @@ means chime-only.
 
 > Runs against `DEMO_BASE_URL` (default `http://localhost:3000`). If port 3000
 > is taken, start `pnpm dev` on another port and set `DEMO_BASE_URL` to match.
+> Only loopback HTTP(S) origins are accepted. This guard limits the app target;
+> run that app against local Supabase and a local Paykit fixture as well.
 > The booth gains its payment method through the UI in the recording — no seed
 > change needed.
 
@@ -43,6 +45,10 @@ Spec: [`docs/superpowers/specs/2026-06-24-demo-video-generator-design.md`](../..
    ```
    (No seed needed — the demo creates its own booth/menu through the UI.)
 3. **`pnpm dev`** running (http://localhost:3000).
+   Configure its Paykit checkout integration to a local fixture or local Paykit
+   deployment; the recorder does not start or configure that service. The
+   existing `e2e/paykit-mock.ts` supplies checkout/claim/confirm responses for a
+   local fixture. Do not use real payment/provider credentials for this demo.
 4. **ffmpeg** on PATH (already present in this environment).
 
 ## Run
@@ -85,12 +91,19 @@ Re-run freely: step 1 makes step 2 idempotent.
 - The live-pop beat uses a second, un-recorded browser context to place a walk-in
   order, so the ticket arrives on the board through the real realtime
   subscription (genuine, not faked).
+- The vendor starts a pending order before marking it ready. The paid beat adds
+  menu prices, opens the payment page, uploads a synthetic proof image and claims
+  payment before receiving the order number.
+- The current recorder changes have URL-guard tests and static verification.
+  A fresh browser recording remains unverified while the local database engine
+  is unavailable; the existing video is historical output.
 
 ## Structure
 
 ### Contents
 
 - `assets/`
+- `base-url.mjs`
 - `compose.mjs`
 - `record.mjs`
 - `reset.sql`

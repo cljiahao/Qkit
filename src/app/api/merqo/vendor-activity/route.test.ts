@@ -24,6 +24,13 @@ function chainable(result: { data: unknown; error: unknown }) {
   obj.eq = self;
   obj.in = self;
   obj.order = self;
+  obj.range = (from: number, to: number) =>
+    chainable({
+      ...result,
+      data: Array.isArray(result.data)
+        ? result.data.slice(from, Math.min(to + 1, from + 2))
+        : result.data,
+    });
   obj.maybeSingle = () => Promise.resolve(result);
   obj.then = (
     onFulfilled: (v: typeof result) => unknown,
@@ -111,7 +118,35 @@ describe("GET /api/merqo/vendor-activity", () => {
     bearerOkMock.mockReset();
     fixtures = {};
   });
-
+  it("includes orders beyond a server cap smaller than the requested page", async () => {
+    bearerOkMock.mockReturnValue(true);
+    fixtures = {
+      users: [{ id: "u1", email: "vendor@example.com" }],
+      vendor: { id: "u1", plan: "free", created_at: "2026-01-01T00:00:00Z" },
+      booths: [
+        {
+          id: "b1",
+          vendor_id: "u1",
+          is_active: true,
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+      orders: Array.from({ length: 3 }, () => ({
+        booth_id: "b1",
+        status: "completed",
+        total_cents: 100,
+        created_at: new Date().toISOString(),
+      })),
+    };
+    const response = await GET(requestWith("vendor@example.com"));
+    expect(response.status).toBe(200);
+    expect((await response.json()).metrics).toEqual(
+      expect.arrayContaining([
+        { label: "Orders (30d)", value: "3" },
+        { label: "Revenue (30d)", value: "$3.00" },
+      ]),
+    );
+  });
   it("returns 401 when the bearer secret doesn't verify", async () => {
     bearerOkMock.mockReturnValue(false);
 

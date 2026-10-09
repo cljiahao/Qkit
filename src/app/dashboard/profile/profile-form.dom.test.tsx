@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 import userEvent from "@testing-library/user-event";
 
 const updateStallName = vi.fn();
@@ -18,6 +19,7 @@ vi.mock("@/lib/supabase/client", () => ({
 import { ProfileForm } from "./profile-form";
 
 beforeEach(() => {
+  vi.clearAllMocks();
   updateStallName.mockReset();
   updateSocialLinks.mockReset();
 });
@@ -57,5 +59,29 @@ describe("ProfileForm social links", () => {
     expect(updateSocialLinks).toHaveBeenCalledWith({
       instagram: "https://instagram.com/kopitiam",
     });
+  });
+  it("keeps edited links available after a transport rejection and allows retry", async () => {
+    updateSocialLinks
+      .mockRejectedValueOnce(new Error("Offline"))
+      .mockResolvedValueOnce({ success: true });
+    const user = userEvent.setup();
+    render(<ProfileForm {...baseProps} />);
+    await user.type(
+      screen.getByLabelText(/instagram/i),
+      "https://instagram.com/kopitiam",
+    );
+    const save = screen.getByRole("button", { name: /save links/i });
+    await user.click(save);
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not save your links. Please try again.",
+      ),
+    );
+    expect(screen.getByLabelText(/instagram/i)).toHaveValue(
+      "https://instagram.com/kopitiam",
+    );
+    expect(save).toBeEnabled();
+    await user.click(save);
+    await waitFor(() => expect(updateSocialLinks).toHaveBeenCalledTimes(2));
   });
 });

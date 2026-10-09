@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 const { fromMock, rpcMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
@@ -61,10 +61,11 @@ function vendorsTable(opts: {
 describe("POST /api/merqo/vendor-provision", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.MERQO_PROVISION_SECRET = "test-secret";
+    vi.stubEnv("MERQO_PROVISION_SECRET", "test-secret");
     getOrCreateVendorProfileMock.mockResolvedValue({});
     recordAuditMock.mockResolvedValue(undefined);
   });
+  afterEach(() => vi.unstubAllEnvs());
 
   it("401 when the bearer is missing", async () => {
     const res = await POST(req({ user_id: USER_ID }));

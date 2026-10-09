@@ -127,13 +127,15 @@ const eslintConfig = [
       // already 4) — a real code-smell signal for imperative app logic, pure
       // noise for test structure.
       "sonarjs/no-nested-functions": "off",
-      // Fake IP (1.2.3.4) / password fixtures for rate-limit and auth test
-      // mocks, and scripts/demo's fixed local-only demo seed identity — none
-      // are real credentials or configuration.
+    },
+  },
+  {
+    // Synthetic test identities and random fixture IDs are not credentials.
+    files: ["**/*.test.{ts,tsx}", "**/test/**", "e2e/**"],
+    plugins: { sonarjs: sonarjsPlugin },
+    rules: {
       "sonarjs/no-hardcoded-ip": "off",
       "sonarjs/no-hardcoded-passwords": "off",
-      // Math.random() here only generates a unique test-fixture id, not a
-      // security-sensitive value.
       "sonarjs/pseudo-random": "off",
       // A vi.mock factory reads fixture constants declared below it. vitest
       // hoists the vi.mock call above the imports but only invokes the factory

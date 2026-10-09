@@ -5,19 +5,51 @@ import {
   confirmArrival,
 } from "./status-actions";
 
+const { readEqMock } = vi.hoisted(() => ({ readEqMock: vi.fn() }));
+
 // Chainable stub: every builder method returns itself; the chain is
 // awaitable directly (multi-row reads here never call a terminal
 // .maybeSingle()/.single()) and .maybeSingle() also resolves the same
 // result for the single-row lookups.
 function chain(result: { data: unknown; error: unknown }) {
   const obj: Record<string, unknown> = {};
+  let afterId: string | null = null;
   const self = () => obj;
   obj.select = self;
-  obj.eq = self;
+  obj.eq = (...args: unknown[]) => {
+    readEqMock(...args);
+    return obj;
+  };
   obj.in = self;
   obj.or = self;
   obj.order = self;
-  obj.limit = self;
+  obj.gt = (_column: string, id: string) => {
+    afterId = id;
+    return obj;
+  };
+  obj.limit = (limit: number) => {
+    if (limit !== 1000) return obj;
+    if (!Array.isArray(result.data)) return Promise.resolve(result);
+    const rows = result.data
+      .map((row, index) => ({
+        ...row,
+        id: row.id ?? `fixture-${String(index).padStart(6, "0")}`,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    return Promise.resolve({
+      ...result,
+      data: rows
+        .filter((row) => afterId === null || row.id > afterId)
+        .slice(0, 2),
+    });
+  };
+  obj.range = (from: number, to: number) =>
+    Promise.resolve({
+      ...result,
+      data: Array.isArray(result.data)
+        ? result.data.slice(from, Math.min(to + 1, from + 2))
+        : result.data,
+    });
   obj.maybeSingle = () => Promise.resolve(result);
   obj.then = (resolve: (v: typeof result) => void) =>
     Promise.resolve(result).then(resolve);
@@ -28,10 +60,7 @@ const { createServiceClientMock, fromMock, rateLimitMockRef } = vi.hoisted(
   () => {
     const fromMock = vi.fn();
     return {
-      // Return type widened to `(...args) => any` (rather than the narrower
-      // inferred `typeof fromMock`) so confirmArrival's describe block below
-      // can swap in a differently-shaped `from` via mockImplementation — it
-      // needs an update() chain the read-only chain() helper doesn't support.
+      // Arrival tests also need an update builder.
       createServiceClientMock: vi.fn(
         (): Promise<{ from: (...args: unknown[]) => unknown }> =>
           Promise.resolve({ from: fromMock }),
@@ -59,6 +88,7 @@ const TOKEN = "11111111-2222-4333-8444-555555555555";
 
 beforeEach(() => {
   createServiceClientMock.mockClear();
+  readEqMock.mockClear();
   fromMock.mockReset().mockReturnValue(chain({ data: null, error: null }));
   rateLimitMockRef.mockReset().mockResolvedValue(true);
 });
@@ -79,6 +109,11 @@ describe("getOrderStatus", () => {
     fromMock.mockReturnValue(chain({ data: { status: "ready" }, error: null }));
     const res = await getOrderStatus(BOOTH, ORDER, TOKEN);
     expect(res).toBe("ready");
+    expect(readEqMock.mock.calls).toEqual([
+      ["booth_id", BOOTH],
+      ["order_number", ORDER],
+      ["access_token", TOKEN],
+    ]);
   });
 
   it("returns null and logs on a real read error", async () => {
@@ -105,6 +140,46 @@ describe("getOrderStatus", () => {
 });
 
 describe("getWaitEstimate", () => {
+  it("counts all orders ahead beyond a two-row API cap", async () => {
+    const target = {
+      id: "target",
+      status: "preparing",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    const active = [1, 2, 3].map((n) => ({
+      ...target,
+      id: String(n),
+      created_at: `2026-06-12T10:0${n}:00Z`,
+    }));
+    fromMock
+      .mockReturnValueOnce(chain({ data: target, error: null }))
+      .mockReturnValueOnce(chain({ data: [...active, target], error: null }))
+      .mockReturnValueOnce(chain({ data: [], error: null }));
+    expect(await getWaitEstimate(BOOTH, ORDER, TOKEN)).toEqual({
+      seconds: null,
+      ordersAhead: 3,
+    });
+  });
+
+  it("returns no estimate rather than a partial position after a late page failure", async () => {
+    const target = {
+      id: "target",
+      status: "preparing",
+      created_at: "2026-06-12T10:05:00Z",
+      priority_bumped_at: null,
+    };
+    const query = chain({ data: [], error: null });
+    query.limit = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [target], error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: "offline" } });
+    fromMock
+      .mockReturnValueOnce(chain({ data: target, error: null }))
+      .mockReturnValueOnce(query);
+    expect(await getWaitEstimate(BOOTH, ORDER, TOKEN)).toBeNull();
+  });
+
   it("returns null for an invalid token without creating a client", async () => {
     const res = await getWaitEstimate(BOOTH, ORDER, "not-a-uuid");
     expect(res).toBeNull();
@@ -300,7 +375,7 @@ describe("getWaitEstimate", () => {
   it("excludes a pending-payment QR order from the active orders count", async () => {
     const orSpy = vi.fn();
     function chainWithOrSpy(result: { data: unknown; error: unknown }) {
-      const obj: Record<string, unknown> = {};
+      const obj = chain(result);
       const self = () => obj;
       obj.select = self;
       obj.eq = self;
@@ -310,7 +385,6 @@ describe("getWaitEstimate", () => {
         return obj;
       };
       obj.order = self;
-      obj.limit = self;
       obj.maybeSingle = () => Promise.resolve(result);
       obj.then = (resolve: (v: typeof result) => void) =>
         Promise.resolve(result).then(resolve);
@@ -356,11 +430,17 @@ describe("confirmArrival", () => {
   const writeSelect2 = vi.fn();
   const reread2 = vi.fn();
   const boothRead2 = vi.fn();
-  const update2 = vi.fn(() => ({
-    eq: () => ({
-      eq: () => ({ eq: () => ({ eq: () => ({ select: writeSelect2 }) }) }),
-    }),
-  }));
+  const writeEqMock = vi.fn();
+  const update2 = vi.fn(() => {
+    const node = {
+      eq: (...args: unknown[]) => {
+        writeEqMock(...args);
+        return node;
+      },
+      select: writeSelect2,
+    };
+    return node;
+  });
   const select2 = () => ({
     eq: () => ({ eq: () => ({ eq: () => ({ maybeSingle: reread2 }) }) }),
   });
@@ -375,6 +455,7 @@ describe("confirmArrival", () => {
       }),
     );
     update2.mockClear();
+    writeEqMock.mockClear();
     writeSelect2
       .mockReset()
       .mockResolvedValue({ data: [{ id: "o1" }], error: null });
@@ -388,6 +469,12 @@ describe("confirmArrival", () => {
     const res = await confirmArrival(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({ success: true });
     expect(update2).toHaveBeenCalledWith({ status: "preparing" });
+    expect(writeEqMock.mock.calls).toEqual([
+      ["booth_id", BOOTH],
+      ["order_number", ORDER],
+      ["access_token", TOKEN],
+      ["status", "pending"],
+    ]);
   });
 
   it("blocks when rate-limited and does not touch the DB", async () => {

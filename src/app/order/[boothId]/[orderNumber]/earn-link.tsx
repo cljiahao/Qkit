@@ -1,8 +1,14 @@
+import { z } from "zod";
+
 const LOOPKIT_URL =
   process.env.NEXT_PUBLIC_LOOPKIT_URL ?? "https://loopkit-sg.vercel.app";
 const MERQO_METRICS_SECRET = process.env.MERQO_METRICS_SECRET ?? "";
 
-type EarnConfig = { enabled: boolean; program_name?: string };
+const earnConfigSchema = z.object({
+  enabled: z.boolean(),
+  program_name: z.string().max(200).optional(),
+});
+type EarnConfig = z.infer<typeof earnConfigSchema>;
 
 async function fetchEarnConfig(vendorId: string): Promise<EarnConfig> {
   try {
@@ -11,11 +17,13 @@ async function fetchEarnConfig(vendorId: string): Promise<EarnConfig> {
       {
         headers: { Authorization: `Bearer ${MERQO_METRICS_SECRET}` },
         cache: "no-store",
+        redirect: "error",
         signal: AbortSignal.timeout(3000),
       },
     );
     if (!res.ok) return { enabled: false };
-    return (await res.json()) as EarnConfig;
+    const parsed = earnConfigSchema.safeParse(await res.json());
+    return parsed.success ? parsed.data : { enabled: false };
   } catch {
     // Fail closed: never blocks the order page, the link just doesn't show.
     return { enabled: false };
@@ -39,7 +47,7 @@ export async function EarnLink({
       href={`${loopkitBaseUrl}/earn?order=${encodeURIComponent(orderId)}`}
       className="text-sm font-medium text-primary underline-offset-4 hover:underline"
     >
-      Earn a stamp{config.program_name ? ` — ${config.program_name}` : ""} →
+      Earn a stamp{config.program_name ? `, ${config.program_name}` : ""} →
     </a>
   );
 }

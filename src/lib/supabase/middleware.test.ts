@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 const { createServerClient } = vi.hoisted(() => {
@@ -11,13 +11,21 @@ vi.mock("@supabase/ssr", () => ({ createServerClient }));
 import { updateSession } from "./middleware";
 
 describe("updateSession — legacy host-only cookie cleanup", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_AUTH_COOKIE_DOMAIN", "");
+    createServerClient.mockReset().mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u1" } } }),
+      },
+    });
+  });
+
   afterEach(() => {
-    delete process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN;
-    vi.clearAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("clears a pre-existing sb-*-auth-token cookie once when the cookie domain is enabled", async () => {
-    process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN = ".merqo.io";
+    vi.stubEnv("NEXT_PUBLIC_AUTH_COOKIE_DOMAIN", ".merqo.io");
     const request = new NextRequest("https://qkit.merqo.io/dashboard", {
       headers: { cookie: "sb-project-auth-token=stale-value" },
     });
@@ -36,7 +44,7 @@ describe("updateSession — legacy host-only cookie cleanup", () => {
   });
 
   it("does not clear again once the migration marker cookie is already present", async () => {
-    process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN = ".merqo.io";
+    vi.stubEnv("NEXT_PUBLIC_AUTH_COOKIE_DOMAIN", ".merqo.io");
     const request = new NextRequest("https://qkit.merqo.io/dashboard", {
       headers: {
         cookie:
@@ -66,7 +74,7 @@ describe("updateSession — legacy host-only cookie cleanup", () => {
   });
 
   it("does not clobber a same-request token refresh, and defers the marker to a later request", async () => {
-    process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN = ".merqo.io";
+    vi.stubEnv("NEXT_PUBLIC_AUTH_COOKIE_DOMAIN", ".merqo.io");
     createServerClient.mockImplementation((_url, _key, options) => ({
       auth: {
         getUser: vi.fn().mockImplementation(async () => {

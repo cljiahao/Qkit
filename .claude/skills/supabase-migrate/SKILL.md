@@ -16,12 +16,12 @@ qkit uses Supabase (Postgres + RLS + realtime), not Drizzle. Migrations live in
   (Or `supabase db reset` to rebuild local from `supabase/migrations/` + re-run
   the seed — destructive to local data only.)
 - After any schema change, regenerate types from the local schema:
-  `supabase gen types typescript --local > src/lib/types.ts`.
+  `supabase gen types typescript --local --schema qkit > src/lib/types.ts`.
 
 **Linked (hosted) project — only when intentionally changing the deployed DB:**
 
 - `supabase db push` — applies pending migrations to the linked project.
-- Regenerate types: `supabase gen types typescript --linked > src/lib/types.ts`.
+- Regenerate types: `supabase gen types typescript --linked --schema qkit > src/lib/types.ts`.
 
 **Without the CLI:**
 

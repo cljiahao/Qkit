@@ -1,31 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { installBrowserStorage } from "../../test/browser-storage";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stashReorder, takeReorder } from "./reorder-handoff";
 import type { ReorderLine } from "./reorder";
-
-// jsdom isn't configured for this suite (node env); stub a minimal sessionStorage.
-function installStorage() {
-  let store: Record<string, string> = {};
-  const ss = {
-    getItem: (k: string) => store[k] ?? null,
-    setItem: (k: string, v: string) => {
-      store[k] = v;
-    },
-    removeItem: (k: string) => {
-      delete store[k];
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-  vi.stubGlobal("window", { sessionStorage: ss });
-  vi.stubGlobal("sessionStorage", ss);
-}
 
 const lines: ReorderLine[] = [{ menuItemId: "cookie", quantity: 2 }];
 
 beforeEach(() => {
   vi.unstubAllGlobals();
-  installStorage();
+  installBrowserStorage("sessionStorage");
 });
 
 describe("reorder-handoff", () => {
@@ -116,4 +98,9 @@ describe("reorder-handoff", () => {
     );
     expect(takeReorder("b1")).toEqual({ lines: [] });
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });

@@ -30,8 +30,12 @@ function boothStatus(booth: Pick<BoothRow, "paused" | "is_active">) {
 export function BoothList({ booths }: { booths: BoothRow[] }) {
   async function copyLink(shortCode: string) {
     const url = `${window.location.origin}/o/${shortCode}`;
-    await navigator.clipboard.writeText(url);
-    toast.success("Order link copied");
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Order link copied");
+    } catch {
+      toast.error("Could not copy the link. Open the booth QR to share it.");
+    }
   }
 
   return (

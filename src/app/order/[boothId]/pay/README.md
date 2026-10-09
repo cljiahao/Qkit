@@ -35,7 +35,7 @@ photo and does the deferred numbering.
   `router.refresh()` button) that `pay-panel.tsx` itself doesn't yet have.
   Below the checkout, a labelled file input (`accept="image/*"
 capture="environment"`) downscales the selected photo via `resizeToWebp`
-  (`@/lib/image-resize`) before holding it in state. "I've paid" shows an
+  (`@merqo/ui`) before holding it in state. "I've paid" shows an
   inline "A payment screenshot is required." error and never calls the
   action if no photo was selected; otherwise it calls
   `claimPayment(boothId, token, photo)` and, on success, `router.push`es to

@@ -14,6 +14,7 @@ vi.mock("@/lib/rate-limit", () => ({
 // single-row lookups.
 function chain(result: { data: unknown; error: unknown }) {
   const obj: Record<string, unknown> = {};
+  let afterId: string | null = null;
   const self = () => obj;
   obj.select = self;
   obj.eq = self;
@@ -21,7 +22,33 @@ function chain(result: { data: unknown; error: unknown }) {
   obj.not = self;
   obj.or = self;
   obj.order = self;
-  obj.limit = self;
+  obj.gt = (_column: string, id: string) => {
+    afterId = id;
+    return obj;
+  };
+  obj.limit = (limit: number) => {
+    if (limit !== 1000) return obj;
+    if (!Array.isArray(result.data)) return Promise.resolve(result);
+    const rows = result.data
+      .map((row, index) => ({
+        ...row,
+        id: row.id ?? `fixture-${String(index).padStart(6, "0")}`,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    return Promise.resolve({
+      ...result,
+      data: rows
+        .filter((row) => afterId === null || row.id > afterId)
+        .slice(0, 2),
+    });
+  };
+  obj.range = (from: number, to: number) =>
+    Promise.resolve({
+      ...result,
+      data: Array.isArray(result.data)
+        ? result.data.slice(from, Math.min(to + 1, from + 2))
+        : result.data,
+    });
   obj.maybeSingle = () => Promise.resolve(result);
   obj.then = (resolve: (v: typeof result) => void) =>
     Promise.resolve(result).then(resolve);
@@ -57,6 +84,45 @@ beforeEach(() => {
 });
 
 describe("getBoothQueueDisplay", () => {
+  it("includes the third queued order beyond a two-row API cap", async () => {
+    const active = [1, 2, 3].map((n) => ({
+      order_number: String(n).padStart(4, "0"),
+      status: "preparing",
+      created_at: new Date(Date.now() - (4 - n) * 60_000).toISOString(),
+      priority_bumped_at: null,
+    }));
+    fromMock
+      .mockReturnValueOnce(chain({ data: { vendor_id: VENDOR }, error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockReturnValueOnce(chain({ data: active, error: null }));
+    expect(
+      (await getBoothQueueDisplay(BOOTH))?.map((o) => o.orderNumber),
+    ).toEqual(["0001", "0002", "0003"]);
+  });
+
+  it("retains the prior display on a late queue-page failure", async () => {
+    const query = chain({ data: [], error: null });
+    query.limit = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: [
+          {
+            order_number: "0001",
+            status: "ready",
+            created_at: PLACED_FIRST,
+            priority_bumped_at: null,
+          },
+        ],
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: null, error: { message: "offline" } });
+    fromMock
+      .mockReturnValueOnce(chain({ data: { vendor_id: VENDOR }, error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockReturnValueOnce(query);
+    expect(await getBoothQueueDisplay(BOOTH)).toBeNull();
+  });
+
   it("rejects invalid booth identifiers before accessing the database", async () => {
     expect(await getBoothQueueDisplay("invalid")).toBeNull();
     expect(createServiceClientMock).not.toHaveBeenCalled();
@@ -249,7 +315,7 @@ describe("getBoothQueueDisplay", () => {
     expect(res).toBeNull();
     expect(errorSpy).toHaveBeenCalledWith(
       "getBoothQueueDisplay: orders read failed",
-      "boom",
+      "Could not load complete query results",
     );
     errorSpy.mockRestore();
   });
@@ -257,7 +323,7 @@ describe("getBoothQueueDisplay", () => {
   it("excludes a pending-payment QR order from the result", async () => {
     const orSpy = vi.fn();
     function chainWithOrSpy(result: { data: unknown; error: unknown }) {
-      const obj: Record<string, unknown> = {};
+      const obj = chain(result);
       const self = () => obj;
       obj.select = self;
       obj.eq = self;
@@ -268,7 +334,6 @@ describe("getBoothQueueDisplay", () => {
         return obj;
       };
       obj.order = self;
-      obj.limit = self;
       obj.maybeSingle = () => Promise.resolve(result);
       obj.then = (resolve: (v: typeof result) => void) =>
         Promise.resolve(result).then(resolve);

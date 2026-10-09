@@ -4,7 +4,6 @@ import { Nav } from "@/components/landing/nav";
 import { Footer } from "@/components/landing/footer";
 import { LandingCta } from "@/components/landing-cta";
 import { HeroPreviewCarousel } from "@/components/hero-preview-carousel";
-import { FeaturedBooths } from "@/components/featured-booths";
 import { BackToTop } from "@merqo/ui";
 import { Ticket } from "@/components/ticket";
 import { createServerClient } from "@/lib/supabase/server";
@@ -374,10 +373,6 @@ export default async function LandingPage() {
           Built in Singapore for hawker stalls, night-market &amp; event booths.
         </p>
       </section>
-
-      {/* Featured booths: seam, hidden until real, consenting vendors exist.
-          Future spec wires the data source (showcase opt-in + consent + admin). */}
-      <FeaturedBooths featured={[]} />
 
       {/* How it works */}
       <section id="how" className="mx-auto max-w-5xl px-5 py-14">

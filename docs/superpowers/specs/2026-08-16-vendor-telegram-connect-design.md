@@ -26,12 +26,12 @@ shipping first — `POST /api/merqo/vendor-connect-token` and
   section (`telegram-section.tsx`/`telegram-actions.ts`), and
   `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET` — none of it is needed
   once qkit calls merqo instead of running its own bot.
-- **No data carries over.** A vendor's qkit-bot `chat_id` is meaningless
-  under merqo's bot (Telegram scopes `chat_id` per bot×user pair). Every
-  vendor who linked qkit's own bot loses that link the moment this ships
-  and must reconnect via merqo's profile page — stated plainly, not
-  glossed over (the master doc already names this; repeated here since
-  it's this repo's own users affected).
+- **No data carries over.** Telegram's private-chat user ID can stay the
+  same across bots, but starting qkit's bot does not authorize merqo's bot
+  to send messages. Every vendor must start and link merqo's bot through
+  its profile page. The retirement deliberately preserves no old connection
+  records. See [Telegram bot IDs](https://core.telegram.org/api/bots/ids)
+  and [bot conversation rules](https://core.telegram.org/bots).
 - **`notifyVendorTelegram` keeps its name and call site** (`placeOrder`,
   `src/app/o/[code]/actions.ts`) — only its internals change, from a
   local `vendor_telegram` lookup + local `sendTelegramMessage` to a call

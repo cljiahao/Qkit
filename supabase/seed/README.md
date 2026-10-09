@@ -6,8 +6,8 @@ Demo and CI seed data — sample booths/menus for local development, the
 demo-video recorder, e2e tests, and CI's auth bootstrap. None of these run
 automatically via `supabase db reset`'s seed hook (`config.toml` points at
 `./seed.sql`, which doesn't exist here) — every script in this folder is run
-manually and is explicitly idempotent (`on conflict ... do update/nothing`)
-so it's safe to re-run.
+manually. The coffee-cart seeds use guarded upserts; two-booth demo seeds refuse
+vendors with existing booths and never delete their orders.
 
 ## Contents
 
@@ -22,12 +22,13 @@ so it's safe to re-run.
   style/temperature/sugar option groups) and a fixed e2e-only `short_code`
   (`e2eKopitiam01`) so `e2e/*.spec.ts` can navigate to `/o/e2eKopitiam01`
   deterministically; also wires a PayNow payment method (UEN) so the payment
-  panel and payment-queue e2e specs have something to render, and sets
-  `print_enabled = true` so a placed order still auto-starts into
-  `'preparing'` (migration 0086's no-printer accept gate would otherwise
-  land it `'pending'`, which `customer-order.spec.ts` doesn't simulate a
-  vendor accepting). Kopi/Teh's
-  milk-style choices demonstrate the price/cost-delta and allergen tagging
+  panel and payment-queue e2e specs have a local payment marker. This does not
+  configure Paykit's vendor payment record; a working checkout also needs the
+  separate local Paykit setup. `print_enabled = true` represents an opted-in
+  booth, but payment-required QR orders still start `pending` under `0087`.
+  The current customer smoke covers checkout, claim and initial tracking;
+  it does not simulate vendor fulfillment. Kopi/Teh's milk-style choices
+  demonstrate the price/cost-delta and allergen tagging
   features (2026-07-18): "C"/"Normal" are tagged `dairy`, an added "Oat Milk"
   choice carries `price_delta_cents:100`/`cost_delta_cents:40`; Milo is
   tagged `dairy`/`soy` at the item level (no milk-style group to vary it —
@@ -40,9 +41,9 @@ so it's safe to re-run.
   already belongs to that vendor; it is never transferred with its orders.
   Choose a different booth UUID to create a second vendor's demo.
 - `demo-two-booths.sql` — a richer local demo dataset: upserts the "Test"
-  vendor onto the `pro` plan (to lift the 1-booth free cap), deletes that
-  vendor's existing booths (orders cascade-delete per migration `0009`), then
-  re-inserts two active booths — "Kopitiam Cart" (PayNow-enabled, same
+  vendor onto the `pro` plan (to lift the 1-booth free cap), then creates
+  two active booths only if the vendor has no existing booths. A table lock
+  protects the guard and inserts, and a repeat run refuses. The booths are "Kopitiam Cart" (PayNow-enabled, same
   Oat Milk/dairy tagging as `coffee-cart.sql`) and an "Ice Cream Cart"
   (queue-only, no payment method) — for demo-video recording and manual
   multi-booth testing. The Ice Cream Cart's multi-select "Toppings" group
@@ -51,8 +52,9 @@ so it's safe to re-run.
   groups too. Explicitly never run via `db reset`.
 - `demo-two-booths-prod.sql` — the production variant: takes a single
   `__VENDOR_ID__` placeholder (the operator's own account), upgrades that
-  account to `pro`, and replaces only that vendor's own booths — safe against
-  a real project since it never touches `auth.users`.
+  account to `pro` and inserts demo booths only if it has no existing booths.
+  It refuses before writes otherwise and never deletes orders. Use a dedicated
+  empty demo account. It does not modify `auth.users`.
 
 ## Connectivity
 

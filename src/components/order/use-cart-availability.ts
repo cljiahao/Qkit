@@ -16,8 +16,8 @@ const HOLD_DEBOUNCE_MS = 500;
 const REFRESH_MS = 30_000;
 
 /**
- * Keeps a customer's basket held against the booth's stock, and the menu's
- * view of what is left current. `initial` is what the server rendered (raw
+ * Records advisory basket holds and refreshes the menu's stock counts.
+ * Holds do not reserve purchases. `initial` is what the server rendered (raw
  * stock, before anyone's hold); once the first hold call answers, the value
  * returned is net of other customers' baskets.
  *

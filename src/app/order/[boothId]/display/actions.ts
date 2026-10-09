@@ -6,6 +6,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { boardSettingsSchema, orderBoothIdSchema } from "@/lib/schemas";
 import { displayOrderNumber, isStaleOrderView } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
+import { readKeysetRows } from "@/lib/supabase/read-keyset";
 import type { OrderStatus } from "@/lib/types";
 
 export interface QueueDisplayOrder {
@@ -115,20 +116,27 @@ export async function getBoothQueueDisplay(
 
   const cutoff = Date.now() - COLLECTED_GRACE_MS;
   const cutoffIso = new Date(cutoff).toISOString();
-  const { data: orders, error: ordersError } = await supabase
+  const query = supabase
     .from("orders")
     .select(
-      "order_number, status, created_at, priority_bumped_at, completed_at",
+      "id, order_number, status, created_at, priority_bumped_at, completed_at",
     )
     .eq("booth_id", boothId)
     .or(
       `status.in.(pending,confirmed,preparing,ready),and(status.eq.completed,completed_at.gte.${cutoffIso})`,
     )
-    .or("payment_status.neq.pending,source.neq.qr");
-  if (ordersError) {
+    .or("payment_status.neq.pending,source.neq.qr")
+    .order("id");
+  let orders;
+  try {
+    orders = await readKeysetRows((afterId) => {
+      if (afterId !== null) query.gt("id", afterId);
+      return query.limit(1000);
+    });
+  } catch {
     console.error(
       "getBoothQueueDisplay: orders read failed",
-      ordersError.message,
+      "Could not load complete query results",
     );
     return null;
   }

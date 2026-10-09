@@ -44,7 +44,7 @@ function renderCustomizer(onAdd = vi.fn()) {
 describe("ItemCustomizer running total", () => {
   it("shows no extra charge with only the free default selected", () => {
     renderCustomizer();
-    expect(screen.queryByText(/^\+\$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\+\$\d/)).not.toBeInTheDocument();
   });
 
   it("shows the delta when a priced single-select choice is picked", async () => {
@@ -58,8 +58,9 @@ describe("ItemCustomizer running total", () => {
     const user = userEvent.setup();
     renderCustomizer();
     await user.click(screen.getByRole("radio", { name: "Oat Milk" }));
+    expect(screen.getByText("+$1.00")).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: "Regular" }));
-    expect(screen.queryByText(/^\+\$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\+\$\d/)).not.toBeInTheDocument();
   });
 
   it("sums multiple selected choices across groups", async () => {

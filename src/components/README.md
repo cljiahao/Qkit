@@ -17,9 +17,6 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
   live choice-derived union. Renders nothing for an empty/`undefined` list.
   Used by `order/order-form.tsx`'s menu card row; the dedicated Customize
   sheet keeps its own icon+word badges (see `item-customizer.tsx` below).
-- `back-to-top.tsx` — `BackToTop()`: fixed bottom-right scroll-to-top button
-  for the landing page, appears past `scrollY > 600`, respects
-  `prefers-reduced-motion` for the scroll behavior.
 - `dashboard-tour.tsx` — `DashboardTour({ toursSeen })`: thin wiring around
   `@merqo/ui`'s `DashboardTours` — registers qkit's per-page tours (`orders`
   at `/dashboard`, `boothsTourSteps` resolved lazily via `matchMedia` at
@@ -36,10 +33,6 @@ shadcn primitive (`ui/`) or ordering-flow-specific (`order/`).
   `tours`/`pathname`/`seenTourIds`/`onFirstSeen`/`scopeClassName` props
   through to `DashboardTours` (the tour mechanism itself is tested in the
   shared package).
-- `featured-booths.tsx` — `FeaturedBooths({ featured })`: renders a 3-up grid
-  of vendor-approved testimonial quotes; renders nothing when the array is
-  empty (no fabricated testimonials — `page.tsx` currently passes `[]`).
-- `featured-booths.dom.test.tsx` — RTL test asserting the empty-array no-op.
 - `feedback-form.tsx` — `FeedbackForm({ source, boothId, orderNumber, token,
 prompt, metric })`: compact rating widget posting to
   `submitFeedback` (`@/app/actions/feedback`) — `metric="stars"` (1–5, used
@@ -157,11 +150,12 @@ selected, onToggleSelect })`. Item options start expanded, not collapsed behind
   "Mark paid & start" tap (`confirmPaymentAndStart`) — there's no real
   scenario where a vendor confirms payment without also starting the order.
   Its undo (within the same `undoMs` window as every other advance) calls the
-  dedicated `revertPaymentAndStart` rather than `revertOrderAdvance`, which
-  only restores `payment_status` when reverting from `completed`, not
-  `preparing`; the card's `pendingUndo` state carries an `action:
+  dedicated `revertPaymentAndStart`; both undo actions preserve confirmed
+  payments. The card's `pendingUndo` state carries an `action:
 "advance" | "paymentAndStart"` tag so its one undo button dispatches to
   whichever action made the original change.
+  Pickup never confirms payment. Completed unpaid orders retain an explicit
+  Paykit-backed settlement action and proof review; cancelled orders do not.
   Advancing (Mark Ready/Mark Picked Up) fires instantly — no confirm gate on
   a tapped-dozens-of-times-a-shift button — backed instead by an `undoMs`
   (default `DEFAULT_UNDO_MS`, 4s; vendor-configurable via
@@ -212,7 +206,7 @@ selected, onToggleSelect })`. Item options start expanded, not collapsed behind
   by the board only for `preparing` orders while its own batch mark-ready
   mode is on) renders a `Checkbox` (`selected`, `onToggleSelect(order.id)`)
   next to the name/number block — selection state and the bulk `advanceOrder`
-  call itself live on `RealtimeOrderBoard`, not here. A non-terminal order
+  call itself live on `RealtimeOrderBoard`, not here. A non-cancelled order
   with `payment_status === "claimed"` and an uploaded proof photo also shows
   a dashed "View payment proof" toggle (`ProofPhotoTrigger`, local to this
   file) that lazily mounts `PaymentProofViewer` (`./payment-proof-viewer.tsx`,
@@ -342,9 +336,9 @@ tooltip, children })`: thin local wrapper around `@merqo/ui`'s `Section`,
 `ui/` is the shadcn/ui primitive library everything else in this tree is
 built from; `order/` holds components specific to the customer ordering flow
 and is consumed by `src/app/o/[code]/page.tsx`. The `landing-*` family
-(`landing-board`, `landing-boards`, `landing-ticket`, `landing-cta`,
-`featured-booths`) renders the marketing landing page alongside
-`hero-preview-carousel.tsx`, `back-to-top.tsx`, and `landing/`'s `Nav`. Its
+(`landing-board`, `landing-boards`, `landing-ticket`, `landing-cta`)
+renders the marketing landing page alongside
+`hero-preview-carousel.tsx`, shared `BackToTop` from `@merqo/ui`, and `landing/`'s `Nav`. Its
 sibling `landing/`-`Wordmark` is consumed only by the login page, outside the
 landing route. `order-card.tsx` and
 `dashboard-tour.tsx` are consumed by the vendor dashboard

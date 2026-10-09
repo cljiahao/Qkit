@@ -23,6 +23,8 @@ import {
 const {
   createServiceClientMock,
   ordersMaybeSingle,
+  readEqMock,
+  writeEqMock,
   boothsMaybeSingle,
   update,
   writeSelect,
@@ -32,13 +34,21 @@ const {
   clientIpMock,
 } = vi.hoisted(() => {
   const ordersMaybeSingle = vi.fn();
+  const readEqMock = vi.fn();
+  const writeEqMock = vi.fn();
   const boothsMaybeSingle = vi.fn();
   const writeSelect = vi.fn();
   const storageUploadMock = vi.fn();
   const rpcMock = vi.fn();
 
   function readChain(maybeSingleFn: () => unknown) {
-    const node = { eq: () => node, maybeSingle: maybeSingleFn };
+    const node = {
+      eq: (...args: unknown[]) => {
+        readEqMock(...args);
+        return node;
+      },
+      maybeSingle: maybeSingleFn,
+    };
     return node;
   }
   const ordersSelect = () => readChain(ordersMaybeSingle);
@@ -46,7 +56,10 @@ const {
 
   const update = vi.fn(() => {
     const node = {
-      eq: () => node,
+      eq: (...args: unknown[]) => {
+        writeEqMock(...args);
+        return node;
+      },
       neq: () => node,
       select: writeSelect,
       then: (onFulfilled: unknown, onRejected: unknown) =>
@@ -71,6 +84,8 @@ const {
       }),
     ),
     ordersMaybeSingle,
+    readEqMock,
+    writeEqMock,
     boothsMaybeSingle,
     update,
     writeSelect,
@@ -135,6 +150,8 @@ function fakeFile(
 beforeEach(() => {
   createServiceClientMock.mockClear();
   update.mockClear();
+  readEqMock.mockClear();
+  writeEqMock.mockClear();
   ordersMaybeSingle.mockReset().mockResolvedValue({
     data: {
       id: "o1",
@@ -201,6 +218,8 @@ describe("loadPreClaimContext", () => {
     });
 
     const result = await loadPreClaimContext(BOOTH, TOKEN);
+    expect(readEqMock).toHaveBeenCalledWith("booth_id", BOOTH);
+    expect(readEqMock).toHaveBeenCalledWith("access_token", TOKEN);
 
     expect(result).toEqual({
       state: "pending",
@@ -469,6 +488,8 @@ describe("claimPayment (photo required, deferred numbering)", () => {
 
   it("uploads the photo, claims via paykit, assigns a number, notifies, and updates the mirror", async () => {
     const result = await claimPayment(BOOTH, TOKEN, fakeFile());
+    expect(readEqMock).toHaveBeenCalledWith("booth_id", BOOTH);
+    expect(readEqMock).toHaveBeenCalledWith("access_token", TOKEN);
 
     expect(result).toEqual({ success: true, orderNumber: "0007" });
     expect(storageUploadMock).toHaveBeenCalledWith(
@@ -492,6 +513,33 @@ describe("claimPayment (photo required, deferred numbering)", () => {
       payment_proof_path: "v1/o1.webp",
       payment_proof_hash: expectedHash(PHOTO_BYTES),
     });
+  });
+
+  it("does not finalize a claim when Paykit reports a concurrent return to pending", async () => {
+    claimCheckoutMock.mockResolvedValue({
+      ok: true,
+      data: { status: "pending" },
+    });
+    expect(await claimPayment(BOOTH, TOKEN, fakeFile())).toEqual({
+      success: false,
+      error: "Could not record payment. Try again.",
+    });
+    expect(rpcMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("preserves Paykit's confirmed state when confirmation races the claim", async () => {
+    claimCheckoutMock.mockResolvedValue({
+      ok: true,
+      data: { status: "confirmed" },
+    });
+    expect(await claimPayment(BOOTH, TOKEN, fakeFile())).toEqual({
+      success: true,
+      orderNumber: "0007",
+    });
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_status: "confirmed" }),
+    );
   });
 
   it("never touches payment state or calls paykit if the upload fails", async () => {
@@ -574,6 +622,15 @@ describe("unclaimPayment", () => {
 
   it("reverts a claimed order via paykit and mirrors the status locally", async () => {
     const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
+    expect(readEqMock).toHaveBeenCalledWith("booth_id", BOOTH);
+    expect(readEqMock).toHaveBeenCalledWith("order_number", ORDER);
+    expect(readEqMock).toHaveBeenCalledWith("access_token", TOKEN);
+    expect(writeEqMock.mock.calls).toEqual([
+      ["booth_id", BOOTH],
+      ["order_number", ORDER],
+      ["access_token", TOKEN],
+      ["payment_status", "claimed"],
+    ]);
     expect(res).toEqual({ success: true });
     expect(createCheckoutMock).toHaveBeenCalledWith({
       vendorId: "v1",
@@ -582,6 +639,18 @@ describe("unclaimPayment", () => {
     });
     expect(unclaimCheckoutMock).toHaveBeenCalledWith("tx1");
     expect(update).toHaveBeenCalledWith({ payment_status: "pending" });
+  });
+
+  it("does not mirror pending when a concurrent claim won in Paykit", async () => {
+    unclaimCheckoutMock.mockResolvedValue({
+      ok: true,
+      data: { status: "claimed" },
+    });
+    expect(await unclaimPayment(BOOTH, ORDER, TOKEN)).toEqual({
+      success: false,
+      error: "Could not undo. Try again.",
+    });
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("blocks when rate-limited and never calls paykit", async () => {
@@ -743,6 +812,11 @@ describe("getPaymentStatus", () => {
     });
     const res = await getPaymentStatus(BOOTH, ORDER, TOKEN);
     expect(res).toBe("confirmed");
+    expect(readEqMock.mock.calls).toEqual([
+      ["booth_id", BOOTH],
+      ["order_number", ORDER],
+      ["access_token", TOKEN],
+    ]);
   });
 
   it("returns null and logs on a real read error", async () => {

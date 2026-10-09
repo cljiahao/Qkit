@@ -40,7 +40,7 @@ immediately invalidates every previously printed/saved QR for that booth.
 ## Token generation
 
 - **16 random bytes → URL-safe base64 (base64url), padding stripped = 22 chars,
-  ~132 bits entropy.** Clears the OWASP ≥128-bit floor for URL tokens.
+  128 bits entropy.** Encoding does not increase the source randomness.
 - Generated in Postgres via pgcrypto (already available in Supabase):
   ```sql
   translate(encode(gen_random_bytes(16), 'base64'), '+/', '-_')

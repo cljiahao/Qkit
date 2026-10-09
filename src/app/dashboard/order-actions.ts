@@ -3,7 +3,11 @@
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { getUser } from "@/lib/supabase/get-user";
-import { boardSettingsSchema } from "@/lib/schemas";
+import {
+  boardSettingsSchema,
+  orderStatusSchema,
+  paymentStatusSchema,
+} from "@/lib/schemas";
 import {
   ABANDONED_PAYMENT_MS,
   ADVANCE,
@@ -82,12 +86,23 @@ async function customerNotifyEnabled(
  * current status — the client never dictates it. Rejects an order with no legal
  * forward move (e.g. already terminal).
  */
-export async function advanceOrder(orderId: string): Promise<StatusResult> {
-  if (!idSchema.safeParse(orderId).success)
+export async function advanceOrder(
+  orderId: string,
+  expectedStatus?: OrderStatus,
+): Promise<StatusResult> {
+  if (
+    !idSchema.safeParse(orderId).success ||
+    (expectedStatus !== undefined &&
+      !orderStatusSchema.safeParse(expectedStatus).success)
+  )
     return { success: false, error: "Invalid order" };
 
   const { supabase, order, userId } = await loadOwnOrder(orderId);
   if (!supabase || !order) return { success: false, error: "Order not found" };
+
+  // A stale Mark Ready tap must never complete an order another device made ready.
+  if (expectedStatus !== undefined && order.status !== expectedStatus)
+    return { success: false, error: "Order changed — please refresh." };
 
   const adv = ADVANCE[order.status];
   if (!adv) return { success: false, error: "Order can't be advanced" };
@@ -97,13 +112,7 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   // by id — which could otherwise resurrect a cancelled order into revenue+stock.
   const { data: rows, error } = await supabase
     .from("orders")
-    .update(
-      buildAdvancePatch(
-        adv.next,
-        new Date().toISOString(),
-        order.payment_status,
-      ),
-    )
+    .update(buildAdvancePatch(adv.next, new Date().toISOString()))
     .eq("id", orderId)
     .eq("status", order.status)
     .select("id");
@@ -133,12 +142,10 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
   // src/app/o/[code]/notify.ts: notifyCustomer already never throws on its
   // own, but this call site still wraps it so nothing here can ever change
   // advanceOrder's own returned result below.
-  if (
-    adv.next === "ready" &&
-    userId &&
-    (await customerNotifyEnabled(supabase, userId))
-  ) {
+  if (adv.next === "ready" && userId) {
     try {
+      if (!(await customerNotifyEnabled(supabase, userId)))
+        return { success: true, status: adv.next };
       await notifyCustomer(
         userId,
         `qkit:${orderId}`,
@@ -157,10 +164,7 @@ export async function advanceOrder(orderId: string): Promise<StatusResult> {
  * order-card.tsx). `revertFrom` must be the legal ADVANCE target of
  * `revertTo` — the client can't use this to jump an order to an arbitrary
  * status, only to walk back the single transition it just made.
- * `prevPaymentStatus` is what payment_status was BEFORE that transition
- * (the client already has it — it read the order before calling
- * advanceOrder): undoing a completion also undoes the auto-confirm
- * buildAdvancePatch applied, exactly mirroring what advanceOrder did.
+ * Payment confirmation is independent and is never undone by this action.
  */
 export async function revertOrderAdvance(
   orderId: string,
@@ -170,6 +174,12 @@ export async function revertOrderAdvance(
 ): Promise<StatusResult> {
   if (!idSchema.safeParse(orderId).success)
     return { success: false, error: "Invalid order" };
+  if (
+    !orderStatusSchema.safeParse(revertTo).success ||
+    !orderStatusSchema.safeParse(revertFrom).success ||
+    !paymentStatusSchema.safeParse(prevPaymentStatus).success
+  )
+    return { success: false, error: "Not a valid undo" };
   if (ADVANCE[revertTo]?.next !== revertFrom)
     return { success: false, error: "Not a valid undo" };
 
@@ -180,18 +190,10 @@ export async function revertOrderAdvance(
     status: OrderStatus;
     ready_at?: null;
     completed_at?: null;
-    payment_status?: PaymentStatus;
-    paid_at?: null;
   } = { status: revertTo };
   if (revertFrom === "ready") patch.ready_at = null;
   if (revertFrom === "completed") {
     patch.completed_at = null;
-    // Mirrors buildAdvancePatch's own auto-confirm condition — only undo the
-    // payment flip if advanceOrder is what caused it.
-    if (prevPaymentStatus === "pending" || prevPaymentStatus === "claimed") {
-      patch.payment_status = prevPaymentStatus;
-      patch.paid_at = null;
-    }
   }
 
   // Guard on the status we read: if something else moved the order during
@@ -278,6 +280,8 @@ export async function confirmPaymentAndStart(
     );
     return { success: false, error: "Failed to confirm payment" };
   }
+  if (confirm.data.status !== "confirmed")
+    return { success: false, error: "Failed to confirm payment" };
 
   const { data: rows, error } = await supabase
     .from("orders")
@@ -447,7 +451,7 @@ export async function restoreAutoCompleted(
  * re-fetches the same transaction rather than creating a second one).
  * `orders.payment_status` is then updated as a local mirror, same rationale
  * as claimPayment (payment-actions.ts): the rest of qkit's order-lifecycle
- * logic (cancel-blocking, auto-confirm-on-complete, board realtime) still
+ * logic (cancel-blocking, payment displays, board realtime) still
  * reads it directly.
  */
 export async function confirmOrderPayment(
@@ -483,6 +487,8 @@ export async function confirmOrderPayment(
     console.error("confirmOrderPayment: paykit confirm failed", confirm.error);
     return { success: false, error: "Failed to confirm payment" };
   }
+  if (confirm.data.status !== "confirmed")
+    return { success: false, error: "Failed to confirm payment" };
 
   // Guard on the payment_status we read so a concurrent flip (double-tap, or a
   // cancel) makes this a no-op rather than a lost update. paykit already

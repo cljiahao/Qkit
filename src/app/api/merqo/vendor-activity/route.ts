@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -89,68 +90,70 @@ export async function GET(request: Request) {
   const merqoClient =
     supabase as unknown as SupabaseClient<MerqoSupportMessagesSchema>;
 
-  const [boothsRes, licensesRes, messagesRes] = await Promise.all([
-    supabase
-      .from("booths")
-      .select("id, vendor_id, created_at, is_active")
-      .eq("vendor_id", vendor.id),
-    supabase
-      .from("licenses")
-      .select("vendor_id, valid_from, expires_at")
-      .eq("vendor_id", vendor.id),
-    merqoClient
-      .schema("merqo")
-      .from("support_messages")
-      .select("id, status")
-      .eq("kit_slug", "qkit")
-      .eq("user_id", vendor.id)
-      .eq("status", "open"),
-  ]);
-  if (boothsRes.error || licensesRes.error || messagesRes.error) {
-    console.error(
-      "merqo vendor-activity: read failed",
-      boothsRes.error?.message ??
-        licensesRes.error?.message ??
-        messagesRes.error?.message,
+  try {
+    const [booths, licenses, messages] = await Promise.all([
+      readAllRows((from, to) =>
+        supabase
+          .from("booths")
+          .select("id, vendor_id, created_at, is_active")
+          .eq("vendor_id", vendor.id)
+          .order("id")
+          .range(from, to),
+      ),
+      readAllRows((from, to) =>
+        supabase
+          .from("licenses")
+          .select("vendor_id, valid_from, expires_at")
+          .eq("vendor_id", vendor.id)
+          .order("id")
+          .range(from, to),
+      ),
+      readAllRows((from, to) =>
+        merqoClient
+          .schema("merqo")
+          .from("support_messages")
+          .select("id, status")
+          .eq("kit_slug", "qkit")
+          .eq("user_id", vendor.id)
+          .eq("status", "open")
+          .order("id")
+          .range(from, to),
+      ),
+    ]);
+    const boothIds = booths.map((b) => b.id);
+    const orders = [];
+    for (let offset = 0; offset < boothIds.length; offset += 100) {
+      orders.push(
+        ...(await readAllRows((from, to) =>
+          supabase
+            .from("orders")
+            .select("booth_id, status, total_cents, created_at")
+            .in("booth_id", boothIds.slice(offset, offset + 100))
+            .order("id")
+            .range(from, to),
+        )),
+      );
+    }
+
+    const nowMs = Date.now();
+    const passExpiresAt =
+      latestActivePassByVendor(licenses, nowMs).get(vendor.id) ?? null;
+
+    const payload = computeVendorActivity(
+      vendor as { id: string; plan: Plan; created_at: string },
+      booths,
+      orders,
+      passExpiresAt,
+      messages.length > 0,
+      nowMs,
     );
+
+    return NextResponse.json(payload);
+  } catch (error) {
+    console.error("merqo vendor-activity: read failed", error);
     return NextResponse.json(
       { error: "Upstream unavailable" },
       { status: 503 },
     );
   }
-
-  const booths = boothsRes.data ?? [];
-  const boothIds = booths.map((b) => b.id);
-  const ordersRes = boothIds.length
-    ? await supabase
-        .from("orders")
-        .select("booth_id, status, total_cents, created_at")
-        .in("booth_id", boothIds)
-    : { data: [], error: null };
-  if (ordersRes.error) {
-    console.error(
-      "merqo vendor-activity: read failed",
-      ordersRes.error.message,
-    );
-    return NextResponse.json(
-      { error: "Upstream unavailable" },
-      { status: 503 },
-    );
-  }
-
-  const nowMs = Date.now();
-  const passExpiresAt =
-    latestActivePassByVendor(licensesRes.data ?? [], nowMs).get(vendor.id) ??
-    null;
-
-  const payload = computeVendorActivity(
-    vendor as { id: string; plan: Plan; created_at: string },
-    booths,
-    ordersRes.data ?? [],
-    passExpiresAt,
-    (messagesRes.data ?? []).length > 0,
-    nowMs,
-  );
-
-  return NextResponse.json(payload);
 }

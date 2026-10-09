@@ -1,26 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { installBrowserStorage } from "../../test/browser-storage";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveCart, loadCart, clearCart, holdSessionId } from "./cart-storage";
 import type { ReorderLine } from "./reorder";
-
-// jsdom isn't configured for this suite (node env), so stub a minimal
-// sessionStorage on the global before each test (mirrors recent-orders.test).
-function installStorage() {
-  let store: Record<string, string> = {};
-  const ss = {
-    getItem: (k: string) => store[k] ?? null,
-    setItem: (k: string, v: string) => {
-      store[k] = v;
-    },
-    removeItem: (k: string) => {
-      delete store[k];
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-  vi.stubGlobal("window", { sessionStorage: ss });
-  vi.stubGlobal("sessionStorage", ss);
-}
 
 const LINES: ReorderLine[] = [
   {
@@ -33,7 +14,7 @@ const LINES: ReorderLine[] = [
 
 beforeEach(() => {
   vi.unstubAllGlobals();
-  installStorage();
+  installBrowserStorage("sessionStorage");
 });
 
 describe("cart-storage", () => {
@@ -99,10 +80,13 @@ describe("cart-storage", () => {
   });
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
 describe("holdSessionId", () => {
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-  beforeEach(installStorage);
 
   it("makes an id once and returns the same one after a refresh", () => {
     const first = holdSessionId("b1");

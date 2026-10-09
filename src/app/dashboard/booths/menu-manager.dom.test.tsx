@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MenuManager } from "./menu-manager";
@@ -62,6 +62,20 @@ function makeItem(over: Partial<MenuItemFormInput> = {}): MenuItemFormInput {
     ...over,
   };
 }
+
+const originalObjectUrls = ["createObjectURL", "revokeObjectURL"].map(
+  (key) => ({
+    key,
+    descriptor: Object.getOwnPropertyDescriptor(URL, key),
+  }),
+);
+
+afterEach(() => {
+  for (const { key, descriptor } of originalObjectUrls) {
+    if (descriptor) Object.defineProperty(URL, key, descriptor);
+    else Reflect.deleteProperty(URL, key);
+  }
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -382,7 +396,7 @@ describe("MenuManager CSV customization import", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Save menu" })),
+      expect(screen.getByRole("button", { name: "Save menu" })).toBeEnabled(),
     );
     await user.click(screen.getByRole("button", { name: "Save menu" }));
     await waitFor(() =>

@@ -17,7 +17,7 @@ harness.
 - `session-context.sh` — SessionStart(startup\|resume\|clear\|compact): re-injects the first 30 lines of `AGENTS.md`, all of `docs/CONSTITUTION.md` if present, and a fixed list of always-on invariants (secrets guard, quality gate, feature-branch rule, protected files, architecture boundaries)
 - `skill-usage-log.sh` — PostToolUse(`Skill__.*`): appends a `timestamp\tskill-name` line to `.claude/skill-usage.log`; always exits 0; the data source for a future skill-usage audit
 - `stop-checks.sh` — Stop: runs `pnpm test`; on failure, tails the last 20 lines to stderr and exits 2 to force a fix before the turn ends; short-circuits to exit 0 when `stop_hook_active` is true, avoiding a re-entry loop
-- `subagent-stop.sh` — SubagentStop: if a subagent left uncommitted `.ts`/`.tsx` changes (working tree or staged), runs `tsc --noEmit` and exits 2 with the last 20 lines of errors, blocking a handback of broken code
+- `subagent-stop.sh` — SubagentStop: if tracked `.ts`/`.tsx` files differ from HEAD or the index contains such changes, runs `tsc --noEmit` and exits 2 with the last 20 lines of errors, blocking a handback of broken code; untracked-only TypeScript files do not activate this gate
 - `user-prompt-guard.cjs` — UserPromptSubmit: injection phrases produce advisory context so quoted attack examples can be investigated; credential-shaped input remains blocked (exit 2).
 - `verify.sh` — standalone verification gate (`pnpm build && pnpm check && pnpm test`); not wired to any event in `settings.json`, kept as a manual/on-demand full-suite gate
 
@@ -39,8 +39,9 @@ JSON payload on stdout with `exit 0` surfaces feedback without blocking
 `comment-hygiene` CI gate in `.github/workflows/ci.yml` — one canonical
 source, three enforcement surfaces of increasing strictness.
 `verify-harness.sh`
-(one level up, in `.claude/`) treats every script in this folder as part of
-the integrity-checked enforcement layer.
+(one level up, in `.claude/`) checks only manifest-listed enforcement paths using committed HEAD blobs.
+Uncommitted changes are not verified; this sensor runs on pre-push and is not
+currently a CI job.
 
 ## Parent
 

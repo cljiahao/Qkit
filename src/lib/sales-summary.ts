@@ -1,4 +1,5 @@
 import type { StatsSummary } from "@/lib/stats";
+import { spreadsheetText } from "./spreadsheet-text";
 import { centsToDollarString } from "@/lib/utils";
 
 // ── Stable external sales contract (v1) ──────────────────────────────────────
@@ -81,7 +82,7 @@ export function toSalesSummaryV1(
 
 function csvCell(value: string | number): string {
   const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 /**
@@ -92,9 +93,9 @@ function csvCell(value: string | number): string {
 export function salesSummaryToCsv(s: SalesSummaryV1): string {
   const rows: (string | number)[][] = [
     ["Metric", "Value"],
-    ["Generated at", s.generated_at],
-    ["Range", s.range],
-    ["Booth", s.booth_id],
+    ["Generated at", spreadsheetText(s.generated_at)],
+    ["Range", spreadsheetText(s.range)],
+    ["Booth", spreadsheetText(s.booth_id)],
     ["Revenue", centsToDollarString(s.revenue_cents)],
     ["Orders", s.order_count],
     ["Avg order", centsToDollarString(s.aov_cents)],
@@ -111,7 +112,7 @@ export function salesSummaryToCsv(s: SalesSummaryV1): string {
   rows.push(["Item", "Quantity", "Revenue", "Profit"]);
   for (const it of s.top_items) {
     rows.push([
-      it.label,
+      spreadsheetText(it.label),
       it.quantity,
       centsToDollarString(it.revenue_cents),
       centsToDollarString(it.profit_cents),

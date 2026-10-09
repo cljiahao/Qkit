@@ -132,7 +132,7 @@ export default async function AdminFeedbackPage() {
   // surface. Scores only (admin never sees the raw reviews — those are the
   // vendor's). Maps each customer rating to its booth's owner.
   const vendorName = await vendorStallNames(
-    supabase,
+    merqoClient,
     (vendorList ?? []).map((v) => v.id),
   );
   const boothVendor = new Map(

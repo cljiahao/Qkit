@@ -355,7 +355,8 @@ export function WalkupOrderDialog({
         {menuItems.map((item) => {
           const hasOptions =
             !!item.option_groups && item.option_groups.length > 0;
-          const plainInCart = hasOptions ? undefined : cart.get(item.id);
+          const plainKey = cartKey(item.id);
+          const plainInCart = hasOptions ? undefined : cart.get(plainKey);
           const left = remainingFor(remaining, item.id);
           const soldOut = left !== null && left <= 0;
           let cardTone: string;
@@ -388,7 +389,7 @@ export function WalkupOrderDialog({
                     variant="outline"
                     size="icon"
                     className="size-8 rounded-lg"
-                    onClick={() => decrement(item.id)}
+                    onClick={() => decrement(plainKey)}
                     aria-label={`Remove one ${item.name}`}
                   >
                     <Minus className="size-3.5" />
@@ -400,7 +401,7 @@ export function WalkupOrderDialog({
                     type="button"
                     size="icon"
                     className="size-8 rounded-lg"
-                    onClick={() => increment(item.id)}
+                    onClick={() => increment(plainKey)}
                     aria-label={`Add one ${item.name}`}
                   >
                     <Plus className="size-3.5" />

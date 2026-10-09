@@ -26,6 +26,7 @@ if (["agents.md", "claude.md"].includes(base) || /(^|\/)docs\/constitution\.md$/
   reason = "agent instructions and binding invariants require human approval";
 } else if (/(^|\/)\.claude\/(settings(\.local)?\.json|harness\.json|(verify|regen)-harness\.sh|comment-hygiene-patterns\.txt)$/.test(rel)
   || /(^|\/)\.claude\/(hooks|agents|\.harness-base)\//.test(rel)
+  || /(^|\/)\.codex\/(hooks\.json|hooks\/)/.test(rel)
   || /(^|\/)\.husky\//.test(rel)
   || [".mcp.json", ".gitleaks.toml", "dockerfile"].includes(base)) {
   reason = "enforcement or execution configuration requires human approval";

@@ -19,7 +19,9 @@ describe("hourLabel", () => {
 
 describe("fmtWait", () => {
   it("shows seconds under a minute, rounded", () => {
+    expect(fmtWait(0)).toBe("0s");
     expect(fmtWait(45)).toBe("45s");
+    expect(fmtWait(59)).toBe("59s");
     expect(fmtWait(45.4)).toBe("45s");
   });
 
@@ -31,11 +33,15 @@ describe("fmtWait", () => {
 
 describe("waitClock", () => {
   it("shows just seconds under a minute", () => {
+    expect(waitClock(0)).toBe("0s");
     expect(waitClock(45)).toBe("45s");
+    expect(waitClock(59)).toBe("59s");
   });
 
   it("floors minutes without over-rounding or a 60s carry", () => {
+    expect(waitClock(60)).toBe("1m 0s");
     expect(waitClock(110)).toBe("1m 50s");
+    expect(waitClock(119)).toBe("1m 59s");
     expect(waitClock(252)).toBe("4m 12s");
     expect(waitClock(119.6)).toBe("2m 0s"); // rounds to 120 -> 2m 0s, no "1m 60s"
   });

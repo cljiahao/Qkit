@@ -9,7 +9,7 @@
   "richReadme": true,
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "2e748de0b70b9c735b4b667b34cef6958e99214e1331661832cd7eba27655c2b",
+      "origin_hash": "b7c50532bf530b1f508654a5a565e5ff43c75b92104f21f59f2f664f59392d39",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -29,7 +29,7 @@
       "path": ".claude/hooks/verify.sh"
     },
     ".claude/hooks/protect-files.sh": {
-      "origin_hash": "281dabc9d452a8d00d0749d698a764fec355641723abd47ba6860f3941305048",
+      "origin_hash": "6cdf909952f50b5e653520d87f9ddc4571ada0ddf737ba9a1809794fdea1409f",
       "path": ".claude/hooks/protect-files.sh"
     },
     ".claude/hooks/block-no-verify.sh": {
@@ -73,7 +73,7 @@
       "path": ".claude/skills/next-verify/SKILL.md"
     },
     ".claude/skills/supabase-migrate/SKILL.md": {
-      "origin_hash": "bdc4a5851d9f391522c05c7b14087c8f1bafde07db1d0223d2e863ecf478bfb8",
+      "origin_hash": "38c41be87acd74110c6b2fe7917de5b9fb6ed2d33640db61ceb7c98aab3f1a2f",
       "path": ".claude/skills/supabase-migrate/SKILL.md"
     },
     ".husky/pre-commit": {

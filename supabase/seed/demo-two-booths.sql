@@ -2,11 +2,23 @@
 -- "Kopitiam Cart" (PayNow payment wired) and "Ice Cream Cart" (queue only, no
 -- payment). Use this for the demo video and manual multi-booth testing.
 --
--- Self-contained + idempotent: it ensures the vendor, resets that vendor's
--- booths (orders cascade-delete via migration 0009), then re-inserts both.
+-- Requires an empty demo vendor: it refuses existing booths before any writes.
+-- A successful run creates two booths; a repeat run refuses rather than deleting data.
 -- Run manually against LOCAL Supabase — never `db reset`, never prod.
 --   docker exec -i supabase_db_qkit psql -U postgres -d postgres < supabase/seed/demo-two-booths.sql
 
+begin;
+lock table qkit.booths in share row exclusive mode;
+do $guard$
+begin
+  if exists (
+    select 1 from qkit.booths
+    where vendor_id = '6df824a1-9da2-4608-ad13-2400a9114ec0'
+  ) then
+    raise exception 'Demo seed requires a vendor with no existing booths';
+  end if;
+end
+$guard$;
 -- ── Vendor (FK to auth.users) on the Pro plan (Pro lifts the 1-booth cap) ─────
 insert into auth.users (id, instance_id, aud, role, email)
 values ('6df824a1-9da2-4608-ad13-2400a9114ec0',
@@ -17,10 +29,6 @@ on conflict (id) do nothing;
 insert into qkit.vendors (id, plan)
 values ('6df824a1-9da2-4608-ad13-2400a9114ec0', 'pro')
 on conflict (id) do update set plan = 'pro';
-
--- ── Clean slate for this vendor (cascades orders) ────────────────────────────
-delete from qkit.booths
-where vendor_id = '6df824a1-9da2-4608-ad13-2400a9114ec0';
 
 -- ── Booth 1: Kopitiam Cart — PayNow payment wired ────────────────────────────
 insert into qkit.booths
@@ -131,3 +139,5 @@ values (
     }
   ]'::jsonb
 );
+
+commit;

@@ -248,8 +248,12 @@ export function BoothForm({
       ? String(initial.max_items_per_order)
       : "",
   );
-  const { pending: saving, run: runSave } = useAsyncAction();
-  const { pending: deleting, run: runDelete } = useAsyncAction();
+  const { pending: saving, run: runSave } = useAsyncAction(
+    "Could not save the booth. Refresh to check its status before retrying.",
+  );
+  const { pending: deleting, run: runDelete } = useAsyncAction(
+    "Could not delete the booth. Refresh to check its status before retrying.",
+  );
 
   function onDelete() {
     if (!initial?.boothId) return;

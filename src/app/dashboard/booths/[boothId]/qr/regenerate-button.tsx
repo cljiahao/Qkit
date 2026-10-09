@@ -35,14 +35,18 @@ export function RegenerateButton({
 
   function confirm() {
     startTransition(async () => {
-      const res = await regenerateShortCode(boothId);
-      if (!res.success) {
-        toast.error(res.error ?? "Could not regenerate QR");
-        return;
+      try {
+        const res = await regenerateShortCode(boothId);
+        if (!res.success) {
+          toast.error(res.error ?? "Could not regenerate QR");
+          return;
+        }
+        toast.success("New QR generated, reprint to use it.");
+        setOpen(false);
+        router.refresh();
+      } catch {
+        toast.error("Could not regenerate QR. Try again.");
       }
-      toast.success("New QR generated, reprint to use it.");
-      setOpen(false);
-      router.refresh();
     });
   }
 

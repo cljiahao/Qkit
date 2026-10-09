@@ -16,12 +16,14 @@ import { chromium } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
+import { localDemoBaseUrl } from "./base-url.mjs";
 
-const BASE = process.env.DEMO_BASE_URL ?? "http://localhost:3000";
+const BASE = localDemoBaseUrl(process.env.DEMO_BASE_URL);
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), "out");
 
 // Fixed demo identity — must match scripts/demo/reset.sql.
 const EMAIL = "demo-cart@qkit.local";
+// eslint-disable-next-line sonarjs/no-hardcoded-passwords -- Fixed local-only demo identity.
 const PASSWORD = "demo-password-123";
 const STALL = "Sunrise Coffee Cart";
 // Event vendors care about customization, not price — so the menu shows options
@@ -316,7 +318,7 @@ async function main() {
     await slowType(page, checkoutSheet.locator("#customerName"), CUSTOMER);
     await glideClick(
       page,
-      checkoutSheet.getByRole("button", { name: /Get my order number/ }),
+      checkoutSheet.getByRole("button", { name: /Place order/ }),
     );
     await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
@@ -347,9 +349,7 @@ async function main() {
     await bgPage.getByRole("button", { name: /Continue/ }).click();
     const bgCheckout = bgPage.getByRole("dialog");
     await bgCheckout.locator("#customerName").fill(WALK_IN);
-    await bgCheckout
-      .getByRole("button", { name: /Get my order number/ })
-      .click();
+    await bgCheckout.getByRole("button", { name: /Place order/ }).click();
     await bgPage.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
       timeout: 15000,
     });
@@ -362,6 +362,11 @@ async function main() {
       .waitFor({ timeout: 15000 });
     popMs = now(); // the live order just landed — chime goes here
     await beat(900);
+    await glideClick(
+      page,
+      page.getByRole("button", { name: "Start now" }).first(),
+    );
+    await page.getByRole("button", { name: "Mark Ready" }).first().waitFor();
     await glideClick(
       page,
       page.getByRole("button", { name: "Mark Ready" }).first(),
@@ -394,6 +399,18 @@ async function main() {
     await glideClick(page, saveBoothBtn2);
     await page.waitForURL(/\/dashboard\/booths$/, { timeout: 15000 });
     await beat(900);
+
+    // Existing menus have a dedicated editor; a priced item makes checkout real.
+    await page.goto(`${BASE}/dashboard/booths/${boothId}/menu`, {
+      waitUntil: "domcontentloaded",
+    });
+    const prices = page.getByPlaceholder("Optional");
+    for (let index = 0; index < ITEMS.length; index++) {
+      await prices.nth(index * 2).fill("4.50");
+      await prices.nth(index * 2).press("Tab");
+    }
+    await glideClick(page, page.getByRole("button", { name: "Save menu" }));
+    await page.getByText("Menu saved", { exact: true }).waitFor();
   });
 
   // ── Beat 7: the customer pays from their phone (PayNow QR → "I've paid") ────
@@ -411,9 +428,9 @@ async function main() {
     await slowType(page, payCheckout.locator("#customerName"), PAYING_CUSTOMER);
     await glideClick(
       page,
-      payCheckout.getByRole("button", { name: /Get my order number/ }),
+      payCheckout.getByRole("button", { name: /Place order/ }),
     );
-    await page.waitForURL(new RegExp(`/order/${boothId}/\\d+`), {
+    await page.waitForURL(new RegExp(`/order/${boothId}/pay\\?t=`), {
       timeout: 15000,
     });
     await beat(900);
@@ -422,7 +439,18 @@ async function main() {
     await payBtn.waitFor({ timeout: 10000 });
     await center(page, payBtn); // scroll the QR + button to the middle to read
     await beat(1400); // hold on the QR so it reads
+    await page.locator("#payment-proof").setInputFiles({
+      name: "demo-proof.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQI12P4DwABAQEAG7buVgAAAABJRU5ErkJggg==",
+        "base64",
+      ),
+    });
     await glideClick(page, payBtn);
+    await page.waitForURL(new RegExp(`/order/${boothId}/\\d+\\?t=`), {
+      timeout: 15000,
+    });
     await page.getByText(/payment sent/i).waitFor({ timeout: 10000 });
     await beat(900);
   });

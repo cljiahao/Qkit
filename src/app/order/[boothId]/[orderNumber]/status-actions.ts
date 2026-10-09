@@ -6,6 +6,7 @@ import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { boardSettingsSchema, parseOrderRef } from "@/lib/schemas";
 import { ordersAheadOf } from "@/lib/orders";
 import { estimateWaitSeconds, type StatsOrder } from "@/lib/stats";
+import { readKeysetRows } from "@/lib/supabase/read-keyset";
 import type { ActionResult } from "@/lib/action-result";
 import type { OrderStatus } from "@/lib/types";
 
@@ -176,14 +177,24 @@ export async function getWaitEstimate(
   }
   if (!target) return null;
 
-  const { data: active, error: activeError } = await supabase
+  const activeQuery = supabase
     .from("orders")
     .select("id, status, created_at, priority_bumped_at")
     .eq("booth_id", boothId)
     .in("status", ACTIVE_STATUSES)
-    .or("payment_status.neq.pending,source.neq.qr");
-  if (activeError) {
-    console.error("getWaitEstimate: active read failed", activeError.message);
+    .or("payment_status.neq.pending,source.neq.qr")
+    .order("id");
+  let active;
+  try {
+    active = await readKeysetRows((afterId) => {
+      if (afterId !== null) activeQuery.gt("id", afterId);
+      return activeQuery.limit(1000);
+    });
+  } catch {
+    console.error(
+      "getWaitEstimate: active read failed",
+      "Could not load complete query results",
+    );
     return null;
   }
 

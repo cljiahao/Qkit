@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { cartKey, cartTotal, sumOptionDeltas } from "./cart";
 
 describe("cartKey", () => {
-  it("returns the bare id when there are no options", () => {
-    expect(cartKey("kopi")).toBe("kopi");
-    expect(cartKey("kopi", [])).toBe("kopi");
+  it("uses the same item identity for absent and empty options", () => {
+    expect(cartKey("kopi")).toBe(cartKey("kopi", []));
+    expect(cartKey("kopi")).not.toBe(cartKey("teh"));
   });
 
   it("is stable regardless of option order", () => {
@@ -48,6 +48,42 @@ describe("cartKey", () => {
     ]);
     const one = cartKey("burger", [{ group: "Add-ons", choice: "Egg" }]);
     expect(both).not.toBe(one);
+  });
+
+  it("preserves boundaries when labels contain the old separator", () => {
+    const separator = String.fromCharCode(31);
+    const first = [{ group: `Milk${separator}Oat`, choice: "Large" }];
+    const second = [{ group: "Milk", choice: `Oat${separator}Large` }];
+    expect(cartKey("kopi", first)).not.toBe(cartKey("kopi", second));
+  });
+
+  it("distinguishes one label pair from several pairs", () => {
+    const separator = String.fromCharCode(31);
+    expect(
+      cartKey("kopi", [{ group: "A", choice: `B${separator}C${separator}D` }]),
+    ).not.toBe(
+      cartKey("kopi", [
+        { group: "A", choice: "B" },
+        { group: "C", choice: "D" },
+      ]),
+    );
+  });
+
+  it("keeps a plain item ID distinct from an encoded configured-item key", () => {
+    const configured = cartKey("kopi", [{ group: "Milk", choice: "Oat" }]);
+    expect(cartKey(configured)).not.toBe(configured);
+  });
+
+  it("sorts distinct Unicode labels deterministically without mutating input", () => {
+    const options = [
+      { group: "\u00e9", choice: "A" },
+      { group: "e\u0301", choice: "A" },
+    ];
+    const original = structuredClone(options);
+    expect(cartKey("kopi", options)).toBe(
+      cartKey("kopi", [...options].reverse()),
+    );
+    expect(options).toEqual(original);
   });
 });
 

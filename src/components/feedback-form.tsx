@@ -49,20 +49,24 @@ export function FeedbackForm({
       return;
     }
     start(async () => {
-      const res = await submitFeedback({
-        source,
-        boothId,
-        orderNumber,
-        token,
-        rating: metric === "stars" && score > 0 ? score : undefined,
-        nps: metric === "nps" && score >= 0 ? score : undefined,
-        message: message.trim() || undefined,
-      });
-      if (!res.success) {
-        toast.error(res.error);
-        return;
+      try {
+        const res = await submitFeedback({
+          source,
+          boothId,
+          orderNumber,
+          token,
+          rating: metric === "stars" && score > 0 ? score : undefined,
+          nps: metric === "nps" && score >= 0 ? score : undefined,
+          message: message.trim() || undefined,
+        });
+        if (!res.success) {
+          toast.error(res.error);
+          return;
+        }
+        setSent(true);
+      } catch {
+        toast.error("Could not send feedback. Please try again.");
       }
-      setSent(true);
     });
   }
 

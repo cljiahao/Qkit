@@ -715,6 +715,14 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
+      is_admin: {
+        Args: { p_uid: string };
+        Returns: boolean;
+      };
+      patch_board_settings: {
+        Args: { p_patch: Json };
+        Returns: Json;
+      };
       // Internal validator used by definer order RPCs; no public EXECUTE grant.
       validate_order_options: {
         Args: { p_menu_item: Json; p_options: Json | null };

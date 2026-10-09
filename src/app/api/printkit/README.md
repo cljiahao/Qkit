@@ -10,7 +10,7 @@ print job — is `@/lib/printkit/client.ts`, not a route). Machine-to-machine
 ## Contents
 
 - `print-status/` — `POST` endpoint printkit calls with a print job's
-  terminal (or in-flight) status; see its own README.
+  terminal status; see its own README.
 - `printer-status/` — `GET` endpoint qkit's own booth page calls to ask
   printkit whether a booth has a printer and whether it is reachable. It runs
   the other way round from `print-status/`: qkit is the caller here. It
@@ -21,13 +21,16 @@ print job — is `@/lib/printkit/client.ts`, not a route). Machine-to-machine
 
 ## Connectivity
 
-Guarded by `printkitCallbackBearerOk(request)` from
+The callback route is guarded by `printkitCallbackBearerOk(request)` from
 `@/lib/qkit-printkit-auth` — a plain shared-secret bearer check against
 `PRINTKIT_CALLBACK_SECRET`, no `kit_slug:` prefix (unlike `PAYKIT_KIT_SECRET`
 in `../../../lib/paykit/client.ts`), since this endpoint has exactly one
 caller (printkit). Writes land on `orders.print_status`/
 `print_status_updated_at` via `createServiceClient()`, surfaced on the
 dashboard board as `PrintBadge` in `@/components/order-card.tsx`.
+
+The printer-status route instead requires the signed-in vendor and an owned
+booth before calling Printkit; it exposes no machine secret to the browser.
 
 ## Parent
 

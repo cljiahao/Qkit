@@ -70,7 +70,7 @@ export async function fireReadyNotification(
 ): Promise<void> {
   if (!isNotifySupported() || Notification.permission !== "granted") return;
   await showNotification(`Order #${orderNumber} is ready`, {
-    body: `${boothName} — please collect it now.`,
+    body: `${boothName}. Please collect it now.`,
     // Same tag coalesces repeats into one popup if the effect re-fires.
     tag: `qkit-order-${orderNumber}`,
     data: { url: url ?? "/" },
@@ -88,7 +88,7 @@ export async function fireNewOrderNotification(
 ): Promise<void> {
   if (!isNotifySupported() || Notification.permission !== "granted") return;
   await showNotification(`New order #${orderNumber}`, {
-    body: `${boothName} — tap to view.`,
+    body: `${boothName}. Tap to view.`,
     tag: `qkit-new-order-${orderNumber}`,
     data: { url: url ?? "/dashboard" },
   });
@@ -126,8 +126,12 @@ function sharedCtx(): AudioContext | null {
 /** Create + resume the shared AudioContext. Call from a user gesture (tap). */
 export function unlockAudio(): void {
   const ctx = sharedCtx();
-  // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
-  if (ctx && ctx.state === "suspended") void ctx.resume?.();
+  if (!ctx || ctx.state !== "suspended") return;
+  try {
+    ctx.resume().catch(() => undefined);
+  } catch {
+    // Audio is optional; browser restrictions must not interrupt the gesture.
+  }
 }
 
 // Notes still ringing from a previous playNotes call on a given context —

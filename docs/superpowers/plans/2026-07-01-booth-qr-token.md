@@ -1,5 +1,14 @@
 # Rotatable Booth QR Token — Implementation Plan
 
+**Review correction (2026-10-09):** This retired design was replaced by the
+short-code ordering RPC boundary. Public booth reads could expose the original
+token, and an ungated sequential order-status page was not an acceptable
+customer authorization boundary. Current customer status/actions require a
+per-order capability. Sixteen random bytes contain 128 bits of entropy and
+encode to exactly 22 unpadded base64url characters; the older entropy and
+variable-length claims below are incorrect. Preserve this plan as history,
+not as implementation or migration instructions.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give each booth a vendor-rotatable access token that gates the customer order entry page, so a saved/stale QR link can be invalidated on demand.

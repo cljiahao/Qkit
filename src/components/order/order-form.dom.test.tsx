@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
+import { webcrypto } from "node:crypto";
 import { OrderForm } from "./order-form";
 import type { MenuItem, SelectedOption } from "@/lib/types";
 
@@ -81,6 +82,7 @@ function renderForm(closed = false, menuItems: MenuItem[] = [KOPI, TEH]) {
 }
 
 beforeEach(() => {
+  vi.stubGlobal("crypto", webcrypto);
   vi.clearAllMocks();
   window.sessionStorage.clear(); // no stale reorder seed leaking between tests
   // Default: the hold call could not be made, so the form keeps showing the
@@ -93,6 +95,11 @@ beforeEach(() => {
     boothId: "b1",
     accessToken: "tok42",
   });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("OrderForm cart", () => {
@@ -442,6 +449,151 @@ describe("OrderForm cart", () => {
     );
     expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42");
   });
+  it("replays the same key on manual retry after two ambiguous network failures", async () => {
+    placeOrder
+      .mockRejectedValueOnce(new Error("lost response"))
+      .mockRejectedValueOnce(new Error("lost retry response"))
+      .mockResolvedValueOnce({
+        success: true,
+        orderNumber: "0042",
+        boothId: "b1",
+        accessToken: "tok42",
+      });
+    const { toast } = await import("sonner");
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Network issue. Please retry with the same order details.",
+      ),
+    );
+    const name = within(dialog).getByLabelText("Your name");
+    await user.clear(name);
+    await user.type(name, "Grace");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Retry your previous order before changing its details.",
+      ),
+    );
+    expect(placeOrder).toHaveBeenCalledTimes(2);
+    await user.clear(name);
+    await user.type(name, "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42"),
+    );
+    expect(placeOrder).toHaveBeenCalledTimes(3);
+    expect(new Set(placeOrder.mock.calls.map((call) => call[2])).size).toBe(1);
+  });
+  it("recovers the same request key after remount without storing customer details", async () => {
+    placeOrder
+      .mockRejectedValueOnce(new Error("Lost response"))
+      .mockRejectedValueOnce(new Error("Lost retry"));
+    const user = userEvent.setup();
+    const mounted = renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    let dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
+    const firstKey = placeOrder.mock.calls[0][2];
+    const stored = window.sessionStorage.getItem("qkit:pending-order:b1")!;
+    expect(JSON.parse(stored)).toEqual({
+      key: firstKey,
+      fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(stored).not.toContain("Ada");
+    expect(stored).not.toContain("kopi");
+    mounted.unmount();
+    renderForm();
+    expect(toast.error).toHaveBeenCalledWith(
+      "A previous order is awaiting confirmation. Re-enter the same details to recover it.",
+    );
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42"),
+    );
+    expect(placeOrder.mock.calls[2][2]).toBe(firstKey);
+    expect(window.sessionStorage.getItem("qkit:pending-order:b1")).toBeNull();
+  });
+  it("blocks a corrupt restored attempt instead of minting a second order key", async () => {
+    window.sessionStorage.setItem("qkit:pending-order:b1", "{broken");
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: /Continue/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "Could not safely restore this order. Check with the vendor before ordering again.",
+      ),
+    );
+    expect(placeOrder).not.toHaveBeenCalled();
+  });
+  it.each(["setItem", "getItem"] as const)(
+    "allows an initial order and reuses its in-memory key when storage %s is blocked",
+    async (method) => {
+      placeOrder
+        .mockRejectedValueOnce(new Error("Lost response"))
+        .mockRejectedValueOnce(new Error("Lost retry"));
+      const storage = vi
+        .spyOn(Storage.prototype, method)
+        .mockImplementation(() => {
+          throw new DOMException("Blocked", "SecurityError");
+        });
+      const user = userEvent.setup();
+      renderForm();
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await user.click(screen.getByRole("button", { name: /Continue/ }));
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+      await user.click(
+        within(dialog).getByRole("button", { name: /Place order/ }),
+      );
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith(
+          "This order can only be recovered on this page. Keep it open until confirmation.",
+        ),
+      );
+      await waitFor(() => expect(placeOrder).toHaveBeenCalledTimes(2));
+      expect(push).not.toHaveBeenCalled();
+      await user.click(
+        within(dialog).getByRole("button", { name: /Place order/ }),
+      );
+      await waitFor(() =>
+        expect(push).toHaveBeenCalledWith("/order/b1/0042?t=tok42"),
+      );
+      expect(placeOrder).toHaveBeenCalledTimes(3);
+      expect(new Set(placeOrder.mock.calls.map((call) => call[2])).size).toBe(
+        1,
+      );
+      storage.mockRestore();
+    },
+  );
 
   it("renders the phone field as optional and submits successfully when left blank", async () => {
     const user = userEvent.setup();
@@ -687,13 +839,13 @@ describe("OrderForm booth limits and basket holds", () => {
     );
   });
 
-  it("holds the basket, and trims it when another basket got there first", async () => {
+  it("keeps an existing cart when anonymous holds consume all unsold stock", async () => {
     const user = userEvent.setup();
     holdCart.mockResolvedValue({
-      remaining: { kopi: 1 },
-      held: { kopi: 1 },
-      left: null,
-      leftHeld: 0,
+      remaining: { kopi: 0 },
+      held: { kopi: 2 },
+      left: 0,
+      leftHeld: 2,
       maxPerOrder: null,
     });
     render(
@@ -702,6 +854,7 @@ describe("OrderForm booth limits and basket holds", () => {
         boothId="b1"
         menuItems={[KOPI]}
         remaining={{ kopi: 2 }}
+        left={2}
       />,
     );
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -716,18 +869,102 @@ describe("OrderForm booth limits and basket holds", () => {
         ),
       { timeout: 3000 },
     );
+    expect(
+      await screen.findByText(
+        "Also in other baskets. Stock is checked when you order.",
+      ),
+    ).toBeInTheDocument();
+    expect(toast.error).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole("button", { name: /Continue · 2 items · \$7\.00/ }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Your name"), "Ada");
+    await user.click(
+      within(dialog).getByRole("button", { name: /Place order/ }),
+    );
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        "1 item no longer available, removed from your order",
+      expect(placeOrder).toHaveBeenCalledWith(
+        "code123",
+        expect.objectContaining({
+          items: [expect.objectContaining({ menuItemId: "kopi", quantity: 2 })],
+        }),
+        expect.stringMatching(UUID),
+        expect.stringMatching(UUID),
       ),
     );
-    expect(screen.getByText("1 left")).toBeInTheDocument();
   });
 
-  it("shows stock held by another basket as held, not sold out", async () => {
+  it("allows customization when anonymous holds cover all unsold item stock", async () => {
+    const user = userEvent.setup();
+    holdCart.mockResolvedValue({
+      remaining: { teh: 0 },
+      held: { teh: 2 },
+      left: null,
+      leftHeld: 0,
+      maxPerOrder: null,
+    });
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[TEH]}
+        remaining={{ teh: 2 }}
+      />,
+    );
+    expect(
+      await screen.findByText(
+        "Also in other baskets. Stock is checked when you order.",
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Customize" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Customize" }));
+    await user.click(screen.getByRole("button", { name: "stub-confirm" }));
+    expect(
+      screen.getByRole("button", { name: /Continue · 1 item · \$4\.00/ }),
+    ).toBeEnabled();
+  });
+
+  it("trims a cart when an item actually sells, rather than being held", async () => {
+    const user = userEvent.setup();
+    holdCart.mockResolvedValue({
+      remaining: { kopi: 1 },
+      held: {},
+      left: null,
+      leftHeld: 0,
+      maxPerOrder: null,
+    });
+    render(
+      <OrderForm
+        code="code123"
+        boothId="b1"
+        menuItems={[KOPI]}
+        remaining={{ kopi: 2 }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add one Kopi" }));
+    await waitFor(
+      () =>
+        expect(toast.error).toHaveBeenCalledWith(
+          "1 item no longer available, removed from your order",
+        ),
+      { timeout: 3000 },
+    );
+    expect(screen.getByText("1 left")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Continue · 1 item · \$3\.50/ }),
+    ).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Add one Kopi" }));
+    expect(toast.error).toHaveBeenCalledWith("Only 1 left");
+  });
+
+  it("disables an item whose actual stock is exhausted", async () => {
     holdCart.mockResolvedValue({
       remaining: { kopi: 0 },
-      held: { kopi: 2 },
+      held: {},
       left: null,
       leftHeld: 0,
       maxPerOrder: null,
@@ -741,9 +978,42 @@ describe("OrderForm booth limits and basket holds", () => {
       />,
     );
     expect(
-      await screen.findByText("In another basket", {}, { timeout: 3000 }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Held" })).toBeDisabled();
+      await screen.findByRole(
+        "button",
+        { name: "Sold out" },
+        { timeout: 3000 },
+      ),
+    ).toBeDisabled();
+  });
+
+  it("removes an existing cart when the actual daily stock is exhausted", async () => {
+    const user = userEvent.setup();
+    holdCart.mockResolvedValue({
+      remaining: {},
+      held: {},
+      left: 0,
+      leftHeld: 0,
+      maxPerOrder: null,
+    });
+    render(
+      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={2} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await waitFor(
+      () =>
+        expect(toast.error).toHaveBeenCalledWith(
+          "1 item no longer available, removed from your order",
+        ),
+      { timeout: 3000 },
+    );
+    expect(
+      screen.getByRole("button", { name: "Add items to order" }),
+    ).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(toast.error).toHaveBeenCalledWith(
+      "This stall has nothing left for today.",
+    );
+    expect(placeOrder).not.toHaveBeenCalled();
   });
 
   it("sends the hold's session with the order so placing it releases the hold", async () => {
@@ -793,21 +1063,41 @@ describe("OrderForm booth limits and basket holds", () => {
 });
 
 describe("OrderForm stock notice", () => {
-  it("says how many items are left today when stock is low", () => {
-    render(
-      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={3} />,
-    );
-    expect(screen.getByText("Only 3 items left today")).toBeInTheDocument();
-  });
+  it.each([1, 3, 10])(
+    "says how many items are left today when stock is low: %s",
+    (left) => {
+      render(
+        <OrderForm
+          code="code123"
+          boothId="b1"
+          menuItems={[KOPI]}
+          left={left}
+        />,
+      );
+      expect(
+        screen.getByText(
+          `Only ${left} ${left === 1 ? "item" : "items"} left today`,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
 
-  it("says nothing about stock while plenty is left", () => {
-    render(
-      <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={40} />,
-    );
-    expect(screen.queryByText(/left today/)).not.toBeInTheDocument();
-  });
+  it.each([11, 40, 500])(
+    "says nothing about stock while plenty is left: %s",
+    (left) => {
+      render(
+        <OrderForm
+          code="code123"
+          boothId="b1"
+          menuItems={[KOPI]}
+          left={left}
+        />,
+      );
+      expect(screen.queryByText(/left today/)).not.toBeInTheDocument();
+    },
+  );
 
-  it("counts other baskets' holds, so the number matches what can be added", async () => {
+  it("includes unsold held items in the daily stock count", async () => {
     holdCart.mockResolvedValue({
       remaining: {},
       held: {},
@@ -819,31 +1109,45 @@ describe("OrderForm stock notice", () => {
       <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={3} />,
     );
     expect(
-      await screen.findByText("Only 1 item left today", {}, { timeout: 3000 }),
+      await screen.findByText(
+        "Other baskets also contain these items. Stock is checked when you order.",
+        {},
+        { timeout: 3000 },
+      ),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Only 3 items left today")).toBeNull();
+    expect(screen.getByText("Only 3 items left today")).toBeInTheDocument();
+    expect(screen.queryByText("Only 1 item left today")).toBeNull();
   });
 
-  it("shows one message, not two, when the last items are all in other baskets", async () => {
+  it("allows daily stock held in other baskets without exceeding the order limit", async () => {
+    const user = userEvent.setup();
     holdCart.mockResolvedValue({
       remaining: {},
       held: {},
       left: 0,
       leftHeld: 3,
-      maxPerOrder: null,
+      maxPerOrder: 1,
     });
     render(
       <OrderForm code="code123" boothId="b1" menuItems={[KOPI]} left={3} />,
     );
     expect(
       await screen.findByText(
-        /last items are in other baskets/,
+        "Other baskets also contain these items. Stock is checked when you order.",
         {},
         {
           timeout: 3000,
         },
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/left today/)).not.toBeInTheDocument();
+    expect(screen.getByText("Only 3 items left today")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add one Kopi" }));
+    expect(toast.error).toHaveBeenCalledWith(
+      "This stall takes up to 1 item per order.",
+    );
+    expect(
+      screen.getByRole("button", { name: /Continue · 1 item · \$3\.50/ }),
+    ).toBeEnabled();
   });
 });

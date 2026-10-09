@@ -1,3 +1,4 @@
+import { readAllRows } from "@/lib/supabase/read-all";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
@@ -39,24 +40,50 @@ export default async function AdminVendorsPage() {
     { data: orderRows },
     { data: messageRows },
   ] = await Promise.all([
-    supabase
-      .from("vendors")
-      .select("id, plan, created_at")
-      .order("created_at", { ascending: false }),
-    supabase.from("licenses").select("vendor_id, valid_from, expires_at"),
-    supabase.from("booths").select("id, vendor_id, created_at"),
-    supabase.from("orders").select("booth_id, status, created_at"),
-    merqoClient
-      .schema("merqo")
-      .from("support_messages")
-      .select("user_id")
-      .eq("kit_slug", "qkit")
-      .eq("status", "open"),
+    readAllRows((from, to) =>
+      supabase
+        .from("vendors")
+        .select("id, plan, created_at")
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("licenses")
+        .select("vendor_id, valid_from, expires_at")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("booths")
+        .select("id, vendor_id, created_at")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      supabase
+        .from("orders")
+        .select("booth_id, status, created_at")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
+    readAllRows((from, to) =>
+      merqoClient
+        .schema("merqo")
+        .from("support_messages")
+        .select("user_id")
+        .eq("kit_slug", "qkit")
+        .eq("status", "open")
+        .order("id")
+        .range(from, to),
+    ).then((data) => ({ data })),
   ]);
 
   const rows = vendorRows ?? [];
   const stallNames = await vendorStallNames(
-    supabase,
+    merqoClient,
     rows.map((v) => v.id),
   );
   const passByVendor = latestActivePassByVendor(licenseRows ?? [], now);

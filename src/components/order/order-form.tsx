@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,6 +34,14 @@ import {
 } from "@/lib/utils";
 import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
 import { loadCart, saveCart, clearCart } from "@/lib/cart-storage";
+import {
+  loadPendingOrder,
+  savePendingOrder,
+  clearPendingOrder,
+  orderFingerprint,
+  type PendingOrder,
+  RecoveryStorageError,
+} from "@/lib/pending-order";
 import { addRecentOrder } from "@/lib/recent-orders";
 import { reconcileReorder } from "@/lib/reorder";
 import { takeReorder } from "@/lib/reorder-handoff";
@@ -75,7 +83,7 @@ function StockNote({ left, held }: { left: number | null; held: boolean }) {
   if (left <= 0)
     return (
       <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
-        {held ? "In another basket" : "Sold out"}
+        Sold out
       </p>
     );
   return (
@@ -88,6 +96,11 @@ function StockNote({ left, held }: { left: number | null; held: boolean }) {
       )}
     >
       {left} left
+      {held && (
+        <span className="block text-muted-foreground">
+          Also in other baskets. Stock is checked when you order.
+        </span>
+      )}
     </p>
   );
 }
@@ -96,11 +109,7 @@ function StockNote({ left, held }: { left: number | null; held: boolean }) {
 // noise: nobody queues differently at 40 remaining.
 const LOW_STOCK_ITEMS = 10;
 
-// What the stall has left today, as this customer can act on it: one message,
-// never two. `left` is already net of other baskets' holds, so "Only 1 item
-// left" and "the last items are in other baskets" cannot both be true. The
-// page used to print its own count from the stock before holds, which read
-// "Only 3 items left today" right above "the last items are in other baskets".
+// Low-stock counts include unsold items in other baskets; holds are advisory.
 function StockNotice({
   left,
   leftHeld,
@@ -116,17 +125,13 @@ function StockNotice({
           Only {count(left, "item")} left today
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Once they are gone this stall stops taking orders until tomorrow.
+          {leftHeld > 0
+            ? "Other baskets also contain these items. Stock is checked when you order."
+            : "Once they are gone this stall stops taking orders until tomorrow."}
         </p>
       </div>
     );
-  if (leftHeld === 0) return null;
-  return (
-    <p className="rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center text-sm font-medium">
-      The last items are in other baskets right now. Check back in a few
-      minutes.
-    </p>
-  );
+  return null;
 }
 
 // Limits that apply to the whole basket, said once above the menu so nobody
@@ -173,6 +178,28 @@ export function OrderForm({
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [cartExpanded, setCartExpanded] = useState(false);
   const hydrated = useRef(false);
+  const [unresolvedSubmit, setUnresolvedSubmit] = useState<PendingOrder | null>(
+    null,
+  );
+
+  useEffect(() => {
+    try {
+      if (loadPendingOrder(boothId))
+        toast.error(
+          "A previous order is awaiting confirmation. Re-enter the same details to recover it.",
+        );
+    } catch (error) {
+      if (error instanceof RecoveryStorageError) {
+        toast.error(
+          "Order recovery storage is unavailable. Stay on this page if you place an order.",
+        );
+        return;
+      }
+      toast.error(
+        "Could not restore the previous order attempt. Check with the vendor before ordering again.",
+      );
+    }
+  }, [boothId]);
 
   const {
     register,
@@ -277,7 +304,7 @@ export function OrderForm({
 
   const cartEntries = Array.from(cart.entries());
   const cartItems = Array.from(cart.values());
-  const { availability, holdSession } = useCartAvailability(
+  const { availability: heldAvailability, holdSession } = useCartAvailability(
     boothId,
     initialAvailability,
     cartItems.map((it) => ({
@@ -287,9 +314,25 @@ export function OrderForm({
     !closed,
   );
 
-  // Another basket can take stock this one was counting on (two customers
-  // reaching for the last item: the first hold wins). Cut the basket to what
-  // is still available and say so, rather than let it fail at checkout.
+  // Anonymous holds cannot deny purchases; only sold stock and order limits can.
+  const availability = useMemo<Availability>(
+    () => ({
+      ...heldAvailability,
+      remaining: Object.fromEntries(
+        Object.entries(heldAvailability.remaining).map(([id, left]) => [
+          id,
+          left + (heldAvailability.held[id] ?? 0),
+        ]),
+      ),
+      left:
+        heldAvailability.left === null
+          ? null
+          : heldAvailability.left + heldAvailability.leftHeld,
+    }),
+    [heldAvailability],
+  );
+
+  // Remove items only when actual stock or a vendor's order limit has changed.
   useEffect(() => {
     const fitted = fitCart(Array.from(cart.values()), availability);
     if (fitted.trimmed === 0) return;
@@ -360,6 +403,44 @@ export function OrderForm({
   const total = cartTotal(cartItems);
   const itemCount = cartItems.reduce((n, it) => n + it.quantity, 0);
 
+  async function prepareOrderAttempt(
+    input: PlaceOrderInput,
+  ): Promise<string | null> {
+    try {
+      const fingerprint = await orderFingerprint(input);
+      let pending = unresolvedSubmit;
+      let canPersist = true;
+      try {
+        pending ??= loadPendingOrder(boothId);
+      } catch (error) {
+        if (!(error instanceof RecoveryStorageError)) throw error;
+        canPersist = false;
+      }
+      if (pending && pending.fingerprint !== fingerprint) {
+        toast.error("Retry your previous order before changing its details.");
+        return null;
+      }
+      const attempt = pending ?? { key: crypto.randomUUID(), fingerprint };
+      setUnresolvedSubmit(attempt);
+      try {
+        savePendingOrder(boothId, attempt);
+      } catch (error) {
+        if (!(error instanceof RecoveryStorageError)) throw error;
+        canPersist = false;
+      }
+      if (!canPersist)
+        toast.error(
+          "This order can only be recovered on this page. Keep it open until confirmation.",
+        );
+      return attempt.key;
+    } catch {
+      toast.error(
+        "Could not safely restore this order. Check with the vendor before ordering again.",
+      );
+      return null;
+    }
+  }
+
   async function onSubmit(formData: {
     customerName: string;
     customerPhone?: string;
@@ -379,10 +460,11 @@ export function OrderForm({
       customerPhone: formData.customerPhone,
       items: cartItems,
     };
-    // One idempotency key for this submit, generated BEFORE the try so it stays
-    // stable across the one retry below — a dropped-then-resent request can't
-    // create a second order (place_order replays the prior result for the key).
-    const idem = crypto.randomUUID();
+    const idem = await prepareOrderAttempt(input);
+    if (idem === null) {
+      setSubmitting(false);
+      return;
+    }
     // One retry on a transient network failure (patchy event-site signal) so a
     // dropped request doesn't lose the order. The DB order number is atomic, so
     // a retried submit can't duplicate.
@@ -400,10 +482,19 @@ export function OrderForm({
       try {
         result = await submit();
       } catch {
-        toast.error("Network issue. Please try again.");
+        toast.error("Network issue. Please retry with the same order details.");
         setSubmitting(false);
         return;
       }
+    }
+
+    try {
+      clearPendingOrder(boothId);
+      setUnresolvedSubmit(null);
+    } catch {
+      toast.error(
+        "Could not clear the saved order attempt. Check this order before ordering again.",
+      );
     }
 
     if (!result.success) {
@@ -452,9 +543,9 @@ export function OrderForm({
 
   function renderItemCard(item: MenuItem) {
     const hasOptions = !!item.option_groups && item.option_groups.length > 0;
-    // Inline +/- only for plain items (keyed by id). Items with option
-    // groups instead go through the sheet, managed in the cart summary.
-    const plainInCart = hasOptions ? undefined : cart.get(item.id);
+    // Configured items use the sheet and cart-summary controls.
+    const plainKey = cartKey(item.id);
+    const plainInCart = hasOptions ? undefined : cart.get(plainKey);
     const left = remainingFor(availability.remaining, item.id);
     const soldOut = left !== null && left <= 0;
     const held = (availability.held[item.id] ?? 0) > 0;
@@ -462,8 +553,7 @@ export function OrderForm({
     if (soldOut) cardTone = "border-border opacity-60";
     else if (plainInCart) cardTone = "border-primary/40 bg-primary/[0.04]";
     else cardTone = "border-border";
-    const addLabel =
-      soldOut && held ? "Held" : menuItemActionLabel(soldOut, hasOptions);
+    const addLabel = menuItemActionLabel(soldOut, hasOptions);
     return (
       <div
         key={item.id}
@@ -503,7 +593,7 @@ export function OrderForm({
                 variant="outline"
                 size="icon"
                 className="size-11 rounded-lg"
-                onClick={() => decrement(item.id)}
+                onClick={() => decrement(plainKey)}
                 aria-label={`Remove one ${item.name}`}
               >
                 <Minus className="size-3.5" />
@@ -515,7 +605,7 @@ export function OrderForm({
                 type="button"
                 size="icon"
                 className="size-11 rounded-lg"
-                onClick={() => increment(item.id)}
+                onClick={() => increment(plainKey)}
                 aria-label={`Add one ${item.name}`}
               >
                 <Plus className="size-3.5" />

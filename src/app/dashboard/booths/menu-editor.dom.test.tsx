@@ -229,13 +229,20 @@ const ITEM_WITH_GROUPS: MenuItemFormInput = {
   ],
 };
 
-function HostWithGroups() {
+function HostWithGroups({
+  onChange,
+}: {
+  onChange?: (items: MenuItemFormInput[]) => void;
+}) {
   const [items, setItems] = useState<MenuItemFormInput[]>([ITEM_WITH_GROUPS]);
   return (
     <MenuEditor
       vendorId="v1"
       items={items}
-      onChange={setItems}
+      onChange={(next) => {
+        setItems(next);
+        onChange?.(next);
+      }}
       entitlement={ENTITLEMENT}
     />
   );
@@ -355,12 +362,17 @@ describe("MenuEditor remove item", () => {
 describe("MenuEditor duplicate item", () => {
   it("creates an independent copy with a distinct name and id", async () => {
     const user = userEvent.setup();
-    render(<HostWithGroups />);
+    const changed = vi.fn<(items: MenuItemFormInput[]) => void>();
+    render(<HostWithGroups onChange={changed} />);
     await openItemMenu(user);
     await user.click(screen.getByRole("menuitem", { name: /duplicate/i }));
     const names = screen.getAllByPlaceholderText("Item name");
     expect(names).toHaveLength(2);
     expect((names[1] as HTMLInputElement).value).toBe("Latte (copy)");
+    const [original, copy] = changed.mock.lastCall![0];
+    expect(original.id).toBe("latte");
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.id).not.toBe("");
   });
 
   it("editing the copy's name never mutates the original", async () => {
@@ -376,7 +388,8 @@ describe("MenuEditor duplicate item", () => {
 
   it("carries over option groups and allergens as independent data", async () => {
     const user = userEvent.setup();
-    render(<HostWithGroups />);
+    const changed = vi.fn<(items: MenuItemFormInput[]) => void>();
+    render(<HostWithGroups onChange={changed} />);
     await openItemMenu(user);
     await user.click(screen.getByRole("menuitem", { name: /duplicate/i }));
     const advancedButtons = screen.getAllByRole("button", {
@@ -388,6 +401,14 @@ describe("MenuEditor duplicate item", () => {
       name: /customization/i,
     });
     expect(customizationButtons[1]).toHaveTextContent("1");
+    const [original, copy] = changed.mock.calls[0][0];
+    expect(copy.option_groups).toEqual(original.option_groups);
+    expect(copy.option_groups).not.toBe(original.option_groups);
+    expect(copy.option_groups![0].choices).not.toBe(
+      original.option_groups![0].choices,
+    );
+    expect(copy.allergens).toEqual(original.allergens);
+    expect(copy.allergens).not.toBe(original.allergens);
   });
 
   it("disables duplication once the menu-item cap is reached", async () => {

@@ -45,7 +45,10 @@ describe("PickupPage", () => {
         params: Promise.resolve({ boothId: VALID_BOOTH_ID }),
       }),
     );
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "data-booth-id",
+      VALID_BOOTH_ID,
+    );
     expect(notFoundMock).not.toHaveBeenCalled();
   });
 });

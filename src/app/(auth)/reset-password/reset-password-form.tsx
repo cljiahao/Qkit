@@ -13,7 +13,7 @@ import { useAsyncAction, navigatingAway } from "@/hooks/use-async-action";
 import { passwordChangeSchema } from "@/lib/schemas";
 import { FORM_ERROR_CLASS, FORM_LABEL_CLASS } from "@/lib/utils";
 
-type SessionState = "checking" | "ready" | "no-session";
+type SessionState = "checking" | "ready" | "no-session" | "failed";
 
 /**
  * Sets a new password on the recovery session established by /auth/callback
@@ -32,10 +32,14 @@ export function ResetPasswordForm() {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!active) return;
-      setState(data.user ? "ready" : "no-session");
-    });
+    supabase.auth.getUser().then(
+      ({ data }) => {
+        if (active) setState(data.user ? "ready" : "no-session");
+      },
+      () => {
+        if (active) setState("failed");
+      },
+    );
     return () => {
       active = false;
     };
@@ -73,15 +77,18 @@ export function ResetPasswordForm() {
     );
   }
 
-  if (state === "no-session") {
+  if (state === "no-session" || state === "failed") {
     return (
       <Ticket shadow="lifted" className="px-7 py-8">
         <h1 className="font-display text-2xl font-semibold leading-tight">
-          This link has expired
+          {state === "failed"
+            ? "Could not check your reset link"
+            : "This link has expired"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Password reset links can only be used once, and they expire after a
-          short while. Request a fresh one from the sign-in page.
+          {state === "failed"
+            ? "Check your connection and reload this page, or return to sign in."
+            : "Password reset links can only be used once, and they expire after a short while. Request a fresh one from the sign-in page."}
         </p>
         <Button
           asChild

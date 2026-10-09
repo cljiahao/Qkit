@@ -145,4 +145,8 @@ service. An order with no `completed_at` is dropped rather than pinned up.
 
 ## Parent
 
+Queue reads page through the API row limit with a stable ID cursor, so earlier
+orders completing between pages cannot hide the next order. A later-page failure
+returns no replacement snapshot, so polling preserves the last complete display.
+
 [[boothId]](../README.md)

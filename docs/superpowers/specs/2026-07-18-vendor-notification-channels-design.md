@@ -1,6 +1,17 @@
 # Vendor Notification Channels (Telegram/WhatsApp pickup pings) — Design
 
 **Date:** 2026-07-18
+
+**Review correction (2026-10-09):** The Telegram architecture below is
+historical. Customer and vendor Telegram connections now live in Merqo's
+shared bot, as documented in `AGENTS.md`; do not restore the retired local
+bot or its tables. The proposed BYO bot token is a credential, unlike a public
+payment identifier. It must never be placed in publicly readable booth JSONB
+or customer responses. A future BYO implementation would require a separate
+server-only credential boundary and its own security review. The WhatsApp
+proposal remains unimplemented and its provider rules require fresh research
+before implementation.
+
 **Status:** Draft — the customer-facing "order ready" notification design
 here (Decisions 1-4, Open Questions) still stands, not yet built. Superset
 context: `Merqo Business/docs/business/2026-08-16-telegram-integration-

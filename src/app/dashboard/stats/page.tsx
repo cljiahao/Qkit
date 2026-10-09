@@ -10,6 +10,7 @@ import {
   type WaitPoint,
 } from "@/lib/stats";
 import { createServerClient } from "@/lib/supabase/server";
+import { readAllRows } from "@/lib/supabase/read-all";
 import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { MS_PER_DAY } from "@/lib/utils";
 import { groupReviewsByBooth, summarizeReviews } from "@/lib/reviews";
@@ -46,21 +47,27 @@ export default async function StatsPage({ searchParams }: Props) {
   // The vendor's booths (for the live filter + per-event windows) and paid passes
   // (which double as named, permanently-viewable events) are independent reads —
   // fetch them together rather than serially on this revalidate=0 page.
-  const [{ data: boothsData }, { data: licenses }] = await Promise.all([
-    supabaseEarly
-      .from("booths")
-      .select("id, name")
-      .eq("vendor_id", vendor.id)
-      .order("created_at", { ascending: true }),
-    supabaseEarly
-      .from("licenses")
-      .select("id, label, valid_from, expires_at")
-      .eq("vendor_id", vendor.id)
-      .order("valid_from", { ascending: false }),
+  const [boothList, events] = await Promise.all([
+    readAllRows((from, to) =>
+      supabaseEarly
+        .from("booths")
+        .select("id, name")
+        .eq("vendor_id", vendor.id)
+        .order("created_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    ),
+    readAllRows((from, to) =>
+      supabaseEarly
+        .from("licenses")
+        .select("id, label, valid_from, expires_at")
+        .eq("vendor_id", vendor.id)
+        .order("valid_from", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ),
   ]);
-  const boothList = boothsData ?? [];
   const allBoothIds = boothList.map((b) => b.id);
-  const events = licenses ?? [];
 
   // Per-event view: a paid window's FULL stats, ungated (they paid) — a
   // distinct "revisit a past event" page, not the live range/today view.

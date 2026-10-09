@@ -5,6 +5,16 @@
      the product is still v0/beta. History is intentionally left as-is. -->
 
 **Date:** 2026-07-01
+
+**Review correction (2026-10-09):** PostgreSQL supports column-level
+`SELECT`, `INSERT`, `UPDATE` and `REFERENCES` privileges; the statement below
+that native column-level security does not exist is incorrect. A table-level
+grant can still allow access to every column, so effective privileges must be
+checked together. The sanitized ordering RPC remains this project's chosen
+public boundary, with later migrations and capability-gated customer status
+actions superseding the original sketches. See the
+[PostgreSQL privilege documentation](https://www.postgresql.org/docs/17/ddl-priv.html).
+
 **Status:** Approved (design), pending implementation plan
 **Depends on:** audit findings `docs/superpowers/specs/2026-07-01-project-audit-findings.md`
 **Supersedes:** the `access_token` / `?k=` QR-token design (`2026-07-01-booth-qr-token-design.md`) — that model is replaced, not extended.
