@@ -2,11 +2,76 @@
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
+import { createCheckout, type CheckoutView } from "@/lib/paykit/client";
 import type { ActionResult } from "@/lib/action-result";
 
-type Result = ActionResult<{ orderNumber: string; accessToken: string }>;
+/**
+ * What the walk-up dialog needs to collect payment for an order it has just
+ * placed unpaid: the order to confirm, the server-priced amount, and the
+ * booth's own payment view (PayNow QR with that amount filled in, payment
+ * link, or QR image). `checkout` is null when paykit could not be reached;
+ * the order is still payable, staff just take the money another way.
+ */
+export interface WalkupPayment {
+  orderId: string;
+  amountCents: number;
+  checkout: CheckoutView | null;
+}
+
+type Result = ActionResult<{
+  orderNumber: string;
+  accessToken: string;
+  payment: WalkupPayment | null;
+}>;
 
 const boothIdSchema = z.string().uuid();
+
+/**
+ * The payment still owed on a walk-up order that was just placed, or null
+ * when there is nothing to collect (the booth takes no payment, the order is
+ * free, or staff already marked it paid). Runs after the order exists, so it
+ * never throws and never fails the placement: a miss here only means the
+ * dialog skips its payment step and the ticket keeps its own "Mark as paid".
+ */
+async function pendingPayment(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  boothId: string,
+  accessToken: string,
+): Promise<WalkupPayment | null> {
+  try {
+    // RLS scopes this to the caller's own orders. The token is the one the
+    // RPC handed back a moment ago, so it names exactly this order.
+    const { data: order } = await supabase
+      .from("orders")
+      .select("id, total_cents, payment_status")
+      .eq("booth_id", boothId)
+      .eq("access_token", accessToken)
+      .maybeSingle();
+    if (!order || order.payment_status !== "pending") return null;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Same call, and so the same paykit transaction, that the ticket's
+    // "Mark as paid" reaches through confirmOrderPayment (order_ref is the
+    // idempotency key).
+    const checkout = await createCheckout({
+      vendorId: user.id,
+      amountCents: order.total_cents,
+      orderRef: order.id,
+    });
+    return {
+      orderId: order.id,
+      amountCents: order.total_cents,
+      checkout: checkout.ok ? checkout.data : null,
+    };
+  } catch (err) {
+    console.error("placeWalkupOrder: payment lookup failed", err);
+    return null;
+  }
+}
 
 // Map a place_walkup_order RAISE prefix to a vendor-facing message. Mirrors
 // o/[code]/actions.ts#messageFor, minus the customer-only cases (ORDER_
@@ -31,11 +96,11 @@ function messageFor(raw: string): string {
  * boothId, reprices every line from the stored menu (same trust boundary as
  * the customer path: a client-sent price is never trusted), and stamps
  * source='walkup'. Reuses placeOrderSchema: identical item shape to the
- * customer cart. `paid` lets staff mark payment as collected at the counter
- * in the same step as placing the order, rather than a separate "Confirm
- * payment" tap on the board right after — it's a no-op when the booth
- * doesn't take payment at all (place_walkup_order ignores it for a
- * not_required order).
+ * customer cart. `paid` places the order already settled; it's a no-op when
+ * the booth doesn't take payment at all (place_walkup_order ignores it for a
+ * not_required order). The dialog always passes false and collects payment
+ * afterwards instead: an unpaid order comes back with `payment`, which is
+ * what its payment step shows the customer.
  */
 export async function placeWalkupOrder(
   boothId: string,
@@ -81,5 +146,8 @@ export async function placeWalkupOrder(
     success: true,
     orderNumber: out.data.order_number,
     accessToken: out.data.access_token,
+    payment: paid
+      ? null
+      : await pendingPayment(supabase, boothId, out.data.access_token),
   };
 }

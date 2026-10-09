@@ -76,6 +76,9 @@ interface Props {
     // Display-only; items are edited on the dedicated menu-manager page.
     menuItemCount: number;
     payment: PaymentConfig | null;
+    // The vendor's payment details from paykit, whatever this booth is set
+    // to: picking a payment method again restores them instead of blanks.
+    savedPayment?: PaymentConfig | null;
     social_links: SocialLinks | null;
     requires_arrival_confirm: boolean;
     walkup_default: boolean;
@@ -534,6 +537,7 @@ export function BoothForm({
             <PaymentSection
               vendorId={vendorId}
               value={payment}
+              saved={initial?.savedPayment ?? null}
               onChange={setPayment}
             />
           </Section>

@@ -29,17 +29,14 @@ function initialPaymentFromMarker(data: unknown): PaymentConfig | null {
 }
 
 /**
- * Prefer paykit's own vendor config (the real editable fields) so re-opening
- * an existing booth's Payment settings starts pre-filled; fall back to the
- * `{kind}`-only marker when paykit's call degrades or reports no config.
+ * The vendor's payment details as saved in paykit (the real editable fields),
+ * or null when there are none or paykit's call degrades.
  */
-async function initialPayment(
+async function savedVendorPayment(
   vendorId: string,
-  boothPayment: unknown,
 ): Promise<PaymentConfig | null> {
   const result = await getVendorConfig(vendorId);
-  if (!result.ok || !result.data.hasConfig)
-    return initialPaymentFromMarker(boothPayment);
+  if (!result.ok || !result.data.hasConfig) return null;
 
   const d = result.data;
   if (d.kind === "paynow")
@@ -56,7 +53,23 @@ async function initialPayment(
       ...(d.url ? { url: d.url } : {}),
       ...(d.qrImageUrl ? { qr_image_url: d.qrImageUrl } : {}),
     };
-  return initialPaymentFromMarker(boothPayment);
+  return null;
+}
+
+/**
+ * What the Payment section opens on. The booth's own marker decides whether
+ * this booth takes payment at all; paykit's details only fill the fields in.
+ * Those details are vendor-wide, so reading them alone opened every booth as
+ * "PayNow", including one saved with no online payment, and the next save of
+ * anything on the page then switched payment on for it.
+ */
+function initialPayment(
+  boothPayment: unknown,
+  saved: PaymentConfig | null,
+): PaymentConfig | null {
+  const marker = initialPaymentFromMarker(boothPayment);
+  if (!marker) return null;
+  return saved ?? marker;
 }
 
 /**
@@ -98,7 +111,8 @@ export default async function EditBoothPage({ params }: Props) {
 
   const menuItemCount = parseMenuItems(booth.menu_items).length;
 
-  const payment = await initialPayment(vendor.id, booth.payment);
+  const savedPayment = await savedVendorPayment(vendor.id);
+  const payment = initialPayment(booth.payment, savedPayment);
   const bookingStatus = await initialBookingStatus(booth.paykit_booking_id);
 
   return (
@@ -116,6 +130,7 @@ export default async function EditBoothPage({ params }: Props) {
           hours: parseBoothHours(booth.hours),
           menuItemCount,
           payment,
+          savedPayment,
           social_links: booth.social_links
             ? parseSocialLinks(booth.social_links)
             : null,
