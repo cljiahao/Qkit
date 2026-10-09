@@ -8,6 +8,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Anonymous basket holds no longer disable purchases or trim another customer's cart; actual stock and vendor order limits still apply.
 - Shared image handling releases failed render resources and safely decodes storage paths; money fields reject amounts outside safe integer precision.
 - The (i) hints on Board settings and on a booth's Payment options open on a
   tap. They only opened on hover, so on an iPad or phone they did nothing.
@@ -34,10 +35,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The order board no longer opens the walk-up order dialog on every load
   because of a walk-up booth that is switched off. Only an active walk-up booth
   triggers it.
-- The menu page no longer says "Only 3 items left today" directly above "The
-  last items are in other baskets". The count now comes from the same
-  availability the basket uses, net of other customers' holds, so a customer
-  reads one message that matches what they can add.
 - "Add to order" is always in view in the customise sheet. With several option
   groups or a short phone it sat below the fold with nothing to show the sheet
   scrolled; it is pinned to the bottom of the sheet now. The item photo is

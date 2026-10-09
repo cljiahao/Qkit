@@ -22,7 +22,11 @@ closed, remaining })`: the full menu + cart + checkout UI. Seeds the cart on
   Tracks a `Map<string, CartItem>` cart keyed by `cartKey(menuItemId,
 options)`, persists it on every change (`saveCart`), enforces per-item
   stock caps (`remainingFor`/`blockedByStock`), and opens `ItemCustomizer` for
-  items with option groups. The "Your order" cart summary is collapsed by
+  items with option groups. Anonymous basket holds show advisory competition
+  for stock; they never disable purchases or trim a cart. Eligibility uses
+  unsold stock including held items and the vendor's per-order limit. Stock
+  is checked again by the database when placing an order; baskets do not
+  reserve it. The "Your order" cart summary is collapsed by
   default (`cartExpanded` state, toggled by tapping its header) so it doesn't
   push a long multi-section menu further down the page — the collapsed header
   still shows the live item count/total, and expanding it is the only way to

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -83,7 +83,7 @@ function StockNote({ left, held }: { left: number | null; held: boolean }) {
   if (left <= 0)
     return (
       <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-status-cancelled">
-        {held ? "In another basket" : "Sold out"}
+        Sold out
       </p>
     );
   return (
@@ -96,6 +96,11 @@ function StockNote({ left, held }: { left: number | null; held: boolean }) {
       )}
     >
       {left} left
+      {held && (
+        <span className="block text-muted-foreground">
+          Also in other baskets. Stock is checked when you order.
+        </span>
+      )}
     </p>
   );
 }
@@ -104,11 +109,7 @@ function StockNote({ left, held }: { left: number | null; held: boolean }) {
 // noise: nobody queues differently at 40 remaining.
 const LOW_STOCK_ITEMS = 10;
 
-// What the stall has left today, as this customer can act on it: one message,
-// never two. `left` is already net of other baskets' holds, so "Only 1 item
-// left" and "the last items are in other baskets" cannot both be true. The
-// page used to print its own count from the stock before holds, which read
-// "Only 3 items left today" right above "the last items are in other baskets".
+// Low-stock counts include unsold items in other baskets; holds are advisory.
 function StockNotice({
   left,
   leftHeld,
@@ -124,17 +125,13 @@ function StockNotice({
           Only {count(left, "item")} left today
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Once they are gone this stall stops taking orders until tomorrow.
+          {leftHeld > 0
+            ? "Other baskets also contain these items. Stock is checked when you order."
+            : "Once they are gone this stall stops taking orders until tomorrow."}
         </p>
       </div>
     );
-  if (leftHeld === 0) return null;
-  return (
-    <p className="rounded-xl border border-status-aging/40 bg-status-aging/10 px-4 py-3 text-center text-sm font-medium">
-      The last items are in other baskets right now. Check back in a few
-      minutes.
-    </p>
-  );
+  return null;
 }
 
 // Limits that apply to the whole basket, said once above the menu so nobody
@@ -307,7 +304,7 @@ export function OrderForm({
 
   const cartEntries = Array.from(cart.entries());
   const cartItems = Array.from(cart.values());
-  const { availability, holdSession } = useCartAvailability(
+  const { availability: heldAvailability, holdSession } = useCartAvailability(
     boothId,
     initialAvailability,
     cartItems.map((it) => ({
@@ -317,9 +314,25 @@ export function OrderForm({
     !closed,
   );
 
-  // Another basket can take stock this one was counting on (two customers
-  // reaching for the last item: the first hold wins). Cut the basket to what
-  // is still available and say so, rather than let it fail at checkout.
+  // Anonymous holds cannot deny purchases; only sold stock and order limits can.
+  const availability = useMemo<Availability>(
+    () => ({
+      ...heldAvailability,
+      remaining: Object.fromEntries(
+        Object.entries(heldAvailability.remaining).map(([id, left]) => [
+          id,
+          left + (heldAvailability.held[id] ?? 0),
+        ]),
+      ),
+      left:
+        heldAvailability.left === null
+          ? null
+          : heldAvailability.left + heldAvailability.leftHeld,
+    }),
+    [heldAvailability],
+  );
+
+  // Remove items only when actual stock or a vendor's order limit has changed.
   useEffect(() => {
     const fitted = fitCart(Array.from(cart.values()), availability);
     if (fitted.trimmed === 0) return;
@@ -540,8 +553,7 @@ export function OrderForm({
     if (soldOut) cardTone = "border-border opacity-60";
     else if (plainInCart) cardTone = "border-primary/40 bg-primary/[0.04]";
     else cardTone = "border-border";
-    const addLabel =
-      soldOut && held ? "Held" : menuItemActionLabel(soldOut, hasOptions);
+    const addLabel = menuItemActionLabel(soldOut, hasOptions);
     return (
       <div
         key={item.id}
