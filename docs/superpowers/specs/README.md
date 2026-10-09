@@ -61,6 +61,7 @@ authorize database changes, deployments or secret access.
 
 - `2026-09-01-menu-manager-design.md` — "Menu Manager — dedicated page, CSV import/export, drag reorder": splits menu editing out of the booth-edit form into its own page, CSV bulk export/import (name-matched update-in-place, not duplicate), and drag reorder via `@dnd-kit` — no schema change, `booths.menu_items` is already a plain JSONB array.
 - `2026-09-01-menu-csv-customization-design.md` — "CSV import: per-item customization (option groups/choices)": extends the menu CSV to cover option groups/choices via multi-row continuation records, scoped to group name/type and choice label/price only — cost delta and allergens stay UI-only, matching the same fatigue-driven scope cut as the item-level CSV.
+- `2026-10-09-structure-cleanup-design.md` — "Structure Cleanup: Shared Pieces, Local Duplicates, Folder Layout — Design": audit of qkit against `@merqo/ui` adoption, internal duplication and templateCentral's layout standard. Adoption is complete; seven internal duplicates are confirmed (segmented switch, page header, cart mutations, payment-marker parsing, first-order-of-the-day lookup, uuid schema, label class) and two withdrawn on inspection. Three phases, one PR each: small extractions, one `useCart` hook, then a moves-only regroup of `src/components` and `src/lib`. `src/features/` and barrels are deliberately not adopted. Blocked on #196 merging.
 
 ## Parent
 
