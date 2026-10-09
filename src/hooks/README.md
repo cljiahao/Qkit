@@ -27,6 +27,19 @@ order-status page.
   thrown/rejected handler, stays `true` while the handler is in flight, `error`
   stays `null` on success and is set (with `run` still re-throwing) on a
   rejection, and `reset()` clears a stale `error`.
+- `use-cart.ts` — `useCart()`: the basket both order forms build (the
+  customer's page and the staff walk-up dialog). Returns `{ cart, setCart,
+entries, items, add, increment, decrement }`: lines keyed by item plus
+  chosen options (`cartKey`), a chosen option's price folded into its line,
+  an unpriced item left unpriced. It knows nothing about stock or limits:
+  each form asks its own "may one more be added?" before calling `add` or
+  `increment`, because the two decide it differently and word a refusal
+  differently. `setCart` is exposed for the wholesale cases (restoring a
+  saved basket, trimming it when stock is taken, clearing it). The two forms
+  each carried these mutations, line for line, before.
+- `use-cart.test.tsx` — add, repeat add, options as separate lines, price
+  folding, the unpriced case, increment, decrement to removal, an unknown
+  key leaving the basket untouched, and a wholesale replace.
 - `use-now.ts` — `useNow(intervalMs, enabled=true)`: client-only hook that
   re-renders every `intervalMs` with `Date.now()`, driving "time ago"/countdown
   UI; `enabled=false` stops the ticking (e.g. once an order reaches a terminal
@@ -90,6 +103,9 @@ order-status page.
 - `use-polling.ts` and `use-now.ts` have no app-specific dependencies; they are
   consumed by the customer-facing order-status and payment-tracking pages to
   drive periodic status checks and live countdown/elapsed-time display.
+- `use-cart.ts` imports `cartKey`/`sumOptionDeltas` from `@/lib/cart`; it is
+  consumed by `@/components/order/order-form.tsx` and the dashboard's
+  `walkup-order-dialog.tsx`.
 - `use-async-action.ts` re-exports (via a thin adapter) `useAsyncAction`/
   `navigatingAway` from `@merqo/ui`; it is consumed by dashboard and order-flow
   components that submit server actions from a button (menu editing, order

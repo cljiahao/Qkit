@@ -32,7 +32,8 @@ import {
   menuItemActionLabel,
   orderHasPricing,
 } from "@/lib/utils";
-import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
+import { cartKey, cartTotal } from "@/lib/cart";
+import { useCart } from "@/hooks/use-cart";
 import { loadCart, saveCart, clearCart } from "@/lib/cart-storage";
 import {
   loadPendingOrder,
@@ -56,12 +57,7 @@ import { useCartAvailability } from "./use-cart-availability";
 import { placeOrder } from "@/app/o/[code]/actions";
 import { logEvent } from "@/app/actions/events";
 import { groupByCategory } from "@/lib/menu-sections";
-import type {
-  MenuItem,
-  MenuCategory,
-  CartItem,
-  SelectedOption,
-} from "@/lib/types";
+import type { MenuItem, MenuCategory, SelectedOption } from "@/lib/types";
 
 interface Props {
   code: string;
@@ -164,7 +160,15 @@ export function OrderForm({
   maxPerOrder = null,
 }: Props) {
   const router = useRouter();
-  const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
+  const {
+    cart,
+    setCart,
+    entries: cartEntries,
+    items: cartItems,
+    add: addLine,
+    increment: incrementLine,
+    decrement,
+  } = useCart();
   // What the server rendered, before anyone's basket hold is counted.
   const [initialAvailability] = useState<Availability>(() => ({
     remaining,
@@ -243,7 +247,6 @@ export function OrderForm({
       }
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(
       new Map(items.map((it) => [cartKey(it.menuItemId, it.options), it])),
     );
@@ -285,25 +288,6 @@ export function OrderForm({
     );
   }, [cart, boothId]);
 
-  // Single cart mutator. The updater receives the current entry (or undefined)
-  // and returns: a CartItem to set, null to remove, or undefined to no-op
-  // (keeps the same Map ref, so no needless re-render).
-  function updateCart(
-    key: string,
-    fn: (existing: CartItem | undefined) => CartItem | null | undefined,
-  ) {
-    setCart((prev) => {
-      const result = fn(prev.get(key));
-      if (result === undefined) return prev;
-      const next = new Map(prev);
-      if (result === null) next.delete(key);
-      else next.set(key, result);
-      return next;
-    });
-  }
-
-  const cartEntries = Array.from(cart.entries());
-  const cartItems = Array.from(cart.values());
   const { availability: heldAvailability, holdSession } = useCartAvailability(
     boothId,
     initialAvailability,
@@ -336,7 +320,6 @@ export function OrderForm({
   useEffect(() => {
     const fitted = fitCart(Array.from(cart.values()), availability);
     if (fitted.trimmed === 0) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(
       new Map(
         fitted.items.map((it) => [cartKey(it.menuItemId, it.options), it]),
@@ -345,7 +328,7 @@ export function OrderForm({
     toast.error(
       `${count(fitted.trimmed, "item")} no longer available, removed from your order`,
     );
-  }, [availability, cart]);
+  }, [availability, cart, setCart]);
 
   /** Block (and explain) when one more would exceed stock or a booth limit. */
   function blockedByStock(menuItemId: string): boolean {
@@ -357,39 +340,13 @@ export function OrderForm({
 
   function addConfigured(item: MenuItem, options: SelectedOption[]) {
     if (blockedByStock(item.id)) return;
-    // Fold selected choices' price_delta_cents into the line's informational
-    // price — place_order re-derives the authoritative total the same way
-    // from the stored menu, this is display-only. Preserve the "Free" (no
-    // price_cents at all) convention when the item is unpriced and nothing
-    // selected added a cost either.
-    const delta = sumOptionDeltas(item, options);
-    const combined = (item.price_cents ?? 0) + delta;
-    const price_cents =
-      item.price_cents == null && delta === 0 ? undefined : combined;
-    updateCart(cartKey(item.id, options), (existing) => ({
-      menuItemId: item.id,
-      name: item.name,
-      price_cents,
-      options: options.length ? options : undefined,
-      quantity: existing ? existing.quantity + 1 : 1,
-    }));
+    addLine(item, options);
   }
 
   function increment(key: string) {
     const entry = cart.get(key);
     if (entry && blockedByStock(entry.menuItemId)) return;
-    updateCart(key, (existing) =>
-      existing ? { ...existing, quantity: existing.quantity + 1 } : undefined,
-    );
-  }
-
-  function decrement(key: string) {
-    updateCart(key, (existing) => {
-      if (!existing) return undefined;
-      return existing.quantity <= 1
-        ? null
-        : { ...existing, quantity: existing.quantity - 1 };
-    });
+    incrementLine(key);
   }
 
   function onAddClick(item: MenuItem) {
