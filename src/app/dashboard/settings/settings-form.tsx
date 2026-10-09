@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bell, Clock, Hourglass, Volume2 } from "lucide-react";
@@ -127,6 +127,14 @@ function useDesktopNotifySection(
   // trigger a re-render, so this is tracked explicitly and only updated after
   // OUR OWN request calls — never re-read from the browser mid-render.
   const [permission, setPermission] = useState(() => notifyPermission());
+  // The browser's answer is only known on the client. useSyncExternalStore
+  // returns the server snapshot (false) during hydration, then the client
+  // one, so the permission note never mismatches the server's markup.
+  const onClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const { pending: savingNotify, run: runNotify } = useAsyncAction(
     "Could not update notifications. Please try again.",
   );
@@ -181,6 +189,7 @@ function useDesktopNotifySection(
   return {
     desktopNotify,
     permission,
+    onClient,
     savingNotify,
     toggleDesktopNotify,
     enableInBrowser,
@@ -191,12 +200,14 @@ function useDesktopNotifySection(
 function DesktopNotifySection({
   desktopNotify,
   permission,
+  onClient,
   savingNotify,
   toggleDesktopNotify,
   enableInBrowser,
 }: {
   desktopNotify: boolean;
   permission: NotificationPermission | null;
+  onClient: boolean;
   savingNotify: boolean;
   toggleDesktopNotify: () => void;
   enableInBrowser: () => void;
@@ -230,7 +241,7 @@ function DesktopNotifySection({
           your Home Screen first. A regular Safari tab cannot show these.
         </Hint>
       </div>
-      {desktopNotify && permission !== "granted" && (
+      {onClient && desktopNotify && permission !== "granted" && (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs text-muted-foreground">
             {isNotifySupported()
@@ -295,6 +306,7 @@ export function SettingsForm({
   const {
     desktopNotify,
     permission,
+    onClient,
     savingNotify,
     toggleDesktopNotify,
     enableInBrowser,
@@ -623,6 +635,7 @@ export function SettingsForm({
           <DesktopNotifySection
             desktopNotify={desktopNotify}
             permission={permission}
+            onClient={onClient}
             savingNotify={savingNotify}
             toggleDesktopNotify={toggleDesktopNotify}
             enableInBrowser={enableInBrowser}

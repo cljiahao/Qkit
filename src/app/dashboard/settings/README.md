@@ -122,7 +122,8 @@ aging_min` and an out-of-range `undo_seconds` client-side without calling
   notification-permission branches (granted saves and enables; denied
   reverts the switch and shows an error) plus the already-on-but-not-granted
   "Enable in this browser" path (re-requests permission without calling
-  `updateBoardSettings`), and the customer-order-screen section (saves the
+  `updateBoardSettings`), hydration with a browser answer the server could
+  not know (no recoverable error), and the customer-order-screen section (saves the
   daily-reset toggle, saves the show-wait-estimate toggle and confirms the
   backup-prep-time input disables while it's off, saves a configured backup
   prep time, saves `null` when it's cleared, rejects an out-of-1-60-range

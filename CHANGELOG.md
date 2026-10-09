@@ -8,6 +8,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Board settings no longer logs a hydration error when desktop
+  notifications are on but this browser has not allowed them. The note about
+  the browser's permission now appears once the page has loaded, since the
+  server cannot know the browser's answer.
 - Eighteen messages no longer contain a long dash, for example "Order
   changed. Please refresh." The lint rule that enforces this now covers
   messages returned from server code, not only text in components.

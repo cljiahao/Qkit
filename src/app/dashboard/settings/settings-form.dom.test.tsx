@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { toast } from "sonner";
 import userEvent from "@testing-library/user-event";
 
@@ -15,7 +17,7 @@ const playSound = vi.fn(async (_soundId?: string) => true);
 const unlockAudio = vi.fn();
 const requestNotifyPermission = vi.fn(async () => "granted");
 const isNotifySupported = vi.fn(() => true);
-const notifyPermission = vi.fn(() => "granted");
+const notifyPermission = vi.fn((): string | null => "granted");
 vi.mock("@/lib/order-alerts", () => ({
   playSound: (id?: string) => playSound(id),
   unlockAudio: () => unlockAudio(),
@@ -50,6 +52,7 @@ beforeEach(() => {
   unlockAudio.mockClear();
   requestNotifyPermission.mockClear();
   notifyPermission.mockReturnValue("granted");
+  isNotifySupported.mockReturnValue(true);
 });
 
 describe("SettingsForm hints", () => {
@@ -338,6 +341,37 @@ describe("SettingsForm desktop notifications", () => {
     expect(
       screen.queryByText(/not allowed in this browser yet/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("hydrates cleanly when the browser's answer differs from the server's", async () => {
+    const form = (
+      <SettingsForm
+        initial={{ ...DEFAULTS, desktop_notify: true }}
+        prepEstimate={PREP_ESTIMATE}
+      />
+    );
+    isNotifySupported.mockReturnValue(false);
+    notifyPermission.mockReturnValue(null);
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(form);
+    document.body.appendChild(container);
+
+    isNotifySupported.mockReturnValue(true);
+    notifyPermission.mockReturnValue("default");
+    const onRecoverableError = vi.fn();
+    const root = await act(async () =>
+      hydrateRoot(container, form, { onRecoverableError }),
+    );
+
+    try {
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(
+        within(container).getByText(/not allowed in this browser yet/i),
+      ).toBeInTheDocument();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
   });
 });
 
