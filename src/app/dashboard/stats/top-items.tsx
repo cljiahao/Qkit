@@ -10,10 +10,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { cn, formatPrice } from "@/lib/utils";
+import { SegmentedControl } from "@/components/segmented-control";
+import { formatPrice } from "@/lib/utils";
 import type { TopItem } from "@/lib/stats";
 
 type Metric = "quantity" | "revenue_cents";
+
+const METRICS: { value: Metric; label: string }[] = [
+  { value: "quantity", label: "By volume" },
+  { value: "revenue_cents", label: "By revenue" },
+];
 
 function revenueCents(payload: unknown): number {
   return (payload as { revenue_cents?: number } | null)?.revenue_cents ?? 0;
@@ -43,29 +49,13 @@ export function TopItems({
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Top items
         </p>
-        <div className="inline-flex rounded-lg border border-border p-0.5 text-xs">
-          {(
-            [
-              ["quantity", "By volume"],
-              ["revenue_cents", "By revenue"],
-            ] as const
-          ).map(([m, label]) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMetric(m)}
-              aria-pressed={metric === m}
-              className={cn(
-                "rounded-md px-2.5 py-1 font-medium transition-colors [@media(pointer:coarse)]:min-h-11",
-                metric === m
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          ariaLabel="Rank top items by"
+          size="sm"
+          options={METRICS}
+          value={metric}
+          onChange={setMetric}
+        />
       </div>
 
       <ResponsiveContainer width="100%" height={chartHeight}>

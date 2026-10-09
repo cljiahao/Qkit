@@ -8,6 +8,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Eighteen messages no longer contain a long dash, for example "Order
+  changed. Please refresh." The lint rule that enforces this now covers
+  messages returned from server code, not only text in components.
 - Bulk pickup checks each order is still ready and reports partial failures without changing payment state.
 - Anonymous basket holds no longer disable purchases or trim another customer's cart; actual stock and vendor order limits still apply.
 - Shared image handling releases failed render resources and safely decodes storage paths; money fields reject amounts outside safe integer precision.
@@ -94,6 +97,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The sort switch on the order board is finger-sized on a touch screen (44px,
+  was 36px), like every other switch of its kind.
+- Internal: four copies of the pill switch and eleven copies of the page
+  header are now one component each (`SegmentedControl`, `PageHeader`); the
+  payment-marker and daily ticket-number lookups each live in one file. No
+  change to what any page shows.
 - At an event booth (one set to walk-up order entry) the walk-up dialog stays
   open after each order and clears for the next customer, with stock counts
   refreshed. It used to close after every order, so a queue meant tapping

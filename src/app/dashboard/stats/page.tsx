@@ -20,6 +20,7 @@ import { EventsPanel } from "./events-panel";
 import { ReviewsCard } from "./reviews-card";
 import { EventStatsView } from "./event-stats-view";
 import { fetchOrders, fetchAllTimeTotals, fetchReviewRows } from "./queries";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -152,12 +153,7 @@ export default async function StatsPage({ searchParams }: Props) {
   return (
     <div className="space-y-7">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Performance
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          Stats
-        </h1>
+        <PageHeader eyebrow="Performance" title="Stats" />
       </div>
 
       <StatsControls

@@ -28,7 +28,7 @@ export async function submitFeedback(
   const ip = clientIp(await headers());
   const allowed = await rateLimit(`feedback:${ip}`, 3, 300);
   if (!allowed)
-    return { success: false, error: "Thanks — you've already sent feedback." };
+    return { success: false, error: "Thanks, you've already sent feedback." };
 
   // Insert via a SECURITY DEFINER RPC: the feedback table has no public INSERT
   // policy (a public WITH CHECK(true) would let any JWT forge reviews). The

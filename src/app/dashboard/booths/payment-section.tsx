@@ -16,6 +16,7 @@ import { MediaImage } from "@/components/media-image";
 import { uploadQkitImage } from "@/lib/image-upload-adapter";
 import { resizeToWebp } from "@merqo/ui";
 import { cn, FORM_LABEL_CLASS } from "@/lib/utils";
+import { SEGMENT_GROUP_CLASS } from "@/components/segmented-control";
 import type { PaymentConfig } from "@/lib/types";
 
 type Kind = "none" | "pointer" | "paynow";
@@ -57,6 +58,12 @@ const OPTIONS: { k: Kind; label: string; detail: string }[] = [
       "Qashier, HitPay, GrabPay for Business, Stripe Payment Links, or your bank's own QR: any of them work here.",
   },
 ];
+
+// A pill of the two sub-mode switches below. They look like a
+// SegmentedControl but are radio inputs inside a form, so they stay a
+// ToggleGroup and only borrow the track.
+const SEGMENT_RADIO_CLASS =
+  "rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary";
 
 export function PaymentSection({
   vendorId,
@@ -199,7 +206,7 @@ export function PaymentSection({
               value={proxyMode}
               onValueChange={(v) => v && pickProxyMode(v as PaynowProxyMode)}
               aria-label="UEN or mobile number"
-              className="inline-flex rounded-lg border border-border p-0.5 text-sm"
+              className={cn(SEGMENT_GROUP_CLASS, "text-sm")}
             >
               {(
                 [
@@ -210,7 +217,7 @@ export function PaymentSection({
                 <ToggleGroupItem
                   key={m}
                   value={m}
-                  className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                  className={SEGMENT_RADIO_CLASS}
                 >
                   {label}
                 </ToggleGroupItem>
@@ -283,7 +290,7 @@ export function PaymentSection({
             value={pointerMode}
             onValueChange={(v) => v && pickPointerMode(v as PointerMode)}
             aria-label="Payment link or QR image"
-            className="inline-flex rounded-lg border border-border p-0.5 text-sm"
+            className={cn(SEGMENT_GROUP_CLASS, "text-sm")}
           >
             {(
               [
@@ -294,7 +301,7 @@ export function PaymentSection({
               <ToggleGroupItem
                 key={m}
                 value={m}
-                className="rounded-md px-3 py-1 font-medium text-muted-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                className={SEGMENT_RADIO_CLASS}
               >
                 {label}
               </ToggleGroupItem>

@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/utils";
 import { Ticket as TicketCard } from "@/components/ticket";
 import { UpgradeCta } from "./upgrade-cta";
 import { PassCountdown } from "./pass-countdown";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -66,12 +67,7 @@ export default async function PlanPage() {
     <div className="mx-auto max-w-2xl space-y-7">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Billing
-          </p>
-          <h1 className="font-display text-4xl font-semibold leading-none">
-            Plan
-          </h1>
+          <PageHeader eyebrow="Billing" title="Plan" />
         </div>
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${

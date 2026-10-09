@@ -97,6 +97,17 @@ graceMs)` picks the objects in a vendor folder that nothing references and
   initial ordering remains available with a keep-page-open warning.
 - `pending-order.test.ts` — recovery metadata isolation, payload normalization,
   corrupt data rejection and unavailable storage regressions.
+- `daily-order-number.ts` — `firstOrderNumberToday(client, boothId)`: the
+  booth's first `order_number` of the SGT day, the baseline
+  `displayOrderNumber` ranks against. `vendorFacingOrderNumber(client,
+vendorId, boothId, orderNumber)`: the day's rank when the vendor has daily
+  numbering on, the permanent number otherwise. One query for every server
+  path that shows a single booth's ticket number (status page, TV display,
+  printed label, Telegram alert), which each used to carry their own copy.
+  The order board reads many booths at once and keeps its own query.
+- `daily-order-number.test.ts` — the first order found, none today, the SGT
+  day window, and `vendorFacingOrderNumber` with daily numbering on, off,
+  unreadable settings, and no order yet today.
 - `cart.ts` — `cartKey(menuItemId, options)` (stable dedup key sorted by
   option group so selection order doesn't matter) and `cartTotal`.
 - `cart.test.ts` — tests cart-key stability and total summation.
@@ -343,6 +354,13 @@ passExpiresAt, hasOpenMessage, nowMs)`: pure aggregation behind `GET
   (deleted in the paykit cutover).
 - `plan.test.ts` — tests entitlement resolution across plan/pass/pro
   combinations and the `canAdd*`/`canHaveOptionGroups` gates.
+- `payment-marker.ts` — everything that reads or writes the `{kind}` marker
+  on `booths.payment`: `paymentKindOf(data)` (the stored kind, or null),
+  `expectsPayment(kind)` (false for null and for the reserved `stripe`), and
+  `paymentMarker(kind)` (what to store for a booth saved with that kind).
+  Three files each parsed the marker their own way before.
+- `payment-marker.test.ts` — each kind read from a marker and from a full
+  config, null for anything else, the stripe rule, and a round trip.
 - `plan.ts` — `Entitlement`/`Tier` model (`FREE`/`PASS`/`PRO` presets),
   `getEntitlement` (resolves a vendor's effective entitlement from
   `plan`+license expiry), `normalizePlan`, `canAddBooth`, `canAddMenuItem`,

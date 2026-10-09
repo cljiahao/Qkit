@@ -431,7 +431,7 @@ describe("claimPayment (photo required, deferred numbering)", () => {
     const result = await claimPayment(BOOTH, TOKEN, fakeFile());
     expect(result).toEqual({
       success: false,
-      error: "Too many attempts — wait a moment.",
+      error: "Too many attempts. Wait a moment.",
     });
     expect(storageUploadMock).not.toHaveBeenCalled();
   });
@@ -658,7 +658,7 @@ describe("unclaimPayment", () => {
     const res = await unclaimPayment(BOOTH, ORDER, TOKEN);
     expect(res).toEqual({
       success: false,
-      error: "Too many attempts — wait a moment.",
+      error: "Too many attempts. Wait a moment.",
     });
     expect(createCheckoutMock).not.toHaveBeenCalled();
   });

@@ -9,7 +9,13 @@ import {
   type VendorProfile,
 } from "@/lib/merqo-vendor-profile";
 import { Ticket } from "@/components/ticket";
-import { cn, formatOptions, formatPrice, orderHasPricing } from "@/lib/utils";
+import {
+  cn,
+  formatOptions,
+  formatPrice,
+  orderHasPricing,
+  EYEBROW_CLASS,
+} from "@/lib/utils";
 import {
   boardSettingsSchema,
   orderBoothIdSchema,
@@ -20,7 +26,8 @@ import {
   resolveSocialLinks,
 } from "@/lib/schemas";
 import { displayOrderNumber, isStaleOrderView, isTerminal } from "@/lib/orders";
-import { sgtStartOfDayIso, shortDateTime } from "@/lib/tz";
+import { shortDateTime } from "@/lib/tz";
+import { firstOrderNumberToday } from "@/lib/daily-order-number";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ReorderButton } from "@/components/reorder-button";
 import { OrderStatusPoller } from "./order-status-poller";
@@ -256,17 +263,10 @@ async function resolveOrderDisplay(
     if (!settings.success || !settings.data.daily_order_number_reset)
       return { headingNumber: orderNumber, pickupScanEnabled };
 
-    const { data: firstToday } = await supabase
-      .from("orders")
-      .select("order_number")
-      .eq("booth_id", boothId)
-      .gte("created_at", sgtStartOfDayIso())
-      .order("order_number", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    const firstToday = await firstOrderNumberToday(supabase, boothId);
     return {
       headingNumber: firstToday
-        ? displayOrderNumber(orderNumber, firstToday.order_number)
+        ? displayOrderNumber(orderNumber, firstToday)
         : orderNumber,
       pickupScanEnabled,
     };
@@ -483,9 +483,7 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             past the transactional content. */}
         {Object.keys(socialLinks).length > 0 && (
           <div className="flex flex-col items-center gap-2 px-6 pb-6">
-            <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-              Follow {booth?.name}
-            </p>
+            <p className={EYEBROW_CLASS}>Follow {booth?.name}</p>
             <SocialLinksRow links={socialLinks} />
           </div>
         )}

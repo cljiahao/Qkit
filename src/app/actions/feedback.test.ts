@@ -76,7 +76,7 @@ describe("submitFeedback", () => {
     const res = await submitFeedback({ source: "customer", rating: 4 });
     expect(res).toEqual({
       success: false,
-      error: "Thanks — you've already sent feedback.",
+      error: "Thanks, you've already sent feedback.",
     });
   });
 

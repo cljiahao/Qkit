@@ -34,7 +34,7 @@ export async function renameEvent(input: {
   });
   if (error) {
     console.error("renameEvent failed", error.message);
-    return { success: false, error: "Could not rename — please try again." };
+    return { success: false, error: "Could not rename. Please try again." };
   }
 
   revalidatePath("/dashboard/stats");

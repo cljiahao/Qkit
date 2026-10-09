@@ -3,11 +3,12 @@ import { Star } from "lucide-react";
 import { requireAdmin } from "@/lib/admin";
 import { createServerClient, createServiceClient } from "@/lib/supabase/server";
 import { vendorStallNames } from "@/lib/admin-vendor-names";
-import { cn } from "@/lib/utils";
+import { cn, EYEBROW_CLASS } from "@/lib/utils";
 import { npsBreakdown } from "@/lib/nps";
 import { summarizeReviews, type ReviewRow } from "@/lib/reviews";
 import { Paginated } from "@/components/paginated";
 import { Ticket } from "@/components/ticket";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -160,20 +161,13 @@ export default async function AdminFeedbackPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-5 py-7">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Internal
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          Feedback
-        </h1>
+        <PageHeader eyebrow="Internal" title="Feedback" />
       </div>
 
       {/* ── Hero: vendor NPS (qkit's own loyalty metric) ─────────────────── */}
       <Ticket as="section" shadow="none" className="fade-rise bg-card">
         <div className="px-6 pt-8 pb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Vendor NPS · how vendors rate qkit
-          </p>
+          <p className={EYEBROW_CLASS}>Vendor NPS · how vendors rate qkit</p>
           <div className="mt-2 flex items-end gap-3">
             <span className="font-display text-6xl font-semibold leading-none">
               {nps.score ?? "-"}
@@ -242,9 +236,7 @@ export default async function AdminFeedbackPage() {
       {/* ── Platform CSAT: aggregate ordering-experience health ──────────── */}
       <section className="fade-rise space-y-4 rounded-xl border border-border bg-card p-5">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Platform CSAT
-          </p>
+          <p className={EYEBROW_CLASS}>Platform CSAT</p>
           <p className="mt-1 text-sm text-muted-foreground">
             How customers rate ordering across every booth: your ordering-UX
             health. Individual booth reviews live on each vendor&apos;s stats.
@@ -289,9 +281,7 @@ export default async function AdminFeedbackPage() {
       {vendorCsat.length > 0 && (
         <section className="fade-rise space-y-3 rounded-xl border border-border bg-card p-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Satisfaction by vendor
-            </p>
+            <p className={EYEBROW_CLASS}>Satisfaction by vendor</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Lowest-rated first, where ordering quality needs a look. Scores
               only; the reviews stay with each vendor.

@@ -1067,7 +1067,7 @@ describe("RealtimeOrderBoard batch mark-ready", () => {
       if (failure === "stale")
         vi.mocked(advanceOrder).mockResolvedValueOnce({
           success: false,
-          error: "Order changed — please refresh.",
+          error: "Order changed. Please refresh.",
         });
       else vi.mocked(advanceOrder).mockRejectedValueOnce(new Error("offline"));
       const user = userEvent.setup();

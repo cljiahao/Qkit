@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { boardSettingsSchema, orderBoothIdSchema } from "@/lib/schemas";
 import { displayOrderNumber, isStaleOrderView } from "@/lib/orders";
-import { sgtStartOfDayIso } from "@/lib/tz";
+import { firstOrderNumberToday } from "@/lib/daily-order-number";
 import { readKeysetRows } from "@/lib/supabase/read-keyset";
 import type { OrderStatus } from "@/lib/types";
 
@@ -103,15 +103,7 @@ export async function getBoothQueueDisplay(
     .maybeSingle();
   const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
   if (settings.success && settings.data.daily_order_number_reset) {
-    const { data: firstToday } = await supabase
-      .from("orders")
-      .select("order_number")
-      .eq("booth_id", boothId)
-      .gte("created_at", sgtStartOfDayIso())
-      .order("order_number", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    baseline = firstToday?.order_number ?? null;
+    baseline = await firstOrderNumberToday(supabase, boothId);
   }
 
   const cutoff = Date.now() - COLLECTED_GRACE_MS;

@@ -308,7 +308,10 @@ export const printStatusSchema = z.enum([
 // Customer order-route params, shared by the status page and its status/payment
 // polling reads. boothId is a UUID; order numbers are short sequential per-booth
 // strings (bounded to reject junk before it reaches a query).
-export const orderBoothIdSchema = z.string().uuid();
+/** Any id that is a uuid (booth, order, vendor, idempotency key, session). */
+export const uuidSchema = z.string().uuid();
+
+export const orderBoothIdSchema = uuidSchema;
 export const orderNumberSchema = z.string().min(1).max(40);
 // Per-order access token minted by place_order; gates the status page + its
 // polling/claim reads so booth_id + sequential order_number alone can't

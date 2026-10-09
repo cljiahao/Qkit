@@ -4,6 +4,7 @@ import { BOARD_ORDER_COLUMNS } from "@/lib/orders";
 import { sgtStartOfDayIso } from "@/lib/tz";
 import { CompletedOrdersList } from "./completed-orders-list";
 import type { BoardOrder } from "@/lib/types";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -43,12 +44,7 @@ export default async function CompletedOrdersPage() {
   return (
     <div>
       <header className="mb-7">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Order history
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          Completed orders
-        </h1>
+        <PageHeader eyebrow="Order history" title="Completed orders" />
       </header>
       <CompletedOrdersList
         booths={booths ?? []}

@@ -157,7 +157,7 @@ describe("DashboardNav", () => {
   it("a failed feedback submit surfaces an inline error, not a silent failure", async () => {
     mocks.submitFeedback.mockResolvedValue({
       success: false,
-      error: "Thanks — you've already sent feedback.",
+      error: "Thanks, you've already sent feedback.",
     });
     const user = userEvent.setup();
     render(<DashboardNav {...baseProps} />);
@@ -168,7 +168,7 @@ describe("DashboardNav", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     expect(
-      await screen.findByText("Thanks — you've already sent feedback."),
+      await screen.findByText("Thanks, you've already sent feedback."),
     ).toBeInTheDocument();
   });
 

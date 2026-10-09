@@ -366,7 +366,7 @@ describe("advanceOrder", () => {
     const res = await advanceOrder(ID);
     expect(res).toEqual({
       success: false,
-      error: "Order changed — please refresh.",
+      error: "Order changed. Please refresh.",
     });
   });
 });
@@ -754,7 +754,7 @@ describe("cancelOrder", () => {
     const res = await cancelOrder(ID);
     expect(res).toEqual({
       success: false,
-      error: "Order changed — please refresh.",
+      error: "Order changed. Please refresh.",
     });
   });
 
@@ -846,7 +846,7 @@ describe("bumpOrder", () => {
     const res = await bumpOrder(ID);
     expect(res).toEqual({
       success: false,
-      error: "Order changed — please refresh.",
+      error: "Order changed. Please refresh.",
     });
   });
 });
@@ -912,7 +912,7 @@ describe("restoreAutoCompleted", () => {
     const res = await restoreAutoCompleted(ID);
     expect(res).toEqual({
       success: false,
-      error: "Order changed — please refresh.",
+      error: "Order changed. Please refresh.",
     });
   });
 });

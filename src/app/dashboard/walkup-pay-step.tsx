@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, EYEBROW_CLASS } from "@/lib/utils";
 import type { CheckoutView } from "@/lib/paykit/client";
 
 interface Props {
@@ -110,9 +110,7 @@ export function WalkupPayStep({
           room and lets it start from the top when there is not. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex min-h-full flex-col items-center justify-center gap-3 p-5">
-          <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-            Amount to pay
-          </p>
+          <p className={EYEBROW_CLASS}>Amount to pay</p>
           <p className="font-mono text-5xl font-bold">
             {formatPrice(amountCents)}
           </p>

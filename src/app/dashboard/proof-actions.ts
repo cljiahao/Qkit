@@ -1,9 +1,7 @@
 "use server";
 
-import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
-
-const idSchema = z.string().uuid();
+import { uuidSchema } from "@/lib/schemas";
 
 // Both queries run on the authenticated client, not service-role — RLS's
 // existing orders_vendor_select policy and the payment_proofs_vendor_select
@@ -13,7 +11,7 @@ const idSchema = z.string().uuid();
 export async function getProofPhotoUrl(
   orderId: string,
 ): Promise<string | null> {
-  if (!idSchema.safeParse(orderId).success) return null;
+  if (!uuidSchema.safeParse(orderId).success) return null;
   const supabase = await createServerClient();
 
   const { data: order } = await supabase
@@ -36,7 +34,7 @@ export async function getProofPhotoUrl(
 export async function findDuplicateProofOrder(
   orderId: string,
 ): Promise<string | null> {
-  if (!idSchema.safeParse(orderId).success) return null;
+  if (!uuidSchema.safeParse(orderId).success) return null;
   const supabase = await createServerClient();
 
   const { data: order } = await supabase

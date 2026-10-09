@@ -1,4 +1,5 @@
 import { FeedbackForm } from "@/components/feedback-form";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -6,16 +7,10 @@ export default function DashboardFeedbackPage() {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Help shape qkit
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          Feedback
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <PageHeader eyebrow="Help shape qkit" title="Feedback">
           What&apos;s working, what&apos;s missing, what&apos;s broken? We read
           every note.
-        </p>
+        </PageHeader>
       </div>
       <FeedbackForm
         source="vendor"

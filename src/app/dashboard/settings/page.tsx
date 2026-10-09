@@ -3,6 +3,7 @@ import { requireEntitledVendor } from "@/lib/supabase/get-entitlement";
 import { BackButton } from "@merqo/ui";
 import { currentPrepEstimate, type StatsOrder } from "@/lib/stats";
 import { SettingsForm } from "./settings-form";
+import { PageHeader } from "@/components/page-header";
 
 export const revalidate = 0;
 
@@ -42,16 +43,10 @@ export default async function SettingsPage() {
         <div className="mb-2 -ml-2.5">
           <BackButton href="/dashboard" label="Back to board" />
         </div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Live orders
-        </p>
-        <h1 className="font-display text-4xl font-semibold leading-none">
-          Board settings
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <PageHeader eyebrow="Live orders" title="Board settings">
           How the order board alerts you and flags a ticket that&apos;s waiting
           too long. Synced to your account, so it follows you to any device.
-        </p>
+        </PageHeader>
       </header>
 
       <SettingsForm

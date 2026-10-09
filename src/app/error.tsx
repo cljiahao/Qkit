@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { EYEBROW_CLASS } from "@/lib/utils";
 
 /**
  * Root error boundary — replaces the raw Next error overlay in production if an
@@ -20,9 +21,7 @@ export default function ErrorPage({
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-4 px-6 text-center">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Something went wrong
-      </p>
+      <p className={EYEBROW_CLASS}>Something went wrong</p>
       <h1 className="font-display text-3xl font-semibold">
         That didn&apos;t load
       </h1>

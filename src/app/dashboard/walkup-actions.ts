@@ -1,7 +1,11 @@
 "use server";
 import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
-import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
+import {
+  placeOrderSchema,
+  type PlaceOrderInput,
+  uuidSchema,
+} from "@/lib/schemas";
 import { createCheckout, type CheckoutView } from "@/lib/paykit/client";
 import type { ActionResult } from "@/lib/action-result";
 
@@ -23,8 +27,6 @@ type Result = ActionResult<{
   accessToken: string;
   payment: WalkupPayment | null;
 }>;
-
-const boothIdSchema = z.string().uuid();
 
 /**
  * The payment still owed on a walk-up order that was just placed, or null
@@ -107,7 +109,7 @@ export async function placeWalkupOrder(
   input: PlaceOrderInput,
   paid: boolean,
 ): Promise<Result> {
-  if (!boothIdSchema.safeParse(boothId).success)
+  if (!uuidSchema.safeParse(boothId).success)
     return { success: false, error: "Invalid booth" };
   if (!z.boolean().safeParse(paid).success)
     return { success: false, error: "Invalid payment state" };
