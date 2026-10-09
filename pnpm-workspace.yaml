@@ -3,8 +3,9 @@ allowBuilds:
   sharp: true
   supabase: true
   unrs-resolver: true
-  "@merqo/ui": true
+  "@merqo/ui@https://codeload.github.com/merqo-io/merqo-ui/tar.gz/989d934c1cc8d957ff383934debf8ef083b6b6a4": true
   tesseract.js: false
+  "@merqo/ui@https://codeload.github.com/merqo-io/merqo-ui/tar.gz/d4f4f3c49e5426aa6c7cf276afdc19d0be36c17e": set this to true or false
 
 # Scoped overrides retain patched floors and compatible major versions.
 overrides:

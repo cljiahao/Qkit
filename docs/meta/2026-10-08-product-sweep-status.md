@@ -1,5 +1,37 @@
 # Merqo product sweep, October 9
 
+## Publication and upstream integration
+
+The measurements below are the initial local audit checkpoint, before PR
+publication and Qkit's subsequent integration of upstream main at `1e6d8f8`.
+The integrated Qkit production build passes in a secret-free curated copy.
+Its first full run passed 2,056 tests, skipped two opt-in database tests and
+identified four stale test fixtures for the availability RPC and stale-order
+filter. The corrected fixtures pass 81 focused tests with their assertions
+retained. The earlier Qkit coverage figures are not a measurement of this
+integrated tree; a new full coverage run remains required.
+
+Qkit now pins the reviewed shared UI commit
+`989d934c1cc8d957ff383934debf8ef083b6b6a4`, which delivers safe integer money
+parsing, defensive storage URL decoding and image cleanup fixes to its
+consumers. Its frozen install passes using pnpm 11.10.0 and an exact archive
+build permission. This follows pnpm's
+[Git dependency build controls](https://github.com/pnpm/pnpm.io/blob/main/blog/releases/10.26.md);
+the permission grants only that reviewed dependency identity.
+
+Publication PRs are Merqo #85, Paykit #121, Stockkit #100, Loopkit #143,
+Printkit #28 and merqo-ui #45. Stockkit's CI passes all checks. Merqo and
+Paykit's migration and pgTAP checks pass; README follow-up commits are being
+published. Printkit's corrected database tests pass 38 assertions across three
+suites. Loopkit's standalone CI needs the actual Merqo prerequisite schema;
+its prepared workflow pins the reviewed Merqo commit rather than replacing
+shared tables with permissive fixtures. Qkit publication verification continues.
+These disposable CI databases do not establish production rollout, concurrency
+isolation under load, physical printer behavior or authenticated cross-service
+integration. No PR has been merged and no production migration has been applied.
+
+## Initial local audit checkpoint
+
 The scope is qkit, merqo, paykit, stockkit, loopkit, printkit and merqo-ui.
 The fresh action review separates vendor fulfillment and its undo from payment
 confirmation; completed unpaid orders retain explicit Paykit-backed settlement.
