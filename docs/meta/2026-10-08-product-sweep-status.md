@@ -8,8 +8,10 @@ The integrated Qkit production build passes in a secret-free curated copy.
 Its first full run passed 2,056 tests, skipped two opt-in database tests and
 identified four stale test fixtures for the availability RPC and stale-order
 filter. The corrected fixtures pass 81 focused tests with their assertions
-retained. The earlier Qkit coverage figures are not a measurement of this
-integrated tree; a new full coverage run remains required.
+retained. The integrated full coverage run passes 2,065 tests in 188 suites,
+with two opt-in database tests skipped. Statements are 85.36%, branches 82.03%,
+functions 82.24% and lines 86.51%; all four gates exceed 80%. The earlier Qkit
+figures below remain the initial audit checkpoint.
 
 Qkit now pins the reviewed shared UI commit
 `989d934c1cc8d957ff383934debf8ef083b6b6a4`, which delivers safe integer money
