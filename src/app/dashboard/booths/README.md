@@ -70,4 +70,9 @@ establish database enforcement or physical printer operation.
 
 ## Order limits and payment prefill
 
-Booth settings include a per-order item limit alongside the daily cap. Vendor-wide Paykit details prefill only booths with their own payment-kind marker; a booth with no marker stays payment-free. Booking and payment-prefill requests run concurrently. Menu CSV import/export also preserves item and option short codes.
+Booth settings include a per-order item limit alongside the daily cap. Vendor-wide
+Paykit details prefill only booths with their own payment-kind marker; a booth
+with no marker stays payment-free. New and existing booth forms share the saved
+payment loader, and selecting a method restores those details. Booking and
+payment-prefill requests run concurrently. Menu CSV import/export also preserves
+item and option short codes.

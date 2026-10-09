@@ -34,7 +34,10 @@ the current (non-legacy) customer ordering entry point.
   merqo's shared Telegram bot) is entirely best-effort and wrapped in its own
   try/catch: it resolves the booth's `vendor_id`, looks up the order's
   `total_cents` for the message text (both via the service-role client — no
-  vendor session exists in this customer-facing action), then calls
+  vendor session exists in this customer-facing action), names the order by
+  `vendorFacingOrderNumber` (the day's ticket number when the vendor has
+  daily reset on, so the alert reads "#002" like the ticket and not the
+  permanent "#0847"; the same helper `notifyPrintkit` labels with), then calls
   `@/lib/merqo-customer-notify`'s `notifyVendor(vendorId, message)` — a
   merqo outage or a vendor who never connected can never affect
   `placeOrder`'s own returned result. See

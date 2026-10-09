@@ -320,8 +320,59 @@ describe("placeOrder", () => {
       expect(notifyVendor).toHaveBeenCalledTimes(1);
       const [vendorId, message] = notifyVendor.mock.calls[0];
       expect(vendorId).toBe("vendor-1");
-      expect(message).toContain("0007");
-      expect(message).toContain("7.00");
+      expect(message).toBe("New order #0007 · $7.00");
+    });
+
+    it("names the order by the day's ticket number when daily reset is on", async () => {
+      mockSuccessfulRpc(); // order_number "0007"
+      boothQueue = [{ data: { vendor_id: "vendor-1" } }];
+      vendorQueue = [
+        {
+          data: {
+            board_settings: {
+              ...DEFAULT_BOARD_SETTINGS,
+              daily_order_number_reset: true,
+            },
+          },
+        },
+      ];
+      orderQueue = [
+        { data: { total_cents: 700 } },
+        { data: { order_number: "0005" } }, // today's first order (baseline)
+      ];
+
+      const res = await placeOrder("code123", validInput, IDEM);
+
+      // The permanent number still goes back to the caller: it is what the
+      // customer's status URL is built from.
+      expect(res).toMatchObject({ success: true, orderNumber: "0007" });
+      expect(notifyVendor).toHaveBeenCalledWith(
+        "vendor-1",
+        "New order #003 · $7.00",
+      );
+    });
+
+    it("keeps the permanent number when daily reset is off", async () => {
+      mockSuccessfulRpc();
+      boothQueue = [{ data: { vendor_id: "vendor-1" } }];
+      vendorQueue = [
+        {
+          data: {
+            board_settings: {
+              ...DEFAULT_BOARD_SETTINGS,
+              daily_order_number_reset: false,
+            },
+          },
+        },
+      ];
+      orderQueue = [{ data: { total_cents: 700 } }];
+
+      await placeOrder("code123", validInput, IDEM);
+
+      expect(notifyVendor).toHaveBeenCalledWith(
+        "vendor-1",
+        "New order #0007 · $7.00",
+      );
     });
 
     it("skips silently when the booth can't be resolved", async () => {
@@ -430,20 +481,21 @@ describe("placeOrder", () => {
         { data: { vendor_id: "vendor-1" } },
         { data: { vendor_id: "vendor-1", print_enabled: true } },
       ];
-      vendorQueue = [
-        {
-          data: {
-            board_settings: {
-              ...DEFAULT_BOARD_SETTINGS,
-              daily_order_number_reset: true,
-            },
+      const resetOn = {
+        data: {
+          board_settings: {
+            ...DEFAULT_BOARD_SETTINGS,
+            daily_order_number_reset: true,
           },
         },
-      ];
+      };
+      // Both channels read the vendor's settings and the day's first order.
+      vendorQueue = [resetOn, resetOn];
       orderQueue = [
         { data: { total_cents: 700 } }, // notifyVendorTelegram
         { data: { id: "order-uuid-1", customer_name: "Ada" } }, // notifyPrintkit's order lookup
-        { data: { order_number: "0005" } }, // today's first order (baseline)
+        { data: { order_number: "0005" } }, // today's first order, for the alert
+        { data: { order_number: "0005" } }, // and again for the label
       ];
 
       const res = await placeOrder("code123", validInput, IDEM);
@@ -453,6 +505,11 @@ describe("placeOrder", () => {
       // board/TV/customer status page would show, not the raw "0007".
       expect(createPrintJob).toHaveBeenCalledWith(
         expect.objectContaining({ orderNumber: "003" }),
+      );
+      // The alert and the label name the order the same way.
+      expect(notifyVendor).toHaveBeenCalledWith(
+        "vendor-1",
+        "New order #003 · $7.00",
       );
     });
 

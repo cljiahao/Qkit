@@ -12,16 +12,21 @@ import { render, screen } from "@testing-library/react";
 import NewBoothPage from "./page";
 import type { Entitlement } from "@/lib/plan";
 
-const { requireEntitledVendor, canAddBooth, redirect, headCount } = vi.hoisted(
-  () => ({
-    requireEntitledVendor: vi.fn(),
-    canAddBooth: vi.fn(),
-    redirect: vi.fn(() => {
-      throw new Error("REDIRECT");
-    }),
-    headCount: vi.fn(),
+const {
+  requireEntitledVendor,
+  canAddBooth,
+  redirect,
+  headCount,
+  savedVendorPayment,
+} = vi.hoisted(() => ({
+  requireEntitledVendor: vi.fn(),
+  canAddBooth: vi.fn(),
+  redirect: vi.fn(() => {
+    throw new Error("REDIRECT");
   }),
-);
+  headCount: vi.fn(),
+  savedVendorPayment: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/get-entitlement", () => ({ requireEntitledVendor }));
 vi.mock("@/lib/plan", () => ({ canAddBooth }));
@@ -34,9 +39,20 @@ vi.mock("@/lib/supabase/server", () => ({
       }),
     }),
 }));
+vi.mock("@/lib/paykit/saved-vendor-payment", () => ({ savedVendorPayment }));
 vi.mock("../booth-form", () => ({
-  BoothForm: ({ eventMode }: { eventMode?: boolean }) => (
-    <div data-testid="booth-form" data-event-mode={String(!!eventMode)} />
+  BoothForm: ({
+    eventMode,
+    savedPayment,
+  }: {
+    eventMode?: boolean;
+    savedPayment?: { kind: string } | null;
+  }) => (
+    <div
+      data-testid="booth-form"
+      data-event-mode={String(!!eventMode)}
+      data-saved-payment={savedPayment?.kind ?? "none"}
+    />
   ),
 }));
 
@@ -58,6 +74,7 @@ beforeEach(() => {
   });
   canAddBooth.mockReturnValue(true);
   headCount.mockResolvedValue({ count: 0 });
+  savedVendorPayment.mockResolvedValue(null);
 });
 
 describe("NewBoothPage", () => {
@@ -88,6 +105,21 @@ describe("NewBoothPage", () => {
     );
     const passLink = screen.getByRole("link", { name: /buy an event pass/i });
     expect(passLink).toHaveAttribute("href", "/dashboard/plan");
+  });
+
+  it("hands the vendor's saved payment details to the form", async () => {
+    savedVendorPayment.mockResolvedValue({
+      kind: "paynow",
+      payee_name: "Cart",
+    });
+    const jsx = await NewBoothPage({ searchParams: Promise.resolve({}) });
+    render(jsx);
+
+    expect(savedVendorPayment).toHaveBeenCalledWith("v1");
+    expect(screen.getByTestId("booth-form")).toHaveAttribute(
+      "data-saved-payment",
+      "paynow",
+    );
   });
 
   it("still redirects to /dashboard/plan when the plan gate blocks a new booth, event mode or not", async () => {

@@ -121,7 +121,10 @@ selected, onToggleSelect })`. Item options start expanded, not collapsed behind
   customisation, and a collapsed card cost one tap per order, over a hundred in
   a service. The toggle remains, for a vendor scanning numbers rather than
   making drinks. The customer name and item names wrap rather than truncate,
-  since a cut-off name is what gets written on the cup and called out. With
+  since a cut-off name is what gets written on the cup and called out. A
+  walk-up order is tagged "· walk-up" beside the name (no phone to notify, so
+  staff call it), except one keyed in without a name: that is saved as
+  "Walk-up", and the tag would print the word twice (`showsWalkupTag`). With
   `overtaken` (from `overtakenOrderIds` in `@/lib/orders`, set by the board) the
   card carries a "Passed over" badge: a later order from the same booth is
   already out, so this one was probably finished without anyone marking it. The

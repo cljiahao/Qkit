@@ -39,6 +39,14 @@ amountCents, orderRef})` (idempotent on `orderRef` — safe to call again for
   interpolated into a request path is `encodeURIComponent`'d, so a value
   containing `/`, `?`, or `#` can't add extra path segments or query params
   to the request paykit actually receives.
+- `saved-vendor-payment.ts` — `savedVendorPayment(vendorId)`: the vendor's
+  payment details from `getVendorConfig`, mapped to qkit's `PaymentConfig`
+  (`paynow` with whichever of UEN/mobile is set, or `pointer` with its link
+  or QR image), or `null` when nothing is saved or paykit cannot be reached.
+  Vendor-wide, not per booth: both booth pages pass it to the Payment section
+  so that picking a method already set up starts from these details.
+- `saved-vendor-payment.test.ts` — each mapping above, plus the three `null`
+  cases (nothing saved, a config of no known kind, paykit unreachable).
 - `client.test.ts` — tests the missing-secret degrade path (no network call),
   the bearer header/URL shape, response mapping for each endpoint, non-2xx
   error-body surfacing, network-failure handling (never throws), and that

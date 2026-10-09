@@ -52,6 +52,25 @@ beforeEach(() => {
   notifyPermission.mockReturnValue("granted");
 });
 
+describe("SettingsForm hints", () => {
+  it("opens a hint on a tap, since the form is used on touch screens", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={DEFAULTS} prepEstimate={PREP_ESTIMATE} />);
+
+    expect(
+      screen.queryByText(/before its ticket turns amber/i),
+    ).not.toBeInTheDocument();
+    const hints = screen.getAllByRole("button", {
+      name: "More about this setting",
+    });
+    await user.click(hints[0]);
+
+    expect(
+      await screen.findByText(/before its ticket turns amber/i),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("SettingsForm thresholds", () => {
   it("reports a timing transport rejection and leaves values available for retry", async () => {
     updateBoardSettings

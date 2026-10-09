@@ -16,6 +16,43 @@ import { displayOrderNumber } from "@/lib/orders";
 import { boardSettingsSchema } from "@/lib/schemas";
 import { sgtStartOfDayIso } from "@/lib/tz";
 
+type ServiceClient = Awaited<ReturnType<typeof createServiceClient>>;
+
+/**
+ * The number staff and the customer see for this order: the day's rank when
+ * the vendor has board_settings.daily_order_number_reset on (see
+ * displayOrderNumber), the permanent order_number otherwise. The board, the
+ * TV display and the customer's status page each work this out per request;
+ * anything that names an order to the vendor from the server (the printed
+ * label, the Telegram alert) has to do the same or it names a number nobody
+ * is looking at.
+ */
+async function vendorFacingOrderNumber(
+  service: ServiceClient,
+  vendorId: string,
+  boothId: string,
+  orderNumber: string,
+): Promise<string> {
+  const { data: vendor } = await service
+    .from("vendors")
+    .select("board_settings")
+    .eq("id", vendorId)
+    .maybeSingle();
+  const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
+  if (!settings.success || !settings.data.daily_order_number_reset)
+    return orderNumber;
+
+  const { data: firstToday } = await service
+    .from("orders")
+    .select("order_number")
+    .eq("booth_id", boothId)
+    .gte("created_at", sgtStartOfDayIso())
+    .order("order_number", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return displayOrderNumber(orderNumber, firstToday?.order_number ?? null);
+}
+
 /**
  * Redundant new-order channel: alerts the booth's vendor via merqo's shared
  * Telegram bot (Phase A2 — supersedes qkit's own now-retired bot). Entirely
@@ -45,13 +82,19 @@ export async function notifyVendorTelegram(
       .eq("order_number", orderNumber)
       .maybeSingle();
     const totalLabel = order
-      ? ` — $${(order.total_cents / 100).toFixed(2)}`
+      ? ` · $${(order.total_cents / 100).toFixed(2)}`
       : "";
 
-    await notifyVendor(
+    // The ticket's number, not the permanent one: the alert read "#0847" for
+    // a ticket on the board reading "#002".
+    const shown = await vendorFacingOrderNumber(
+      service,
       booth.vendor_id,
-      `New order #${orderNumber}${totalLabel}`,
+      boothId,
+      orderNumber,
     );
+
+    await notifyVendor(booth.vendor_id, `New order #${shown}${totalLabel}`);
   } catch (err) {
     console.error("notifyVendorTelegram failed", err);
   }
@@ -112,33 +155,16 @@ export async function notifyPrintkit(
     }
 
     // Print the SAME number the vendor's board, the TV display, and the
-    // customer's own status page all show -- board_settings.daily_order_
-    // number_reset (see displayOrderNumber) rebases the permanent
-    // order_number to a per-day rank everywhere else in the app; printing
-    // the raw permanent number here would hand the customer a ticket whose
-    // last digit doesn't match anything staff or the customer see on
-    // screen, breaking a physical pickup-shelf-slot workflow keyed on it.
-    let labelOrderNumber = orderNumber;
-    const { data: vendor } = await service
-      .from("vendors")
-      .select("board_settings")
-      .eq("id", booth.vendor_id)
-      .maybeSingle();
-    const settings = boardSettingsSchema.safeParse(vendor?.board_settings);
-    if (settings.success && settings.data.daily_order_number_reset) {
-      const { data: firstToday } = await service
-        .from("orders")
-        .select("order_number")
-        .eq("booth_id", boothId)
-        .gte("created_at", sgtStartOfDayIso())
-        .order("order_number", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      labelOrderNumber = displayOrderNumber(
-        orderNumber,
-        firstToday?.order_number ?? null,
-      );
-    }
+    // customer's own status page all show. Printing the raw permanent number
+    // here would hand the customer a ticket whose last digit doesn't match
+    // anything staff or the customer see on screen, breaking a physical
+    // pickup-shelf-slot workflow keyed on it.
+    const labelOrderNumber = await vendorFacingOrderNumber(
+      service,
+      booth.vendor_id,
+      boothId,
+      orderNumber,
+    );
 
     const result = await createPrintJob({
       vendorId: booth.vendor_id,

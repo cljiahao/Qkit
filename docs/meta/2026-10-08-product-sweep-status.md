@@ -4,11 +4,15 @@
 
 The measurements below are the initial local audit checkpoint, before PR
 publication and Qkit's subsequent integration of upstream main at `1e6d8f8`.
+Main later advanced to `730e511`; that second integration retains the new
+ticket-number, payment-prefill and touch-control behavior, with 208 focused
+regressions passing. Qkit PR #196 is open; CI verification of the second
+integration remains required.
 The integrated Qkit production build passes in a secret-free curated copy.
 Its first full run passed 2,056 tests, skipped two opt-in database tests and
 identified four stale test fixtures for the availability RPC and stale-order
 filter. The corrected fixtures pass 81 focused tests with their assertions
-retained. The integrated full coverage run passes 2,065 tests in 188 suites,
+retained. The first integrated full coverage run passes 2,065 tests in 188 suites,
 with two opt-in database tests skipped. Statements are 85.36%, branches 82.03%,
 functions 82.24% and lines 86.51%; all four gates exceed 80%. The earlier Qkit
 figures below remain the initial audit checkpoint.

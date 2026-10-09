@@ -34,7 +34,9 @@ merqo's own `/profile` page instead; see
   `currentPrepEstimate` (`@/lib/stats`), and passes the result as
   `prepEstimate`. `revalidate = 0` (always fresh).
 - `settings-form.tsx` — `SettingsForm({ initial, prepEstimate })` client
-  component, the actual UI: four `Section` cards (from `ticket-section.tsx`)
+  component, the actual UI. Every (i) hint is an `InfoTooltip` with
+  `trigger="tap"`: this form is filled in on iPads and phones, where a
+  hover-only tooltip never opens. Four `Section` cards (from `ticket-section.tsx`)
   split across `@merqo/ui`'s `TwoColumnSections` (`columnOne`/`columnTwo`
   props, each an independent `flex flex-col gap-5` stack side by side on
   `md`+ — the same shared component `../profile/profile-form.tsx` uses) —

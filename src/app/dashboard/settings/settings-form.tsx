@@ -447,6 +447,7 @@ export function SettingsForm({
                       <InfoTooltip
                         content="Minutes after an order is placed before its ticket turns amber, flagging it as starting to wait."
                         ariaLabel="More about this setting"
+                        trigger="tap"
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -474,6 +475,7 @@ export function SettingsForm({
                       <InfoTooltip
                         content="Minutes before a still-waiting ticket turns red instead of amber. Must be later than the amber threshold."
                         ariaLabel="More about this setting"
+                        trigger="tap"
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -512,6 +514,7 @@ export function SettingsForm({
                       <InfoTooltip
                         content="Mark Ready / Mark Picked Up applies right away. For this many seconds after, the button turns into Undo instead, in case of a wrong tap."
                         ariaLabel="More about this setting"
+                        trigger="tap"
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -542,6 +545,7 @@ export function SettingsForm({
                       <InfoTooltip
                         content="A ready order nobody marks Picked Up clears itself after this many minutes. Leave blank to turn off. Restore a wrongly-cleared order from Completed orders."
                         ariaLabel="More about this setting"
+                        trigger="tap"
                       />
                     </div>
                     <div className="flex items-center gap-2">
@@ -576,6 +580,7 @@ export function SettingsForm({
                   <InfoTooltip
                     content="Fires the same Telegram ping a customer opted into on the order-status page. Turning this off doesn't touch their connection, it just stops this booth from using it."
                     ariaLabel="More about this setting"
+                    trigger="tap"
                   />
                 </span>
               </div>
@@ -591,6 +596,7 @@ export function SettingsForm({
                   <InfoTooltip
                     content="Customers scan their own order-status QR at a pickup kiosk instead of staff marking pickup manually."
                     ariaLabel="More about this setting"
+                    trigger="tap"
                   />
                 </span>
               </div>
@@ -668,6 +674,7 @@ export function SettingsForm({
                 <InfoTooltip
                   content="Customers and staff see a small ticket number like #003 instead of #0847. Records, receipts, and reports still use the permanent number underneath."
                   ariaLabel="More about this setting"
+                  trigger="tap"
                 />
               </span>
             </div>
@@ -683,6 +690,7 @@ export function SettingsForm({
                 <InfoTooltip
                   content={`Off shows only the queue position ("2 orders ahead of you"), never a minute guess. Doesn't affect the queue position itself, only the estimate layered on top of it.`}
                   ariaLabel="More about this setting"
+                  trigger="tap"
                 />
               </span>
             </div>
@@ -700,6 +708,7 @@ export function SettingsForm({
                 <InfoTooltip
                   content="Estimates a customer's wait until this booth has enough of today's own order history. Leave blank to show queue position instead."
                   ariaLabel="More about this setting"
+                  trigger="tap"
                 />
               </div>
               <div className="flex items-center gap-2">

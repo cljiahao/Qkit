@@ -296,6 +296,166 @@ describe("WalkupOrderDialog", () => {
     ).toBeEnabled();
   });
 
+  it("names the order by the number on its ticket", async () => {
+    getWalkupMenu.mockResolvedValue(PAID_MENU);
+    placeWalkupOrder.mockResolvedValue({
+      ...UNPAID_ORDER,
+      orderNumber: "0847",
+    });
+    const displayNumber = vi.fn(() => "003");
+    const user = userEvent.setup();
+    render(
+      <WalkupOrderDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        booths={BOOTHS}
+        initialBoothId="b1"
+        displayNumber={displayNumber}
+      />,
+    );
+    await user.click(await screen.findByRole("button", { name: "Add" }));
+    await user.click(
+      screen.getByRole("button", { name: /add order · 1 item/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Collect payment for order #003",
+      }),
+    ).toBeInTheDocument();
+    expect(displayNumber).toHaveBeenCalledWith("b1", "0847");
+    expect(toast.success).toHaveBeenCalledWith("Order #003 added to the board");
+
+    await user.click(screen.getByRole("button", { name: "Payment received" }));
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith("Order #003 paid"),
+    );
+  });
+
+  describe("at an event booth", () => {
+    const EVENT_BOOTHS = [
+      { id: "b1", name: "Event Stall", walkup_default: true },
+    ];
+
+    it("clears for the next customer instead of closing", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <WalkupOrderDialog
+          open={true}
+          onOpenChange={onOpenChange}
+          booths={EVENT_BOOTHS}
+          initialBoothId="b1"
+        />,
+      );
+      await user.click(await screen.findByRole("button", { name: "Add" }));
+      await user.click(
+        screen.getByRole("button", { name: /add order · 1 item/i }),
+      );
+
+      expect(
+        await screen.findByRole("button", { name: /add items to order/i }),
+      ).toBeDisabled();
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(toast.success).toHaveBeenCalledWith(
+        "Order #0009 added to the board",
+      );
+      // Stock is re-read behind the cleared form.
+      await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledTimes(2));
+      expect(screen.queryByText("Loading menu…")).not.toBeInTheDocument();
+    });
+
+    it("shows the refreshed stock for the next customer", async () => {
+      getWalkupMenu
+        .mockResolvedValueOnce({
+          menuItems: PAID_MENU.menuItems,
+          remaining: { m1: 2 },
+          expectsPayment: false,
+          paymentKind: null,
+        })
+        .mockResolvedValueOnce({
+          menuItems: PAID_MENU.menuItems,
+          remaining: { m1: 1 },
+          expectsPayment: false,
+          paymentKind: null,
+        });
+      const user = userEvent.setup();
+      render(
+        <WalkupOrderDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          booths={EVENT_BOOTHS}
+          initialBoothId="b1"
+        />,
+      );
+      expect(await screen.findByText("2 left")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await user.click(
+        screen.getByRole("button", { name: /add order · 1 item/i }),
+      );
+
+      expect(await screen.findByText("1 left")).toBeInTheDocument();
+    });
+
+    it("returns to order entry after Payment received", async () => {
+      getWalkupMenu.mockResolvedValue(PAID_MENU);
+      placeWalkupOrder.mockResolvedValue(UNPAID_ORDER);
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <WalkupOrderDialog
+          open={true}
+          onOpenChange={onOpenChange}
+          booths={EVENT_BOOTHS}
+          initialBoothId="b1"
+        />,
+      );
+      await user.click(await screen.findByRole("button", { name: "Add" }));
+      await user.click(
+        screen.getByRole("button", { name: /add order · 1 item/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "Payment received" }),
+      );
+
+      expect(
+        await screen.findByRole("heading", { name: "New walk-up order" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /add items to order/i }),
+      ).toBeDisabled();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("returns to order entry on Collect later", async () => {
+      getWalkupMenu.mockResolvedValue(PAID_MENU);
+      placeWalkupOrder.mockResolvedValue(UNPAID_ORDER);
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <WalkupOrderDialog
+          open={true}
+          onOpenChange={onOpenChange}
+          booths={EVENT_BOOTHS}
+          initialBoothId="b1"
+        />,
+      );
+      await user.click(await screen.findByRole("button", { name: "Add" }));
+      await user.click(
+        screen.getByRole("button", { name: /add order · 1 item/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "Collect later" }),
+      );
+
+      expect(
+        await screen.findByRole("heading", { name: "New walk-up order" }),
+      ).toBeInTheDocument();
+      expect(confirmOrderPayment).not.toHaveBeenCalled();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+  });
+
   it("shows a no-booths state instead of fetching a menu", () => {
     render(
       <WalkupOrderDialog open={true} onOpenChange={vi.fn()} booths={[]} />,

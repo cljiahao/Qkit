@@ -658,16 +658,24 @@ export function RealtimeOrderBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The ticket number for an order that has just arrived. Set further down,
+  // once the day's numbering is known: handleNewOrder has to exist before the
+  // orders that numbering is read from.
+  const newOrderNumberRef = useRef(
+    (_boothId: string, orderNumber: string) => orderNumber,
+  );
+
   function handleNewOrder(order: BoardOrder) {
     if (order.order_number == null) return;
+    const shown = newOrderNumberRef.current(order.booth_id, order.order_number);
     void playSound(boardSettings.sound_id);
-    toast(`New order #${order.order_number} · ${order.customer_name}`);
+    toast(`New order #${shown} · ${order.customer_name}`);
     if (document.hidden) {
       bumpAway();
       if (boardSettings.desktop_notify) {
         void fireNewOrderNotification(
           boothName.get(order.booth_id) ?? "qkit",
-          order.order_number,
+          shown,
         );
       }
     }
@@ -713,6 +721,24 @@ export function RealtimeOrderBoard({
     }
     return lowest;
   }, [orders, boardSettings.daily_order_number_reset]);
+
+  // Toasts, the desktop notification and the walk-up dialog all name an order
+  // the moment it is placed, and used to name it by its permanent number
+  // (#0847) while its ticket said #002. An order placed just now with no
+  // baseline yet for its booth is the day's first, so it is its own baseline.
+  // That shortcut is for a new order only: a ticket carried over from
+  // yesterday must keep its permanent number, so the cards do not use it.
+  function newOrderNumber(boothId: string, orderNumber: string) {
+    const baseline =
+      dailyOrderNumberBaselines[boothId] ?? seenFirstNumbers[boothId] ?? null;
+    const ownBaseline = boardSettings.daily_order_number_reset
+      ? orderNumber
+      : null;
+    return displayOrderNumber(orderNumber, baseline ?? ownBaseline);
+  }
+  useEffect(() => {
+    newOrderNumberRef.current = newOrderNumber;
+  });
 
   // Auto-clear sweep for stale 'ready' orders (board_settings.
   // ready_auto_clear_min) — a plain periodic tick, not tied to any local
@@ -1150,6 +1176,7 @@ export function RealtimeOrderBoard({
             ? effectiveFilter
             : booths.find((b) => b.walkup_default && boothIsActive(b))?.id
         }
+        displayNumber={newOrderNumber}
       />
     </div>
   );

@@ -141,7 +141,8 @@ describe("booth editor data boundary", () => {
     render(await page());
     expect(form).toHaveBeenCalledWith(
       expect.objectContaining({
-        initial: expect.objectContaining({ payment, savedPayment: payment }),
+        initial: expect.objectContaining({ payment }),
+        savedPayment: payment,
       }),
     );
   });
@@ -152,13 +153,9 @@ describe("booth editor data boundary", () => {
       render(await page());
       expect(form).toHaveBeenCalledWith(
         expect.objectContaining({
-          initial: expect.objectContaining({
-            payment: null,
-            savedPayment:
-              kind === "paynow"
-                ? { kind, payee_name: "" }
-                : { kind, label: "" },
-          }),
+          initial: expect.objectContaining({ payment: null }),
+          savedPayment:
+            kind === "paynow" ? { kind, payee_name: "" } : { kind, label: "" },
         }),
       );
     },
