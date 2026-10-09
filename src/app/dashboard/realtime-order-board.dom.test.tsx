@@ -685,6 +685,36 @@ describe("RealtimeOrderBoard event-mode (walkup_default)", () => {
     await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b1"));
   });
 
+  it("opens on the walk-up booth, not on the first booth listed", async () => {
+    vi.mocked(getWalkupMenu).mockResolvedValue({
+      menuItems: [],
+      remaining: {},
+      expectsPayment: false,
+      paymentKind: null,
+    });
+    render(
+      <RealtimeOrderBoard
+        booths={[
+          { id: "b1", name: "Kopi Corner", is_active: true, open: true },
+          {
+            id: "b2",
+            name: "Event Stall",
+            is_active: true,
+            open: true,
+            walkup_default: true,
+          },
+        ]}
+        initialOrders={[]}
+        boardSettings={DEFAULT_BOARD_SETTINGS}
+      />,
+      { wrapper: TooltipProvider },
+    );
+
+    expect(await screen.findByText("New walk-up order")).toBeInTheDocument();
+    await waitFor(() => expect(getWalkupMenu).toHaveBeenCalledWith("b2"));
+    expect(getWalkupMenu).not.toHaveBeenCalledWith("b1");
+  });
+
   it("does not auto-open for a walk-up booth that is switched off", () => {
     render(
       <RealtimeOrderBoard

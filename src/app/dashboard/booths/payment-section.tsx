@@ -60,10 +60,15 @@ const OPTIONS: { k: Kind; label: string; detail: string }[] = [
 export function PaymentSection({
   vendorId,
   value,
+  saved = null,
   onChange,
 }: {
   vendorId: string;
   value: PaymentConfig | null;
+  // Details the vendor already has on file. Picking that method starts from
+  // them, so a booth switched to "No online payment" and back, or a booth
+  // that never took payment, does not make the vendor retype a UEN.
+  saved?: PaymentConfig | null;
   onChange: (next: PaymentConfig | null) => void;
 }) {
   const kind = kindOf(value);
@@ -105,11 +110,13 @@ export function PaymentSection({
   function pick(next: Kind) {
     if (next === "none") onChange(null);
     else if (next === "paynow") {
-      setProxyMode("uen");
-      onChange({ kind: "paynow", payee_name: "", uen: "" });
+      const onFile = saved?.kind === "paynow" ? saved : null;
+      setProxyMode(onFile?.mobile ? "mobile" : "uen");
+      onChange(onFile ?? { kind: "paynow", payee_name: "", uen: "" });
     } else {
-      setPointerMode("link");
-      onChange({ kind: "pointer", label: "", url: "" });
+      const onFile = saved?.kind === "pointer" ? saved : null;
+      setPointerMode(onFile?.qr_image_url && !onFile.url ? "qr" : "link");
+      onChange(onFile ?? { kind: "pointer", label: "", url: "" });
     }
   }
 

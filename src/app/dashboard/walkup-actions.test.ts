@@ -2,17 +2,40 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { placeWalkupOrder } from "./walkup-actions";
 import type { PlaceOrderInput } from "@/lib/schemas";
 
-const { rpcMock, createServerClientMock } = vi.hoisted(() => {
+const {
+  rpcMock,
+  orderLookupMock,
+  getUserMock,
+  createCheckoutMock,
+  createServerClientMock,
+} = vi.hoisted(() => {
   const rpcMock = vi.fn();
+  const orderLookupMock = vi.fn();
+  const getUserMock = vi.fn();
+  const query = {
+    select: () => query,
+    eq: () => query,
+    maybeSingle: orderLookupMock,
+  };
   return {
     rpcMock,
-    createServerClientMock: vi.fn(() => Promise.resolve({ rpc: rpcMock })),
+    orderLookupMock,
+    getUserMock,
+    createCheckoutMock: vi.fn(),
+    createServerClientMock: vi.fn(() =>
+      Promise.resolve({
+        rpc: rpcMock,
+        from: () => query,
+        auth: { getUser: getUserMock },
+      }),
+    ),
   };
 });
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerClient: createServerClientMock,
 }));
+vi.mock("@/lib/paykit/client", () => ({ createCheckout: createCheckoutMock }));
 
 const BOOTH_ID = "00000000-0000-4000-8000-000000000001";
 
@@ -27,7 +50,23 @@ function makeInput(over: Partial<PlaceOrderInput> = {}): PlaceOrderInput {
 beforeEach(() => {
   rpcMock.mockReset();
   createServerClientMock.mockClear();
+  orderLookupMock.mockReset();
+  orderLookupMock.mockResolvedValue({ data: null });
+  getUserMock.mockReset();
+  getUserMock.mockResolvedValue({ data: { user: { id: "vendor-1" } } });
+  createCheckoutMock.mockReset();
 });
+
+function placedOk() {
+  rpcMock.mockResolvedValue({
+    data: { order_number: "0001", access_token: "tok" },
+    error: null,
+  });
+}
+
+const PENDING_ORDER = {
+  data: { id: "order-1", total_cents: 550, payment_status: "pending" },
+};
 
 describe("placeWalkupOrder", () => {
   it("rejects an invalid booth id without calling the RPC", async () => {
@@ -65,7 +104,80 @@ describe("placeWalkupOrder", () => {
       success: true,
       orderNumber: "0001",
       accessToken: "tok",
+      payment: null,
     });
+  });
+
+  it("returns the booth's checkout for an order placed unpaid", async () => {
+    placedOk();
+    orderLookupMock.mockResolvedValue(PENDING_ORDER);
+    const checkout = { type: "qr", transactionId: "tx-1", payload: "PAYLOAD" };
+    createCheckoutMock.mockResolvedValue({ ok: true, data: checkout });
+
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
+
+    expect(createCheckoutMock).toHaveBeenCalledWith({
+      vendorId: "vendor-1",
+      amountCents: 550,
+      orderRef: "order-1",
+    });
+    expect(res).toMatchObject({
+      success: true,
+      payment: { orderId: "order-1", amountCents: 550, checkout },
+    });
+  });
+
+  it("keeps the order payable when paykit cannot be reached", async () => {
+    placedOk();
+    orderLookupMock.mockResolvedValue(PENDING_ORDER);
+    createCheckoutMock.mockResolvedValue({
+      ok: false,
+      status: null,
+      error: "unreachable",
+    });
+
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
+
+    expect(res).toMatchObject({
+      success: true,
+      payment: { orderId: "order-1", amountCents: 550, checkout: null },
+    });
+  });
+
+  it("returns no payment for an order that owes nothing", async () => {
+    placedOk();
+    orderLookupMock.mockResolvedValue({
+      data: { id: "order-1", total_cents: 0, payment_status: "not_required" },
+    });
+
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
+
+    expect(res).toMatchObject({ success: true, payment: null });
+    expect(createCheckoutMock).not.toHaveBeenCalled();
+  });
+
+  it("skips the payment lookup for an order placed already paid", async () => {
+    placedOk();
+
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), true);
+
+    expect(res).toMatchObject({ success: true, payment: null });
+    expect(orderLookupMock).not.toHaveBeenCalled();
+  });
+
+  it("still reports the order placed when the payment lookup throws", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    placedOk();
+    orderLookupMock.mockRejectedValue(new Error("db down"));
+
+    const res = await placeWalkupOrder(BOOTH_ID, makeInput(), false);
+
+    expect(res).toMatchObject({
+      success: true,
+      orderNumber: "0001",
+      payment: null,
+    });
+    errorSpy.mockRestore();
   });
 
   it("passes paid=true through to p_paid", async () => {

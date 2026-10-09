@@ -8,6 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A booth saved with "No online payment" stays that way. The booth page filled
+  its Payment section from the vendor's payment details, which are shared by
+  every booth, so a booth without payment opened showing PayNow selected, and
+  saving any other change on the page then switched payment on for it. The
+  booth's own setting now decides what is selected; the saved details only
+  fill the fields in when that method is picked.
+- The walk-up dialog that opens by itself for an event booth now starts on
+  that booth. With several booths open it started on the first one listed.
 - The order board no longer opens the walk-up order dialog on every load
   because of a walk-up booth that is switched off. Only an active walk-up booth
   triggers it.
@@ -61,6 +69,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Taking payment for a walk-up order is now a second step. "Add order" places
+  the order, then the dialog shows the amount and the booth's own payment QR
+  (PayNow with the amount already filled in, or the payment link or QR image)
+  for staff to turn towards the customer. "Payment received" marks the order
+  paid; "Collect later" leaves it unpaid on the board. This replaces the
+  "Payment collected" switch, which had to be set before the order existed
+  and never showed a QR. A booth with no payment set up sees no payment
+  control at all.
 - A ticket's waiting time is back in its bottom-left corner, under the action
   button, where it was before the redesign. Beside the number it crowded the
   part of the ticket that gets read out. The top-right corner now holds only

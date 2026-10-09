@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Banknote, Minus, Plus, ShoppingCart } from "lucide-react";
+import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +23,6 @@ import {
 import { ItemCustomizer } from "@/components/item-customizer";
 import { cartKey, cartTotal, sumOptionDeltas } from "@/lib/cart";
 import { remainingFor, type Remaining } from "@/lib/stock";
-import { cn } from "@/lib/utils";
 import {
   count,
   formatOptions,
@@ -34,13 +32,10 @@ import {
 } from "@/lib/utils";
 import { placeOrderSchema, type PlaceOrderInput } from "@/lib/schemas";
 import { getWalkupMenu } from "./walkup-menu-actions";
-import { placeWalkupOrder } from "./walkup-actions";
-import type {
-  CartItem,
-  MenuItem,
-  PaymentKind,
-  SelectedOption,
-} from "@/lib/types";
+import { placeWalkupOrder, type WalkupPayment } from "./walkup-actions";
+import { confirmOrderPayment } from "./order-actions";
+import { WalkupPayStep } from "./walkup-pay-step";
+import type { CartItem, MenuItem, SelectedOption } from "@/lib/types";
 
 interface Booth {
   id: string;
@@ -56,10 +51,9 @@ interface Props {
   initialBoothId?: string;
 }
 
-function paymentKindNote(kind: PaymentKind | null): string {
-  if (kind === "paynow") return "This booth takes PayNow.";
-  if (kind === "pointer") return "This booth takes a payment link or QR.";
-  return "This booth takes payment.";
+// An order this dialog has placed and not yet been paid for.
+interface PayStep extends WalkupPayment {
+  orderNumber: string;
 }
 
 /**
@@ -68,13 +62,16 @@ function paymentKindNote(kind: PaymentKind | null): string {
  * every price server-side, migration 0061), deliberately NOT the same
  * payment UI: PayPanel is written in the customer's own voice ("waiting for
  * the stall to confirm") and polls for a claim the staff themselves would be
- * making, which reads wrong from this side. The one payment control here is
- * a plain "payment collected" switch, for the common counter case where
- * staff take cash or tap-to-pay in person and already know the outcome
- * before the ticket is even placed; anything more (QR display, a customer
- * polling for their own claim) belongs to the flows above, not this one.
- * Left off, payment is tracked the normal way: the board's existing
- * OrderCard "Confirm payment" affordance.
+ * making, which reads wrong from this side.
+ *
+ * Two steps at a booth that takes payment. The order is placed first, unpaid,
+ * and only then does the dialog turn into WalkupPayStep: the amount and the
+ * booth's own QR, for staff to show the customer. Placing first is what makes
+ * the QR possible at all (the amount on it is the server's total, and paykit
+ * keys the transaction on the order's id), and it means closing the dialog
+ * half-way loses nothing: the ticket is on the board with its own "Mark as
+ * paid". A booth with no payment set up never sees the second step, or any
+ * payment control.
  *
  * Split-pane layout (menu left, order summary right) rather than a single
  * scrolling column: a staff member building a multi-item order needs to see
@@ -92,8 +89,8 @@ export function WalkupOrderDialog({
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [remaining, setRemaining] = useState<Remaining>({});
   const [expectsPayment, setExpectsPayment] = useState(false);
-  const [paymentKind, setPaymentKind] = useState<PaymentKind | null>(null);
-  const [paid, setPaid] = useState(false);
+  const [payStep, setPayStep] = useState<PayStep | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [cart, setCart] = useState<Map<string, CartItem>>(new Map());
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
@@ -108,7 +105,7 @@ export function WalkupOrderDialog({
     setBoothId(initialBoothId ?? booths[0]?.id ?? "");
     setCart(new Map());
     setCustomerName("Walk-up");
-    setPaid(false);
+    setPayStep(null);
     // Only the dialog's own open transition should reset — booths/
     // initialBoothId are stable-ish props, not per-keystroke deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,7 +117,6 @@ export function WalkupOrderDialog({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingMenu(true);
     setCart(new Map());
-    setPaid(false);
     // eslint-disable-next-line sonarjs/void-use -- deliberate fire-and-forget: void marks this promise as intentionally unhandled, the standard TS idiom
     void getWalkupMenu(boothId)
       .then((res) => {
@@ -128,14 +124,12 @@ export function WalkupOrderDialog({
         setMenuItems(res?.menuItems ?? []);
         setRemaining(res?.remaining ?? {});
         setExpectsPayment(res?.expectsPayment ?? false);
-        setPaymentKind(res?.paymentKind ?? null);
       })
       .catch(() => {
         if (!active) return;
         setMenuItems([]);
         setRemaining({});
         setExpectsPayment(false);
-        setPaymentKind(null);
         toast.error("Could not load the menu. Close and reopen to try again.");
       })
       .finally(() => {
@@ -247,19 +241,40 @@ export function WalkupOrderDialog({
     }
     setSubmitting(true);
     try {
-      const res = await placeWalkupOrder(boothId, parsed.data, paid);
+      const res = await placeWalkupOrder(boothId, parsed.data, false);
       if (!res.success) {
         toast.error(res.error);
         return;
       }
       toast.success(`Order #${res.orderNumber} added to the board`);
-      onOpenChange(false);
+      if (res.payment)
+        setPayStep({ orderNumber: res.orderNumber, ...res.payment });
+      else onOpenChange(false);
     } catch {
       toast.error(
         "Could not confirm the order. Check the board before trying again.",
       );
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function onPaid(step: PayStep) {
+    setConfirming(true);
+    try {
+      const res = await confirmOrderPayment(step.orderId);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(`Order #${step.orderNumber} paid`);
+      onOpenChange(false);
+    } catch {
+      toast.error(
+        "Could not confirm the payment. Mark it as paid from the ticket on the board.",
+      );
+    } finally {
+      setConfirming(false);
     }
   }
 
@@ -367,169 +382,169 @@ export function WalkupOrderDialog({
         className="flex max-h-[90vh] w-full max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl md:h-[640px] md:max-h-[85vh]"
       >
         <DialogHeader className="border-b border-border px-6 py-4">
-          <DialogTitle>New walk-up order</DialogTitle>
+          <DialogTitle>
+            {payStep
+              ? `Collect payment for order #${payStep.orderNumber}`
+              : "New walk-up order"}
+          </DialogTitle>
           <DialogDescription>
-            For a customer ordering at the counter, with the same menu and
-            pricing as an online order.
+            {payStep
+              ? "The order is on the board. Turn this screen to your customer."
+              : "For a customer ordering at the counter, with the same menu and pricing as an online order."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-          {/* Menu pane */}
-          <div className="flex-1 space-y-4 p-6 md:overflow-y-auto">
-            {multiBooth && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                  Booth
-                </Label>
-                <Select value={boothId} onValueChange={setBoothId}>
-                  <SelectTrigger
-                    aria-label="Booth"
-                    className="h-10 w-full rounded-xl sm:w-64"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {booths.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+        {payStep && (
+          <WalkupPayStep
+            amountCents={payStep.amountCents}
+            checkout={payStep.checkout}
+            confirming={confirming}
+            onPaid={() => onPaid(payStep)}
+            onLater={() => onOpenChange(false)}
+          />
+        )}
 
-            {menuSection}
-          </div>
+        {!payStep && (
+          <div className="flex flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+            {/* Menu pane */}
+            <div className="flex-1 space-y-4 p-6 md:overflow-y-auto">
+              {multiBooth && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    Booth
+                  </Label>
+                  <Select value={boothId} onValueChange={setBoothId}>
+                    <SelectTrigger
+                      aria-label="Booth"
+                      className="h-10 w-full rounded-xl sm:w-64"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {booths.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-          {/* Order summary pane — sticky within its own column on md+, so a
+              {menuSection}
+            </div>
+
+            {/* Order summary pane — sticky within its own column on md+, so a
               staff member never has to scroll past the whole menu to see
               what's in the order or to hit submit. */}
-          <div className="flex flex-col border-t border-border md:w-72 md:shrink-0 md:overflow-y-auto md:border-t-0 md:border-l">
-            <div className="flex-1 space-y-4 p-4">
-              <h2 className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-                <ShoppingCart className="size-3.5" />
-                Order{hasItems && ` (${count(itemCount, "item")})`}
-              </h2>
+            <div className="flex flex-col border-t border-border md:w-72 md:shrink-0 md:overflow-y-auto md:border-t-0 md:border-l">
+              <div className="flex-1 space-y-4 p-4">
+                <h2 className="flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                  <ShoppingCart className="size-3.5" />
+                  Order{hasItems && ` (${count(itemCount, "item")})`}
+                </h2>
 
-              {hasItems ? (
-                <div className="space-y-3">
-                  {cartEntries.map(([key, item]) => {
-                    const options = formatOptions(item.options);
-                    return (
-                      <div
-                        key={key}
-                        className="flex items-start justify-between gap-2"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {item.name}
-                          </p>
-                          {options && (
-                            <p className="truncate text-xs text-muted-foreground">
-                              {options}
+                {hasItems ? (
+                  <div className="space-y-3">
+                    {cartEntries.map(([key, item]) => {
+                      const options = formatOptions(item.options);
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-start justify-between gap-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {item.name}
                             </p>
-                          )}
+                            {options && (
+                              <p className="truncate text-xs text-muted-foreground">
+                                {options}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="size-7 rounded-lg"
+                              onClick={() => decrement(key)}
+                              aria-label={`Decrease ${item.name}`}
+                            >
+                              <Minus className="size-3" />
+                            </Button>
+                            <span className="w-4 text-center font-mono text-sm font-bold">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              type="button"
+                              size="icon"
+                              className="size-7 rounded-lg"
+                              onClick={() => increment(key)}
+                              aria-label={`Increase ${item.name}`}
+                            >
+                              <Plus className="size-3" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="size-7 rounded-lg"
-                            onClick={() => decrement(key)}
-                            aria-label={`Decrease ${item.name}`}
-                          >
-                            <Minus className="size-3" />
-                          </Button>
-                          <span className="w-4 text-center font-mono text-sm font-bold">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            type="button"
-                            size="icon"
-                            className="size-7 rounded-lg"
-                            onClick={() => increment(key)}
-                            aria-label={`Increase ${item.name}`}
-                          >
-                            <Plus className="size-3" />
-                          </Button>
-                        </div>
+                      );
+                    })}
+                    {cartPriced && (
+                      <div className="flex items-baseline justify-between border-t border-border pt-3">
+                        <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                          Total
+                        </span>
+                        <span className="font-mono text-lg font-bold">
+                          {formatPrice(total)}
+                        </span>
                       </div>
-                    );
-                  })}
-                  {cartPriced && (
-                    <div className="flex items-baseline justify-between border-t border-border pt-3">
-                      <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Total
-                      </span>
-                      <span className="font-mono text-lg font-bold">
-                        {formatPrice(total)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No items yet. Tap items on the left to add them.
-                </p>
-              )}
-
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="walkup-customer-name"
-                  className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
-                >
-                  Customer name
-                </Label>
-                <Input
-                  id="walkup-customer-name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="h-10 rounded-xl"
-                  maxLength={100}
-                />
-              </div>
-
-              {expectsPayment && (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <Banknote
-                      className={cn(
-                        "size-4 shrink-0",
-                        paid ? "text-emerald-600" : "text-muted-foreground",
-                      )}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">Payment collected</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {paymentKindNote(paymentKind)}
-                      </p>
-                    </div>
+                    )}
                   </div>
-                  <Switch
-                    checked={paid}
-                    onCheckedChange={setPaid}
-                    aria-label="Payment collected"
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No items yet. Tap items on the left to add them.
+                  </p>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="walkup-customer-name"
+                    className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+                  >
+                    Customer name
+                  </Label>
+                  <Input
+                    id="walkup-customer-name"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="h-10 rounded-xl"
+                    maxLength={100}
                   />
                 </div>
-              )}
-            </div>
 
-            <div className="border-t border-border p-4">
-              <Button
-                type="button"
-                size="lg"
-                className="h-12 w-full rounded-xl font-semibold"
-                disabled={submitting || !hasItems}
-                onClick={onSubmit}
-              >
-                {submitLabel}
-              </Button>
+                {expectsPayment && (
+                  <p className="text-xs text-muted-foreground">
+                    Payment comes next. After you add the order, this screen
+                    shows the amount and your payment QR for the customer.
+                  </p>
+                )}
+              </div>
+
+              <div className="border-t border-border p-4">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="h-12 w-full rounded-xl font-semibold"
+                  disabled={submitting || !hasItems}
+                  onClick={onSubmit}
+                >
+                  {submitLabel}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <ItemCustomizer
           item={customizing}

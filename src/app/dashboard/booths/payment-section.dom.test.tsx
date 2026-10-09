@@ -12,9 +12,11 @@ import type { PaymentConfig } from "@/lib/types";
 // separate module instance from qkit's local radix-ui umbrella entirely).
 function Host({
   initial,
+  saved,
   onChange,
 }: {
   initial: PaymentConfig | null;
+  saved?: PaymentConfig | null;
   onChange: (v: PaymentConfig | null) => void;
 }) {
   const [value, setValue] = useState<PaymentConfig | null>(initial);
@@ -22,6 +24,7 @@ function Host({
     <PaymentSection
       vendorId="v1"
       value={value}
+      saved={saved}
       onChange={(next) => {
         setValue(next);
         onChange(next);
@@ -31,6 +34,51 @@ function Host({
 }
 
 describe("PaymentSection", () => {
+  it("opens on no online payment even when the vendor has details on file", () => {
+    render(
+      <Host
+        initial={null}
+        saved={{ kind: "paynow", payee_name: "Cart", uen: "53312345A" }}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("radio", { name: "No online payment" }),
+    ).toBeChecked();
+    expect(screen.queryByLabelText(/Payee name/i)).not.toBeInTheDocument();
+  });
+
+  it("restores the details on file when that method is picked", () => {
+    const onChange = vi.fn();
+    const saved: PaymentConfig = {
+      kind: "paynow",
+      payee_name: "Cart",
+      mobile: "+6591234567",
+    };
+    render(<Host initial={null} saved={saved} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("radio", { name: /PayNow/i }));
+    expect(onChange).toHaveBeenLastCalledWith(saved);
+    expect(screen.getByLabelText(/Payee name/i)).toHaveValue("Cart");
+    expect(screen.getByLabelText("Mobile number")).toHaveValue("91234567");
+  });
+
+  it("starts blank when the details on file are for another method", () => {
+    const onChange = vi.fn();
+    render(
+      <Host
+        initial={null}
+        saved={{ kind: "pointer", label: "Pay", url: "https://pay.example" }}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /PayNow/i }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      kind: "paynow",
+      payee_name: "",
+      uen: "",
+    });
+  });
+
   it("emits a paynow config when UEN is filled", () => {
     const onChange = vi.fn();
     render(<Host initial={null} onChange={onChange} />);

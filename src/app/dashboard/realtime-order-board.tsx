@@ -1134,7 +1134,13 @@ export function RealtimeOrderBoard({
         open={walkupOpen}
         onOpenChange={setWalkupOpen}
         booths={booths.filter(boothIsActive)}
-        initialBoothId={effectiveFilter !== "all" ? effectiveFilter : undefined}
+        // With no booth filtered, start on the booth set up for walk-ups, not
+        // on whichever booth happens to be listed first.
+        initialBoothId={
+          effectiveFilter !== "all"
+            ? effectiveFilter
+            : booths.find((b) => b.walkup_default && boothIsActive(b))?.id
+        }
       />
     </div>
   );
