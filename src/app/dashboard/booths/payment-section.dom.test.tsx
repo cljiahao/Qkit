@@ -34,6 +34,23 @@ function Host({
 }
 
 describe("PaymentSection", () => {
+  it("opens an option's hint on a tap without selecting that option", async () => {
+    const onChange = vi.fn();
+    render(<Host initial={null} onChange={onChange} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "More about PayNow QR" }),
+    );
+
+    expect(
+      await screen.findByText(/order amount already filled in/i),
+    ).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("radio", { name: "No online payment" }),
+    ).toBeChecked();
+  });
+
   it("opens on no online payment even when the vendor has details on file", () => {
     render(
       <Host

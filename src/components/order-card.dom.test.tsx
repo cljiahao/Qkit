@@ -476,6 +476,17 @@ describe("OrderCard", () => {
     expect(screen.getByText(/walk-up/i)).toBeInTheDocument();
   });
 
+  it("does not print walk-up twice for a walk-up order with no name given", () => {
+    render(
+      <OrderCard
+        order={makeOrder({ source: "walkup", customer_name: "Walk-up" })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    expect(screen.getAllByText(/walk-up/i)).toHaveLength(1);
+    expect(screen.queryByText(/· walk-up/)).not.toBeInTheDocument();
+  });
+
   it("shows no origin note for a QR order", () => {
     render(<OrderCard order={makeOrder({ source: "qr" })} />, {
       wrapper: TooltipProvider,

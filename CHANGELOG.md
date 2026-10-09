@@ -8,6 +8,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The (i) hints on Board settings and on a booth's Payment options open on a
+  tap. They only opened on hover, so on an iPad or phone they did nothing.
+- The Telegram new-order alert names the order by its ticket number. With
+  daily numbering on it said "#0847" for a ticket reading "#002". The alert
+  also separates the total with a dot, not a dash.
+- A walk-up order keyed in without a name no longer reads "Walk-up · walk-up"
+  on its ticket.
 - An order is called by one number everywhere. With daily numbering on, the
   ticket read "#002" while the new-order toast, the desktop notification and
   the walk-up dialog (its toasts and the payment step's title) named the same
