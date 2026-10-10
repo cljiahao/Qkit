@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OrderStatusPoller } from "./order-status-poller";
@@ -358,5 +358,38 @@ describe("OrderStatusPoller — vendor-accept gate (no printer, no arrival confi
       screen.queryByRole("button", { name: /i'm here/i }),
     ).not.toBeInTheDocument();
     expect(confirmArrival).not.toHaveBeenCalled();
+  });
+});
+
+describe("OrderStatusPoller: lost connection", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("says so after two checks in a row fail, and stops once one succeeds", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    getOrderStatus.mockRejectedValue(new Error("offline"));
+    renderPoller("preparing");
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(screen.queryByText(/no connection/i)).not.toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(5100);
+    expect(await screen.findByText(/no connection/i)).toBeInTheDocument();
+
+    getOrderStatus.mockResolvedValue("preparing");
+    await vi.advanceTimersByTimeAsync(5100);
+    await waitFor(() =>
+      expect(screen.queryByText(/no connection/i)).not.toBeInTheDocument(),
+    );
+  });
+
+  it("treats a check the server could not answer as a miss too", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    getOrderStatus.mockResolvedValue(null);
+    renderPoller("preparing");
+
+    await vi.advanceTimersByTimeAsync(5200);
+    expect(await screen.findByText(/no connection/i)).toBeInTheDocument();
   });
 });

@@ -123,7 +123,7 @@ function BoothDetail({ summary }: { summary: ReviewSummary }) {
             <button
               type="button"
               onClick={() => setShown((s) => s + PAGE)}
-              className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+              className="inline-flex items-center text-muted-foreground underline-offset-4 hover:text-primary hover:underline [@media(pointer:coarse)]:min-h-11"
             >
               Show more ({comments.length - shown})
             </button>
@@ -132,7 +132,7 @@ function BoothDetail({ summary }: { summary: ReviewSummary }) {
             <button
               type="button"
               onClick={() => setShown(PAGE)}
-              className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+              className="inline-flex items-center text-muted-foreground underline-offset-4 hover:text-primary hover:underline [@media(pointer:coarse)]:min-h-11"
             >
               Show less
             </button>

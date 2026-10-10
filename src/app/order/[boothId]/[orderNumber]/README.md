@@ -53,7 +53,10 @@ surfaces a loyalty "earn a stamp" link once the order completes.
 - `order-status-poller.tsx` — `OrderStatusPoller` client component: polls
   `getOrderStatus` + `getWaitEstimate` every 5s (`usePolling`, paused once
   terminal) — poll-only by design since Supabase realtime is unreliable on
-  customer devices (Safari/iOS, in-app webviews). `status === "pending"` can
+  customer devices (Safari/iOS, in-app webviews). Two checks in a row that
+  fail, or that the server cannot answer, show a "No connection. Last
+  checked ..." notice until one succeeds, so the page never keeps promising
+  a status it can no longer see. `status === "pending"` can
   mean either of two independent gates (`requires_arrival_confirm`, or no
   printer connected — migration 0086), told apart by the `requiresArrivalConfirm`
   prop from `page.tsx`: with it on, a dedicated early-return branch shows no

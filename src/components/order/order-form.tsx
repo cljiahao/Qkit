@@ -180,6 +180,9 @@ export function OrderForm({
   const [customizing, setCustomizing] = useState<MenuItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  // Why the last attempt to place the order failed. Shown in the checkout
+  // sheet beside the button, so it stays put until the customer acts on it.
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [cartExpanded, setCartExpanded] = useState(false);
   const hydrated = useRef(false);
   const [unresolvedSubmit, setUnresolvedSubmit] = useState<PendingOrder | null>(
@@ -411,6 +414,7 @@ export function OrderForm({
       return;
     }
     setSubmitting(true);
+    setSubmitError(null);
 
     const input: PlaceOrderInput = {
       customerName: formData.customerName,
@@ -439,7 +443,9 @@ export function OrderForm({
       try {
         result = await submit();
       } catch {
-        toast.error("Network issue. Please retry with the same order details.");
+        setSubmitError(
+          "We couldn't reach the stall. Your order has not gone through. It is safe to try again: it can't be placed twice.",
+        );
         setSubmitting(false);
         return;
       }
@@ -455,7 +461,9 @@ export function OrderForm({
     }
 
     if (!result.success) {
-      toast.error(result.error ?? "Order failed");
+      setSubmitError(
+        result.error ?? "The order did not go through. Try again.",
+      );
       setSubmitting(false);
       return;
     }
@@ -503,12 +511,20 @@ export function OrderForm({
     // Configured items use the sheet and cart-summary controls.
     const plainKey = cartKey(item.id);
     const plainInCart = hasOptions ? undefined : cart.get(plainKey);
+    // An item with options can sit in the basket as several lines; its card
+    // still has to say it is in there.
+    const configuredInCart = hasOptions
+      ? cartItems
+          .filter((line) => line.menuItemId === item.id)
+          .reduce((sum, line) => sum + line.quantity, 0)
+      : 0;
     const left = remainingFor(availability.remaining, item.id);
     const soldOut = left !== null && left <= 0;
     const held = (availability.held[item.id] ?? 0) > 0;
     let cardTone: string;
     if (soldOut) cardTone = "border-border opacity-60";
-    else if (plainInCart) cardTone = "border-primary/40 bg-primary/[0.04]";
+    else if (plainInCart || configuredInCart > 0)
+      cardTone = "border-primary/40 bg-primary/[0.04]";
     else cardTone = "border-border";
     const addLabel = menuItemActionLabel(soldOut, hasOptions);
     return (
@@ -527,9 +543,9 @@ export function OrderForm({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{item.name}</p>
+            <p className="line-clamp-2 font-medium break-words">{item.name}</p>
             {item.description && (
-              <p className="truncate text-sm text-muted-foreground">
+              <p className="line-clamp-2 text-sm break-words text-muted-foreground">
                 {item.description}
               </p>
             )}
@@ -540,6 +556,11 @@ export function OrderForm({
             )}
             <AllergenBadges tags={item.allergens ?? []} />
             <StockNote left={left} held={held} />
+            {configuredInCart > 0 && (
+              <p className="mt-1 text-xs font-semibold text-primary">
+                {configuredInCart} in your order
+              </p>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -615,11 +636,12 @@ export function OrderForm({
       {!closed && <BasketLimits availability={availability} />}
       {/* Menu items */}
       {grouped ? (
-        <div className="flex items-start gap-3 md:gap-6">
+        // On a phone the sections are a row of chips pinned above the menu,
+        // so the items keep the full width; from md up they are a side rail.
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
           <nav
             aria-label="Menu sections"
-            className="sticky top-4 flex w-20 shrink-0 flex-col gap-2 self-start overflow-y-auto text-sm md:w-40 md:gap-1.5"
-            style={{ maxHeight: "calc(100dvh - 2rem)" }}
+            className="sticky top-0 z-10 -mx-5 flex gap-2 overflow-x-auto bg-background px-5 py-2 text-sm md:top-4 md:mx-0 md:max-h-[calc(100dvh-2rem)] md:w-40 md:shrink-0 md:flex-col md:gap-1.5 md:self-start md:overflow-x-visible md:overflow-y-auto md:bg-transparent md:p-0"
           >
             {sections.map((s) => {
               const thumb = s.items.find((it) => it.image_url)?.image_url;
@@ -627,10 +649,10 @@ export function OrderForm({
                 <a
                   key={s.id}
                   href={`#section-${s.id}`}
-                  className="flex flex-col items-center gap-1.5 rounded-lg border border-border p-2 text-center font-medium text-muted-foreground md:flex-row md:gap-2 md:p-2 md:text-left"
+                  className="flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-4 font-medium text-muted-foreground md:rounded-lg md:bg-transparent md:p-2"
                 >
                   {thumb && (
-                    <div className="relative size-12 shrink-0 overflow-hidden rounded-md border border-border md:size-9">
+                    <div className="relative hidden size-9 shrink-0 overflow-hidden rounded-md border border-border md:block">
                       <MediaImage
                         src={thumb}
                         alt=""
@@ -640,7 +662,7 @@ export function OrderForm({
                       />
                     </div>
                   )}
-                  <span className="line-clamp-2 text-xs leading-tight md:line-clamp-1 md:text-sm">
+                  <span className="whitespace-nowrap md:line-clamp-1 md:whitespace-normal">
                     {s.label}
                   </span>
                 </a>
@@ -649,7 +671,11 @@ export function OrderForm({
           </nav>
           <div className="min-w-0 flex-1 space-y-8">
             {sections.map((s) => (
-              <section key={s.id} id={`section-${s.id}`}>
+              <section
+                key={s.id}
+                id={`section-${s.id}`}
+                className="scroll-mt-20 md:scroll-mt-4"
+              >
                 <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {s.label}
                 </h2>
@@ -765,7 +791,7 @@ export function OrderForm({
       )}
 
       {/* Sticky checkout trigger */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 px-5 py-3.5 backdrop-blur-md">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 px-5 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div className="mx-auto max-w-lg">
           <Button
             type="button"
@@ -909,6 +935,14 @@ export function OrderForm({
             </section>
 
             <SheetFooter className="gap-2 px-0 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {submitError && (
+                <p
+                  role="alert"
+                  className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive"
+                >
+                  {submitError}
+                </p>
+              )}
               <Button
                 type="submit"
                 size="lg"

@@ -9,6 +9,7 @@ import {
   ChefHat,
   ClipboardCheck,
   ShoppingBag,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAsyncAction } from "@/hooks/use-async-action";
@@ -46,6 +47,9 @@ import type { OrderStatus } from "@/lib/types";
 // latency is fine and a poll works everywhere. The vendor dashboard, on
 // desktop where latency matters, keeps realtime.
 const POLL_MS = 5000;
+// Misses in a row before the page admits it has lost touch. One miss is a
+// blip on event-site signal; two is ten seconds of saying something stale.
+const STALE_AFTER_MISSES = 2;
 
 interface Props {
   boothId: string;
@@ -220,6 +224,10 @@ export function OrderStatusPoller({
 }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<OrderStatus>(initialStatus);
+  const [misses, setMisses] = useState(0);
+  // Set by the first poll that succeeds, never during render, so the server
+  // and the browser cannot disagree about the time.
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
   // null = nothing to show at all (order not found — shouldn't happen once
   // mounted, but poll-only pages must tolerate a transient blip). Otherwise
   // seconds may itself be null (not enough recent history) while ordersAhead
@@ -291,11 +299,26 @@ export function OrderStatusPoller({
   // (no WebSocket dependency); the shared hook pauses while backgrounded and
   // refreshes the instant the tab returns.
   const poll = useCallback(async () => {
-    const [next, estimate] = await Promise.all([
-      getOrderStatus(boothId, orderNumber, token),
-      getWaitEstimate(boothId, orderNumber, token),
-    ]);
-    if (next && next !== status) {
+    let next: OrderStatus | null;
+    let estimate: Awaited<ReturnType<typeof getWaitEstimate>>;
+    try {
+      [next, estimate] = await Promise.all([
+        getOrderStatus(boothId, orderNumber, token),
+        getWaitEstimate(boothId, orderNumber, token),
+      ]);
+    } catch {
+      next = null;
+      estimate = null;
+    }
+    // No status back, whether the request failed or the server could not
+    // answer: what is on screen may be out of date.
+    if (!next) {
+      setMisses((n) => n + 1);
+      return;
+    }
+    setMisses(0);
+    setLastCheckedAt(Date.now());
+    if (next !== status) {
       setStatus(next);
       // Pickup QR and completed-order content are rendered by the parent server page.
       router.refresh();
@@ -400,6 +423,15 @@ export function OrderStatusPoller({
         >
           {copy.detail}
         </p>
+        {misses >= STALE_AFTER_MISSES && !isTerminal(status) && (
+          <p
+            role="status"
+            className="mx-auto flex w-fit items-center gap-2 rounded-full border border-warning/40 bg-warning/10 px-3 py-1.5 text-sm font-medium text-warning"
+          >
+            <WifiOff className="size-4" aria-hidden="true" />
+            {staleNotice(lastCheckedAt)}
+          </p>
+        )}
       </div>
 
       {needsArrival && (
@@ -429,6 +461,16 @@ export function OrderStatusPoller({
       )}
     </div>
   );
+}
+
+/** What to say once the page has lost touch with the stall's board. */
+function staleNotice(lastCheckedAt: number | null): string {
+  if (lastCheckedAt === null) return "No connection. Trying again.";
+  const time = new Date(lastCheckedAt).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `No connection. Last checked ${time}.`;
 }
 
 type StatusCopy = { headline: string; detail: string };

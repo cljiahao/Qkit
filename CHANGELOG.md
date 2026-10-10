@@ -30,6 +30,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the keyboard focus ring were fixed the same way.
 - A late ticket says "Late" beside its waiting time and shows a warning icon,
   so it no longer differs from an ageing one by colour alone.
+- A menu with sections is readable on a phone. The section list was a side
+  column that left an item's name as little as 5px wide; on small screens it
+  is now a row of chips pinned to the top, and names wrap to two lines.
+- The order page says when it has lost its connection ("No connection. Last
+  checked 2:04 pm.") instead of silently showing a stale status.
+- An order that fails to go through shows the reason beside the "Place
+  order" button and says it is safe to try again, in place of a message that
+  vanished after a few seconds.
+- A menu card for an item with options now shows how many are in the basket.
+- The X that closes a dialog, "Show all", "Show more" and the recent-order
+  links are finger-sized on touch screens. The checkout bar clears the home
+  indicator on phones without a home button.
 - Eighteen messages no longer contain a long dash, for example "Order
   changed. Please refresh." The lint rule that enforces this now covers
   messages returned from server code, not only text in components.
