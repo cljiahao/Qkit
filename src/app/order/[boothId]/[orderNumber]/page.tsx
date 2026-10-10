@@ -460,6 +460,10 @@ export default async function OrderStatusPage({ params, searchParams }: Props) {
             // let the status text claim progress that implies payment is
             // settled when it isn't.
             awaitingPayment={showPay && order.payment_status !== "confirmed"}
+            paymentSent={
+              order.payment_status === "claimed" ||
+              order.payment_status === "confirmed"
+            }
             requiresArrivalConfirm={booth?.requires_arrival_confirm ?? false}
           />
         )}

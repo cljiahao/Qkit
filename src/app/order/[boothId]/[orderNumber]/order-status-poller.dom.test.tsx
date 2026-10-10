@@ -37,6 +37,7 @@ function renderPoller(
   initialStatus: OrderStatus = "preparing",
   awaitingPayment = false,
   requiresArrivalConfirm = true,
+  paymentSent = awaitingPayment,
 ) {
   return render(
     <OrderStatusPoller
@@ -49,6 +50,7 @@ function renderPoller(
       boothName="Kopi Cart"
       placedAt="2026-07-04T00:00:00Z"
       awaitingPayment={awaitingPayment}
+      paymentSent={paymentSent}
       requiresArrivalConfirm={requiresArrivalConfirm}
     />,
   );
@@ -226,33 +228,65 @@ describe("OrderStatusPoller", () => {
   });
 });
 
-describe("OrderStatusPoller — awaiting payment", () => {
-  it("does not claim prep has started while payment is still outstanding", async () => {
+describe("OrderStatusPoller — payment sent, stall still checking it", () => {
+  it("says the stall is checking the payment, and never asks to pay again", async () => {
     getOrderStatus.mockResolvedValue("preparing");
     renderPoller("preparing", true);
 
     await waitFor(() =>
       expect(
-        screen.getByText("Please complete your payment while you wait."),
+        screen.getByText(
+          "The stall is still checking your payment. Stay close.",
+        ),
       ).toBeInTheDocument(),
     );
+    expect(
+      screen.queryByText(/complete your payment/i),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText(/turns to Ready the moment it is/),
     ).not.toBeInTheDocument();
   });
 
-  it("tells an unpaid customer to pay before collecting, even once ready", async () => {
+  it("sends a ready order to the counter, where the payment gets checked", async () => {
     getOrderStatus.mockResolvedValue("ready");
     renderPoller("preparing", true);
 
     await waitFor(() =>
       expect(
-        screen.getByText("Please pay before you collect."),
+        screen.getByText(
+          "Show order #7 at the counter. The stall will check your payment there.",
+        ),
       ).toBeInTheDocument(),
     );
     expect(
-      screen.queryByText("Show order #7 at the counter to collect it."),
+      screen.queryByText(/pay before you collect/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("tells a customer who paid for a cancelled order how to get a refund", async () => {
+    getOrderStatus.mockResolvedValue("cancelled");
+    renderPoller("cancelled", false, true, true);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "If you already paid, show this page to the stall for a refund.",
+        ),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("says nothing about refunds when a cancelled order was never paid", async () => {
+    getOrderStatus.mockResolvedValue("cancelled");
+    renderPoller("cancelled", false, true, false);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("The stall will not be making it."),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/refund/i)).not.toBeInTheDocument();
   });
 
   it("shows the normal messages once payment is no longer outstanding", async () => {

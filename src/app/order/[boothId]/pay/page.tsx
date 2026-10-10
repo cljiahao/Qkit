@@ -80,6 +80,8 @@ export default async function PayPage({ params, searchParams }: Props) {
       <PayForm
         boothId={boothId}
         token={token}
+        boothName={context.boothName}
+        items={context.items}
         amountCents={context.amountCents}
         checkout={context.checkout}
       />

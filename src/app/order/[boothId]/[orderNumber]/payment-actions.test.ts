@@ -205,12 +205,25 @@ beforeEach(() => {
 });
 
 describe("loadPreClaimContext", () => {
-  it("returns order id, amount, and checkout for a valid pending order", async () => {
+  it("returns order id, amount, what was ordered, and checkout for a valid pending order", async () => {
     ordersMaybeSingle.mockResolvedValueOnce({
-      data: { id: "order-1", total_cents: 550, payment_status: "pending" },
+      data: {
+        id: "order-1",
+        total_cents: 550,
+        payment_status: "pending",
+        items: [
+          { menuItemId: "i1", name: "Kopi O", price_cents: 200, quantity: 2 },
+          {
+            menuItemId: "i2",
+            name: "Kaya toast",
+            price_cents: 150,
+            quantity: 1,
+          },
+        ],
+      },
     });
     boothsMaybeSingle.mockResolvedValueOnce({
-      data: { vendor_id: "vendor-1" },
+      data: { vendor_id: "vendor-1", name: "Kopi Cart" },
     });
     createCheckoutMock.mockResolvedValueOnce({
       ok: true,
@@ -225,6 +238,11 @@ describe("loadPreClaimContext", () => {
       state: "pending",
       orderId: "order-1",
       amountCents: 550,
+      boothName: "Kopi Cart",
+      items: [
+        { name: "Kopi O", quantity: 2 },
+        { name: "Kaya toast", quantity: 1 },
+      ],
       checkout: {
         type: "qr",
         transactionId: "tx-1",

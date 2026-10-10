@@ -24,6 +24,10 @@ vi.mock("../[orderNumber]/qr-image", () => ({
 }));
 
 const QR_CHECKOUT = { type: "qr" as const, transactionId: "tx", payload: "p" };
+const ITEMS = [
+  { name: "Kopi O", quantity: 2 },
+  { name: "Kaya toast", quantity: 1 },
+];
 
 const browserDescriptors = [
   { target: navigator, key: "share" },
@@ -50,7 +54,14 @@ afterEach(() => {
 describe("PayForm", () => {
   it("shows a load-failure state and no claim button when checkout is null", () => {
     render(
-      <PayForm boothId="b1" token="t1" amountCents={550} checkout={null} />,
+      <PayForm
+        boothId="b1"
+        token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
+        amountCents={550}
+        checkout={null}
+      />,
     );
     expect(screen.getByText(/couldn't load payment/i)).toBeInTheDocument();
     expect(
@@ -61,7 +72,14 @@ describe("PayForm", () => {
   it("refreshes the page from the load-failure state", async () => {
     const user = userEvent.setup();
     render(
-      <PayForm boothId="b1" token="t1" amountCents={550} checkout={null} />,
+      <PayForm
+        boothId="b1"
+        token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
+        amountCents={550}
+        checkout={null}
+      />,
     );
     await user.click(screen.getByRole("button", { name: /refresh/i }));
     expect(refreshMock).toHaveBeenCalled();
@@ -73,6 +91,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={550}
         checkout={QR_CHECKOUT}
       />,
@@ -92,6 +112,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={550}
         checkout={QR_CHECKOUT}
       />,
@@ -128,6 +150,8 @@ describe("PayForm", () => {
         <PayForm
           boothId="b1"
           token="t1"
+          boothName="Kopi Cart"
+          items={ITEMS}
           amountCents={550}
           checkout={QR_CHECKOUT}
         />,
@@ -150,6 +174,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={550}
         checkout={QR_CHECKOUT}
       />,
@@ -168,6 +194,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={800}
         checkout={QR_CHECKOUT}
       />,
@@ -181,6 +209,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={800}
         checkout={QR_CHECKOUT}
       />,
@@ -196,6 +226,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={500}
         checkout={{
           type: "link",
@@ -222,6 +254,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={800}
         checkout={QR_CHECKOUT}
       />,
@@ -243,6 +277,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={800}
         checkout={QR_CHECKOUT}
       />,
@@ -264,6 +300,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={800}
         checkout={QR_CHECKOUT}
       />,
@@ -278,6 +316,8 @@ describe("PayForm", () => {
       <PayForm
         boothId="b1"
         token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
         amountCents={500}
         checkout={{
           type: "link",
@@ -291,5 +331,97 @@ describe("PayForm", () => {
       "href",
       "https://a.b",
     );
+  });
+  it("lets the customer pick a saved screenshot, not only the camera", () => {
+    render(
+      <PayForm
+        boothId="b1"
+        token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
+        amountCents={550}
+        checkout={QR_CHECKOUT}
+      />,
+    );
+    expect(screen.getByLabelText(/upload/i)).not.toHaveAttribute("capture");
+  });
+
+  it("says what is being paid for, to whom, and by when", () => {
+    render(
+      <PayForm
+        boothId="b1"
+        token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
+        amountCents={550}
+        checkout={QR_CHECKOUT}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: /scan with your paynow/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/kopi cart/i)).toBeInTheDocument();
+    expect(screen.getByText(/2× Kopi O/)).toBeInTheDocument();
+    expect(screen.getByText(/1× Kaya toast/)).toBeInTheDocument();
+    expect(screen.getByText(/within 30 minutes/i)).toBeInTheDocument();
+  });
+
+  it("offers a way back to the menu", () => {
+    render(
+      <PayForm
+        boothId="b1"
+        token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
+        amountCents={550}
+        checkout={QR_CHECKOUT}
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: /back to the menu/i }),
+    ).toHaveAttribute("href", "/order/b1");
+  });
+
+  it("ties the screenshot error to the field", async () => {
+    const user = userEvent.setup();
+    render(
+      <PayForm
+        boothId="b1"
+        token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
+        amountCents={550}
+        checkout={QR_CHECKOUT}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /i've paid/i }));
+    const field = screen.getByLabelText(/upload/i);
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/screenshot is required/i);
+  });
+
+  it("confirms the attached screenshot and makes I've paid the main action", async () => {
+    const user = userEvent.setup();
+    render(
+      <PayForm
+        boothId="b1"
+        token="t1"
+        boothName="Kopi Cart"
+        items={ITEMS}
+        amountCents={550}
+        checkout={QR_CHECKOUT}
+      />,
+    );
+    const paid = screen.getByRole("button", { name: /i've paid/i });
+    expect(paid).toHaveAttribute("data-variant", "outline");
+
+    await user.upload(
+      screen.getByLabelText(/upload/i),
+      new File(["x"], "proof.png", { type: "image/png" }),
+    );
+
+    expect(await screen.findByText(/screenshot attached/i)).toBeInTheDocument();
+    expect(screen.getByText("proof.png")).toBeInTheDocument();
+    expect(paid).toHaveAttribute("data-variant", "default");
   });
 });

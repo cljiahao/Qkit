@@ -89,13 +89,13 @@ export function PayPanel({
             aria-live="polite"
             className="text-sm font-semibold text-warning"
           >
-            Payment sent, waiting for the stall to confirm.
+            Payment sent. The stall is checking it.
           </p>
           <button
             type="button"
             onClick={unclaim}
             disabled={busy}
-            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-60"
+            className="inline-flex min-h-11 items-center px-3 text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-60"
           >
             Tapped by mistake? Undo
           </button>
