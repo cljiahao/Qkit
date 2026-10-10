@@ -125,6 +125,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Green for "open", "paid" and other success states. The Pro badge is filled
   with the olive. Raw palette colours (emerald, amber, blue) are replaced by
   named tokens.
+- Internal: the AI harness follows templateCentral 6.0.1 where it applies to
+  this repo. Hook commands no longer depend on the shell's current
+  directory, the end-of-turn test run is skipped when nothing changed, the
+  guard against skipping git hooks closes six gaps, and the integrity check
+  fails on an unreadable manifest. See the dated entry in `AGENTS.md`.
 - Internal: `src/components` and `src/lib` are grouped into folders. Shared
   components sit in `widgets/`, `layout/`, `board/`, `tour/`, `landing/` and
   `order/`; the `merqo-*`, `admin*` and `booth-*` library files sit in
