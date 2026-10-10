@@ -6,7 +6,7 @@ import { ServiceWorkerRegistrar } from "@/components/layout/service-worker-regis
 import { MaintenanceBanner } from "@/components/layout/maintenance-banner";
 import { DEFAULT_PLATFORM_SETTINGS } from "@/lib/platform-settings";
 import { createServerClient } from "@/lib/supabase/server";
-import { BRAND_EMBER } from "@/lib/brand-icon";
+import { BRAND_KHAKI } from "@/lib/brand-icon";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: BRAND_EMBER,
+  themeColor: BRAND_KHAKI,
 };
 
 export default async function RootLayout({

@@ -278,7 +278,7 @@ export function ProfileForm({
                 value={email}
                 readOnly
                 disabled
-                className="h-11 rounded-xl bg-secondary/60"
+                className="h-11 rounded-xl bg-muted"
               />
               <p className="text-xs text-muted-foreground">
                 Your sign-in email. It can&apos;t be changed here.

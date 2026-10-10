@@ -66,7 +66,7 @@ export default async function AdminLayout({
                   ? `${attention} items need attention`
                   : "Nothing needs attention"
               }
-              className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Bell className="size-5" />
               {attention > 0 && (

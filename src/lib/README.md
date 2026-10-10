@@ -18,7 +18,7 @@ and cross-kit HTTP/RPC adapters retain their own platform dependencies.
   icon set — a shared `lib/` module rather than a dashboard-scoped one
   reaching across into `components/`. Rendering-only, no schema/data-model
   change.
-- `brand-icon.tsx` — `brandIcon(size)` React element plus `BRAND_EMBER`/
+- `brand-icon.tsx` — `brandIcon(size)` React element plus `BRAND_KHAKI`/
   `BRAND_OAT` color constants; renders the "Q" app mark for `ImageResponse`-
   generated favicon/manifest/apple-touch icons.
 - `carousel.ts` — `nearestIndex(scrollLeft, boardWidth, count)`: clamped

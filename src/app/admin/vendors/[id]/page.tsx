@@ -29,7 +29,7 @@ function Milestone({ label, at }: { label: string; at: string | null }) {
   return (
     <li className="flex items-center gap-2.5 text-sm">
       {at ? (
-        <Check className="size-4 shrink-0 text-emerald-600" />
+        <Check className="size-4 shrink-0 text-success" />
       ) : (
         <Circle className="size-4 shrink-0 text-muted-foreground/40" />
       )}
@@ -225,7 +225,7 @@ export default async function AdminVendorDetailPage({
               >
                 <div className="mb-1.5 flex items-center justify-between gap-3">
                   <span className="flex items-center gap-2">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-xs font-semibold">
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-semibold">
                       {CATEGORY_LABEL[m.category] ?? m.category}
                     </span>
                     {m.status === "resolved" && (

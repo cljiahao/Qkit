@@ -158,7 +158,7 @@ export function PaymentSection({
                 "flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors",
                 selected
                   ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                  : "border-border bg-card hover:bg-secondary/50",
+                  : "border-border bg-card hover:bg-accent",
               )}
             >
               {/* Only the radio + label are inside the <label> (native
