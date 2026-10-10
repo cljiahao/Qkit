@@ -8,6 +8,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Customers can attach a saved payment screenshot. The upload field used to
+  open the camera only, so someone who paid on the same phone had no way to
+  pick the screenshot from their photos.
+- The payment page now says what is being paid for: the booth, the items,
+  the amount, and that payment is due within 30 minutes. It has a way back to
+  the menu, shows the attached screenshot, and highlights one next step at a
+  time.
+- After a customer sends their payment, the order page no longer asks them
+  to pay again while the stall checks it. A cancelled order that was paid for
+  now says how to get a refund.
 - Board settings no longer logs a hydration error when desktop
   notifications are on but this browser has not allowed them. The note about
   the browser's permission now appears once the page has loaded, since the

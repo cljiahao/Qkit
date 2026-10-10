@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import {
   PAYMENT_PROOF_EXTENSIONS,
+  parseOrderItems,
   parseOrderRef,
   parsePreClaimRef,
   paymentProofSchema,
@@ -109,6 +110,10 @@ type PreClaimContext =
       state: "pending";
       orderId: string;
       amountCents: number;
+      // What the customer is paying for and to whom, so the pay page is not
+      // an amount and a QR with nothing to check them against.
+      boothName: string;
+      items: { name: string; quantity: number }[];
       checkout: CheckoutView | null;
     }
   | { state: "placed"; orderNumber: string }
@@ -137,7 +142,9 @@ export async function loadPreClaimContext(
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, total_cents, payment_status, status, order_number, created_at")
+    .select(
+      "id, total_cents, payment_status, status, order_number, created_at, items",
+    )
     .eq("booth_id", boothId)
     .eq("access_token", token)
     .maybeSingle();
@@ -154,7 +161,7 @@ export async function loadPreClaimContext(
 
   const { data: booth } = await supabase
     .from("booths")
-    .select("vendor_id")
+    .select("vendor_id, name")
     .eq("id", boothId)
     .maybeSingle();
   if (!booth?.vendor_id) return null;
@@ -169,6 +176,11 @@ export async function loadPreClaimContext(
     state: "pending",
     orderId: order.id,
     amountCents: order.total_cents,
+    boothName: booth.name,
+    items: parseOrderItems(order.items).map(({ name, quantity }) => ({
+      name,
+      quantity,
+    })),
     checkout: checkout.ok ? checkout.data : null,
   };
 }
