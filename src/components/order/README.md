@@ -55,10 +55,16 @@ options)`, persists it on every change (`saveCart`), enforces per-item
   (cross-kit customer identity, migration `0075`), never required to
   submit, passed through `placeOrder`'s `customerPhone` input. Menu items
   render grouped under `menuCategories` (`@/lib/menu-sections`'s
-  `groupByCategory`) as a two-pane layout once there are 2+ non-empty
-  sections: a sticky jump-nav sidebar (own `overflow-y-auto`, so it scrolls
-  independently if sections overflow the viewport) beside the scrolling item
-  list, at every breakpoint (2026-09-15 — replaced the old horizontal
+  `groupByCategory`) once there are 2+ non-empty sections. From `md` up that
+  is a two-pane layout: a sticky jump-nav sidebar (own `overflow-y-auto`, so
+  it scrolls independently if sections overflow the viewport) beside the
+  scrolling item list. Below `md` the same nav is a row of chips pinned to
+  the top of the screen, scrolling sideways: the sidebar took 92px of a 375px
+  phone and left an item's name 5 to 31px, and a pinned row keeps the full
+  width without bringing back the scroll-up-to-switch problem of the old
+  unpinned pill row. Item names and descriptions wrap to two lines instead of
+  truncating, and a card for an item with options says how many are in the
+  basket. (The sidebar dates from 2026-09-15 — replaced the old horizontal
   pill-row nav, which forced a scroll-up-then-tap-then-scroll-down cycle on
   mobile to switch sections). Each sidebar link shows its section's first
   item's `image_url` as a thumbnail (`MediaImage`, Oddle-style), falling

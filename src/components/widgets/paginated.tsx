@@ -51,7 +51,7 @@ export function Paginated({
               <button
                 type="button"
                 onClick={() => setShown((s) => Math.min(s + pageSize, total))}
-                className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                className="inline-flex items-center text-muted-foreground underline-offset-4 hover:text-primary hover:underline [@media(pointer:coarse)]:min-h-11"
               >
                 Show more ({total - shown} {label})
               </button>
@@ -60,7 +60,7 @@ export function Paginated({
               <button
                 type="button"
                 onClick={() => setShown(pageSize)}
-                className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                className="inline-flex items-center text-muted-foreground underline-offset-4 hover:text-primary hover:underline [@media(pointer:coarse)]:min-h-11"
               >
                 Show less
               </button>

@@ -172,6 +172,19 @@ describe("OrderForm cart", () => {
     expect(within(cart).getByText("Iced")).toBeInTheDocument();
   });
 
+  it("shows on the menu card that an item with options is in the basket", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    expect(screen.queryByText(/in your order/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Customize" }));
+    await user.click(screen.getByRole("button", { name: "stub-confirm" }));
+    await user.click(screen.getByRole("button", { name: "Customize" }));
+    await user.click(screen.getByRole("button", { name: "stub-confirm" }));
+
+    expect(screen.getByText("2 in your order")).toBeInTheDocument();
+  });
+
   it("folds a priced choice's delta into the cart line and submit total", async () => {
     const user = userEvent.setup();
     renderForm();
@@ -399,7 +412,6 @@ describe("OrderForm cart", () => {
 
   it("surfaces a server error and does not navigate", async () => {
     placeOrder.mockResolvedValue({ success: false, error: "Booth not found" });
-    const { toast } = await import("sonner");
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -411,7 +423,9 @@ describe("OrderForm cart", () => {
     );
 
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Booth not found"),
+      expect(within(dialog).getByRole("alert")).toHaveTextContent(
+        "Booth not found",
+      ),
     );
     expect(push).not.toHaveBeenCalled();
   });
@@ -470,8 +484,8 @@ describe("OrderForm cart", () => {
       within(dialog).getByRole("button", { name: /Place order/ }),
     );
     await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        "Network issue. Please retry with the same order details.",
+      expect(within(dialog).getByRole("alert")).toHaveTextContent(
+        /couldn't reach the stall.*safe to try again/i,
       ),
     );
     const name = within(dialog).getByLabelText("Your name");

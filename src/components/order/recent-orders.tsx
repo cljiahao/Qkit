@@ -44,7 +44,7 @@ export function RecentOrders({ boothId }: Props) {
             <li key={o.orderNumber}>
               <Link
                 href={`/order/${boothId}/${o.orderNumber}${tokenQuery}`}
-                className="group flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
+                className="group flex min-h-11 items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/50"
               >
                 <span className="truncate">
                   <span className="font-mono font-semibold text-primary">
@@ -66,7 +66,7 @@ export function RecentOrders({ boothId }: Props) {
         <button
           type="button"
           onClick={() => setShowAll((v) => !v)}
-          className="mt-2.5 flex w-full items-center justify-center gap-1 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+          className="mt-1 flex min-h-11 w-full items-center justify-center gap-1 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
         >
           {showAll ? (
             <>
