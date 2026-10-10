@@ -59,7 +59,7 @@ export function VendorList({ vendors }: { vendors: VendorListItem[] }) {
             <p className="truncate font-mono text-xs text-muted-foreground">
               {v.plan === "pro" ? "Pro" : "Free"}
               {v.passHoursLeft !== null && (
-                <span className="ml-1.5 inline-flex items-center gap-0.5 text-emerald-600">
+                <span className="ml-1.5 inline-flex items-center gap-0.5 text-success">
                   <Ticket className="inline size-3" /> {v.passHoursLeft}h
                 </span>
               )}{" "}

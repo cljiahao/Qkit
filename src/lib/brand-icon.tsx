@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 
-// Market Ochre marks, approximated from the oklch tokens as hex (ImageResponse
-// needs concrete CSS colours): saffron primary on chalk-cream paper.
-export const BRAND_EMBER = "#b8862c";
+// Market Ochre marks as hex (ImageResponse needs concrete CSS colours): Sanzo
+// Wada's Khaki, the `--primary` token, on chalk-cream paper.
+export const BRAND_KHAKI = "#bc892b";
 export const BRAND_OAT = "#efe3c8";
 
 /**
@@ -19,7 +19,7 @@ export function brandIcon(size: number): ReactElement {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: BRAND_EMBER,
+        background: BRAND_KHAKI,
         color: BRAND_OAT,
         fontFamily: "Georgia, 'Times New Roman', serif",
         fontWeight: 700,

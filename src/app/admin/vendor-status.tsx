@@ -14,8 +14,7 @@ const STATUS: Record<VendorStatus, { label: string; className: string }> = {
   },
   expiring: {
     label: "Pass expiring",
-    className:
-      "text-amber-700 dark:text-amber-400 border-amber-500/35 bg-amber-500/12",
+    className: "text-warning border-warning/35 bg-warning/12",
   },
   stuck: {
     label: "Stuck",
@@ -28,12 +27,11 @@ const STATUS: Record<VendorStatus, { label: string; className: string }> = {
   new: {
     label: "New",
     className:
-      "text-blue-700 dark:text-blue-400 border-blue-500/35 bg-blue-500/12",
+      "text-status-confirmed border-status-confirmed/35 bg-status-confirmed/12",
   },
   healthy: {
     label: "Healthy",
-    className:
-      "text-emerald-700 dark:text-emerald-400 border-emerald-500/35 bg-emerald-500/12",
+    className: "text-success border-success/35 bg-success/12",
   },
 };
 

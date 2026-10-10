@@ -73,10 +73,12 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   status advance
   independently (a vendor can mark an order preparing/ready before the
   customer pays), so an `awaitingPayment` prop (from `page.tsx`) overrides
-  the confirmed/preparing/ready copy while payment is still outstanding —
-  e.g. "Being prepared, please complete your payment" instead of "Your
-  order is being prepared" — so the text never implies payment is settled
-  when it isn't. Once past `pending`, renders the progress bar
+  the confirmed/preparing/ready copy while the stall is still checking a
+  payment the customer has sent — e.g. "The stall is still checking your
+  payment. Stay close." — so the text never implies payment is settled
+  when it isn't, and never asks again for a payment already made (an unpaid
+  order is on `../pay`, not here). A `paymentSent` prop makes a cancelled
+  order say how to get a refund when the customer had paid. Once past `pending`, renders the progress bar
   (`orderProgressIndex`/`ORDER_PROGRESS_SEGMENTS`), a prominent range-based
   wait estimate (`estimateRangeLabel`, e.g. "6-10 min" — a range rather than
   a precise countdown, since waiting-line research says an unmet precise
@@ -187,7 +189,7 @@ surfaces a loyalty "earn a stamp" link once the order completes.
   `confirmed`/`not_required`. Renders only the states reachable once
   `page.tsx`'s redirect guard has ruled out `"pending"`: `not_required` →
   nothing, `confirmed` → a persistent "Payment confirmed" state, `claimed` →
-  "Payment sent, waiting for the stall to confirm" with a "Tapped by
+  "Payment sent. The stall is checking it." with a "Tapped by
   mistake? Undo" button (`unclaimPayment`) — any other status renders
   nothing rather than throwing, defensively. The actual claim UI (photo
   capture, QR/link/image checkout) lives on `../pay` (`pay-form.tsx`) now,

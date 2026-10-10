@@ -60,7 +60,12 @@ interface Props {
   // True while this order still expects payment and the vendor hasn't
   // confirmed receiving it yet — kitchen status and payment status advance
   // independently, so "preparing"/"ready" can be true before payment is.
+  // On this page that always means the customer has sent their payment and
+  // the stall is checking it: a still-unpaid order is shown /pay instead.
   awaitingPayment: boolean;
+  // The customer has told the stall they paid (confirmed by the stall or
+  // not). Changes what a cancelled order says about their money.
+  paymentSent: boolean;
   // Whether this booth waits for the customer's own "I'm here" tap. A
   // 'pending' order can also mean the vendor hasn't accepted it yet (no
   // printer connected, 0086) — that case shows no self-start button.
@@ -94,29 +99,30 @@ const STATUS_COPY: Record<OrderStatus, { headline: string; detail: string }> = {
   },
   cancelled: {
     headline: "This order was cancelled",
-    detail: "Nothing more will happen with it.",
+    detail: "The stall will not be making it.",
   },
 };
 
-// Overrides for the same statuses while payment is still outstanding — the
-// kitchen may already be moving, but the text must not imply payment is
-// settled when it isn't. "completed"/"cancelled" aren't listed: a completed
-// order's payment auto-confirms, and a cancelled order never solicits
-// payment (see order-status page's showPay gate).
-const AWAITING_PAYMENT_COPY: Partial<
+// A cancelled order the customer says they paid for: the one thing they need
+// is how to get their money back, and qkit never holds it.
+const CANCELLED_AFTER_PAYMENT_DETAIL =
+  "If you already paid, show this page to the stall for a refund.";
+
+// Overrides for the same statuses while the stall is still checking a payment
+// the customer has sent — the kitchen may already be moving, but the text must
+// not imply payment is settled when it isn't, nor ask again for a payment
+// already made. "completed"/"cancelled" aren't listed: a cancelled order never
+// shows the pay panel (see order-status page's showPay gate).
+const PAYMENT_CHECK_COPY: Partial<
   Record<OrderStatus, { headline: string; detail: string }>
 > = {
   confirmed: {
-    headline: "Pay to start your order",
-    detail: "The stall begins once your payment is in.",
+    headline: "We've got your order",
+    detail: "The stall starts once it has checked your payment.",
   },
   preparing: {
     headline: "We're making it now",
-    detail: "Please complete your payment while you wait.",
-  },
-  ready: {
-    headline: "It's ready",
-    detail: "Please pay before you collect.",
+    detail: "The stall is still checking your payment. Stay close.",
   },
 };
 
@@ -209,6 +215,7 @@ export function OrderStatusPoller({
   boothName,
   placedAt,
   awaitingPayment,
+  paymentSent,
   requiresArrivalConfirm,
 }: Props) {
   const router = useRouter();
@@ -354,6 +361,7 @@ export function OrderStatusPoller({
   const copy = statusCopy(status, {
     needsArrival,
     awaitingPayment,
+    paymentSent,
     displayNumber,
   });
 
@@ -431,21 +439,33 @@ function statusCopy(
   {
     needsArrival,
     awaitingPayment,
+    paymentSent,
     displayNumber,
-  }: { needsArrival: boolean; awaitingPayment: boolean; displayNumber: string },
+  }: {
+    needsArrival: boolean;
+    awaitingPayment: boolean;
+    paymentSent: boolean;
+    displayNumber: string;
+  },
 ): StatusCopy {
   if (needsArrival)
     return {
       headline: "Tap when you're at the counter",
       detail: "We make it fresh, so we start once you arrive.",
     };
-  if (awaitingPayment)
-    return AWAITING_PAYMENT_COPY[status] ?? STATUS_COPY[status];
+  if (status === "cancelled" && paymentSent)
+    return {
+      headline: STATUS_COPY.cancelled.headline,
+      detail: CANCELLED_AFTER_PAYMENT_DETAIL,
+    };
   if (status === "ready")
     return {
       headline: STATUS_COPY.ready.headline,
-      detail: `Show order #${displayNumber} at the counter to collect it.`,
+      detail: awaitingPayment
+        ? `Show order #${displayNumber} at the counter. The stall will check your payment there.`
+        : `Show order #${displayNumber} at the counter to collect it.`,
     };
+  if (awaitingPayment) return PAYMENT_CHECK_COPY[status] ?? STATUS_COPY[status];
   return STATUS_COPY[status];
 }
 

@@ -8,11 +8,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Customers can attach a saved payment screenshot. The upload field used to
+  open the camera only, so someone who paid on the same phone had no way to
+  pick the screenshot from their photos.
+- The payment page now says what is being paid for: the booth, the items,
+  the amount, and that payment is due within 30 minutes. It has a way back to
+  the menu, shows the attached screenshot, and highlights one next step at a
+  time.
+- After a customer sends their payment, the order page no longer asks them
+  to pay again while the stall checks it. A cancelled order that was paid for
+  now says how to get a refund.
 - Info icons that only opened on hover now open on a tap as well as on hover and keyboard focus: the one in the menu manager, and any hint beside a section title. A phone or tablet could not open them. `@merqo/ui` is pinned to commit `cb9dd39ab56d6bc2030d30edb7474ee8ebf60820` (tag `v0.32.1`) with matching build permission.
 - Board settings no longer logs a hydration error when desktop
   notifications are on but this browser has not allowed them. The note about
   the browser's permission now appears once the page has loaded, since the
   server cannot know the browser's answer.
+- Status text is readable in daylight. Order badges, the waiting-time label,
+  allergen chips, "Open", "Payment sent" and error text were drawn in colours
+  tuned for fills, and fell below the 4.5:1 contrast needed for text on the
+  cream background (the "Waiting for you" badge was 2.2:1). Each colour now
+  has a darker shade for text. The blue payment button, the Undo button and
+  the keyboard focus ring were fixed the same way.
+- A late ticket says "Late" beside its waiting time and shows a warning icon,
+  so it no longer differs from an ageing one by colour alone.
 - Eighteen messages no longer contain a long dash, for example "Order
   changed. Please refresh." The lint rule that enforces this now covers
   messages returned from server code, not only text in components.
@@ -102,6 +120,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The brand palette follows combination 146 of Sanzo Wada's "A Dictionary of
+  Color Combinations": Khaki for the primary colour (a two-point shift from
+  the previous ochre), Deep Grayish Olive in place of moss green, and Diamine
+  Green for "open", "paid" and other success states. The Pro badge is filled
+  with the olive. Raw palette colours (emerald, amber, blue) are replaced by
+  named tokens.
 - Internal: `src/components` and `src/lib` are grouped into folders. Shared
   components sit in `widgets/`, `layout/`, `board/`, `tour/`, `landing/` and
   `order/`; the `merqo-*`, `admin*` and `booth-*` library files sit in

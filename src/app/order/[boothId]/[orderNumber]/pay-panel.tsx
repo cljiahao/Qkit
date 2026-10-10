@@ -54,10 +54,10 @@ export function PayPanel({
         aria-live="polite"
         className="flex flex-col items-center gap-2 px-6 py-6 text-center"
       >
-        <span className="flex size-11 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+        <span className="flex size-11 items-center justify-center rounded-full bg-success/15 text-success">
           <Check className="size-6" />
         </span>
-        <p className="font-display text-lg font-semibold text-emerald-600">
+        <p className="font-display text-lg font-semibold text-success">
           Payment confirmed
         </p>
         <p className="text-sm text-muted-foreground">
@@ -87,15 +87,15 @@ export function PayPanel({
           <p
             role="status"
             aria-live="polite"
-            className="text-sm font-semibold text-amber-600 dark:text-amber-400"
+            className="text-sm font-semibold text-warning"
           >
-            Payment sent, waiting for the stall to confirm.
+            Payment sent. The stall is checking it.
           </p>
           <button
             type="button"
             onClick={unclaim}
             disabled={busy}
-            className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-60"
+            className="inline-flex min-h-11 items-center px-3 text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-60"
           >
             Tapped by mistake? Undo
           </button>

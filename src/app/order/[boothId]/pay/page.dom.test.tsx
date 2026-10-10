@@ -33,11 +33,15 @@ vi.mock("./pay-form", () => ({
   PayForm: ({
     boothId,
     token,
+    boothName,
+    items,
     amountCents,
     checkout,
   }: {
     boothId: string;
     token: string;
+    boothName: string;
+    items: unknown;
     amountCents: number;
     checkout: unknown;
   }) => (
@@ -45,6 +49,8 @@ vi.mock("./pay-form", () => ({
       data-testid="pay-form"
       data-booth-id={boothId}
       data-token={token}
+      data-booth-name={boothName}
+      data-items={JSON.stringify(items)}
       data-amount-cents={amountCents}
       data-checkout={JSON.stringify(checkout)}
     />
@@ -139,11 +145,13 @@ describe("PayPage", () => {
     expect(notFoundMock).toHaveBeenCalled();
   });
 
-  it("renders PayForm with the order id, amount, and checkout when valid", async () => {
+  it("renders PayForm with the order's booth, items, amount, and checkout when valid", async () => {
     loadPreClaimContextMock.mockResolvedValue({
       state: "pending",
       orderId: "order-1",
       amountCents: 550,
+      boothName: "Kopi Cart",
+      items: [{ name: "Kopi O", quantity: 2 }],
       checkout: { type: "qr", transactionId: "tx-1", payload: "p" },
     });
 
@@ -158,6 +166,11 @@ describe("PayPage", () => {
     expect(form).toHaveAttribute("data-booth-id", BOOTH_ID);
     expect(form).toHaveAttribute("data-token", TOKEN);
     expect(form).toHaveAttribute("data-amount-cents", "550");
+    expect(form).toHaveAttribute("data-booth-name", "Kopi Cart");
+    expect(form).toHaveAttribute(
+      "data-items",
+      JSON.stringify([{ name: "Kopi O", quantity: 2 }]),
+    );
     expect(form).toHaveAttribute(
       "data-checkout",
       JSON.stringify({ type: "qr", transactionId: "tx-1", payload: "p" }),

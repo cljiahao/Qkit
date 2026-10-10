@@ -26,7 +26,7 @@ export function OptionsBreakdown({ options }: { options: OptionCount[] }) {
               <span className="text-muted-foreground">{o.group}: </span>
               <span className="font-medium">{o.choice}</span>
             </span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-primary/70"
                 style={{ width: `${(o.count / max) * 100}%` }}

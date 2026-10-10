@@ -25,18 +25,27 @@ photo and does the deferred numbering.
   an invalid booth id, a missing token, and a null `loadPreClaimContext`
   result, plus that a valid context renders `PayForm` with the right
   amount/token/checkout props.
-- `pay-form.tsx` — `PayForm({ boothId, token, amountCents, checkout })`
-  client component: renders the same QR/image/link checkout markup as
+- `pay-form.tsx` — `PayForm({ boothId, token, boothName, items,
+amountCents, checkout })` client component: opens with an `h1` naming how
+  to pay, the booth, the amount and the items, so the customer can check
+  what they are paying for. Renders the same QR/image/link checkout markup as
   `../[orderNumber]/pay-panel.tsx` (amount echo, `react-qr-code` +
   "Save QR image" share/download button for a `qr` checkout via
   `renderSvgToPngBlob`, `../[orderNumber]/qr-image.ts`, an `<img>` with a
   load-failure fallback for `image`, a link button for `link`), plus a
   null-`checkout` branch ("Couldn't load payment right now" with a
   `router.refresh()` button) that `pay-panel.tsx` itself doesn't yet have.
-  Below the checkout, a labelled file input (`accept="image/*"
-capture="environment"`) downscales the selected photo via `resizeToWebp`
-  (`@merqo/ui`) before holding it in state. "I've paid" shows an
-  inline "A payment screenshot is required." error and never calls the
+  Below the checkout, a line states the payment window (from
+  `ABANDONED_PAYMENT_MS`), then a file input (`accept="image/*"`, visually
+  hidden and reached through its button-styled label) downscales the selected
+  photo via `resizeToWebp` (`@merqo/ui`) before holding it in state. The
+  input has no `capture` attribute on purpose: with it, phones open the
+  camera and skip the photo library, and a payment made on the same phone is
+  a saved screenshot. Once a file is attached the form shows its thumbnail
+  and name. Only one button is filled at a time, on the step the customer is
+  up to (pay link, then upload, then "I've paid"). "I've paid" shows an
+  inline "A payment screenshot is required." error, tied to the input with
+  `aria-describedby`, and never calls the
   action if no photo was selected; otherwise it calls
   `claimPayment(boothId, token, photo)` and, on success, `router.push`es to
   the newly-numbered `../{orderNumber}?t={token}` status page — the moment
@@ -45,9 +54,11 @@ capture="environment"`) downscales the selected photo via `resizeToWebp`
 - `pay-form.dom.test.tsx` — RTL tests: the null-checkout load-failure state
   (and its refresh button), the required-photo inline error, a successful
   upload+claim+redirect, a failed claim's toast, QR/link checkout
-  rendering, and the "Save QR image" button's Web Share / download-link /
+  rendering, the "Save QR image" button's Web Share / download-link /
   rasterize-failure paths (same coverage shape as
-  `../[orderNumber]/pay-panel.dom.test.tsx`).
+  `../[orderNumber]/pay-panel.dom.test.tsx`), that the input carries no
+  `capture`, the order context and payment window, the way back to the menu,
+  the error's link to the field, and the attached-screenshot state.
 
 Deliberately **not** used here: `unclaimPayment`/`getPaymentStatus`
 (`../[orderNumber]/payment-actions.ts`). Both operate on an

@@ -228,7 +228,7 @@ function DesktopNotifySection({
         <span
           className={cn(
             "text-sm font-semibold",
-            desktopNotify ? "text-emerald-600" : "text-muted-foreground",
+            desktopNotify ? "text-success" : "text-muted-foreground",
           )}
         >
           {desktopNotify ? "On" : "Off"}

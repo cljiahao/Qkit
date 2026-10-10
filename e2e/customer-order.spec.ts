@@ -25,7 +25,9 @@ test("customer places an order and reaches the live status page", async ({
 
   // Payment-required orders have no number until payment is claimed.
   await expect(page).toHaveURL(new RegExp(`/order/${BOOTH}/pay\\?t=`));
-  await expect(page.getByText(/scan with your paynow/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /scan with your paynow/i }),
+  ).toBeVisible();
 
   // A valid PNG exercises the required proof upload and browser resize.
   await page.locator("#payment-proof").setInputFiles({

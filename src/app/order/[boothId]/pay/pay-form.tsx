@@ -1,14 +1,14 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { formatPrice } from "@/lib/utils";
+import { Download, ImageUp } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ABANDONED_PAYMENT_MS } from "@/lib/orders";
+import { cn, formatPrice } from "@/lib/utils";
 import { paymentProofSchema } from "@/lib/schemas";
 import { resizeToWebp } from "@merqo/ui";
 import { useAsyncAction } from "@/hooks/use-async-action";
@@ -16,24 +16,56 @@ import { claimPayment } from "../[orderNumber]/payment-actions";
 import { renderSvgToPngBlob } from "../[orderNumber]/qr-image";
 import type { CheckoutView } from "@/lib/paykit/client";
 
+const PAY_WINDOW_MINUTES = ABANDONED_PAYMENT_MS / 60_000;
+const PROOF_ERROR_ID = "payment-proof-error";
+
+interface Proof {
+  file: File;
+  // Null where the browser cannot make one; the file name still shows.
+  previewUrl: string | null;
+}
+
+function previewUrlFor(file: File): string | null {
+  return typeof URL.createObjectURL === "function"
+    ? URL.createObjectURL(file)
+    : null;
+}
+
+function releasePreview(proof: Proof | null) {
+  if (proof?.previewUrl) URL.revokeObjectURL(proof.previewUrl);
+}
+
 export function PayForm({
   boothId,
   token,
+  boothName,
+  items,
   amountCents,
   checkout,
 }: {
   boothId: string;
   token: string;
+  boothName: string;
+  items: { name: string; quantity: number }[];
   amountCents: number;
   checkout: CheckoutView | null;
 }) {
   const router = useRouter();
   const { pending: busy, run } = useAsyncAction();
   const [imgError, setImgError] = useState(false);
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [proof, setProof] = useState<Proof | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const qrWrapperRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
+  const proofRef = useRef<Proof | null>(null);
+
+  function replaceProof(next: Proof | null) {
+    releasePreview(proofRef.current);
+    proofRef.current = next;
+    setProof(next);
+  }
+
+  useEffect(() => () => releasePreview(proofRef.current), []);
 
   async function saveQrImage() {
     const svg = qrWrapperRef.current?.querySelector("svg");
@@ -80,7 +112,7 @@ export function PayForm({
     // This is the only resize a payment proof gets: claimPayment is a server
     // action and cannot run the canvas-based resizeToWebp.
     const resized = await resizeToWebp(selected, 1600);
-    const proof =
+    const file =
       resized.blob instanceof File
         ? resized.blob
         : new File([resized.blob], selected.name, {
@@ -89,24 +121,24 @@ export function PayForm({
           });
     // Same schema claimPayment enforces, checked here so an unsupported or
     // oversized file is rejected before the upload round trip.
-    const checked = paymentProofSchema.safeParse(proof);
+    const checked = paymentProofSchema.safeParse(file);
     if (!checked.success) {
-      setPhoto(null);
+      replaceProof(null);
       setPhotoError(
         checked.error.issues[0]?.message ?? "Invalid payment screenshot.",
       );
       return;
     }
-    setPhoto(proof);
+    replaceProof({ file, previewUrl: previewUrlFor(file) });
   }
 
   function submit() {
-    if (!photo) {
+    if (!proof) {
       setPhotoError("A payment screenshot is required.");
       return;
     }
     return run(async () => {
-      const res = await claimPayment(boothId, token, photo);
+      const res = await claimPayment(boothId, token, proof.file);
       if (res.success)
         router.push(`/order/${boothId}/${res.orderNumber}?t=${token}`);
       else toast.error(res.error);
@@ -133,18 +165,35 @@ export function PayForm({
     payHeading = "Scan with your PayNow banking app to pay";
   else payHeading = "Scan with your banking or payment app to pay";
 
-  return (
-    <section className="space-y-4 px-6 py-5">
-      <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-        {payHeading}
-      </p>
+  // One filled button at a time, on the step the customer is up to: pay,
+  // then attach the screenshot, then tell the stall.
+  const payIsNext = checkout.type === "link" && !proof;
+  const attachIsNext = checkout.type !== "link" && !proof;
 
-      {/* Hidden for a $0/unpriced order — nothing to echo. */}
-      {amountCents > 0 && (
-        <p className="text-center font-mono text-2xl font-bold">
-          {formatPrice(amountCents)}
-        </p>
-      )}
+  return (
+    <section className="space-y-5 px-6 py-5">
+      <header className="space-y-1 text-center">
+        <h1 className="font-display text-xl font-semibold text-balance">
+          {payHeading}
+        </h1>
+        <p className="text-sm text-muted-foreground">Order from {boothName}</p>
+      </header>
+
+      <div className="space-y-2 text-center">
+        {/* Hidden for a $0/unpriced order — nothing to echo. */}
+        {amountCents > 0 && (
+          <p className="font-mono text-3xl font-bold">
+            {formatPrice(amountCents)}
+          </p>
+        )}
+        <ul className="space-y-0.5 text-sm text-muted-foreground">
+          {items.map((item, index) => (
+            <li key={`${item.name}-${index}`} className="break-words">
+              {item.quantity}× {item.name}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {checkout.type === "qr" && (
         <>
@@ -156,7 +205,7 @@ export function PayForm({
           </div>
           <Button
             variant="outline"
-            className="mx-auto flex h-10 w-fit items-center gap-2 rounded-xl"
+            className="mx-auto flex h-11 w-fit items-center gap-2 rounded-xl"
             disabled={saving}
             onClick={saveQrImage}
           >
@@ -185,37 +234,95 @@ export function PayForm({
           />
         ))}
       {checkout.type === "link" && (
-        <Button asChild className="h-12 w-full rounded-xl">
+        <Button
+          asChild
+          variant={payIsNext ? "default" : "outline"}
+          className="h-12 w-full rounded-xl"
+        >
           <a href={checkout.url} target="_blank" rel="noopener noreferrer">
             {checkout.label}
           </a>
         </Button>
       )}
 
+      <p className="text-center text-sm text-muted-foreground">
+        Pay within {PAY_WINDOW_MINUTES} minutes, or this order is cancelled.
+      </p>
+
       <div className="space-y-2">
-        <Label htmlFor="payment-proof">Upload payment screenshot</Label>
-        <Input
+        {proof && (
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
+            {proof.previewUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={proof.previewUrl}
+                alt=""
+                className="h-14 w-11 shrink-0 rounded-md object-cover"
+              />
+            )}
+            <div className="min-w-0 text-left">
+              <p className="text-sm font-semibold">Screenshot attached</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {proof.file.name}
+              </p>
+            </div>
+          </div>
+        )}
+        {/* A real file input, hidden from sight and reached through its
+            label, so the phone offers the photo library as well as the camera:
+            a payment made on this phone is a saved screenshot. */}
+        <input
           id="payment-proof"
           type="file"
           accept="image/*"
-          capture="environment"
           onChange={onFileSelected}
+          aria-invalid={photoError ? true : undefined}
+          aria-describedby={photoError ? PROOF_ERROR_ID : undefined}
+          className="peer sr-only"
         />
+        <label
+          htmlFor="payment-proof"
+          className={cn(
+            buttonVariants({ variant: attachIsNext ? "default" : "outline" }),
+            "h-12 w-full cursor-pointer rounded-xl peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring",
+          )}
+        >
+          <ImageUp className="size-4" aria-hidden />
+          {proof
+            ? "Upload a different screenshot"
+            : "Upload payment screenshot"}
+        </label>
         {photoError && (
-          <p className="text-center text-xs font-medium text-destructive">
+          <p
+            id={PROOF_ERROR_ID}
+            role="alert"
+            className="text-center text-sm font-medium text-destructive"
+          >
             {photoError}
           </p>
         )}
       </div>
 
-      <Button
-        variant="outline"
-        className="h-11 w-full rounded-xl"
-        disabled={busy}
-        onClick={submit}
+      <div className="space-y-2">
+        <Button
+          variant={proof ? "default" : "outline"}
+          className="h-12 w-full rounded-xl"
+          disabled={busy}
+          onClick={submit}
+        >
+          I&apos;ve paid
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          The stall checks your screenshot. Your order number comes next.
+        </p>
+      </div>
+
+      <Link
+        href={`/order/${boothId}`}
+        className="mx-auto flex min-h-11 w-fit items-center text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
       >
-        I&apos;ve paid
-      </Button>
+        Back to the menu
+      </Link>
     </section>
   );
 }

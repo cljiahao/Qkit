@@ -212,7 +212,7 @@ function LoadErrorBanner() {
   return (
     <div
       role="alert"
-      className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
+      className="mb-5 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
     >
       Couldn&apos;t load your current orders. Some in-flight orders may be
       missing. Refresh to try again.
@@ -253,7 +253,7 @@ function BoothToggle({
           className={cn(
             "h-8 shrink-0 gap-1.5 rounded-full px-2.5 text-xs font-semibold",
             active
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15 hover:text-emerald-600"
+              ? "border-success/40 bg-success/10 text-success hover:bg-success/15 hover:text-success"
               : "text-muted-foreground",
           )}
         >
@@ -917,7 +917,7 @@ export function RealtimeOrderBoard({
       {liveStatus === "disconnected" && (
         <div
           role="status"
-          className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
+          className="mb-5 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning"
         >
           Live updates interrupted, reconnecting. New orders may be delayed; the
           board re-syncs automatically once it&apos;s back.
@@ -999,7 +999,7 @@ export function RealtimeOrderBoard({
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold",
               idle
-                ? "bg-emerald-500/10 text-emerald-600"
+                ? "bg-success/10 text-success"
                 : "bg-primary/10 text-primary",
             )}
           >
@@ -1010,7 +1010,7 @@ export function RealtimeOrderBoard({
               <span
                 className={cn(
                   "relative inline-flex size-2 rounded-full",
-                  idle ? "bg-emerald-500" : "bg-primary",
+                  idle ? "bg-success" : "bg-primary",
                 )}
               />
             </span>
