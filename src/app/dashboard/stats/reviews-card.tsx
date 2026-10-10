@@ -33,7 +33,7 @@ function Stars({ value }: { value: number }) {
                 className="absolute inset-y-0 left-0 overflow-hidden"
                 style={{ width: `${fill * 100}%` }}
               >
-                <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                <Star className="size-3.5 fill-primary text-primary" />
               </span>
             )}
           </span>
@@ -54,9 +54,9 @@ function Distribution({ summary }: { summary: ReviewSummary }) {
         return (
           <div key={star} className="flex items-center gap-2 text-xs">
             <span className="w-3 text-muted-foreground">{star}</span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-amber-400"
+                className="h-full rounded-full bg-primary"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -203,7 +203,7 @@ function AllBoothsRollup({
                   href={`/dashboard/stats?booth=${g.boothId}${
                     range ? `&range=${range}` : ""
                   }`}
-                  className="block rounded-lg px-1 transition-colors hover:bg-secondary/60"
+                  className="block rounded-lg px-1 transition-colors hover:bg-accent"
                 >
                   {inner}
                 </Link>

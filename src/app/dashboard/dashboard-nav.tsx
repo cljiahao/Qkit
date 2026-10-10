@@ -26,12 +26,12 @@ function tourAnchor(href: string): string {
 }
 
 // A small mono "ticket stamp" for the account's plan. Free reads as a quiet
-// muted chip; Pass borrows the amber account tint; Pro is the one that pops,
-// in emerald, so an upgraded stall is legible at a glance.
+// muted chip; Pass borrows the primary tint; Pro is the one that pops, filled
+// with the brand's olive, so an upgraded stall is legible at a glance.
 const TIER_BADGE: Record<Tier, { label: string; className: string }> = {
   free: {
     label: "Free",
-    className: "bg-secondary text-muted-foreground ring-border",
+    className: "bg-muted text-muted-foreground ring-border",
   },
   pass: {
     label: "Pass",
@@ -39,8 +39,7 @@ const TIER_BADGE: Record<Tier, { label: string; className: string }> = {
   },
   pro: {
     label: "Pro",
-    className:
-      "bg-emerald-500/15 text-emerald-700 ring-emerald-500/30 dark:bg-emerald-400/15 dark:text-emerald-400 dark:ring-emerald-400/30",
+    className: "bg-secondary text-secondary-foreground ring-secondary",
   },
 };
 

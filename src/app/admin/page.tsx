@@ -347,7 +347,7 @@ export default async function AdminPage() {
                     >
                       {m.vendorName}
                     </Link>
-                    <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-xs font-semibold">
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs font-semibold">
                       {SUPPORT_CATEGORY_LABEL[m.category] ?? m.category}
                     </span>
                     <span className="font-mono text-xs text-muted-foreground">

@@ -80,9 +80,9 @@ export function PrintingSection({
       {value && boothId && <PrinterStatus view={status} />}
 
       {value && boothId && status.kind === "none" && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+        <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
           <TriangleAlert
-            className="mt-0.5 size-4 shrink-0 text-amber-600"
+            className="mt-0.5 size-4 shrink-0 text-warning"
             aria-hidden
           />
           <span>

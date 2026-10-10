@@ -35,7 +35,7 @@ export function ActivationFunnelView({ funnel }: { funnel: ActivationFunnel }) {
                   )}
                 </span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
+              <div className="h-2.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-primary transition-[width]"
                   style={{ width: `${(n / top) * 100}%` }}

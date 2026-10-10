@@ -99,7 +99,7 @@ function ProofPhotoTrigger({
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/40 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary/50"
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-muted-foreground/40 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent"
       >
         <ImageIcon className="size-3.5" aria-hidden="true" />
         {expanded ? "Hide payment proof" : "View payment proof"}
@@ -146,8 +146,15 @@ function TicketAge({
         title="Time since the order arrived"
         aria-label={`${ageMins} minutes since arrival${ageToneAriaSuffix(tone)}`}
       >
-        <Clock className="size-3.5" aria-hidden="true" />
+        {tone === "overdue" ? (
+          <AlertTriangle className="size-3.5" aria-hidden="true" />
+        ) : (
+          <Clock className="size-3.5" aria-hidden="true" />
+        )}
         {ageLabel(ageMins)}
+        {/* A word and its own icon, so a late ticket does not rest on the
+            difference between amber and red. */}
+        {tone === "overdue" && <span aria-hidden="true">· Late</span>}
       </span>
     </div>
   );
@@ -922,7 +929,7 @@ function TicketActions({
               disabled={updating}
             >
               <span
-                className="undo-bar absolute inset-y-0 left-0 bg-secondary"
+                className="undo-bar absolute inset-y-0 left-0 bg-foreground/10"
                 style={{ animationDuration: `${undoMs}ms` }}
                 aria-hidden="true"
               />
