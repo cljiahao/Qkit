@@ -68,7 +68,7 @@ function StarRow({ value, size = "size-4" }: { value: number; size?: string }) {
           className={cn(
             size,
             i < value
-              ? "fill-amber-400 text-amber-400"
+              ? "fill-primary text-primary"
               : "text-muted-foreground/30",
           )}
         />
@@ -188,16 +188,12 @@ export default async function AdminFeedbackPage() {
               total={nps.total}
               className="bg-muted-foreground/40"
             />
-            <Seg
-              n={nps.promoters}
-              total={nps.total}
-              className="bg-emerald-500"
-            />
+            <Seg n={nps.promoters} total={nps.total} className="bg-success" />
           </div>
           <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground">
             <span>{nps.detractors} detractors</span>
             <span>{nps.passives} passive</span>
-            <span className="text-emerald-600">{nps.promoters} promoters</span>
+            <span className="text-success">{nps.promoters} promoters</span>
           </div>
         </div>
 
@@ -261,9 +257,9 @@ export default async function AdminFeedbackPage() {
               return (
                 <div key={star} className="flex items-center gap-2 text-xs">
                   <span className="w-3 text-muted-foreground">{star}</span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-amber-400"
+                      className="h-full rounded-full bg-primary"
                       style={{ width: `${pct}%` }}
                     />
                   </div>

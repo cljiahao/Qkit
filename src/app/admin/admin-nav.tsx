@@ -26,7 +26,7 @@ export function AdminNav() {
               "rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
               active
                 ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-secondary",
+                : "text-muted-foreground hover:bg-accent",
             )}
           >
             {t.label}

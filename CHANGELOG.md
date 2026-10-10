@@ -22,6 +22,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   notifications are on but this browser has not allowed them. The note about
   the browser's permission now appears once the page has loaded, since the
   server cannot know the browser's answer.
+- Status text is readable in daylight. Order badges, the waiting-time label,
+  allergen chips, "Open", "Payment sent" and error text were drawn in colours
+  tuned for fills, and fell below the 4.5:1 contrast needed for text on the
+  cream background (the "Waiting for you" badge was 2.2:1). Each colour now
+  has a darker shade for text. The blue payment button, the Undo button and
+  the keyboard focus ring were fixed the same way.
+- A late ticket says "Late" beside its waiting time and shows a warning icon,
+  so it no longer differs from an ageing one by colour alone.
 - Eighteen messages no longer contain a long dash, for example "Order
   changed. Please refresh." The lint rule that enforces this now covers
   messages returned from server code, not only text in components.
@@ -111,6 +119,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The brand palette follows combination 146 of Sanzo Wada's "A Dictionary of
+  Color Combinations": Khaki for the primary colour (a two-point shift from
+  the previous ochre), Deep Grayish Olive in place of moss green, and Diamine
+  Green for "open", "paid" and other success states. The Pro badge is filled
+  with the olive. Raw palette colours (emerald, amber, blue) are replaced by
+  named tokens.
 - Internal: `src/components` and `src/lib` are grouped into folders. Shared
   components sit in `widgets/`, `layout/`, `board/`, `tour/`, `landing/` and
   `order/`; the `merqo-*`, `admin*` and `booth-*` library files sit in

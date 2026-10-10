@@ -54,10 +54,10 @@ export function PayPanel({
         aria-live="polite"
         className="flex flex-col items-center gap-2 px-6 py-6 text-center"
       >
-        <span className="flex size-11 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+        <span className="flex size-11 items-center justify-center rounded-full bg-success/15 text-success">
           <Check className="size-6" />
         </span>
-        <p className="font-display text-lg font-semibold text-emerald-600">
+        <p className="font-display text-lg font-semibold text-success">
           Payment confirmed
         </p>
         <p className="text-sm text-muted-foreground">
@@ -87,7 +87,7 @@ export function PayPanel({
           <p
             role="status"
             aria-live="polite"
-            className="text-sm font-semibold text-amber-600 dark:text-amber-400"
+            className="text-sm font-semibold text-warning"
           >
             Payment sent. The stall is checking it.
           </p>

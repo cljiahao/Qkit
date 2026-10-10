@@ -123,13 +123,13 @@ export function FeedbackForm({
               key={n}
               value={String(n)}
               aria-label={`${n} star${n === 1 ? "" : "s"}`}
-              className="size-11 rounded-lg p-0 hover:bg-secondary data-[state=on]:bg-transparent"
+              className="size-11 rounded-lg p-0 hover:bg-accent data-[state=on]:bg-transparent"
             >
               <Star
                 className={cn(
                   "size-6",
                   n <= score
-                    ? "fill-amber-400 text-amber-400"
+                    ? "fill-primary text-primary"
                     : "text-muted-foreground/40",
                 )}
               />

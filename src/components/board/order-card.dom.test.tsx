@@ -1063,6 +1063,22 @@ describe("OrderCard — pending arrival aging", () => {
     expect(clock.className).not.toMatch(
       /text-status-aging|text-status-cancelled/,
     );
+    expect(clock).not.toHaveTextContent(/late/i);
+  });
+
+  it("names a late ticket in words, not only by its colour", () => {
+    render(
+      <OrderCard
+        order={makeOrder({
+          status: "preparing",
+          created_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+        })}
+      />,
+      { wrapper: TooltipProvider },
+    );
+    const clock = screen.getByTitle("Time since the order arrived");
+    expect(clock.className).toMatch(/text-status-cancelled/);
+    expect(clock).toHaveTextContent(/late/i);
   });
 });
 
