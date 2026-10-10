@@ -304,7 +304,8 @@ qkit's were shell strings that did fire. Adopted, each because it fixed
 something real in this repo:
 
 - Hook commands anchored on `${CLAUDE_PROJECT_DIR}`, with timeouts. The old
-  relative paths broke whenever the shell had changed directory.
+  relative paths resolved against the shell's current directory, so after a
+  `cd` they could miss, or pick up another worktree's copy of the scripts.
 - `stop-checks.sh` skips the test run on a clean tree; `subagent-stop.sh`
   skips read-only agents; `post-edit-typecheck.sh` reports through
   `additionalContext` (its plain stdout never reached the agent).
