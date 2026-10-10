@@ -18,6 +18,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - After a customer sends their payment, the order page no longer asks them
   to pay again while the stall checks it. A cancelled order that was paid for
   now says how to get a refund.
+- Info icons that only opened on hover now open on a tap as well as on hover and keyboard focus: the one in the menu manager, and any hint beside a section title. A phone or tablet could not open them. `@merqo/ui` is pinned to commit `cb9dd39ab56d6bc2030d30edb7474ee8ebf60820` (tag `v0.32.1`) with matching build permission.
 - Board settings no longer logs a hydration error when desktop
   notifications are on but this browser has not allowed them. The note about
   the browser's permission now appears once the page has loaded, since the
